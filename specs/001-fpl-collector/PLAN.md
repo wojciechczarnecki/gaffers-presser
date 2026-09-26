@@ -335,7 +335,7 @@ about timing.
       and sleeps `[1, 2, 4, 8]`; timeout retried; "game is being updated" (200 and 503)
       retried; 404 raises `FplNotFoundError` after one request.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_client.py`
-- [ ] 8. Recorded payloads — files: `backend/tests/fpl/payloads/bootstrap-static.json.gz`,
+- [x] 8. Recorded payloads — files: `backend/tests/fpl/payloads/bootstrap-static.json.gz`,
       `fixtures.json.gz`, `event-1-live.json.gz`, `event-2-live.json.gz`,
       `event-3-live.json.gz`, `backend/tests/fpl/payloads/__init__.py` (`load(name) -> Any`
       reading the gzip, returning a fresh deep copy each call).
