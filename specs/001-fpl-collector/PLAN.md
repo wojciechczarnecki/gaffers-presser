@@ -369,7 +369,7 @@ about timing.
 
 ### Group 3 — Reference sync, deadline snapshot, CLI
 
-- [ ] 10. Upsert helper — files: `backend/app/db/upsert.py`, `backend/tests/db/test_upsert.py`.
+- [x] 10. Upsert helper — files: `backend/app/db/upsert.py`, `backend/tests/db/test_upsert.py`.
       `upsert(session, model, rows: list[dict], conflict_cols: list[str]) -> None` using
       `sqlalchemy.dialects.postgresql.insert(...).on_conflict_do_update(index_elements=…,
       set_={non-key columns})`, or `on_conflict_do_nothing(index_elements=…)` when the table
