@@ -1,0 +1,28 @@
+{
+  "production": {
+    "hosts": [],
+    "commands": []
+  },
+  "worktree": {
+    "dir": "../worktrees"
+  },
+  "verify": {
+    "command": "cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q"
+  },
+  "format": [
+    { "match": "*.py", "command": "uv run --project backend ruff format -q {file}" }
+  ],
+  "docs": {
+    "roadmap": "docs/ROADMAP.md",
+    "backlog": "docs/BACKLOG.md",
+    "decisions": "docs/DECISIONS.md",
+    "conventions": "docs/CONVENTIONS.md",
+    "project": "docs/PROJECT.md",
+    "specsDir": "specs"
+  },
+  "gitHooksDir": "scripts/git-hooks",
+  "language": "en",
+  "models": {
+    "implement": "sonnet"
+  }
+}

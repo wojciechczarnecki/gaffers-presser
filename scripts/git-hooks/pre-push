@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Git pre-push hook: nobody pushes to main directly — changes land through a squash-merged PR.
+# Server-side branch protection is not always available (private repositories on free plans),
+# so this is its local stand-in. Enable once per clone:
+#   git config core.hooksPath <gitHooksDir>
+
+protected='^refs/heads/(main|master)$'
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [[ "$remote_ref" =~ $protected ]]; then
+    echo "pre-push: direct push to ${remote_ref#refs/heads/} is blocked; open a PR instead." >&2
+    exit 1
+  fi
+done
+
+exit 0

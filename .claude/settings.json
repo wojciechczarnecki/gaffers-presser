@@ -1,0 +1,48 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(gh pr *)",
+      "Bash(gh run *)",
+      "Bash(gh api *)",
+      "Bash(gh issue *)",
+      "Bash(gh repo view*)",
+      "Bash(gh auth status*)",
+      "Bash(curl http://localhost*)",
+      "Bash(curl * http://localhost*)",
+      "Bash(curl * http://127.0.0.1*)",
+      "Bash(bash scripts/*)",
+      "Bash(scripts/*)",
+      "Bash(./scripts/*)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(find *)",
+      "Bash(ls *)",
+      "Bash(wc *)",
+      "Bash(diff *)",
+      "Bash(mkdir *)",
+      "Bash(rm *)",
+      "Bash(chmod +x *)",
+      "Bash(date *)",
+      "Bash(workflow_metrics.py *)",
+      "Read(~/.claude/plugins/cache/wcz-tools/pipeline/**)",
+      "WebSearch"
+    ],
+    "ask": [
+      "Edit(**/.claude/settings*.json)",
+      "Edit(**/scripts/git-hooks/**)"
+    ],
+    "deny": [
+      "Bash(gh pr merge*)"
+    ]
+  },
+  "extraKnownMarketplaces": {
+    "wcz-tools": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/wojciechczarnecki/agentic-pipeline.git",
+        "ref": "stable"
+      }
+    }
+  }
+}
