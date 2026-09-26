@@ -8,6 +8,25 @@
       "Bash(gh issue *)",
       "Bash(gh repo view*)",
       "Bash(gh auth status*)",
+      "Bash(uv run ruff *)",
+      "Bash(uv run pytest*)",
+      "Bash(uv run alembic *)",
+      "Bash(uv run --project backend ruff *)",
+      "Bash(uv run --project backend pytest*)",
+      "Bash(uv sync*)",
+      "Bash(uv lock*)",
+      "Bash(uv tree*)",
+      "Bash(uv python *)",
+      "Bash(docker compose up*)",
+      "Bash(docker compose ps*)",
+      "Bash(docker compose logs*)",
+      "Bash(docker compose exec *)",
+      "Bash(docker compose stop*)",
+      "Bash(docker compose start*)",
+      "Bash(docker compose config*)",
+      "Bash(docker ps*)",
+      "Bash(claude plugin list*)",
+      "Bash(claude plugin marketplace list*)",
       "Bash(curl http://localhost*)",
       "Bash(curl * http://localhost*)",
       "Bash(curl * http://127.0.0.1*)",
@@ -30,10 +49,23 @@
     ],
     "ask": [
       "Edit(**/.claude/settings*.json)",
-      "Edit(**/scripts/git-hooks/**)"
+      "Edit(**/.claude/workflow.json)",
+      "Edit(**/scripts/git-hooks/**)",
+      "Bash(uv add*)",
+      "Bash(uv remove*)",
+      "Bash(uv pip *)",
+      "Bash(uvx *)",
+      "Bash(docker compose down*)",
+      "Bash(docker compose rm*)"
     ],
     "deny": [
-      "Bash(gh pr merge*)"
+      "Bash(gh pr merge*)",
+      "Bash(railway *)",
+      "Bash(claude plugin disable*)",
+      "Bash(claude plugin enable*)",
+      "Bash(claude plugin uninstall*)",
+      "Bash(claude plugin remove*)",
+      "Bash(claude plugin marketplace remove*)"
     ]
   },
   "extraKnownMarketplaces": {

@@ -10,4 +10,11 @@ require one.
 
 | # | Priority | Item | Trigger |
 |---|---|---|---|
-| 1 | P3 | TODO: what is deferred | TODO: when it comes back |
+| 1 | P2 | Compare PydanticAI with LangGraph on one real flow (see ADR 0001) | building the Q&A agent (stage 4) |
+| 2 | P2 | Switch the tweet source to the official X API (pay-per-use) | the free scraper breaks repeatedly, the 60 s target is missed, or before any monetization |
+| 3 | P2 | A second phone number and an unofficial WhatsApp library (Baileys) for delivery | the e-mail + copy-paste MVP is in use and the owner has a second number |
+| 4 | P2 | Members' consent flow before storing what they write in chats | any feature that reads group chats |
+| 5 | P3 | Images (standings cards, Wrapped cards) and audio (TTS "press conference") | the text presser is in regular use |
+| 6 | P3 | Rename the product (Polish or neutral brand, no FPL/PL trademarks) | before any public launch or monetization |
+| 7 | P3 | Alert event types beyond the four in scope (position change, set pieces, goalkeeper change) | subscribers ask for them |
+| 8 | P2 | Keep podcast transcription (Whisper, PyTorch) out of the production image — a separate package or dependency group | adding podcast transcripts (stage 4) |

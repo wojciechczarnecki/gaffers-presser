@@ -6,7 +6,9 @@ Instructions for agents working in this repository.
 
 - **The Gaffer's Presser** — a post-gameweek press conference for your FPL mini-league: banter, team news and league history, in Polish FPL slang
 - Owner: Wojciech Czarnecki (wczarnecky@gmail.com)
-- Stack: Python (uv, ruff, pytest), CI on GitHub Actions; TODO: frameworks, database and hosting
+- Stack: Python 3.12 (uv, ruff, pytest) + FastAPI + SQLModel + Alembic + PostgreSQL 16 with pgvector
+  · LangGraph (LLM flows) · Langfuse (tracing) · React 19 + TypeScript + Vite only when a web UI
+  is needed · CI on GitHub Actions · hosting on Railway
 
 ## Document map — what to read when
 
@@ -16,6 +18,7 @@ Instructions for agents working in this repository.
 | `docs/ROADMAP.md` | stages and streams, statuses — at the start of every task; **update when done** |
 | `docs/BACKLOG.md` | deferred improvements and debt: priority P1–P3 + a trigger to return |
 | `docs/DECISIONS.md` | binding design decisions — before designing something differently |
+| `docs/adr/` | the reasoning behind decisions that had real alternatives; linked from DECISIONS |
 | `docs/CONVENTIONS.md` | code style, tests, git — when writing code |
 | `specs/` | SPEC + PLAN per feature — see the workflow below |
 
@@ -55,7 +58,8 @@ hook enforce it (enabled once per clone: `git config core.hooksPath scripts/git-
 ## Iron rules
 
 - Every feature MUST have tests — without them it is not done.
-- TODO: the rule for user-facing texts (one place for strings).
+- Polish product content (prompts, e-mail templates, slang glossary) lives in
+  `backend/app/content/`, never as string literals in code.
 - When a task is done, tick it in `docs/ROADMAP.md` — the roadmap must not lie.
 - Record architectural decisions in `docs/DECISIONS.md` in the same PR.
 - Secrets and real users' data never in code, logs, commits or tests.
@@ -67,12 +71,15 @@ hook enforce it (enabled once per clone: `git config core.hooksPath scripts/git-
 # full verification of the stack (the same command as `verify.command` in .claude/workflow.json)
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q
 
-# TODO: running the application for development
-# TODO: tests, lint, build per layer
+# running the application for development — added in stage 0 (FPL collector)
 ```
 
 ## Structure
 
 ```
-TODO: the project's directories and what lives in them
+backend/           Python package `app/` (modules per area), tests, migrations
+frontend/          web UI — only once Wrapped is built
+docs/              project documents; docs/adr/ holds decision records
+specs/             SPEC + PLAN per feature
+scripts/git-hooks/ pre-push guard for main
 ```

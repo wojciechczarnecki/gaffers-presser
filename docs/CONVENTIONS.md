@@ -6,7 +6,8 @@ this document holds the details.
 ## Language
 
 - Commit messages, PR titles and branch names: English, regardless of `language`.
-- Code: Python. Identifiers and comments: TODO: English or Polish
+- Code: Python. Identifiers and comments: English. Product content (generated texts, e-mail
+  templates, the slang glossary) is Polish
 - Documentation (`docs/`, `specs/`) and PR descriptions: English (`language: "en"`
   in `.claude/workflow.json`).
 - The language of the conversation with the agent is not a project setting — it follows the
@@ -18,17 +19,34 @@ this document holds the details.
 - Line length: 100 (`line-length = 100` in the ruff config in `pyproject.toml`)
 - Formatting and lint: `ruff format` and `ruff check`, run through `uv` (the same commands as `format[]` in `.claude/workflow.json`)
 - No docstrings; self-documenting code.
+- Time: `datetime` values are timezone-aware UTC; conversion to `Europe/Warsaw` happens only
+  when rendering content.
+- Logs never carry manager names, league IDs, e-mail addresses or credentials.
 - Comments only where the code cannot express a constraint.
 
 ## User-facing text
 
-TODO: one place for strings (file/module), the key rule, how the tests use them.
+Product content is Polish and lives in files, never as string literals in code:
+
+- `backend/app/content/` holds prompts, e-mail templates and the slang glossary, one file per
+  artefact; code loads them by name.
+- A change of tone or wording is a change of those files only.
+- Tests check that a template renders with the expected fields; they do not compare whole
+  generated or templated texts.
 
 ## Tests
 
 **Every new feature MUST have tests.**
 
-- TODO: where the tests of each layer live and what runs them
+- Backend: pytest in `backend/tests/`, mirroring `app/`; shared fixtures in
+  `backend/tests/conftest.py`.
+- LLM steps are unit-tested against a fake model — no network and no cost in `pytest`.
+  Evaluation sets run through a separate command, never inside `pytest` (a CI regression
+  run comes in stage 5).
+- External APIs (FPL, X, e-mail) are tested against recorded payloads. Payloads with
+  managers or leagues are synthetic; public player data may be real.
+- Tests that need PostgreSQL run against a container (locally and in CI), never a shared
+  database.
 - Write tests BEFORE or TOGETHER with the implementation.
 - Minimum coverage: key paths + edge cases (authorisation errors, missing resource,
   validation, empty lists, duplicates, range boundaries).
@@ -38,8 +56,7 @@ TODO: one place for strings (file/module), the key rule, how the tests use them.
 
 ### Interface tests
 
-TODO: how to run the UI scope (`verify.scopes`), where the visual artefacts land and which
-views must be looked at when a screen changes.
+None until a frontend exists (Wrapped).
 
 ## Commits and branches
 
@@ -65,4 +82,11 @@ pipeline stages. Key format and the report: the `pipeline` plugin's README
 
 ## Dependencies
 
-- TODO: version pinning, lock files, the update channel (Dependabot), the major policy.
+- Exact pins (`==`) in `backend/pyproject.toml`; `backend/uv.lock` committed. To upgrade:
+  change the pin, run `uv lock`.
+- Dev tools go to the `dev` optional-dependency group.
+- Dependabot: monthly grouped minor/patch updates for uv and GitHub Actions; major versions
+  are upgraded deliberately as their own task. Known vulnerabilities are caught by the
+  weekly audit (`security.yml`) and by Dependabot security updates.
+- A green Dependabot PR is merged after a look at the changelog; a red one gets a fix on a
+  separate branch.
