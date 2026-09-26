@@ -813,3 +813,8 @@ passed.
 
 Backlog: no new items, no item's trigger has fired. ROADMAP: the Stage 0 item stays unticked
 by design (it also needs spec 002). DECISIONS: nothing new.
+
+PR: https://github.com/wojciechczarnecki/gaffers-presser/pull/3 — CI green on the first
+attempt (`backend` 97 passed, `backend-audit`), run
+https://github.com/wojciechczarnecki/gaffers-presser/actions/runs/36272958054; no test passed
+only after a retry; no UI, so no visual artifacts.
