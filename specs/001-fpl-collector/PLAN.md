@@ -530,6 +530,28 @@ about timing.
       002 — worker, schedule, deployment)`.
       Automatic verification: `cd backend && uv run pytest -q tests/test_readme.py && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
 
+### Converge pass 1 — 2026-09-26
+
+A fresh subagent compared the committed diff (`git diff origin/main...HEAD -- .
+':(exclude)specs/001-fpl-collector'`) against SPEC.md's acceptance criteria.
+
+Finding: `[partial] AC13/AC20 — file:app/fpl/leagues.py — league sync stores standings only
+under the latest gameweek whose deadline has passed at sync time, so a backfill of GW1–3
+stores standings for GW3 only, not for GW1 and GW2 as well.`
+
+Verdict: not a real gap. AC13 asks the sync to store "the standings rows" for a
+configured league at the gameweek the job is run for; it does not ask for a historical
+standings table per past gameweek. The FPL standings endpoint returns only the current
+table (no per-gameweek history), so storing it under "the latest gameweek whose deadline
+has passed" is the only interpretation the live API supports — the plan's Approach section
+("Standings") and the plan-review's "Checked and found correct" both already record this
+reading, and DECISIONS gets a row for it (step 20). AC13's own field list (rank, gameweek
+total, overall total per league) is fully stored; AC20's exact per-gameweek points/totals
+for every past gameweek are stored separately in `manager_gameweek` from
+`entry_history`, which is exact for every past gameweek. No code change.
+
+No steps added (the one finding was rejected), so no second pass is needed.
+
 ## Risks and traps
 
 - **Docker is required for the test suite.** The container starts only for tests that request
@@ -695,11 +717,6 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   test `tests/db/test_migrations.py::test_alembic_cli_runs_from_backend` runs the real
   console script without naming `DATABASE_URL` (keeps the AC2 guard intact). Red before,
   green after.
-- Converge pass (fresh subagent, SPEC vs diff): one finding — standings stored under the
-  latest passed gameweek rather than each requested gameweek (AC13/AC20). Not changed:
-  this is the plan's documented interpretation (Approach → Standings; plan-review note on
-  AC13; DECISIONS row) since FPL only returns the current table. Worth the owner's eye at
-  GATE 2.
 
 ## Final review
 

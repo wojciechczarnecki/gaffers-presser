@@ -13,7 +13,11 @@ metrics:
   plan_review_blockers: 0
   plan_review_majors: 3
   plan_changes: 11
+  implement_steps: 20
   implement_iterations: 8
+  converge_gaps: 0
+  deviations_minor: 2
+  deviations_major: 0
 ---
 
 # SPEC 001 — FPL data collector (database foundation and on-demand jobs)
