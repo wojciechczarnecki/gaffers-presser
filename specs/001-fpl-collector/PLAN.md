@@ -307,7 +307,7 @@ about timing.
 
 ### Group 2 — FPL client and payload contracts
 
-- [ ] 6. Client basics and the fake FPL — files: `backend/app/fpl/client.py`,
+- [x] 6. Client basics and the fake FPL — files: `backend/app/fpl/client.py`,
       `backend/app/fpl/errors.py` (`FplUnavailableError`, `FplNotFoundError`,
       `PayloadError`, all subclassing `CollectorError`; `JobError` is added in step 13),
       `backend/tests/fpl/fakes.py`, `backend/tests/fpl/test_client.py`.
