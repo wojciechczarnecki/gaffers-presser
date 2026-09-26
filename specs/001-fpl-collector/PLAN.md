@@ -483,7 +483,7 @@ about timing.
 
 ### Group 5 — Results, backfill, documentation
 
-- [ ] 18. Results sync — files: `backend/app/fpl/results.py`, `backend/app/fpl/cli.py`,
+- [x] 18. Results sync — files: `backend/app/fpl/results.py`, `backend/app/fpl/cli.py`,
       `backend/tests/fpl/test_results_sync.py`, `backend/tests/fpl/test_cli.py`.
       `sync_results(session, client, gameweek, now)`: the gameweek row must be `finished`
       and `data_checked`, else `JobError("gameweek N is not finished and data-checked")`;

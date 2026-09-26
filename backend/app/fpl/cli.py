@@ -12,6 +12,7 @@ from app.db.engine import make_engine
 from app.fpl.client import FplClient
 from app.fpl.leagues import sync_leagues
 from app.fpl.reference import sync_reference
+from app.fpl.results import sync_results
 from app.fpl.snapshot import take_deadline_snapshot
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     league_parser = sub.add_parser("league-sync")
     league_parser.add_argument("--gameweek", type=int, required=True)
+
+    results_parser = sub.add_parser("results-sync")
+    results_parser.add_argument("--gameweek", type=int, required=True)
 
     return parser
 
@@ -54,6 +58,9 @@ def run_command(
                 league_ids = parse_league_ids(league_ids_raw)
                 sync_reference(session, client, now)
                 sync_leagues(session, client, league_ids, [args.gameweek], now)
+            elif args.command == "results-sync":
+                sync_reference(session, client, now)
+                sync_results(session, client, args.gameweek, now)
     except CollectorError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

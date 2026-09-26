@@ -164,6 +164,23 @@ def test_logs_carry_no_private_data(db, caplog):
         assert f"Synthetic XI {entry_id}" not in caplog.text
 
 
+def test_results_sync_unchecked_gameweek_writes_nothing(db, capsys):
+    fake = FakeFpl(
+        {
+            "bootstrap-static/": load("bootstrap-static"),
+            "fixtures/": load("fixtures"),
+            "event/30/live/": {"elements": []},
+        }
+    )
+    client = fake.client(sleep=lambda _: None)
+    code = run_command(
+        ["results-sync", "--gameweek", "30"], engine=db, client=client, league_ids_raw="", now=NOW
+    )
+    assert code == 1
+    assert "gameweek 30" in capsys.readouterr().err
+    assert _all_tables_empty(db)
+
+
 def test_not_found_is_a_clean_error(db, capsys):
     fake = FakeFpl({"bootstrap-static/": httpx.Response(404)})
     client = fake.client(sleep=lambda _: None)
