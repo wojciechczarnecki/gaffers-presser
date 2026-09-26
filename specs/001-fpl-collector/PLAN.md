@@ -640,6 +640,8 @@ above, and a one-line result under Definition of Done.
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-26 — final review — which findings to fix? — Accepted `blocker` and `worth-fixing`: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12 (no blockers were reported). Rejected all `nit`: F13, F14, F15, F16, F17 and the 29 nits left out of the table.
+
 ## Review log
 
 ### 2026-09-26 — /pipeline:plan-review
