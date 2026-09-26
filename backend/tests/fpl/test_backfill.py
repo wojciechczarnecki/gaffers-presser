@@ -81,11 +81,5 @@ def test_rerun_is_idempotent(db_session):
     db_session.commit()
     after = table_contents(db_session)
 
-    before_counts = {name: len(rows) for name, rows in before.items()}
-    after_counts = {name: len(rows) for name, rows in after.items()}
-    for name in before_counts:
-        if name in ("raw_payload", "player_flag_change"):
-            assert after_counts[name] >= before_counts[name]
-        else:
-            assert after_counts[name] == before_counts[name]
-    assert after_counts["raw_payload"] == before_counts["raw_payload"] + 6
+    assert len(after.pop("raw_payload")) == len(before.pop("raw_payload")) + 6
+    assert after == before

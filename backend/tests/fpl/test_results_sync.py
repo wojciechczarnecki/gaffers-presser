@@ -46,12 +46,25 @@ def test_results_stored_and_archived(db_session):
         assert row.minutes == el["stats"]["minutes"]
         assert row.total_points == el["stats"]["total_points"]
 
-    archive = db_session.exec(select(RawPayload)).all()
-    assert len(archive) == 2
-    assert {a.endpoint for a in archive} == {"event/1/live", "fixtures"}
+        assert row.explain == el["explain"]
 
-    scored_fixtures = db_session.exec(select(Fixture).where(Fixture.team_h_score.isnot(None))).all()
-    assert len(scored_fixtures) > 0
+    archive = {a.endpoint: a for a in db_session.exec(select(RawPayload)).all()}
+    assert set(archive) == {"event/1/live", "fixtures"}
+    assert archive["event/1/live"].payload == live_payload
+    assert archive["fixtures"].payload == load("fixtures")
+    assert {a.gameweek_fpl_id for a in archive.values()} == {1}
+
+    stored = {f.fpl_id: f for f in db_session.exec(select(Fixture)).all()}
+    gw1 = [f for f in load("fixtures") if f["event"] == 1]
+    assert gw1
+    for f in gw1:
+        row = stored[f["id"]]
+        assert (row.team_h_fpl_id, row.team_a_fpl_id, row.team_h_score, row.team_a_score) == (
+            f["team_h"],
+            f["team_a"],
+            f["team_h_score"],
+            f["team_a_score"],
+        )
 
 
 def test_double_gameweek(db_session):
@@ -96,7 +109,7 @@ def test_double_gameweek(db_session):
     assert row.minutes == 180
     assert row.starts == 2
     assert row.total_points == 12
-    assert len(row.explain) == 2
+    assert row.explain == target["explain"]
 
 
 @pytest.mark.parametrize(
@@ -115,6 +128,12 @@ def test_unchecked_gameweek_fails(db_session, finished, data_checked):
         sync_results(db_session, client, 1, NOW)
 
 
+def test_nonexistent_gameweek_fails(db_session):
+    _load_reference(db_session)
+    with pytest.raises(JobError, match="gameweek 99 does not exist"):
+        sync_results(db_session, _client(), 99, NOW)
+
+
 def test_rerun_is_idempotent(db_session):
     _load_reference(db_session)
     client = _client()
@@ -127,10 +146,5 @@ def test_rerun_is_idempotent(db_session):
     db_session.commit()
     after = table_contents(db_session)
 
-    before_counts = {name: len(rows) for name, rows in before.items()}
-    after_counts = {name: len(rows) for name, rows in after.items()}
-    for name in before_counts:
-        if name == "raw_payload":
-            assert after_counts[name] == before_counts[name] + 2
-        else:
-            assert after_counts[name] == before_counts[name]
+    assert len(after.pop("raw_payload")) == len(before.pop("raw_payload")) + 2
+    assert after == before

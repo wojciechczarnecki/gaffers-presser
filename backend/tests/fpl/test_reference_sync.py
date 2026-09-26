@@ -40,6 +40,74 @@ def test_counts_match_payload(db_session):
     assert len(scored) == len(payload_scored)
 
 
+def _aware(value):
+    return None if value is None else datetime.fromisoformat(value)
+
+
+def test_rows_match_payload(db_session):
+    bootstrap_payload = load("bootstrap-static")
+    fixtures_payload = load("fixtures")
+    sync_reference(db_session, _client(bootstrap_payload, fixtures_payload), NOW)
+    db_session.commit()
+
+    gameweeks = {g.fpl_id: g for g in db_session.exec(select(Gameweek)).all()}
+    for e in bootstrap_payload["events"]:
+        row = gameweeks[e["id"]]
+        assert (row.name, row.deadline_at, row.finished, row.data_checked) == (
+            e["name"],
+            _aware(e["deadline_time"]),
+            e["finished"],
+            e["data_checked"],
+        )
+    teams = {t.fpl_id: t for t in db_session.exec(select(Team)).all()}
+    for t in bootstrap_payload["teams"]:
+        assert (teams[t["id"]].name, teams[t["id"]].short_name) == (t["name"], t["short_name"])
+    players = {p.fpl_id: p for p in db_session.exec(select(Player)).all()}
+    for el in bootstrap_payload["elements"]:
+        row = players[el["id"]]
+        assert (
+            row.web_name,
+            row.first_name,
+            row.second_name,
+            row.team_fpl_id,
+            row.position,
+        ) == (el["web_name"], el["first_name"], el["second_name"], el["team"], el["element_type"])
+    fixtures = {f.fpl_id: f for f in db_session.exec(select(Fixture)).all()}
+    for f in fixtures_payload:
+        row = fixtures[f["id"]]
+        assert (
+            row.gameweek_fpl_id,
+            row.kickoff_at,
+            row.team_h_fpl_id,
+            row.team_a_fpl_id,
+            row.team_h_score,
+            row.team_a_score,
+            row.finished,
+        ) == (
+            f["event"],
+            _aware(f["kickoff_time"]),
+            f["team_h"],
+            f["team_a"],
+            f["team_h_score"],
+            f["team_a_score"],
+            f["finished"],
+        )
+
+
+def test_postponed_fixture_stores_nulls(db_session):
+    fixtures_payload = load("fixtures")
+    postponed = next(f for f in fixtures_payload if not f["finished"])
+    postponed["event"] = None
+    postponed["kickoff_time"] = None
+    sync_reference(db_session, _client(fixtures=fixtures_payload), NOW)
+    db_session.commit()
+
+    row = db_session.get(Fixture, ("2026/27", postponed["id"]))
+    assert row.gameweek_fpl_id is None
+    assert row.kickoff_at is None
+    assert row.team_h_score is None
+
+
 def test_season_label(db_session):
     client = _client()
     season = sync_reference(db_session, client, NOW)

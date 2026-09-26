@@ -81,8 +81,8 @@ def synthetic_league(
                 "entry_name": f"Synthetic XI {entry_id}",
                 "player_name": f"Synthetic Manager {entry_id}",
                 "rank": start_rank + idx + 1,
-                "event_total": 60,
-                "total": 60 * len(gameweeks),
+                "event_total": 40 + entry_id % 100,
+                "total": 400 + entry_id % 1000,
             }
             for idx, entry_id in enumerate(page_entries)
         ]
@@ -115,14 +115,14 @@ def synthetic_league(
                 "active_chip": None,
                 "automatic_subs": [],
                 "entry_history": {
-                    "points": 60,
-                    "total_points": 60 * gw,
-                    "event_transfers": 1,
-                    "event_transfers_cost": 0,
-                    "points_on_bench": 2,
-                    "bank": 5,
-                    "value": 1000,
-                    "overall_rank": 100000,
+                    "points": 50 + gw,
+                    "total_points": 500 + gw,
+                    "event_transfers": 1 + gw,
+                    "event_transfers_cost": 4 * gw,
+                    "points_on_bench": 2 + gw,
+                    "bank": 5 + gw,
+                    "value": 1000 + gw,
+                    "overall_rank": 100000 + entry_id % 1000 + gw,
                 },
                 "picks": picks,
             }
@@ -137,6 +137,14 @@ def synthetic_league(
                 "element_out_cost": 45,
                 "event": gameweeks[0],
                 "time": "2026-08-20T10:00:00Z",
-            }
+            },
+            {
+                "element_in": player_ids[2 % len(player_ids)],
+                "element_in_cost": 61,
+                "element_out": player_ids[3 % len(player_ids)],
+                "element_out_cost": 58,
+                "event": gameweeks[-1],
+                "time": "2026-08-21T11:30:00Z",
+            },
         ]
     return routes
