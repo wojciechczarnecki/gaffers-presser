@@ -463,7 +463,7 @@ about timing.
       return 404 for GW2 gets `has_team=False` for GW2 while other managers are complete;
       `test_rerun_is_idempotent`.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_league_sync.py`
-- [ ] 17. League preconditions, CLI and privacy — files: `backend/app/fpl/leagues.py`,
+- [x] 17. League preconditions, CLI and privacy — files: `backend/app/fpl/leagues.py`,
       `backend/app/fpl/cli.py`, `backend/tests/fpl/test_league_sync.py`,
       `backend/tests/fpl/test_cli.py`.
       `sync_leagues` raises `JobError("gameweek N deadline has not passed")` when any

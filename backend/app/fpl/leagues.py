@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from sqlmodel import Session, delete, select
@@ -17,6 +18,8 @@ from app.fpl.models import (
     ManagerPick,
     ManagerTransfer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_season(session: Session, gameweeks: list[int]) -> str:
@@ -279,3 +282,10 @@ def sync_leagues(
 
     for entry_id in sorted(all_entries):
         _sync_entry(session, client, season, entry_id, gameweeks)
+
+    logger.info(
+        "league sync: leagues=%d gameweeks=%d managers=%d",
+        len(league_ids),
+        len(gameweeks),
+        len(all_entries),
+    )

@@ -7,9 +7,10 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.errors import CollectorError
-from app.core.settings import Settings
+from app.core.settings import Settings, parse_league_ids
 from app.db.engine import make_engine
 from app.fpl.client import FplClient
+from app.fpl.leagues import sync_leagues
 from app.fpl.reference import sync_reference
 from app.fpl.snapshot import take_deadline_snapshot
 
@@ -24,6 +25,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     snapshot_parser = sub.add_parser("deadline-snapshot")
     snapshot_parser.add_argument("--gameweek", type=int, required=True)
+
+    league_parser = sub.add_parser("league-sync")
+    league_parser.add_argument("--gameweek", type=int, required=True)
 
     return parser
 
@@ -46,6 +50,10 @@ def run_command(
             elif args.command == "deadline-snapshot":
                 take_deadline_snapshot(session, client, args.gameweek, now)
                 logger.info("deadline snapshot: gameweek=%d", args.gameweek)
+            elif args.command == "league-sync":
+                league_ids = parse_league_ids(league_ids_raw)
+                sync_reference(session, client, now)
+                sync_leagues(session, client, league_ids, [args.gameweek], now)
     except CollectorError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
