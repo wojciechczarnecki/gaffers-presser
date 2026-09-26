@@ -500,7 +500,7 @@ about timing.
       `results-sync` for such a gameweek returns 1 with tables empty;
       `test_rerun_is_idempotent` (archive +2 allowed).
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_results_sync.py tests/fpl/test_cli.py`
-- [ ] 19. Backfill — files: `backend/app/fpl/backfill.py`, `backend/app/fpl/cli.py`,
+- [x] 19. Backfill — files: `backend/app/fpl/backfill.py`, `backend/app/fpl/cli.py`,
       `backend/tests/fpl/test_backfill.py`, `backend/tests/fpl/test_cli.py`.
       `backfill(session, client, league_ids, now)`: `sync_reference`; `sync_leagues` for all
       gameweeks with `deadline_at <= now` in one call; `sync_results` for each gameweek that

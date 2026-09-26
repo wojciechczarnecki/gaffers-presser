@@ -9,6 +9,7 @@ from sqlmodel import Session
 from app.core.errors import CollectorError
 from app.core.settings import Settings, parse_league_ids
 from app.db.engine import make_engine
+from app.fpl.backfill import backfill
 from app.fpl.client import FplClient
 from app.fpl.leagues import sync_leagues
 from app.fpl.reference import sync_reference
@@ -32,6 +33,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     results_parser = sub.add_parser("results-sync")
     results_parser.add_argument("--gameweek", type=int, required=True)
+
+    sub.add_parser("backfill")
 
     return parser
 
@@ -61,6 +64,9 @@ def run_command(
             elif args.command == "results-sync":
                 sync_reference(session, client, now)
                 sync_results(session, client, args.gameweek, now)
+            elif args.command == "backfill":
+                league_ids = parse_league_ids(league_ids_raw)
+                backfill(session, client, league_ids, now)
     except CollectorError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

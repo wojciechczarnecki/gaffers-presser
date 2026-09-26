@@ -181,6 +181,15 @@ def test_results_sync_unchecked_gameweek_writes_nothing(db, capsys):
     assert _all_tables_empty(db)
 
 
+def test_backfill_rejects_bad_league_ids(db, capsys):
+    fake = FakeFpl({})
+    client = fake.client(sleep=lambda _: None)
+    code = run_command(["backfill"], engine=db, client=client, league_ids_raw="", now=NOW)
+    assert code == 1
+    assert "FPL_LEAGUE_IDS" in capsys.readouterr().err
+    assert fake.requests == []
+
+
 def test_not_found_is_a_clean_error(db, capsys):
     fake = FakeFpl({"bootstrap-static/": httpx.Response(404)})
     client = fake.client(sleep=lambda _: None)
