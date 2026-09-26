@@ -74,26 +74,25 @@ class FplClient:
     def _get_json(self, endpoint_template: str, path: str, params: dict | None = None) -> Any:
         for attempt in range(1, self._max_attempts + 1):
             self._throttle()
-            retry = False
             try:
                 response = self._client.get(path, params=params)
-            except httpx.TimeoutException:
-                retry = True
+            except httpx.TransportError:
+                pass
             else:
                 if response.status_code == 404:
                     raise FplNotFoundError(endpoint_template)
-                if (
+                retryable = (
                     response.status_code == 429
                     or response.status_code >= 500
                     or _is_game_updating(response)
-                ):
-                    retry = True
-                elif response.status_code >= 400:
+                )
+                if not retryable and response.status_code >= 400:
                     raise FplUnavailableError(endpoint_template)
-                else:
-                    return response.json()
-            if not retry:
-                continue
+                if not retryable:
+                    try:
+                        return response.json()
+                    except ValueError:
+                        pass
             if attempt == self._max_attempts:
                 raise FplUnavailableError(endpoint_template)
             self._sleep(self._backoff_base * 2 ** (attempt - 1))

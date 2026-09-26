@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import Column, DateTime, ForeignKeyConstraint, Index
 from sqlalchemy.dialects.postgresql import JSONB
@@ -108,7 +109,7 @@ class DeadlineSnapshotPlayer(SQLModel, table=True):
     news: str
     chance_of_playing_this_round: int | None = None
     chance_of_playing_next_round: int | None = None
-    selected_by_percent: Decimal = Field(sa_column=Column(Numeric(5, 1)))
+    selected_by_percent: Decimal = Field(sa_column=Column(Numeric(5, 1), nullable=False))
     now_cost: int
     captured_at: datetime = Field(sa_column=utc_column())
 
@@ -121,7 +122,7 @@ class RawPayload(SQLModel, table=True):
     endpoint: str
     gameweek_fpl_id: int | None = None
     fetched_at: datetime = Field(sa_column=utc_column())
-    payload: dict = Field(sa_column=Column(JSONB))
+    payload: Any = Field(sa_column=Column(JSONB, nullable=False))
 
 
 class League(SQLModel, table=True):
@@ -284,4 +285,4 @@ class PlayerGameweekResult(SQLModel, table=True):
     starts: int
     minutes: int
     total_points: int
-    explain: list = Field(sa_column=Column(JSONB))
+    explain: list = Field(sa_column=Column(JSONB, nullable=False))

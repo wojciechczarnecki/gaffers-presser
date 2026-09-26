@@ -71,7 +71,7 @@ def upgrade() -> None:
         sa.Column("endpoint", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("gameweek_fpl_id", sa.Integer(), nullable=True),
         sa.Column("fetched_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.ForeignKeyConstraint(
             ["season"],
             ["season.label"],
@@ -243,7 +243,7 @@ def upgrade() -> None:
         sa.Column("news", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("chance_of_playing_this_round", sa.Integer(), nullable=True),
         sa.Column("chance_of_playing_next_round", sa.Integer(), nullable=True),
-        sa.Column("selected_by_percent", sa.Numeric(precision=5, scale=1), nullable=True),
+        sa.Column("selected_by_percent", sa.Numeric(precision=5, scale=1), nullable=False),
         sa.Column("now_cost", sa.Integer(), nullable=False),
         sa.Column("captured_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(
@@ -384,7 +384,7 @@ def upgrade() -> None:
         sa.Column("starts", sa.Integer(), nullable=False),
         sa.Column("minutes", sa.Integer(), nullable=False),
         sa.Column("total_points", sa.Integer(), nullable=False),
-        sa.Column("explain", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("explain", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.ForeignKeyConstraint(
             ["season", "gameweek_fpl_id"],
             ["gameweek.season", "gameweek.fpl_id"],

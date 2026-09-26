@@ -109,3 +109,31 @@ def test_not_found_raises_without_retry():
         client._get_json("bootstrap-static", "bootstrap-static/")
     assert len(fake.requests) == 1
     assert clock.sleeps == []
+
+
+def test_connection_error_retried():
+    clock = FakeClock()
+    calls = iter([httpx.ConnectError("reset"), httpx.Response(200, json={"ok": 1})])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        outcome = next(calls)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    fake = FakeFpl({"bootstrap-static/": handler})
+    client = fake.client(sleep=clock.sleep, monotonic=clock.monotonic)
+    assert client._get_json("bootstrap-static", "bootstrap-static/") == {"ok": 1}
+    assert clock.sleeps == [1.0]
+
+
+def test_non_json_body_retried_then_unavailable():
+    clock = FakeClock()
+    fake = FakeFpl(
+        {"bootstrap-static/": lambda request: httpx.Response(200, text="<html>maintenance</html>")}
+    )
+    client = fake.client(sleep=clock.sleep, monotonic=clock.monotonic)
+    with pytest.raises(FplUnavailableError, match="bootstrap-static"):
+        client._get_json("bootstrap-static", "bootstrap-static/")
+    assert len(fake.requests) == 5
+    assert clock.sleeps == [1.0, 2.0, 4.0, 8.0]

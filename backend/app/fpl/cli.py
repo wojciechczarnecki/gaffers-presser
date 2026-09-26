@@ -4,10 +4,11 @@ import sys
 from datetime import UTC, datetime
 
 from sqlalchemy import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
 from app.core.errors import CollectorError
-from app.core.settings import Settings, parse_league_ids
+from app.core.settings import load_settings, parse_league_ids
 from app.db.engine import make_engine
 from app.fpl.backfill import backfill
 from app.fpl.client import FplClient
@@ -70,6 +71,9 @@ def run_command(
     except CollectorError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+    except SQLAlchemyError as exc:
+        print(f"error: database error ({type(exc).__name__})", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -78,7 +82,11 @@ def main(argv: list[str] | None = None) -> int:
     _build_parser().parse_args(raw_argv)  # handles --help/usage errors before Settings()
 
     logging.basicConfig(level=logging.INFO)
-    settings = Settings()
+    try:
+        settings = load_settings()
+    except CollectorError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     engine = make_engine(settings.database_url)
     client = FplClient()
     now = datetime.now(UTC)

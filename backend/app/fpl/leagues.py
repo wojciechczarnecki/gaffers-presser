@@ -79,6 +79,7 @@ def _sync_league_standings(
         if not page_data.standings.has_next:
             break
         page += 1
+    results = list({r.entry: r for r in results}.values())
 
     upsert(
         session,

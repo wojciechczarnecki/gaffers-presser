@@ -61,3 +61,18 @@ def test_database_url_not_read_by_tests():
     hits = [line for line in result.stdout.splitlines() if line]
     allowed = {str(Path(__file__).resolve())}
     assert set(hits) <= allowed
+
+
+def test_missing_database_url_is_a_clean_error(monkeypatch, tmp_path, capsys):
+    from app.fpl.cli import main
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("FPL_LEAGUE_IDS", "987654301")
+
+    code = main(["league-sync", "--gameweek", "1"])
+
+    assert code == 1
+    err = capsys.readouterr().err
+    assert err.strip() == "error: DATABASE_URL must be set"
+    assert "987654301" not in err

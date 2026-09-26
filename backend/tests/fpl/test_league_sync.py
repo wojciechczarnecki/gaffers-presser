@@ -167,3 +167,22 @@ def test_rerun_is_idempotent(db_session):
     after = table_contents(db_session)
 
     assert before == after
+
+
+def test_entry_repeated_across_pages_is_stored_once(db_session):
+    _load_reference(db_session)
+    entry_ids = list(range(880000001, 880000001 + 51))
+    routes = synthetic_league(LEAGUE_1, entry_ids, gameweeks=[1], player_ids=_player_ids())
+    page_1 = routes[f"leagues-classic/{LEAGUE_1}/standings/?page_standings=1"]
+    page_2 = routes[f"leagues-classic/{LEAGUE_1}/standings/?page_standings=2"]
+    shifted = dict(page_1["standings"]["results"][-1], rank=51, total=1)
+    page_2["standings"]["results"].insert(0, shifted)
+    client = FakeFpl(routes).client(sleep=lambda _: None)
+
+    sync_leagues(db_session, client, [LEAGUE_1], [1], NOW)
+    db_session.commit()
+
+    standings = db_session.exec(select(LeagueStanding)).all()
+    assert len(standings) == 51
+    moved = db_session.get(LeagueStanding, ("2026/27", LEAGUE_1, 5, shifted["entry"]))
+    assert (moved.rank, moved.total) == (51, 1)

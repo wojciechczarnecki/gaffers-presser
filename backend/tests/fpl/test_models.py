@@ -54,3 +54,10 @@ def test_every_table_is_keyed_or_linked_by_season():
             for fk in col.foreign_keys
         }
         assert ("season", "label") in fk_targets
+
+
+def test_always_present_payload_columns_are_not_null():
+    tables = SQLModel.metadata.tables
+    assert tables["deadline_snapshot_player"].c.selected_by_percent.nullable is False
+    assert tables["raw_payload"].c.payload.nullable is False
+    assert tables["player_gameweek_result"].c.explain.nullable is False

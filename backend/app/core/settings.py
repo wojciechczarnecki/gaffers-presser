@@ -1,3 +1,4 @@
+from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.errors import ConfigError
@@ -8,6 +9,13 @@ class Settings(BaseSettings):
 
     database_url: str
     fpl_league_ids: str = ""
+
+
+def load_settings() -> Settings:
+    try:
+        return Settings()
+    except ValidationError:
+        raise ConfigError("DATABASE_URL must be set") from None
 
 
 def parse_league_ids(raw: str) -> list[int]:

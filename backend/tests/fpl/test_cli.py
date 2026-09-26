@@ -198,3 +198,32 @@ def test_not_found_is_a_clean_error(db, capsys):
     err = capsys.readouterr().err
     assert err.startswith("error:")
     assert "Traceback" not in err
+
+
+def test_database_error_is_a_clean_error_without_private_data(db, capsys):
+    entry_ids = [880000001]
+    routes = synthetic_league(LEAGUE_1, entry_ids, gameweeks=[1], player_ids=[99999999])
+    fake = FakeFpl(
+        {"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures"), **routes}
+    )
+    client = fake.client(sleep=lambda _: None)
+
+    code = run_command(
+        ["league-sync", "--gameweek", "1"],
+        engine=db,
+        client=client,
+        league_ids_raw=str(LEAGUE_1),
+        now=NOW,
+    )
+
+    assert code == 1
+    err = capsys.readouterr().err
+    assert err.startswith("error: database error")
+    assert "Traceback" not in err
+    for secret in (str(LEAGUE_1), "880000001", "Synthetic", "99999999"):
+        assert secret not in err
+    assert _all_tables_empty(db)
+
+
+def test_engine_hides_statement_parameters(db):
+    assert db.hide_parameters is True
