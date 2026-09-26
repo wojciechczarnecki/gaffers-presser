@@ -405,7 +405,7 @@ about timing.
       chance values writes exactly two rows; an unchanged payload writes none; a change of
       only `news_added` writes none.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_reference_sync.py`
-- [ ] 13. Deadline snapshot — files: `backend/app/fpl/snapshot.py`, `backend/app/fpl/errors.py`
+- [x] 13. Deadline snapshot — files: `backend/app/fpl/snapshot.py`, `backend/app/fpl/errors.py`
       (`JobError`), `backend/tests/fpl/test_deadline_snapshot.py`.
       `take_deadline_snapshot(session, client, gameweek, now)`: fetch bootstrap,
       `apply_bootstrap`, raise `JobError("gameweek N deadline has passed")` when

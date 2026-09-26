@@ -9,6 +9,10 @@ class FplNotFoundError(CollectorError):
     pass
 
 
+class JobError(CollectorError):
+    pass
+
+
 class PayloadError(CollectorError):
     def __init__(self, endpoint: str, field: str) -> None:
         self.endpoint = endpoint
