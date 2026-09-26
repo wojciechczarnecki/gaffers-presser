@@ -22,3 +22,4 @@ parallel lanes merge trivially. Record a decision in the same PR in which it tak
 | 2026-09-26 | Environments: local Docker Compose (`pgvector/pgvector:pg16`) and Railway production; no staging; database tests on a PostgreSQL container | a shared development database; a staging environment | one owner, low risk; tests stay isolated |
 | 2026-09-26 | Unit tests use a fake LLM; evaluation sets run separately from `pytest` | real LLM calls in tests | deterministic, free CI |
 | 2026-09-26 | Hosting is budgeted separately from the 20 PLN/month external-API budget | one shared budget | the owner's decision |
+| 2026-09-26 | No open-source licence: all rights reserved, source public for review | MIT; Apache-2.0; AGPL-3.0 | keeps the monetization option open; opening later stays possible, while a granted permissive licence cannot be withdrawn |

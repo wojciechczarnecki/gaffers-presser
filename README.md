@@ -54,4 +54,9 @@ The project is built with a spec-driven agentic workflow
 ([agentic-pipeline](https://github.com/wojciechczarnecki/agentic-pipeline)): every feature
 goes from an approved spec through a reviewed plan and implementation to a pull request.
 
+## License
+
+Copyright © 2026 Wojciech Czarnecki. All rights reserved. The source is public for review as
+a portfolio project; no licence to use, copy or distribute it is granted.
+
 *Not affiliated with the Premier League or Fantasy Premier League.*
