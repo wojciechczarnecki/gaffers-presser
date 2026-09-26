@@ -11,12 +11,17 @@ on:
 jobs:
   python:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
 
     steps:
       - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
+        with:
+          working-directory: backend
 
       - name: Set up Python
         run: uv python install
