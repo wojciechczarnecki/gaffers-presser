@@ -437,7 +437,7 @@ about timing.
 
 ### Group 4 — League sync
 
-- [ ] 15. Standings, leagues, managers, memberships — files: `backend/app/fpl/leagues.py`,
+- [x] 15. Standings, leagues, managers, memberships — files: `backend/app/fpl/leagues.py`,
       `backend/tests/fpl/fakes.py` (`synthetic_league(league_id, entry_ids, *, gameweeks,
       player_ids) -> dict[str, object]` producing standings pages of 50 and per-entry
       `picks`/`history`/`transfers` routes with synthetic names), `backend/tests/fpl/test_league_sync.py`.
@@ -450,7 +450,7 @@ about timing.
       with rank/event_total/total; an entry in both synthetic leagues → one `manager` row,
       two memberships.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_league_sync.py`
-- [ ] 16. Picks, gameweek history, transfers, chips — files: `backend/app/fpl/leagues.py`,
+- [x] 16. Picks, gameweek history, transfers, chips — files: `backend/app/fpl/leagues.py`,
       `backend/tests/fpl/fakes.py`, `backend/tests/fpl/test_league_sync.py`.
       Per unique entry (once, even if in two leagues): `entry_transfers` → `manager_transfer`
       (upsert on PK), `entry_history` → `manager_chip`; per gameweek: `entry_picks` →
@@ -676,6 +676,12 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+
+- Steps 15 and 16 were implemented and committed together: `app/fpl/leagues.py`'s
+  `sync_leagues` couples the standings/membership pass with the per-entry picks/history/
+  transfers pass in one coherent function, and splitting the commit would have left an
+  incomplete, uncompilable intermediate state. Both steps' tests (`test_league_sync.py`)
+  pass together. No scope, architecture or schema change.
 
 ## Final review
 
