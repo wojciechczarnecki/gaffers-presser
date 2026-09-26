@@ -378,7 +378,7 @@ about timing.
       non-key column, second identical call leaves content unchanged; on the `season` table:
       the same row twice leaves one row.
       Automatic verification: `cd backend && uv run pytest -q tests/db/test_upsert.py`
-- [ ] 11. Reference sync: season, gameweeks, teams, players, fixtures — files:
+- [x] 11. Reference sync: season, gameweeks, teams, players, fixtures — files:
       `backend/app/fpl/reference.py`, `backend/tests/fpl/test_reference_sync.py`, helper
       `table_contents(session, exclude={"observed_at", "fetched_at", "captured_at"})` in
       `backend/tests/fpl/fakes.py` (every table's rows as sorted tuples).
