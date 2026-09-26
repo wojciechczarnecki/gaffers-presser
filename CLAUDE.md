@@ -6,7 +6,9 @@ Instructions for agents working in this repository.
 
 - **The Gaffer's Presser** — a post-gameweek press conference for your FPL mini-league: banter, team news and league history, in Polish FPL slang
 - Owner: Wojciech Czarnecki (wczarnecky@gmail.com)
-- Stack: Python (uv, ruff, pytest), CI on GitHub Actions; TODO: frameworks, database and hosting
+- Stack: Python 3.12 (uv, ruff, pytest) + FastAPI + SQLModel + Alembic + PostgreSQL 16 with pgvector
+  · LangGraph (LLM flows) · Langfuse (tracing) · React 19 + TypeScript + Vite only when a web UI
+  is needed · CI on GitHub Actions · hosting on Railway
 
 ## Document map — what to read when
 
@@ -16,6 +18,7 @@ Instructions for agents working in this repository.
 | `docs/ROADMAP.md` | stages and streams, statuses — at the start of every task; **update when done** |
 | `docs/BACKLOG.md` | deferred improvements and debt: priority P1–P3 + a trigger to return |
 | `docs/DECISIONS.md` | binding design decisions — before designing something differently |
+| `docs/adr/` | the reasoning behind decisions that had real alternatives; linked from DECISIONS |
 | `docs/CONVENTIONS.md` | code style, tests, git — when writing code |
 | `specs/` | SPEC + PLAN per feature — see the workflow below |
 

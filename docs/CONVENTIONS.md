@@ -6,7 +6,8 @@ this document holds the details.
 ## Language
 
 - Commit messages, PR titles and branch names: English, regardless of `language`.
-- Code: Python. Identifiers and comments: TODO: English or Polish
+- Code: Python. Identifiers and comments: English. Product content (generated texts, e-mail
+  templates, the slang glossary) is Polish
 - Documentation (`docs/`, `specs/`) and PR descriptions: English (`language: "en"`
   in `.claude/workflow.json`).
 - The language of the conversation with the agent is not a project setting — it follows the
