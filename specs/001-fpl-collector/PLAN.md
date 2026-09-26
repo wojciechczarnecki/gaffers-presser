@@ -243,7 +243,7 @@ about timing.
       and `FPL_LEAGUE_IDS=` (empty, with a comment: comma-separated classic league IDs;
       never commit real ones).
       Automatic verification: `cd backend && uv run pytest -q tests/core/test_settings.py && docker compose -f ../compose.yaml config -q`
-- [ ] 3. Test database fixture and engine — files: `backend/app/db/__init__.py`,
+- [x] 3. Test database fixture and engine — files: `backend/app/db/__init__.py`,
       `backend/app/db/engine.py`, `backend/tests/__init__.py`, `backend/tests/conftest.py`,
       `backend/tests/db/__init__.py`, `backend/tests/db/test_engine.py`.
       `make_engine(url: str) -> Engine` (SQLModel `create_engine`, `pool_pre_ping=True`,
