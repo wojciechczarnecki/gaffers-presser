@@ -48,7 +48,7 @@ Read for this plan:
   per fixture), `leagues-classic/{id}/standings/?page_standings=N` (`league.{id,name}`,
   `standings.{has_next,page,results[]}` with `entry, entry_name, player_name, rank,
   event_total, total`, 50 rows per page), `entry/{id}/event/{gw}/picks/` (`active_chip`,
-  `automatic_subs[]`, `entry_history{points, event_transfers, event_transfers_cost,
+  `automatic_subs[]`, `entry_history{points, total_points, event_transfers, event_transfers_cost,
   points_on_bench, bank, value, overall_rank}`, `picks[]{element, position, multiplier,
   is_captain, is_vice_captain}`; 404 when the entry has no team for the gameweek),
   `entry/{id}/history/` (`chips[]{name, time, event}`), `entry/{id}/transfers/`
@@ -106,7 +106,9 @@ backend/tests/fpl/payloads/*.json.gz recorded public payloads
   the latest gameweek whose deadline is `<= now` at sync time. Live syncs from GW6 on build a
   per-gameweek standings history; the backfill yields standings for the latest gameweek only.
   Exact per-gameweek points, totals and overall rank for every past gameweek come from
-  `picks.entry_history` into `manager_gameweek` (AC14).
+  `picks.entry_history` into `manager_gameweek` (AC14); `total_points` is stored beside the
+  AC14 fields because it is the only exact per-gameweek season total for past gameweeks,
+  which the Stage 3 season race needs.
 - **Endpoint names in errors and logs are templates** (`leagues-classic/{league_id}/standings`,
   `entry/{entry_id}/event/{gw}/picks`), never concrete paths — a concrete path carries a
   league ID (AC23, privacy NFR). The client also sets the `httpx` and `httpcore` loggers to
@@ -143,7 +145,7 @@ All datetimes `DateTime(timezone=True)` (set via `sa_type`/`sa_column`); `season
 | `manager` | `season, entry_id` | `team_name, manager_name` |
 | `league_membership` | `season, league_fpl_id, entry_id` | — |
 | `league_standing` | `season, league_fpl_id, gameweek_fpl_id, entry_id` | `rank, event_total, total` |
-| `manager_gameweek` | `season, entry_id, gameweek_fpl_id` | `has_team`; nullable when no team: `active_chip, points, event_transfers, event_transfers_cost, points_on_bench, bank, value, overall_rank` |
+| `manager_gameweek` | `season, entry_id, gameweek_fpl_id` | `has_team`; nullable when no team: `active_chip, points, total_points, event_transfers, event_transfers_cost, points_on_bench, bank, value, overall_rank` |
 | `manager_pick` | `season, entry_id, gameweek_fpl_id, position` | `player_fpl_id, multiplier, is_captain, is_vice_captain` |
 | `manager_auto_sub` | `season, entry_id, gameweek_fpl_id, player_out_fpl_id` | `player_in_fpl_id` |
 | `manager_transfer` | `season, entry_id, made_at, player_in_fpl_id` | `gameweek_fpl_id, player_out_fpl_id, player_in_cost, player_out_cost` |
@@ -172,8 +174,10 @@ def main(argv: list[str] | None = None) -> int   # builds Settings, engine, clie
 ```
 
 A precondition failure raises `JobError(reason)`; `run_command` prints `error: <reason>` to
-stderr and returns `1` for `JobError`, `ConfigError`, `FplUnavailableError` and
-`PayloadError`.
+stderr and returns `1` for every `CollectorError` — the common base (in
+`app/core/errors.py`, created in step 2) of `JobError`, `ConfigError`, `FplUnavailableError`,
+`FplNotFoundError` and `PayloadError`. An uncaught `FplNotFoundError` (a wrong league ID →
+404 on the standings) would otherwise end in a traceback instead of the one-line error.
 
 ## AC → steps matrix
 
@@ -218,12 +222,13 @@ about timing.
 - [ ] 1. Dependencies — files: `backend/pyproject.toml`, `backend/uv.lock`.
       Runtime: `sqlmodel==0.0.47`, `alembic==1.20.0`, `psycopg[binary]==3.3.6`,
       `httpx==0.28.1`, `pydantic-settings==2.15.0`; dev: `testcontainers[postgres]==4.15.0`
-      (in 4.x the postgres module ships in the base package; if uv warns that the `postgres`
-      extra does not exist, pin `testcontainers==4.15.0` and note it under Deviations).
+      (the `postgres` extra exists in 4.15.0 and pulls no extra package — checked on PyPI at
+      review).
       Run `cd backend && uv lock && uv sync --all-extras`.
       Automatic verification: `cd backend && uv run python -c "import sqlmodel, alembic, psycopg, httpx, pydantic_settings; from testcontainers.postgres import PostgresContainer" && uv run pytest -q`
 - [ ] 2. Settings, league IDs, local database — files: `backend/app/core/__init__.py`,
-      `backend/app/core/settings.py`, `backend/.env.example`, `compose.yaml`,
+      `backend/app/core/errors.py` (`class CollectorError(Exception)`; `ConfigError`
+      subclasses it), `backend/app/core/settings.py`, `backend/.env.example`, `compose.yaml`,
       `backend/tests/core/__init__.py`, `backend/tests/core/test_settings.py`.
       `Settings(BaseSettings)`: `database_url: str`, `fpl_league_ids: str = ""`,
       `model_config = SettingsConfigDict(env_file=".env", extra="ignore")`.
@@ -233,26 +238,34 @@ about timing.
       Tests: valid (`"1, 2"` → `[1, 2]`), empty, whitespace, `"1,,2"`, `"1,abc"`, `"-3"`;
       `Settings(_env_file=None)` with `monkeypatch.setenv` reads both variables.
       `compose.yaml` (repo root): service `db`, image `pgvector/pgvector:pg16`, env
-      `POSTGRES_USER/PASSWORD/DB=presser`, port `5432:5432`, named volume, healthcheck
+      `POSTGRES_USER/PASSWORD/DB=presser`, port `${POSTGRES_PORT:-5432}:5432`, named volume, healthcheck
       `pg_isready`. `.env.example`: `DATABASE_URL=postgresql+psycopg://presser:presser@localhost:5432/presser`
       and `FPL_LEAGUE_IDS=` (empty, with a comment: comma-separated classic league IDs;
       never commit real ones).
       Automatic verification: `cd backend && uv run pytest -q tests/core/test_settings.py && docker compose -f ../compose.yaml config -q`
 - [ ] 3. Test database fixture and engine — files: `backend/app/db/__init__.py`,
-      `backend/app/db/engine.py`, `backend/tests/conftest.py`, `backend/tests/db/__init__.py`,
-      `backend/tests/db/test_engine.py`.
-      `make_engine(url: str) -> Engine` (SQLModel `create_engine`, `pool_pre_ping=True`).
+      `backend/app/db/engine.py`, `backend/tests/__init__.py`, `backend/tests/conftest.py`,
+      `backend/tests/db/__init__.py`, `backend/tests/db/test_engine.py`.
+      `make_engine(url: str) -> Engine` (SQLModel `create_engine`, `pool_pre_ping=True`,
+      `connect_args={"options": "-c timezone=UTC"}` so `timestamptz` values read back in UTC
+      whatever the server's `TimeZone`). `backend/tests/__init__.py` makes `tests` a package, so
+      pytest imports `tests.fpl.fakes` once under one name (without it the rootdir-based
+      import names would be `fpl.*`, `db.*`, `core.*`).
       `conftest.py`: session-scoped `postgres_url` fixture starting
       `PostgresContainer("pgvector/pgvector:pg16", driver="psycopg")` and returning
       `get_connection_url()`; session-scoped `db_engine = make_engine(postgres_url)` (step 5
       adds `alembic upgrade head` to it); function-scoped `db` fixture returning `db_engine`
-      and, after the test, truncating every table in `SQLModel.metadata` with
-      `TRUNCATE … RESTART IDENTITY CASCADE` (no-op while the metadata is empty);
+      and, after the test, truncating every table that exists in the database
+      (`SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <>
+      'alembic_version'`) with `TRUNCATE … RESTART IDENTITY CASCADE` (no-op while none exist).
+      Do not derive the list from `SQLModel.metadata`: after step 4 the models are imported at
+      collection while the tables only appear with the migration in step 5;
       function-scoped `db_session` built on `db`, yielding `Session(engine)`. Database tests
       use `db` or `db_session`, never `db_engine` directly. The container starts lazily, so
       tests without database fixtures never need Docker. Nothing in `tests/` reads
       `DATABASE_URL`.
-      Tests: `SELECT version()` starts with `PostgreSQL 16`; a grep-style test asserting no
+      Tests: `SELECT version()` starts with `PostgreSQL 16`; `SHOW timezone` on an engine
+      connection returns `UTC`; a grep-style test asserting no
       file under `tests/` contains `DATABASE_URL` except `tests/core/test_settings.py`
       (`test_database_url_not_read_by_tests`, in `tests/core/test_settings.py`).
       Automatic verification: `cd backend && uv run pytest -q tests/db/test_engine.py tests/core/test_settings.py`
@@ -265,11 +278,16 @@ about timing.
       names equals the 18 names of the schema table.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_models.py`
 - [ ] 5. Alembic and the first migration (data migration step, local and test databases
-      only) — files: `backend/alembic.ini` (`script_location = migrations`),
+      only) — files: `backend/alembic.ini` (`script_location = %(here)s/migrations`, so it
+      resolves from any working directory),
       `backend/migrations/env.py`, `backend/migrations/script.py.mako` (with
       `import sqlmodel`), `backend/migrations/versions/0001_collector_schema.py`,
       `backend/tests/db/test_migrations.py`.
-      `env.py`: `target_metadata = SQLModel.metadata` after `import app.fpl.models`; URL from
+      `env.py`: `fileConfig(config.config_file_name, disable_existing_loggers=False)` — the
+      default `True` would disable every logger created before the in-process
+      `alembic upgrade` in `conftest.py` (`app.*`, `httpx`) and make the log-privacy test of
+      step 17 pass vacuously; `target_metadata = SQLModel.metadata` after
+      `import app.fpl.models`; URL from
       `config.get_main_option("sqlalchemy.url")` when set, otherwise `Settings().database_url`;
       online mode only. Generate the revision with autogenerate against a throwaway container
       (`docker run --rm -d -p 55432:5432 -e POSTGRES_PASSWORD=x pgvector/pgvector:pg16`, then
@@ -277,7 +295,8 @@ about timing.
       `sqlalchemy.url`, or temporarily via `DATABASE_URL` in the shell), review it by hand
       (`revision = "0001"`, a complete `downgrade`), stop the container. In `conftest.py`,
       `db_engine` now runs `run_alembic(postgres_url, "upgrade", "head")` (helper building
-      `alembic.config.Config("alembic.ini")` with `set_main_option("sqlalchemy.url", url)`)
+      `alembic.config.Config(str(BACKEND_DIR / "alembic.ini"))`, `BACKEND_DIR =
+      Path(__file__).resolve().parents[1]`, with `set_main_option("sqlalchemy.url", url)`)
       before returning the engine.
       Tests on a **separate** container fixture (module-scoped in this file, so it does not
       disturb `db_engine`): `test_upgrade_downgrade_upgrade` (after `downgrade base` only
@@ -289,6 +308,8 @@ about timing.
 ### Group 2 — FPL client and payload contracts
 
 - [ ] 6. Client basics and the fake FPL — files: `backend/app/fpl/client.py`,
+      `backend/app/fpl/errors.py` (`FplUnavailableError`, `FplNotFoundError`,
+      `PayloadError`, all subclassing `CollectorError`; `JobError` is added in step 13),
       `backend/tests/fpl/fakes.py`, `backend/tests/fpl/test_client.py`.
       `FplClient(transport: httpx.BaseTransport | None = None, base_url="https://fantasy.premierleague.com/api/",
       min_interval=0.5, max_attempts=5, backoff_base=1.0, timeout=20.0, sleep=time.sleep,
@@ -331,7 +352,11 @@ about timing.
       results[]})`, `Picks(active_chip, automatic_subs, entry_history, picks)`,
       `History(chips[])`, `Transfer`. Client methods returning them: `bootstrap()`,
       `fixtures()`, `live(gw)`, `league_standings(league_id, page)`, `entry_picks(entry_id,
-      gw)`, `entry_history(entry_id)`, `entry_transfers(entry_id)`; each maps
+      gw)`, `entry_history(entry_id)`, `entry_transfers(entry_id)`. The three archived
+      endpoints (`bootstrap()`, `fixtures()`, `live(gw)`) return `Fetched[T]` — a frozen
+      dataclass `(data: T, raw: Any)` holding the parsed model and the JSON as received — so
+      steps 13 and 18 can archive the raw payload without a second request; the others return
+      the model. Each maps
       `ValidationError` → `PayloadError(endpoint_template, field)`, message
       `"<endpoint>: missing or invalid field <field>"`.
       Tests: every recorded payload parses; deleting `elements[0]["status"]` raises
@@ -347,9 +372,11 @@ about timing.
 - [ ] 10. Upsert helper — files: `backend/app/db/upsert.py`, `backend/tests/db/test_upsert.py`.
       `upsert(session, model, rows: list[dict], conflict_cols: list[str]) -> None` using
       `sqlalchemy.dialects.postgresql.insert(...).on_conflict_do_update(index_elements=…,
-      set_={non-key columns})`, no-op on empty `rows`, chunks of 1 000 rows. Tests on the
-      `team` table: insert, update of a non-key column, second identical call leaves content
-      unchanged.
+      set_={non-key columns})`, or `on_conflict_do_nothing(index_elements=…)` when the table
+      has no non-key column (`season`, `league_membership` — an empty `set_` is invalid), no-op
+      on empty `rows`, chunks of 1 000 rows. Tests on the `team` table: insert, update of a
+      non-key column, second identical call leaves content unchanged; on the `season` table:
+      the same row twice leaves one row.
       Automatic verification: `cd backend && uv run pytest -q tests/db/test_upsert.py`
 - [ ] 11. Reference sync: season, gameweeks, teams, players, fixtures — files:
       `backend/app/fpl/reference.py`, `backend/tests/fpl/test_reference_sync.py`, helper
@@ -363,8 +390,9 @@ about timing.
       only where the payload has them) — assert against `len(payload[...])`, not literals;
       season label `2026/27`; a payload with every deadline shifted one year back
       (`2025/26`) adds rows and leaves `2026/27` rows unchanged; mid-season player added,
-      team change updated, removed player keeps his rows; datetimes read back have
-      `tzinfo == UTC`; `test_rerun_is_idempotent`.
+      team change updated, removed player keeps his rows; datetimes read back are aware with
+      `utcoffset() == timedelta(0)` (psycopg returns `ZoneInfo("UTC")`, which does not compare
+      equal to `datetime.UTC`, so do not assert `tzinfo == UTC`); `test_rerun_is_idempotent`.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_reference_sync.py`
 - [ ] 12. Flag change log — files: `backend/app/fpl/reference.py`,
       `backend/tests/fpl/test_reference_sync.py`.
@@ -402,7 +430,9 @@ about timing.
       → returns 1, stderr names `fixtures`, every table empty
       (`test_unavailable_api_writes_nothing`); bootstrap missing a used field → returns 1,
       stderr names endpoint and field, tables empty (`test_payload_error_writes_nothing`);
-      `deadline-snapshot` at the deadline → returns 1, stderr names the reason, tables empty.
+      `deadline-snapshot` at the deadline → returns 1, stderr names the reason, tables empty;
+      `bootstrap-static/` answering 404 → returns 1 with a one-line `error:` on stderr, no
+      traceback (`test_not_found_is_a_clean_error`).
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_cli.py && uv run python -m app.fpl --help`
 
 ### Group 4 — League sync
@@ -445,8 +475,10 @@ about timing.
       `FPL_LEAGUE_IDS`, no request made; the last manager's `transfers/` answering 503 forever
       → returns 1, every table empty (`test_failure_on_last_manager_rolls_back`);
       `caplog.set_level(logging.DEBUG)` during a successful CLI league sync: `caplog.text`
-      contains none of the synthetic manager names, team names, league IDs
-      (`test_logs_carry_no_private_data`).
+      contains the job's summary line (positive control — the capture is live) and none of the
+      synthetic manager names, team names, league IDs, entry IDs
+      (`test_logs_carry_no_private_data`). Run it once with the `httpx` silencing removed to
+      see it red (httpx logs every request URL at INFO, `MockTransport` included).
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_league_sync.py tests/fpl/test_cli.py`
 
 ### Group 5 — Results, backfill, documentation
@@ -526,6 +558,10 @@ about timing.
   `(entry, gameweek)`, the snapshot per gameweek; transfers and chips are upserted on natural
   keys. Serial `id` columns exist only on `player_flag_change` and `raw_payload`, which are
   append-only by design, so `table_contents` compares without `id` there.
+- **Port 5432 on the development machine** may already be taken by a local PostgreSQL:
+  publish the Compose port as `${POSTGRES_PORT:-5432}:5432` and say in `.env.example` that
+  `DATABASE_URL` must use the same port. Tests are unaffected (testcontainers maps a random
+  port).
 - **API etiquette during the implementation:** recording payloads and the end-to-end run
   touch the live API a few dozen times at most, ≥ 1 s apart.
 
@@ -578,7 +614,60 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-26 — /pipeline:plan-review
+
+Anti-anchoring notes (from the SPEC alone, before the plan): natural keys + `ON CONFLICT`
+upserts for idempotency; injected clock and sleep for deadline and throttle tests; one
+transaction per command so every failure writes nothing; recorded public payloads plus
+synthetic league data; a positive-control log capture for the privacy AC. The plan matches
+on every point; the differences found are below.
+
+Findings (severity counted before the fixes):
+
+| id | severity | finding | change |
+|---|---|---|---|
+| R1 | `major` | Step 3 truncated every table of `SQLModel.metadata`; from step 4 the models are imported at collection while the tables exist only after step 5's migration, so the full suite is red between steps 4 and 5 (a forward dependency). | Step 3 truncates the tables listed in `pg_tables` (minus `alembic_version`). |
+| R2 | `major` | AC24 test asserted `tzinfo == UTC`; psycopg returns `ZoneInfo("UTC")`, which never equals `datetime.UTC` (checked), and the read-back zone follows the server's `TimeZone`. | `make_engine` sets `-c timezone=UTC`; step 3 tests `SHOW timezone`; step 11 asserts `utcoffset() == timedelta(0)`. |
+| R3 | `major` | AC23 privacy test could pass vacuously: Alembic's `fileConfig` defaults to `disable_existing_loggers=True`, and `conftest.py` runs `alembic upgrade` in-process, silencing `app.*`/`httpx` loggers before the test. | `env.py` uses `disable_existing_loggers=False`; the AC23 test asserts the job's summary line is captured (positive control) and is checked red once with the `httpx` silencing removed. |
+| R4 | `minor` | `run_command` caught four error types but not `FplNotFoundError` (e.g. a wrong league ID → 404 on standings) — a traceback instead of the one-line error. | Common base `CollectorError` in `app/core/errors.py` (step 2); `run_command` catches it; step 14 adds `test_not_found_is_a_clean_error`. |
+| R5 | `minor` | Upsert with `on_conflict_do_update` on key-only tables (`season`, `league_membership`) would get an empty `set_`. | Step 10 uses `on_conflict_do_nothing` there and tests the `season` table. |
+| R6 | `minor` | Steps 13 and 18 archive raw payloads, but step 9's client methods returned only parsed models. | `bootstrap()`, `fixtures()`, `live(gw)` return `Fetched[T](data, raw)`. |
+| R7 | `minor` | No `backend/tests/__init__.py`: pytest's rootdir-based import would name test packages `fpl`, `db`, `core` and load `tests.fpl.fakes` twice. | Added to step 3. |
+| R8 | `minor` | `alembic.ini`/`Config("alembic.ini")` resolved relative to the working directory. | `script_location = %(here)s/migrations`; `run_alembic` uses a path relative to `conftest.py`. |
+| R9 | `minor` | FPL has no past standings, so the backfill leaves no exact per-gameweek season total for past gameweeks; `entry_history.total_points` gives it for free. | `manager_gameweek.total_points` added (schema, payload fields, Approach). |
+| R10 | `minor` | Compose publishes host port 5432, which a local PostgreSQL may hold, breaking the automatic end-to-end run. | Port `${POSTGRES_PORT:-5432}:5432`; risk recorded. |
+| R11 | `minor` | Step 1 hedged on the `testcontainers[postgres]` extra not existing. | Checked on PyPI: every pin is the latest release and the extra exists in 4.15.0; hedge removed. |
+
+Checked and found correct (later stages need not repeat):
+
+- **Coverage:** every AC1–AC25 has steps and a named proving test; the matrix matches the
+  steps; the fourth column exists (empty, filled by `/pipeline:implement`).
+- **Standings interpretation (AC13):** FPL returns only the current table, so standings are
+  stored under the latest passed gameweek and exact per-gameweek data come from
+  `entry_history`. AC13 asks for the standings rows, not a table as of N, so this satisfies
+  the SPEC; it is recorded in the owner summary's risks and as a DECISIONS row in step 20. Not
+  a SPEC gap.
+- **Compliance:** CONVENTIONS (exact pins, committed lock, recorded/synthetic payloads,
+  container-only database tests, no names/IDs in logs, aware UTC, no docstrings) and
+  DECISIONS (testcontainers for tests and Compose for development, `(season, FPL ID)` keys,
+  flag change log + deadline snapshot + archive at key moments, public API with back-off,
+  `app/` module layout, no cron) — the plan breaks none. No Polish product content in scope.
+- **Minimality:** no reusable code exists; `httpx.MockTransport` and `argparse` avoid extra
+  dependencies; the league sync fetches season-wide endpoints once per run.
+- **Feasibility:** migration step accounted for and limited to local/test databases; injected
+  `now` for deadlines; one transaction per command gives AC5/AC6/AC22; FK violations fail
+  loudly; nullable-but-required payload fields handled for AC6.
+- **E2E:** automatic part runs on Compose and the live public API with exact commands and
+  expected counts; the manual part is only what needs the owner's real league IDs. No UI.
+- **Testability:** every step has `Automatic verification:` with exact test paths.
+- **Groups:** 5 groups, each step in exactly one, no boundary leaves work half done.
+- **Summary:** new dependencies and the migration flagged, both accepted in SPEC → Owner
+  decisions.
+- **Language:** English throughout, matching `language: "en"`.
+
+Decision: the plan is ready — no blocker, the three majors are fixed in place, and the
+dependencies and the migration are accepted in SPEC → Owner decisions. Status →
+`plan-approved`.
 
 ## Chunk notes
 
