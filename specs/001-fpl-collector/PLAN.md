@@ -269,7 +269,7 @@ about timing.
       file under `tests/` contains `DATABASE_URL` except `tests/core/test_settings.py`
       (`test_database_url_not_read_by_tests`, in `tests/core/test_settings.py`).
       Automatic verification: `cd backend && uv run pytest -q tests/db/test_engine.py tests/core/test_settings.py`
-- [ ] 4. Collector models — files: `backend/app/fpl/__init__.py`, `backend/app/fpl/models.py`,
+- [x] 4. Collector models — files: `backend/app/fpl/__init__.py`, `backend/app/fpl/models.py`,
       `backend/tests/fpl/__init__.py`, `backend/tests/fpl/test_models.py`.
       Every table from the Approach schema table, composite PKs and FKs as specified.
       Tests (no database): every `DateTime` column in `SQLModel.metadata` has
