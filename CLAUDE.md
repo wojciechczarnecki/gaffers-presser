@@ -65,7 +65,7 @@ hook enforce it (enabled once per clone: `git config core.hooksPath scripts/git-
 
 ```bash
 # full verification of the stack (the same command as `verify.command` in .claude/workflow.json)
-uv run ruff check . && uv run ruff format --check . && uv run pytest -q
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q
 
 # TODO: running the application for development
 # TODO: tests, lint, build per layer

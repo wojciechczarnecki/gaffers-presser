@@ -34,7 +34,7 @@ TODO: one place for strings (file/module), the key rule, how the tests use them.
   validation, empty lists, duplicates, range boundaries).
 - Specific assertions: where the content of a response matters, check the content.
 - Full verification of the stack in one command:
-  `uv run ruff check . && uv run ruff format --check . && uv run pytest -q` (`verify.command`).
+  `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` (`verify.command`).
 
 ### Interface tests
 

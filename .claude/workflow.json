@@ -7,10 +7,10 @@
     "dir": "../worktrees"
   },
   "verify": {
-    "command": "uv run ruff check . && uv run ruff format --check . && uv run pytest -q"
+    "command": "cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q"
   },
   "format": [
-    { "match": "*.py", "command": "uv run ruff format -q {file}" }
+    { "match": "*.py", "command": "uv run --project backend ruff format -q {file}" }
   ],
   "docs": {
     "roadmap": "docs/ROADMAP.md",
