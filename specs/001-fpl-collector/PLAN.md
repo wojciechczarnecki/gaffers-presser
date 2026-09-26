@@ -183,31 +183,31 @@ stderr and returns `1` for every `CollectorError` — the common base (in
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 2, 5 | `tests/db/test_migrations.py::test_upgrade_downgrade_upgrade`; compose part in end-to-end (automatic) | |
-| AC2 | 3 | `tests/db/test_engine.py::test_container_database_is_postgres_16`, `tests/core/test_settings.py::test_database_url_not_read_by_tests` (conftest never reads `DATABASE_URL`) | |
-| AC3 | 2, 17, 19 | `tests/core/test_settings.py::test_parse_league_ids_*`, `tests/fpl/test_cli.py::test_league_sync_rejects_bad_league_ids`, `tests/fpl/test_cli.py::test_backfill_rejects_bad_league_ids` | |
-| AC4 | 6 | `tests/fpl/test_client.py::test_user_agent`, `::test_requests_are_throttled` | |
-| AC5 | 7, 14 | `tests/fpl/test_client.py::test_retries_*`, `::test_gives_up_after_five_attempts`; `tests/fpl/test_cli.py::test_unavailable_api_writes_nothing` | |
-| AC6 | 9, 14 | `tests/fpl/test_schemas.py::test_missing_field_names_endpoint_and_field`, `::test_unknown_fields_ignored`; `tests/fpl/test_cli.py::test_payload_error_writes_nothing` | |
-| AC7 | 11 | `tests/fpl/test_reference_sync.py::test_counts_match_payload` | |
-| AC8 | 11 | `tests/fpl/test_reference_sync.py::test_season_label`, `::test_new_season_keeps_previous_rows` | |
-| AC9 | 12 | `tests/fpl/test_reference_sync.py::test_flag_baseline`, `::test_flag_change_rows`, `::test_unchanged_payload_writes_no_flag_rows` | |
-| AC10 | 11 | `tests/fpl/test_reference_sync.py::test_player_added_moved_and_removed` | |
-| AC11 | 13 | `tests/fpl/test_deadline_snapshot.py::test_snapshot_stores_every_player_and_archives` | |
-| AC12 | 13 | `tests/fpl/test_deadline_snapshot.py::test_rerun_replaces_snapshot`, `::test_at_or_after_deadline_fails_and_writes_nothing` | |
-| AC13 | 15 | `tests/fpl/test_league_sync.py::test_two_page_league_stores_every_member` | |
-| AC14 | 16 | `tests/fpl/test_league_sync.py::test_manager_gameweek_data`, `::test_transfers_and_chips` | |
-| AC15 | 15 | `tests/fpl/test_league_sync.py::test_manager_in_two_leagues_stored_once` | |
-| AC16 | 16 | `tests/fpl/test_league_sync.py::test_manager_without_team_for_gameweek` | |
-| AC17 | 17 | `tests/fpl/test_league_sync.py::test_before_deadline_fails`; `tests/fpl/test_cli.py::test_league_sync_before_deadline_writes_nothing` | |
-| AC18 | 18 | `tests/fpl/test_results_sync.py::test_results_stored_and_archived`, `::test_double_gameweek` | |
-| AC19 | 18 | `tests/fpl/test_results_sync.py::test_unchecked_gameweek_fails` (parametrized: not finished / finished but not checked) | |
-| AC20 | 19 | `tests/fpl/test_backfill.py::test_backfill_gw1_to_3` | |
-| AC21 | 11, 12, 13, 16, 18, 19 | `::test_rerun_is_idempotent` in `test_reference_sync.py`, `test_deadline_snapshot.py`, `test_league_sync.py`, `test_results_sync.py`, `test_backfill.py` (helper `table_contents()` in `tests/fpl/fakes.py`) | |
-| AC22 | 14, 17 | `tests/fpl/test_cli.py::test_unavailable_api_writes_nothing`, `::test_failure_on_last_manager_rolls_back` | |
-| AC23 | 17 | `tests/fpl/test_league_sync.py::test_logs_carry_no_private_data` | |
-| AC24 | 4, 11 | `tests/fpl/test_models.py::test_all_datetime_columns_are_timezone_aware`; `tests/fpl/test_reference_sync.py::test_stored_datetimes_are_utc` | |
-| AC25 | 20 | `tests/test_readme.py::test_development_section_lists_commands` | |
+| AC1 | 2, 5 | `tests/db/test_migrations.py::test_upgrade_downgrade_upgrade`; compose part in end-to-end (automatic) | mutation: `downgrade` keeps `manager_pick` → `test_upgrade_downgrade_upgrade` red (2026-09-26, final review F6) |
+| AC2 | 3 | `tests/db/test_engine.py::test_container_database_is_postgres_16`, `tests/core/test_settings.py::test_database_url_not_read_by_tests` (conftest never reads `DATABASE_URL`) | mutation: `DATABASE_URL` named in `tests/conftest.py` → `test_database_url_not_read_by_tests` red (2026-09-26, final review F6) |
+| AC3 | 2, 17, 19 | `tests/core/test_settings.py::test_parse_league_ids_*`, `tests/fpl/test_cli.py::test_league_sync_rejects_bad_league_ids`, `tests/fpl/test_cli.py::test_backfill_rejects_bad_league_ids` | mutation: `parse_league_ids` accepts non-digits → 3 settings tests and `test_league_sync_rejects_bad_league_ids` red (2026-09-26, final review F6) |
+| AC4 | 6 | `tests/fpl/test_client.py::test_user_agent`, `::test_requests_are_throttled` | mutation: throttle never sleeps → `test_requests_are_throttled` red (2026-09-26, final review F6) |
+| AC5 | 7, 14 | `tests/fpl/test_client.py::test_retries_*`, `::test_gives_up_after_five_attempts`; `tests/fpl/test_cli.py::test_unavailable_api_writes_nothing` | mutation: transport errors not retried → `test_timeout_retried`, `test_connection_error_retried` red; F4 tests red before the fix (2026-09-26, final review F6) |
+| AC6 | 9, 14 | `tests/fpl/test_schemas.py::test_missing_field_names_endpoint_and_field`, `::test_unknown_fields_ignored`; `tests/fpl/test_cli.py::test_payload_error_writes_nothing` | mutation: `extra="forbid"` → 8 of 9 `test_schemas.py` tests red (2026-09-26, final review F6) |
+| AC7 | 11 | `tests/fpl/test_reference_sync.py::test_counts_match_payload` | mutation: `team_h`/`team_a` swapped → `test_rows_match_payload` red (2026-09-26, final review F6) |
+| AC8 | 11 | `tests/fpl/test_reference_sync.py::test_season_label`, `::test_new_season_keeps_previous_rows` | mutation: label `year % 100` → `test_season_label` red (2026-09-26, final review F6) |
+| AC9 | 12 | `tests/fpl/test_reference_sync.py::test_flag_baseline`, `::test_flag_change_rows`, `::test_unchanged_payload_writes_no_flag_rows` | mutation: every sync writes a flag row → `test_unchanged_payload_writes_no_flag_rows` red (2026-09-26, final review F6) |
+| AC10 | 11 | `tests/fpl/test_reference_sync.py::test_player_added_moved_and_removed` | mutation: upsert does nothing on conflict → `test_player_added_moved_and_removed` red (2026-09-26, final review F6) |
+| AC11 | 13 | `tests/fpl/test_deadline_snapshot.py::test_snapshot_stores_every_player_and_archives` | mutation: this/next chance swapped → `test_snapshot_stores_every_player_and_archives` red (2026-09-26, final review F6) |
+| AC12 | 13 | `tests/fpl/test_deadline_snapshot.py::test_rerun_replaces_snapshot`, `::test_at_or_after_deadline_fails_and_writes_nothing` | mutation: `now >= deadline` → `>` → `test_at_or_after_deadline_fails[offset0]` red (2026-09-26, final review F6) |
+| AC13 | 15 | `tests/fpl/test_league_sync.py::test_two_page_league_stores_every_member` | mutation: only page 1 read → `test_two_page_league_stores_every_member` red; F3 test red before the fix (2026-09-26, final review F6) |
+| AC14 | 16 | `tests/fpl/test_league_sync.py::test_manager_gameweek_data`, `::test_transfers_and_chips` | mutation: auto subs never stored → `test_manager_gameweek_data` red (2026-09-26, final review F6) |
+| AC15 | 15 | `tests/fpl/test_league_sync.py::test_manager_in_two_leagues_stored_once` | mutation: every membership linked to one league → `test_manager_in_two_leagues_stored_once` red (2026-09-26, final review F6) |
+| AC16 | 16 | `tests/fpl/test_league_sync.py::test_manager_without_team_for_gameweek` | mutation: picks 404 not caught → `test_manager_without_team_for_gameweek` red (2026-09-26, final review F6) |
+| AC17 | 17 | `tests/fpl/test_league_sync.py::test_before_deadline_fails`; `tests/fpl/test_cli.py::test_league_sync_before_deadline_writes_nothing` | mutation: deadline check disabled → `test_before_deadline_fails`, `test_league_sync_before_deadline_writes_nothing` red (2026-09-26, final review F6) |
+| AC18 | 18 | `tests/fpl/test_results_sync.py::test_results_stored_and_archived`, `::test_double_gameweek` | mutation: `explain` truncated to one fixture → `test_double_gameweek` red (2026-09-26, final review F6) |
+| AC19 | 18 | `tests/fpl/test_results_sync.py::test_unchecked_gameweek_fails` (parametrized: not finished / finished but not checked) | mutation: `data_checked` ignored → `test_unchecked_gameweek_fails[True-False]` red (2026-09-26, final review F6) |
+| AC20 | 19 | `tests/fpl/test_backfill.py::test_backfill_gw1_to_3` | mutation: backfill skips results → `test_backfill_gw1_to_3` red (2026-09-26, final review F6) |
+| AC21 | 11, 12, 13, 16, 18, 19 | `::test_rerun_is_idempotent` in `test_reference_sync.py`, `test_deadline_snapshot.py`, `test_league_sync.py`, `test_results_sync.py`, `test_backfill.py` (helper `table_contents()` in `tests/fpl/fakes.py`) | mutation: flag row on every sync → `test_rerun_is_idempotent` in reference and backfill red (2026-09-26, final review F6) |
+| AC22 | 14, 17 | `tests/fpl/test_cli.py::test_unavailable_api_writes_nothing`, `::test_failure_on_last_manager_rolls_back` | mutation: commit after the standings pass → `test_failure_on_last_manager_rolls_back` red (2026-09-26, final review F6) |
+| AC23 | 17 | `tests/fpl/test_league_sync.py::test_logs_carry_no_private_data` | mutation: `httpx` logger not silenced → `test_logs_carry_no_private_data` red; F1 test red before the fix (2026-09-26, final review F6) |
+| AC24 | 4, 11 | `tests/fpl/test_models.py::test_all_datetime_columns_are_timezone_aware`; `tests/fpl/test_reference_sync.py::test_stored_datetimes_are_utc` | mutation: `utc_column` without timezone → `test_every_datetime_column_is_timezone_aware` red (2026-09-26, final review F6) |
+| AC25 | 20 | `tests/test_readme.py::test_development_section_lists_commands` | mutation: README without `docker compose up -d` → `test_development_section_lists_commands` red (2026-09-26, final review F6) |
 
 ## Steps
 
@@ -789,3 +789,27 @@ season needs a payload older than the database; a few extra requests per run).
 Rejected: none — every reported finding was confirmed in the code.
 
 Left out: 29 nit findings.
+
+### 2026-09-26 — apply
+
+Decisions from `## Owner decisions`: F1–F12 accepted, F13–F17 rejected (and the 29 left-out
+nits). Full verification after the fixes: `ruff check`, `ruff format --check`, `pytest` — 97
+passed.
+
+| id | change |
+|---|---|
+| F1 | `make_engine` sets `hide_parameters=True`; `run_command` catches `SQLAlchemyError` and prints `error: database error (<class>)`. Test `test_cli.py::test_database_error_is_a_clean_error_without_private_data` (FK violation; no league ID, entry ID, name or traceback on stderr; tables empty) and `::test_engine_hides_statement_parameters` — both red before the fix. |
+| F2 | `load_settings()` in `app/core/settings.py` turns a pydantic `ValidationError` into `ConfigError("DATABASE_URL must be set")`; `main` prints it and returns 1. Test `test_settings.py::test_missing_database_url_is_a_clean_error` (league ID not echoed) — red before. |
+| F3 | `_sync_league_standings` deduplicates the collected rows by `entry`, keeping the last seen. Test `test_league_sync.py::test_entry_repeated_across_pages_is_stored_once` — red before (`CardinalityViolation`). |
+| F4 | The client retries every `httpx.TransportError` and a 2xx body that is not JSON; after the last attempt `FplUnavailableError`. Tests `test_client.py::test_connection_error_retried`, `::test_non_json_body_retried_then_unavailable` — red before. |
+| F5 | `selected_by_percent`, `raw_payload.payload` (now typed `Any`) and `player_gameweek_result.explain` are `NOT NULL` in the models and in revision 0001 (unmerged, edited in place; `test_models_match_migration` green). Test `test_models.py::test_always_present_payload_columns_are_not_null`. |
+| F6 | The "Red before the change" column of the AC → steps matrix is filled for all 25 ACs with a mutation check run on 2026-09-26: each mutation turned its proving tests red and was reverted. |
+| F7 | Synthetic payloads carry distinct per-field values and two transfers; `test_manager_gameweek_data` sets a chip and two auto subs and compares picks, history fields, chip and subs field by field; `test_transfers_and_chips` compares every transfer and chip; new `test_standings_rows_match_payload`; `test_manager_without_team_for_gameweek` seeds picks and subs, then returns 404 for the first-sorted entry and checks they are deleted while the other manager is complete. |
+| F8 | Snapshot at exactly the deadline and one second after raises (`test_at_or_after_deadline_fails[offset0/offset1]`), one second before succeeds; `test_league_sync.py::test_at_exact_deadline_is_accepted`; `test_league_sync_before_deadline_writes_nothing` compares `table_contents` before and after. |
+| F9 | Idempotency tests of snapshot, results and backfill compare `table_contents` of every table except `raw_payload`, whose count must grow by exactly 1 / 2 / 6; `player_flag_change` must stay equal. |
+| F10 | `test_reference_sync.py::test_rows_match_payload` (every gameweek, team, player and fixture field); the snapshot test compares every player's fields and `archive.payload == raw`; the results test compares `explain`, both archived payloads and the GW1 fixture scores. |
+| F11 | `test_postponed_fixture_stores_nulls`; `test_empty_league_and_manager_without_transfers_or_chips`; `test_nonexistent_gameweek_fails` in snapshot, results and league sync; `test_cli.py::test_standings_not_found_is_a_clean_error_without_league_id`. |
+| F12 | `test_cli.py::test_deadline_snapshot_succeeds`, `::test_results_sync_succeeds`, `::test_backfill_succeeds` (exit 0 and the expected rows). |
+
+Backlog: no new items, no item's trigger has fired. ROADMAP: the Stage 0 item stays unticked
+by design (it also needs spec 002). DECISIONS: nothing new.

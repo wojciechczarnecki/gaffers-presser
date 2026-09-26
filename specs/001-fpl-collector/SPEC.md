@@ -21,6 +21,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 12
   final_review_nits: 5
+  findings_accepted: 12
+  findings_rejected: 5
 ---
 
 # SPEC 001 — FPL data collector (database foundation and on-demand jobs)
