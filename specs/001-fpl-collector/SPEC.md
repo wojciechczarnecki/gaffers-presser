@@ -3,6 +3,9 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-09-26"
   - "spec-ready — 2026-09-26"
+metrics:
+  started_at: 2026-09-26T22:11
+  escalations: 0
 ---
 
 # SPEC 001 — FPL data collector (database foundation and on-demand jobs)
