@@ -6,6 +6,18 @@ from typing import Any
 import httpx
 
 from app.fpl.errors import FplNotFoundError, FplUnavailableError
+from app.fpl.schemas import (
+    Bootstrap,
+    Fetched,
+    Fixture,
+    History,
+    Live,
+    Picks,
+    StandingsPage,
+    Transfer,
+    parse,
+    parse_list,
+)
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -86,3 +98,40 @@ class FplClient:
                 raise FplUnavailableError(endpoint_template)
             self._sleep(self._backoff_base * 2 ** (attempt - 1))
         raise FplUnavailableError(endpoint_template)
+
+    def bootstrap(self) -> Fetched[Bootstrap]:
+        raw = self._get_json("bootstrap-static", "bootstrap-static/")
+        return Fetched(parse(Bootstrap, "bootstrap-static", raw), raw)
+
+    def fixtures(self) -> Fetched[list[Fixture]]:
+        raw = self._get_json("fixtures", "fixtures/")
+        return Fetched(parse_list(Fixture, "fixtures", raw), raw)
+
+    def live(self, gw: int) -> Fetched[Live]:
+        endpoint_template = "event/{gw}/live"
+        raw = self._get_json(endpoint_template, f"event/{gw}/live/")
+        return Fetched(parse(Live, endpoint_template, raw), raw)
+
+    def league_standings(self, league_id: int, page: int) -> StandingsPage:
+        endpoint_template = "leagues-classic/{league_id}/standings"
+        raw = self._get_json(
+            endpoint_template,
+            f"leagues-classic/{league_id}/standings/",
+            params={"page_standings": page},
+        )
+        return parse(StandingsPage, endpoint_template, raw)
+
+    def entry_picks(self, entry_id: int, gw: int) -> Picks:
+        endpoint_template = "entry/{entry_id}/event/{gw}/picks"
+        raw = self._get_json(endpoint_template, f"entry/{entry_id}/event/{gw}/picks/")
+        return parse(Picks, endpoint_template, raw)
+
+    def entry_history(self, entry_id: int) -> History:
+        endpoint_template = "entry/{entry_id}/history"
+        raw = self._get_json(endpoint_template, f"entry/{entry_id}/history/")
+        return parse(History, endpoint_template, raw)
+
+    def entry_transfers(self, entry_id: int) -> list[Transfer]:
+        endpoint_template = "entry/{entry_id}/transfers"
+        raw = self._get_json(endpoint_template, f"entry/{entry_id}/transfers/")
+        return parse_list(Transfer, endpoint_template, raw)

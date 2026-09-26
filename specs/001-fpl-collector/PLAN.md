@@ -344,7 +344,7 @@ about timing.
       `bootstrap-static` set every `events[].highest_scoring_entry` to `null`; write with
       `gzip`. Commit no league, entry or standings payload.
       Automatic verification: `cd backend && uv run python -c "from tests.fpl.payloads import load; b = load('bootstrap-static'); assert len(b['events']) == 38 and len(b['teams']) == 20 and all(e['highest_scoring_entry'] is None for e in b['events']); assert len(load('fixtures')) == 380; assert load('event-1-live')['elements']"`
-- [ ] 9. Payload schemas and strict parsing — files: `backend/app/fpl/schemas.py`,
+- [x] 9. Payload schemas and strict parsing — files: `backend/app/fpl/schemas.py`,
       `backend/app/fpl/client.py`, `backend/tests/fpl/test_schemas.py`.
       Models (fields from the Approach, `extra="ignore"`): `Bootstrap(events, teams,
       elements)`, `Fixture`, `Live(elements[id, stats{starts, minutes, total_points},
