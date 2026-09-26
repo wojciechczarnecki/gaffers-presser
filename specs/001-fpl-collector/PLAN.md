@@ -513,7 +513,7 @@ about timing.
       bad `FPL_LEAGUE_IDS` → returns 1 naming the variable; `test_rerun_is_idempotent`
       (archive +6 allowed).
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_backfill.py tests/fpl/test_cli.py`
-- [ ] 20. Documentation — files: `README.md`, `docs/DECISIONS.md`, `docs/ROADMAP.md`,
+- [x] 20. Documentation — files: `README.md`, `docs/DECISIONS.md`, `docs/ROADMAP.md`,
       `backend/tests/test_readme.py`.
       README "Development": copy `backend/.env.example` to `backend/.env` and fill
       `FPL_LEAGUE_IDS`; `docker compose up -d`; `cd backend && uv run alembic upgrade head`;
