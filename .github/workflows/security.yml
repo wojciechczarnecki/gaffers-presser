@@ -1,0 +1,31 @@
+# Dependency audit for a Python project managed with uv: on every push and pull request
+# to main, plus a weekly run that catches advisories published after the last change.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  python-audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Export locked dependencies
+        run: >-
+          uv export --frozen --no-hashes --all-extras --format requirements-txt
+          > "$RUNNER_TEMP/requirements.txt"
+
+      - name: Audit with pip-audit
+        run: >-
+          uvx pip-audit -r "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip
