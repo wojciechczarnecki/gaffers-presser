@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  python-audit:
+  backend-audit:
     runs-on: ubuntu-latest
     defaults:
       run:
