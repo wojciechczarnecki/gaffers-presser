@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-09-26"
   - "spec-ready — 2026-09-26"
   - "plan-draft — 2026-09-26"
   - "plan-approved — 2026-09-26"
+  - "implemented — 2026-09-26"
 metrics:
   started_at: 2026-09-26T22:11
   escalations: 0
@@ -12,6 +13,7 @@ metrics:
   plan_review_blockers: 0
   plan_review_majors: 3
   plan_changes: 11
+  implement_iterations: 8
 ---
 
 # SPEC 001 — FPL data collector (database foundation and on-demand jobs)

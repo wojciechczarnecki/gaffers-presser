@@ -602,11 +602,17 @@ above, and a one-line result under Definition of Done.
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` rows added (step 20)
-- [ ] spec status: `implemented`
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green (76 passed)
+- [x] end-to-end verification (automatic) performed, result recorded here — 2026-09-26:
+      18 tables, downgrade → only `alembic_version`, re-upgrade OK; reference-sync exit 0
+      (38 GW, 20 teams, 667 players, 380 fixtures, 667 flag rows; rerun → 667); snapshot GW6
+      exit 0 (667 rows, 1 archive), GW1 exit 1 "deadline has passed"; results-sync GW1 exit 0
+      (610 rows, +2 archive), GW30 exit 1 "not finished and data-checked"; league-sync and
+      backfill with empty `FPL_LEAGUE_IDS` exit 1 naming the variable; full verify green.
+      First run found a defect (alembic CLI could not import `app`) — fixed, see Deviations.
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` rows added (step 20)
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -682,6 +688,18 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   transfers pass in one coherent function, and splitting the commit would have left an
   incomplete, uncompilable intermediate state. Both steps' tests (`test_league_sync.py`)
   pass together. No scope, architecture or schema change.
+- End-to-end step 2 found `uv run alembic upgrade head` failing with
+  `ModuleNotFoundError: No module named 'app'` — `alembic.ini` lacked `prepend_sys_path`
+  (pytest hid it by adding its rootdir). Fixed in `alembic.ini` (`prepend_sys_path = .`,
+  `path_separator = os`); `migrations/env.py` also accepts `-x url=…` so the new regression
+  test `tests/db/test_migrations.py::test_alembic_cli_runs_from_backend` runs the real
+  console script without naming `DATABASE_URL` (keeps the AC2 guard intact). Red before,
+  green after.
+- Converge pass (fresh subagent, SPEC vs diff): one finding — standings stored under the
+  latest passed gameweek rather than each requested gameweek (AC13/AC20). Not changed:
+  this is the plan's documented interpretation (Approach → Standings; plan-review note on
+  AC13; DECISIONS row) since FPL only returns the current table. Worth the owner's eye at
+  GATE 2.
 
 ## Final review
 
