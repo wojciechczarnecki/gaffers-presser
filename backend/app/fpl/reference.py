@@ -1,12 +1,13 @@
 from datetime import datetime
 
+from sqlalchemy import text
 from sqlmodel import Session
 
 from app.db.upsert import upsert
 from app.fpl.client import FplClient
 from app.fpl.models import Fixture as FixtureRow
-from app.fpl.models import Gameweek, Player, Season, Team
-from app.fpl.schemas import Bootstrap
+from app.fpl.models import Gameweek, Player, PlayerFlagChange, Season, Team
+from app.fpl.schemas import Bootstrap, Element
 from app.fpl.schemas import Fixture as FixtureSchema
 
 
@@ -60,7 +61,54 @@ def apply_bootstrap(session: Session, payload: Bootstrap, now: datetime) -> str:
         ],
         ["season", "fpl_id"],
     )
+    _apply_flag_changes(session, season, payload.elements, now)
     return season
+
+
+def _latest_flags(session: Session, season: str) -> dict[int, object]:
+    rows = session.execute(
+        text(
+            "SELECT DISTINCT ON (player_fpl_id) player_fpl_id, status, news,"
+            " chance_of_playing_this_round, chance_of_playing_next_round"
+            " FROM player_flag_change WHERE season = :season"
+            " ORDER BY player_fpl_id, observed_at DESC, id DESC"
+        ),
+        {"season": season},
+    )
+    return {row.player_fpl_id: row for row in rows}
+
+
+def _flag_changed(prev: object, el: Element) -> bool:
+    if prev is None:
+        return True
+    return (
+        prev.status != el.status
+        or prev.news != el.news
+        or prev.chance_of_playing_this_round != el.chance_of_playing_this_round
+        or prev.chance_of_playing_next_round != el.chance_of_playing_next_round
+    )
+
+
+def _apply_flag_changes(
+    session: Session, season: str, elements: list[Element], now: datetime
+) -> None:
+    latest = _latest_flags(session, season)
+    new_rows = [
+        {
+            "season": season,
+            "player_fpl_id": el.id,
+            "status": el.status,
+            "news": el.news,
+            "news_added": el.news_added,
+            "chance_of_playing_this_round": el.chance_of_playing_this_round,
+            "chance_of_playing_next_round": el.chance_of_playing_next_round,
+            "observed_at": now,
+        }
+        for el in elements
+        if _flag_changed(latest.get(el.id), el)
+    ]
+    if new_rows:
+        session.execute(PlayerFlagChange.__table__.insert(), new_rows)
 
 
 def apply_fixtures(session: Session, season: str, fixtures: list[FixtureSchema]) -> None:

@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlmodel import select
 
-from app.fpl.models import Fixture, Gameweek, Player, Team
+from app.fpl.models import Fixture, Gameweek, Player, PlayerFlagChange, Team
 from app.fpl.reference import apply_bootstrap, sync_reference
 from app.fpl.schemas import Bootstrap
 from tests.fpl.fakes import FakeFpl, table_contents
@@ -100,6 +100,67 @@ def test_stored_datetimes_are_utc(db_session):
     db_session.commit()
     gw = db_session.exec(select(Gameweek)).first()
     assert gw.deadline_at.utcoffset() == timedelta(0)
+
+
+def test_flag_baseline(db_session):
+    bootstrap_payload = load("bootstrap-static")
+    apply_bootstrap(db_session, Bootstrap.model_validate(bootstrap_payload), NOW)
+    db_session.commit()
+    rows = db_session.exec(select(PlayerFlagChange)).all()
+    assert len(rows) == len(bootstrap_payload["elements"])
+
+
+def test_flag_change_rows(db_session):
+    bootstrap_payload = load("bootstrap-static")
+    apply_bootstrap(db_session, Bootstrap.model_validate(bootstrap_payload), NOW)
+    db_session.commit()
+
+    changed = copy.deepcopy(bootstrap_payload)
+    changed["elements"][0]["status"] = "i"
+    changed["elements"][0]["news"] = "Injured, expected back in October"
+    changed["elements"][1]["chance_of_playing_this_round"] = 50
+
+    later = NOW + timedelta(hours=1)
+    apply_bootstrap(db_session, Bootstrap.model_validate(changed), later)
+    db_session.commit()
+
+    rows = db_session.exec(
+        select(PlayerFlagChange).where(PlayerFlagChange.observed_at == later)
+    ).all()
+    assert len(rows) == 2
+
+
+def test_unchanged_payload_writes_no_flag_rows(db_session):
+    bootstrap_payload = load("bootstrap-static")
+    apply_bootstrap(db_session, Bootstrap.model_validate(bootstrap_payload), NOW)
+    db_session.commit()
+
+    later = NOW + timedelta(hours=1)
+    apply_bootstrap(db_session, Bootstrap.model_validate(bootstrap_payload), later)
+    db_session.commit()
+
+    rows = db_session.exec(
+        select(PlayerFlagChange).where(PlayerFlagChange.observed_at == later)
+    ).all()
+    assert rows == []
+
+
+def test_news_added_only_change_writes_no_flag_rows(db_session):
+    bootstrap_payload = load("bootstrap-static")
+    apply_bootstrap(db_session, Bootstrap.model_validate(bootstrap_payload), NOW)
+    db_session.commit()
+
+    changed = copy.deepcopy(bootstrap_payload)
+    changed["elements"][0]["news_added"] = "2026-09-02T10:00:00Z"
+
+    later = NOW + timedelta(hours=1)
+    apply_bootstrap(db_session, Bootstrap.model_validate(changed), later)
+    db_session.commit()
+
+    rows = db_session.exec(
+        select(PlayerFlagChange).where(PlayerFlagChange.observed_at == later)
+    ).all()
+    assert rows == []
 
 
 def test_rerun_is_idempotent(db_session):

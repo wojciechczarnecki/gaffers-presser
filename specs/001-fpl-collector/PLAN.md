@@ -394,7 +394,7 @@ about timing.
       `utcoffset() == timedelta(0)` (psycopg returns `ZoneInfo("UTC")`, which does not compare
       equal to `datetime.UTC`, so do not assert `tzinfo == UTC`); `test_rerun_is_idempotent`.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_reference_sync.py`
-- [ ] 12. Flag change log — files: `backend/app/fpl/reference.py`,
+- [x] 12. Flag change log — files: `backend/app/fpl/reference.py`,
       `backend/tests/fpl/test_reference_sync.py`.
       In `apply_bootstrap`: load the latest `player_flag_change` per player of the season
       (`DISTINCT ON (player_fpl_id) … ORDER BY player_fpl_id, observed_at DESC, id DESC`);
