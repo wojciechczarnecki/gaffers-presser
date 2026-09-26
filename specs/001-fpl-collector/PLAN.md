@@ -226,7 +226,7 @@ about timing.
       review).
       Run `cd backend && uv lock && uv sync --all-extras`.
       Automatic verification: `cd backend && uv run python -c "import sqlmodel, alembic, psycopg, httpx, pydantic_settings; from testcontainers.postgres import PostgresContainer" && uv run pytest -q`
-- [ ] 2. Settings, league IDs, local database — files: `backend/app/core/__init__.py`,
+- [x] 2. Settings, league IDs, local database — files: `backend/app/core/__init__.py`,
       `backend/app/core/errors.py` (`class CollectorError(Exception)`; `ConfigError`
       subclasses it), `backend/app/core/settings.py`, `backend/.env.example`, `compose.yaml`,
       `backend/tests/core/__init__.py`, `backend/tests/core/test_settings.py`.
