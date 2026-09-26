@@ -6,7 +6,7 @@ version: 2
 # Keep the ecosystems this repository actually uses; `github-actions` stays either way.
 updates:
   - package-ecosystem: uv
-    directory: /
+    directory: /backend
     schedule:
       interval: monthly
     open-pull-requests-limit: 3
