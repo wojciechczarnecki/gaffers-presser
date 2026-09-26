@@ -720,4 +720,70 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-26 — report
+
+Three independent perspectives (compliance, quality, tests) on `git diff origin/main...HEAD`;
+every finding below was checked in the code. The suite is green (76 passed).
+
+AC → evidence matrix:
+
+| AC | evidence | status |
+|---|---|---|
+| AC1 | `tests/db/test_migrations.py::test_upgrade_downgrade_upgrade`, `::test_alembic_cli_runs_from_backend`; compose in the E2E record (DoD) | ok |
+| AC2 | `tests/db/test_engine.py::test_container_database_is_postgres_16`; `tests/core/test_settings.py::test_database_url_not_read_by_tests` | ok |
+| AC3 | `tests/core/test_settings.py::test_parse_league_ids_*`; `tests/fpl/test_cli.py::test_league_sync_rejects_bad_league_ids`, `::test_backfill_rejects_bad_league_ids` | ok (each command tested with one bad value only) |
+| AC4 | `tests/fpl/test_client.py::test_user_agent`, `::test_requests_are_throttled` | ok |
+| AC5 | `tests/fpl/test_client.py::test_retries_*`, `::test_gives_up_after_five_attempts`, `::test_timeout_retried`, `::test_game_updating_retried`; `test_cli.py::test_unavailable_api_writes_nothing` | ok |
+| AC6 | `tests/fpl/test_schemas.py::test_missing_*`, `::test_unknown_fields_ignored`; `test_cli.py::test_payload_error_writes_nothing` | ok |
+| AC7 | `tests/fpl/test_reference_sync.py::test_counts_match_payload` | partial — counts only (F10) |
+| AC8 | `test_reference_sync.py::test_season_label`, `::test_new_season_keeps_previous_rows` | ok |
+| AC9 | `test_reference_sync.py::test_flag_baseline`, `::test_flag_change_rows`, `::test_unchanged_payload_writes_no_flag_rows`, `::test_news_added_only_change_writes_no_flag_rows` | ok |
+| AC10 | `test_reference_sync.py::test_player_added_moved_and_removed` | ok |
+| AC11 | `tests/fpl/test_deadline_snapshot.py::test_snapshot_stores_every_player_and_archives` | partial — no field values (F10) |
+| AC12 | `test_deadline_snapshot.py::test_rerun_replaces_snapshot`, `::test_at_or_after_deadline_fails_and_writes_nothing`; `test_cli.py::test_deadline_snapshot_at_deadline_writes_nothing` | partial — `now == deadline` untested (F8) |
+| AC13 | `tests/fpl/test_league_sync.py::test_two_page_league_stores_every_member` | ok |
+| AC14 | `test_league_sync.py::test_manager_gameweek_data`, `::test_transfers_and_chips` | partial — chip and auto subs never exercised (F7) |
+| AC15 | `test_league_sync.py::test_manager_in_two_leagues_stored_once` | ok |
+| AC16 | `test_league_sync.py::test_manager_without_team_for_gameweek` | partial — 404 on the last entry only (F7) |
+| AC17 | `test_league_sync.py::test_before_deadline_fails`; `test_cli.py::test_league_sync_before_deadline_writes_nothing` | partial — "writes nothing" not asserted (F8) |
+| AC18 | `tests/fpl/test_results_sync.py::test_results_stored_and_archived`, `::test_double_gameweek` | ok (archive content not compared, F10) |
+| AC19 | `test_results_sync.py::test_unchecked_gameweek_fails`; `test_cli.py::test_results_sync_unchecked_gameweek_writes_nothing` | ok |
+| AC20 | `tests/fpl/test_backfill.py::test_backfill_gw1_to_3` | ok |
+| AC21 | `::test_rerun_is_idempotent` in five files | partial — snapshot, results, backfill compare counts only (F9) |
+| AC22 | `test_cli.py::test_failure_on_last_manager_rolls_back`, `::test_unavailable_api_writes_nothing`, `::test_payload_error_writes_nothing` | ok |
+| AC23 | `test_cli.py::test_logs_carry_no_private_data` (positive control) | ok (error paths: F1, F2) |
+| AC24 | `tests/fpl/test_models.py::test_every_datetime_column_is_timezone_aware`; `test_reference_sync.py::test_stored_datetimes_are_utc`; `tests/db/test_engine.py` | ok |
+| AC25 | `tests/test_readme.py::test_development_section_lists_commands` | ok |
+
+Plan steps: all 20 ticked with the named files and tests present. Deviations: both justified.
+Scope: nothing outside the plan's layout; pins match the owner decisions; no real IDs.
+
+Findings:
+
+| id | severity | file:line | scenario | fix |
+|---|---|---|---|---|
+| F1 | `worth-fixing` | `backend/app/db/engine.py:6`, `backend/app/fpl/cli.py:37-57` | any database error not caught as `CollectorError` (FK violation, F3) ends in a traceback whose SQLAlchemy message prints `[parameters: …]` — manager names, team names, entry IDs reach stderr (privacy NFR) | `create_engine(..., hide_parameters=True)`; catch `SQLAlchemyError` in `run_command` and print a one-line generic error |
+| F2 | `worth-fixing` | `backend/app/fpl/cli.py:81` | `FPL_LEAGUE_IDS=<real ids>` set, `DATABASE_URL` missing → pydantic `ValidationError` traceback shows `input_value={'fpl_league_ids': '…'}` — real league IDs on stderr | wrap `Settings()`, raise `ConfigError("DATABASE_URL must be set")` without the pydantic message |
+| F3 | `worth-fixing` | `backend/app/fpl/leagues.py:209-262` | standings shift between page fetches (a live gameweek — spec 002's normal case) → the same entry on pages 1 and 2 → one `INSERT … ON CONFLICT DO UPDATE` with duplicate keys → "cannot affect row a second time", whole job aborts | deduplicate `results` by `entry` (keep the last) before the upserts; test with an entry repeated across pages |
+| F4 | `worth-fixing` | `backend/app/fpl/client.py:74-100` | `httpx.ConnectError`/`RemoteProtocolError` (DNS, reset) are not retried, and a 200 with a non-JSON body (CDN/maintenance HTML) raises `JSONDecodeError` → traceback instead of the one-line error | retry `httpx.TransportError`; map a JSON decode failure to `FplUnavailableError`/`PayloadError`; tests for both |
+| F5 | `worth-fixing` | `backend/app/fpl/models.py:111,124,287`; `migrations/versions/0001_collector_schema.py:74,246,387` | `sa_column=Column(...)` drops SQLModel's NOT NULL: `selected_by_percent`, `raw_payload.payload`, `player_gameweek_result.explain` are nullable although always required; fixing after merge needs a second migration | `nullable=False` on those columns, regenerate 0001 while unmerged; type `payload` as `Any` (fixtures is a list) |
+| F6 | `worth-fixing` | `specs/001-fpl-collector/PLAN.md:186-210` | the "Red before the change" column of the AC → steps matrix exists but is empty in all 25 rows | record the red evidence per AC, or `manual` / `n/a` with a reason |
+| F7 | `worth-fixing` | `backend/tests/fpl/fakes.py:115-116`, `backend/tests/fpl/test_league_sync.py:91-151` | synthetic picks always have `active_chip: None` and no auto subs, so the `ManagerAutoSub` insert and chip mapping never run (AC14); history/pick/transfer/chip fields mostly unasserted; the 404 manager of AC16 is processed last, so "continues with the others" and the stale-pick delete are not exercised | give one entry a chip and auto subs with distinct per-field values and compare stored rows field by field; 404 on the first-sorted entry after seeding picks/subs |
+| F8 | `worth-fixing` | `backend/tests/fpl/test_deadline_snapshot.py:12-13,58`, `backend/tests/fpl/test_cli.py:65,100-119` | `now == deadline` is never tested (a `>=` → `>` regression passes; league sync must accept it); `test_league_sync_before_deadline_writes_nothing` never checks that nothing was written (AC17) | parametrize snapshot and league sync at exactly the deadline; compare `table_contents` before/after the failed CLI run |
+| F9 | `worth-fixing` | `backend/tests/fpl/test_deadline_snapshot.py:64`, `test_results_sync.py:118`, `test_backfill.py:88` | idempotency tests compare row counts only (AC21 asks for unchanged content); backfill allows `player_flag_change` to grow (`>=`), hiding the AC9 regression | compare `table_contents` except `raw_payload`; exact delta for `raw_payload`, `==` for flags |
+| F10 | `worth-fixing` | `backend/tests/fpl/test_reference_sync.py:25-40`, `test_deadline_snapshot.py:23-34`, `test_results_sync.py` | AC7/AC11/AC18 checked by counts only: a `team_h`/`team_a` swap, a this/next chance swap, a wrong archive payload or wrong `explain` would pass | assert sampled rows field by field against the payload; `archive.payload == raw`; `row.explain == el["explain"]`; scores per fixture |
+| F11 | `worth-fixing` | `backend/tests/fpl/` | untested edge cases: postponed fixture (`event`/`kickoff_time` null — none in the recording), empty league / no transfers / no chips, a non-existent gameweek (`does not exist` branches in snapshot, results, leagues), a 404 on standings leaking the league ID in stderr | one case each: nulls stored, zero rows and a clean run, `JobError`/exit 1, `"987654301" not in stderr` |
+| F12 | `worth-fixing` | `backend/tests/fpl/test_cli.py` | success paths of `deadline-snapshot`, `results-sync` and `backfill` through `run_command` are never run — a mis-wired branch passes | one exit-0 test per command asserting the expected rows |
+| F13 | `nit` | `backend/app/fpl/leagues.py:162-170`, `backend/app/fpl/results.py:208-214` | season re-derived from "latest deadline among these gameweek IDs" instead of the season `sync_reference` returned; `league-sync --gameweek 99` says "run reference-sync first" right after one | pass `season` into `sync_leagues`/`sync_results` |
+| F14 | `nit` | `backend/app/fpl/results.py:223`, `backend/app/fpl/backfill.py:283-285` | `fixtures/` fetched twice per `results-sync` and once more per finished gameweek in the backfill (etiquette NFR) | reuse the `Fetched` fixtures from `sync_reference` |
+| F15 | `nit` | `backend/app/fpl/errors.py`, `backend/app/fpl/cli.py:56` | `FplUnavailableError`/`FplNotFoundError` carry only the template: the user sees `error: fixtures` with no cause | messages "FPL API unavailable: {template}" / "FPL API returned 404: {template}" |
+| F16 | `nit` | `backend/app/core/settings.py:20` | `"²".isdigit()` is true, `int("²")` raises `ValueError` → traceback; `"1,1"` fetches the league twice | `part.isascii() and part.isdigit()`; deduplicate IDs |
+| F17 | `nit` | `compose.yaml:9` | development database published on all interfaces with password `presser` | bind `127.0.0.1:${POSTGRES_PORT:-5432}:5432` |
+
+Severity changes at merge: the tests perspective's `blocker` on F7 → `worth-fixing` (a coverage
+gap, the code path itself reads correctly); F13 and F14 from `worth-fixing` → `nit` (the wrong
+season needs a payload older than the database; a few extra requests per run).
+
+Rejected: none — every reported finding was confirmed in the code.
+
+Left out: 29 nit findings.
