@@ -219,7 +219,7 @@ about timing.
 
 ### Group 1 — Foundation: dependencies, settings, database, schema
 
-- [ ] 1. Dependencies — files: `backend/pyproject.toml`, `backend/uv.lock`.
+- [x] 1. Dependencies — files: `backend/pyproject.toml`, `backend/uv.lock`.
       Runtime: `sqlmodel==0.0.47`, `alembic==1.20.0`, `psycopg[binary]==3.3.6`,
       `httpx==0.28.1`, `pydantic-settings==2.15.0`; dev: `testcontainers[postgres]==4.15.0`
       (the `postgres` extra exists in 4.15.0 and pulls no extra package — checked on PyPI at
