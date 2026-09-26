@@ -419,7 +419,7 @@ about timing.
       step 14); `test_rerun_is_idempotent` (contents equal except bookkeeping, `raw_payload`
       count +1 as AC21 allows).
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_deadline_snapshot.py`
-- [ ] 14. CLI with one transaction per command — files: `backend/app/fpl/cli.py`,
+- [x] 14. CLI with one transaction per command — files: `backend/app/fpl/cli.py`,
       `backend/app/fpl/__main__.py`, `backend/tests/fpl/test_cli.py`.
       argparse subcommands `reference-sync`, `deadline-snapshot --gameweek N` (the others
       arrive in steps 17–19); `run_command` as in Approach, one `session.begin()` around the
