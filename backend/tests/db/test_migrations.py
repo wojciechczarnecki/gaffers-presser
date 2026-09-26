@@ -1,3 +1,8 @@
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 from alembic.autogenerate import compare_metadata
 from alembic.runtime.migration import MigrationContext
@@ -7,7 +12,7 @@ from testcontainers.postgres import PostgresContainer
 
 import app.fpl.models  # noqa: F401
 from app.db.engine import make_engine
-from tests.conftest import run_alembic
+from tests.conftest import BACKEND_DIR, run_alembic
 
 
 @pytest.fixture(scope="module")
@@ -42,3 +47,16 @@ def test_models_match_migration(migration_url):
         context = MigrationContext.configure(conn)
         diff = compare_metadata(context, SQLModel.metadata)
     assert diff == []
+
+
+def test_alembic_cli_runs_from_backend(migration_url):
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    alembic = str(Path(sys.executable).parent / "alembic")
+    result = subprocess.run(
+        [alembic, "-x", f"url={migration_url}", "upgrade", "head"],
+        cwd=BACKEND_DIR,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr

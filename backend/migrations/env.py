@@ -16,7 +16,9 @@ target_metadata = SQLModel.metadata
 
 
 def get_url() -> str:
-    url = config.get_main_option("sqlalchemy.url")
+    url = context.get_x_argument(as_dictionary=True).get("url") or config.get_main_option(
+        "sqlalchemy.url"
+    )
     if url:
         return url
     return Settings().database_url
