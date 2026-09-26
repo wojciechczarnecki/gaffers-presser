@@ -25,6 +25,10 @@ metrics:
   findings_accepted: 12
   findings_rejected: 5
   finished_at: 2026-09-26T23:28
+  cost_plan_cents: 113
+  cost_plan_review_cents: 64
+  cost_implement_cents: 1119
+  cost_final_review_cents: 506
 ---
 
 # SPEC 001 — FPL data collector (database foundation and on-demand jobs)
