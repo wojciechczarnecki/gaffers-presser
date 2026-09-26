@@ -5,10 +5,22 @@ from typing import Any
 
 import httpx
 
+from app.fpl.errors import FplNotFoundError, FplUnavailableError
+
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 USER_AGENT = "gaffers-presser/0.1 (+https://github.com/wojciechczarnecki/gaffers-presser)"
+
+GAME_UPDATING_MESSAGE = "The game is being updated."
+
+
+def _is_game_updating(response: httpx.Response) -> bool:
+    try:
+        body = response.json()
+    except ValueError:
+        body = response.text
+    return body == GAME_UPDATING_MESSAGE
 
 
 class FplClient:
@@ -48,6 +60,29 @@ class FplClient:
         self._last_request_at = self._monotonic()
 
     def _get_json(self, endpoint_template: str, path: str, params: dict | None = None) -> Any:
-        self._throttle()
-        response = self._client.get(path, params=params)
-        return response.json()
+        for attempt in range(1, self._max_attempts + 1):
+            self._throttle()
+            retry = False
+            try:
+                response = self._client.get(path, params=params)
+            except httpx.TimeoutException:
+                retry = True
+            else:
+                if response.status_code == 404:
+                    raise FplNotFoundError(endpoint_template)
+                if (
+                    response.status_code == 429
+                    or response.status_code >= 500
+                    or _is_game_updating(response)
+                ):
+                    retry = True
+                elif response.status_code >= 400:
+                    raise FplUnavailableError(endpoint_template)
+                else:
+                    return response.json()
+            if not retry:
+                continue
+            if attempt == self._max_attempts:
+                raise FplUnavailableError(endpoint_template)
+            self._sleep(self._backoff_base * 2 ** (attempt - 1))
+        raise FplUnavailableError(endpoint_template)

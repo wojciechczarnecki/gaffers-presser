@@ -324,7 +324,7 @@ about timing.
       Tests: User-Agent present and descriptive; with a fake clock, three requests produce
       sleeps so starts are ≥ 0.5 s apart, and no sleep when the gap is already larger.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_client.py`
-- [ ] 7. Retry and back-off — files: `backend/app/fpl/client.py`,
+- [x] 7. Retry and back-off — files: `backend/app/fpl/client.py`,
       `backend/tests/fpl/test_client.py`.
       Retry on 429, 5xx, `httpx.TimeoutException`, and a body whose JSON (or text) is
       `"The game is being updated."` whatever the status; delays `backoff_base * 2**(n-1)`
