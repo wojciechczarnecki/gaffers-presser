@@ -11,7 +11,7 @@ and each LLM step that produces data has an evaluation set with recorded results
 
 - [ ] Collector for players, teams, fixtures, gameweeks and the configured classic leagues
       (standings, managers, picks, transfers, chips); snapshots around each deadline;
-      post-gameweek ground truth (starts, minutes, points) (spec: TBD)
+      post-gameweek ground truth (starts, minutes, points) (spec: [001](../specs/001-fpl-collector/SPEC.md))
 
 ## Stage 1 — Tweet ingest and extraction
 

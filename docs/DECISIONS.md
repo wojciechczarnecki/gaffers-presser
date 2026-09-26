@@ -23,3 +23,6 @@ parallel lanes merge trivially. Record a decision in the same PR in which it tak
 | 2026-09-26 | Unit tests use a fake LLM; evaluation sets run separately from `pytest` | real LLM calls in tests | deterministic, free CI |
 | 2026-09-26 | Hosting is budgeted separately from the 20 PLN/month external-API budget | one shared budget | the owner's decision |
 | 2026-09-26 | No open-source licence: all rights reserved, source public for review | MIT; Apache-2.0; AGPL-3.0 | keeps the monetization option open; opening later stays possible, while a granted permissive licence cannot be withdrawn |
+| 2026-09-26 | Database tests start their own PostgreSQL through testcontainers; Docker Compose serves only the development database | Compose for tests + a service container in CI | `verify.command` stays self-contained for agents and parallel worktrees; one definition of the test database |
+| 2026-09-26 | FPL entities are keyed by (season, FPL ID) | FPL ID alone | FPL IDs reset every July |
+| 2026-09-26 | FPL flags are kept as a change log (a baseline row plus a row on each change) with a full player snapshot per deadline; raw FPL payloads are archived only at deadline snapshots and results syncs | fixed snapshots only; archiving every response | an exact flag timeline to compare leaks against; raw data survives the season reset at a few MB per gameweek |
