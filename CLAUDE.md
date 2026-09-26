@@ -77,5 +77,9 @@ cd backend && uv run ruff check . && uv run ruff format --check . && uv run pyte
 ## Structure
 
 ```
-TODO: the project's directories and what lives in them
+backend/           Python package `app/` (modules per area), tests, migrations
+frontend/          web UI — only once Wrapped is built
+docs/              project documents; docs/adr/ holds decision records
+specs/             SPEC + PLAN per feature
+scripts/git-hooks/ pre-push guard for main
 ```
