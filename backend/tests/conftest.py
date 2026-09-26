@@ -1,9 +1,21 @@
+from pathlib import Path
+
 import pytest
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import text
 from sqlmodel import Session
 from testcontainers.postgres import PostgresContainer
 
 from app.db.engine import make_engine
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+
+def run_alembic(url: str, *args: str) -> None:
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    config.set_main_option("sqlalchemy.url", url)
+    getattr(command, args[0])(config, *args[1:])
 
 
 @pytest.fixture(scope="session")
@@ -14,6 +26,7 @@ def postgres_url():
 
 @pytest.fixture(scope="session")
 def db_engine(postgres_url):
+    run_alembic(postgres_url, "upgrade", "head")
     return make_engine(postgres_url)
 
 

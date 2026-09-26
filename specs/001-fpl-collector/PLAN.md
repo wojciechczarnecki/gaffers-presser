@@ -277,7 +277,7 @@ about timing.
       or (`player_flag_change`, `raw_payload`) an FK to `season.label`; the set of table
       names equals the 18 names of the schema table.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_models.py`
-- [ ] 5. Alembic and the first migration (data migration step, local and test databases
+- [x] 5. Alembic and the first migration (data migration step, local and test databases
       only) — files: `backend/alembic.ini` (`script_location = %(here)s/migrations`, so it
       resolves from any working directory),
       `backend/migrations/env.py`, `backend/migrations/script.py.mako` (with
