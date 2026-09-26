@@ -58,7 +58,8 @@ hook enforce it (enabled once per clone: `git config core.hooksPath scripts/git-
 ## Iron rules
 
 - Every feature MUST have tests — without them it is not done.
-- TODO: the rule for user-facing texts (one place for strings).
+- Polish product content (prompts, e-mail templates, slang glossary) lives in
+  `backend/app/content/`, never as string literals in code.
 - When a task is done, tick it in `docs/ROADMAP.md` — the roadmap must not lie.
 - Record architectural decisions in `docs/DECISIONS.md` in the same PR.
 - Secrets and real users' data never in code, logs, commits or tests.
@@ -70,8 +71,7 @@ hook enforce it (enabled once per clone: `git config core.hooksPath scripts/git-
 # full verification of the stack (the same command as `verify.command` in .claude/workflow.json)
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q
 
-# TODO: running the application for development
-# TODO: tests, lint, build per layer
+# running the application for development — added in stage 0 (FPL collector)
 ```
 
 ## Structure

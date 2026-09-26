@@ -76,8 +76,8 @@ Grouped by roadmap stage (`docs/ROADMAP.md`).
 - **Latency:** in the final window before a deadline, a leak must reach the owner's inbox
   within **60 s** of being posted (p95), measured and reported. Outside that window a
   coarser polling interval is acceptable.
-- **Budget:** external APIs ≤ **20 PLN/month** in total (LLM, X data, e-mail). Hosting on the
-  owner's existing Railway account.
+- **Budget:** external APIs ≤ **20 PLN/month** in total (LLM, embeddings, X data, e-mail).
+  Hosting (the owner's existing Railway account) is budgeted separately.
 - **Language:** product content in Polish FPL slang; repository, code, docs in English.
 - **Swappability:** the tweet source, the LLM provider and the e-mail provider are adapters
   behind interfaces; switching one is a configuration change.
@@ -88,7 +88,10 @@ Grouped by roadmap stage (`docs/ROADMAP.md`).
 - **FPL API etiquette:** unofficial API — cache, back off, never poll faster than needed.
 - **Privacy:** league IDs, manager names, e-mail addresses and credentials live only in
   environment variables or local config, never in the repository, logs, commits or tests.
-  Tests use synthetic data.
+  Tests use synthetic managers and leagues; public FPL player data may be real. Manager and
+  team names are public FPL data, so sending them to the LLM provider and to Langfuse is
+  acceptable; application logs still never carry them.
+- **Time:** stored and computed in UTC (FPL deadlines are UTC); shown in `Europe/Warsaw`.
 
 ## Architecture
 
@@ -116,8 +119,15 @@ X (source ─►│ Tweet ingest    │────►│  (facts, posts,      �
 
 - **Facts are SQL, narrative is retrieval.** Points, standings and transfers are queried
   with SQL; posts, and later presser history and podcast transcripts, are retrieved.
-- **Scheduling:** jobs driven by the FPL deadline calendar (tight polling only in the
-  final window).
+- **Processes:** one long-running worker with its own scheduler driven by the FPL deadline
+  calendar — sparse polling outside the final window, every 20–30 s inside it. Cron cannot
+  poll that often. An HTTP API appears only when something needs one (Wrapped).
+- **Environments:** development on a local Docker Compose stack (`pgvector/pgvector:pg16`);
+  production on Railway (worker + PostgreSQL); no staging. Tests that need a database use a
+  PostgreSQL container, also in CI.
+- **Models:** LLM and embeddings through provider APIs behind adapters; no local models in
+  production (memory cost). The default LLM is picked in the stage 1 spec by comparing
+  cheap models on the extraction evaluation set.
 - Decisions and their rationale: `docs/DECISIONS.md` and `docs/adr/`.
 
 ## Risks

@@ -1,7 +1,7 @@
 {
   "production": {
-    "hosts": [],
-    "commands": []
+    "hosts": ["railway.app", "railway.com", "rlwy.net"],
+    "commands": ["railway"]
   },
   "worktree": {
     "dir": "../worktrees"
@@ -19,6 +19,10 @@
     "conventions": "docs/CONVENTIONS.md",
     "project": "docs/PROJECT.md",
     "specsDir": "specs"
+  },
+  "migrations": {
+    "command": "alembic",
+    "localHosts": ["localhost", "127.0.0.1", "::1", "db"]
   },
   "gitHooksDir": "scripts/git-hooks",
   "language": "en",
