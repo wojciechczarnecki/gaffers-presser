@@ -1,8 +1,11 @@
-import argparse
 import logging
-import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Annotated
 
+import typer
 from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
@@ -20,80 +23,108 @@ from app.fpl.snapshot import take_deadline_snapshot
 logger = logging.getLogger(__name__)
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="python -m app.fpl")
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    sub.add_parser("reference-sync")
-
-    snapshot_parser = sub.add_parser("deadline-snapshot")
-    snapshot_parser.add_argument("--gameweek", type=int, required=True)
-
-    league_parser = sub.add_parser("league-sync")
-    league_parser.add_argument("--gameweek", type=int, required=True)
-
-    results_parser = sub.add_parser("results-sync")
-    results_parser.add_argument("--gameweek", type=int, required=True)
-
-    sub.add_parser("backfill")
-
-    return parser
+@dataclass(frozen=True)
+class Deps:
+    engine: Engine
+    client: FplClient
+    league_ids_raw: str
+    now: datetime
 
 
-def run_command(
-    argv: list[str],
-    *,
-    engine: Engine,
-    client: FplClient,
-    league_ids_raw: str,
-    now: datetime,
-) -> int:
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-    try:
-        with Session(engine) as session, session.begin():
-            if args.command == "reference-sync":
-                season = sync_reference(session, client, now)
-                logger.info("reference sync: season=%s", season)
-            elif args.command == "deadline-snapshot":
-                take_deadline_snapshot(session, client, args.gameweek, now)
-                logger.info("deadline snapshot: gameweek=%d", args.gameweek)
-            elif args.command == "league-sync":
-                league_ids = parse_league_ids(league_ids_raw)
-                sync_reference(session, client, now)
-                sync_leagues(session, client, league_ids, [args.gameweek], now)
-            elif args.command == "results-sync":
-                sync_reference(session, client, now)
-                sync_results(session, client, args.gameweek, now)
-            elif args.command == "backfill":
-                league_ids = parse_league_ids(league_ids_raw)
-                backfill(session, client, league_ids, now)
-    except CollectorError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 1
-    except SQLAlchemyError as exc:
-        print(f"error: database error ({type(exc).__name__})", file=sys.stderr)
-        return 1
-    return 0
+GameweekOption = Annotated[int, typer.Option(help="FPL gameweek number.")]
+
+app = typer.Typer(
+    add_completion=False,
+    no_args_is_help=True,
+    help="On-demand FPL collection jobs.",
+)
 
 
-def main(argv: list[str] | None = None) -> int:
-    raw_argv = sys.argv[1:] if argv is None else argv
-    _build_parser().parse_args(raw_argv)  # handles --help/usage errors before Settings()
+def fail(message: str) -> typer.Exit:
+    typer.echo(f"error: {message}", err=True)
+    return typer.Exit(1)
 
+
+def get_deps(ctx: typer.Context) -> Deps:
+    if ctx.obj is None:  # tests inject their own
+        ctx.obj = _deps_from_settings()
+    return ctx.obj
+
+
+def _deps_from_settings() -> Deps:
     logging.basicConfig(level=logging.INFO)
     try:
         settings = load_settings()
     except CollectorError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 1
-    engine = make_engine(settings.database_url)
-    client = FplClient()
-    now = datetime.now(UTC)
-    return run_command(
-        raw_argv,
-        engine=engine,
-        client=client,
+        raise fail(str(exc)) from None
+    return Deps(
+        engine=make_engine(settings.database_url),
+        client=FplClient(),
         league_ids_raw=settings.fpl_league_ids,
-        now=now,
+        now=datetime.now(UTC),
     )
+
+
+# One transaction per command: a failure anywhere leaves the database as it was.
+@contextmanager
+def transaction(deps: Deps) -> Iterator[Session]:
+    try:
+        with Session(deps.engine) as session, session.begin():
+            yield session
+    except CollectorError as exc:
+        raise fail(str(exc)) from None
+    except SQLAlchemyError as exc:
+        raise fail(f"database error ({type(exc).__name__})") from None
+
+
+@app.command(
+    "reference-sync",
+    help="Sync the season, gameweeks, teams, players, fixtures and the flag change log.",
+)
+def reference_sync_command(ctx: typer.Context) -> None:
+    deps = get_deps(ctx)
+    with transaction(deps) as session:
+        season = sync_reference(session, deps.client, deps.now)
+    logger.info("reference sync: season=%s", season)
+
+
+@app.command("deadline-snapshot", help="Capture every player's state before the gameweek deadline.")
+def deadline_snapshot_command(ctx: typer.Context, gameweek: GameweekOption) -> None:
+    deps = get_deps(ctx)
+    with transaction(deps) as session:
+        take_deadline_snapshot(session, deps.client, gameweek, deps.now)
+    logger.info("deadline snapshot: gameweek=%d", gameweek)
+
+
+@app.command(
+    "league-sync",
+    help="Sync the configured leagues' standings, managers and picks for a gameweek.",
+)
+def league_sync_command(ctx: typer.Context, gameweek: GameweekOption) -> None:
+    deps = get_deps(ctx)
+    with transaction(deps) as session:
+        league_ids = parse_league_ids(deps.league_ids_raw)
+        sync_reference(session, deps.client, deps.now)
+        sync_leagues(session, deps.client, league_ids, [gameweek], deps.now)
+
+
+@app.command("results-sync", help="Store the players' results for a finished and checked gameweek.")
+def results_sync_command(ctx: typer.Context, gameweek: GameweekOption) -> None:
+    deps = get_deps(ctx)
+    with transaction(deps) as session:
+        sync_reference(session, deps.client, deps.now)
+        sync_results(session, deps.client, gameweek, deps.now)
+
+
+@app.command(
+    "backfill", help="Fill GW1 to the latest finished gameweek for the configured leagues."
+)
+def backfill_command(ctx: typer.Context) -> None:
+    deps = get_deps(ctx)
+    with transaction(deps) as session:
+        league_ids = parse_league_ids(deps.league_ids_raw)
+        backfill(session, deps.client, league_ids, deps.now)
+
+
+def main() -> None:
+    app(prog_name="python -m app.fpl")

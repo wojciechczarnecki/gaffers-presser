@@ -65,7 +65,7 @@ backend/migrations/{env.py, script.py.mako, versions/0001_collector_schema.py}
 backend/app/core/settings.py         Settings, parse_league_ids, ConfigError
 backend/app/db/engine.py             make_engine(url)
 backend/app/db/upsert.py             upsert(session, model, rows, conflict_cols)
-backend/app/fpl/models.py            SQLModel tables
+backend/app/fpl/models/              SQLModel tables: reference, leagues, snapshots
 backend/app/fpl/schemas.py           pydantic payload models (used fields only)
 backend/app/fpl/client.py            FplClient + errors
 backend/app/fpl/reference.py         reference sync + flag change log
@@ -73,7 +73,7 @@ backend/app/fpl/snapshot.py          deadline snapshot
 backend/app/fpl/leagues.py           league sync
 backend/app/fpl/results.py           results sync
 backend/app/fpl/backfill.py          backfill
-backend/app/fpl/cli.py, __main__.py  argparse CLI
+backend/app/fpl/cli.py, __main__.py  Typer CLI
 backend/tests/conftest.py            postgres container, engine, table truncation
 backend/tests/fpl/fakes.py           FakeFpl (httpx.MockTransport router), synthetic leagues
 backend/tests/fpl/payloads/*.json.gz recorded public payloads
@@ -88,8 +88,8 @@ backend/tests/fpl/payloads/*.json.gz recorded public payloads
   make `INSERT … ON CONFLICT (…) DO UPDATE` the whole idempotency story. `season` is the label
   string (`"2026/27"`), primary key of the `season` table.
 - **Transactions: jobs never commit.** Every job function takes a `Session` and a `now:
-  datetime` (injected clock, so deadline checks are testable); `cli.run_command` opens
-  `with Session(engine) as s, s.begin():` around the whole command. Any exception rolls back
+  datetime` (injected clock, so deadline checks are testable); each CLI command opens
+  `cli.transaction(deps)` — `with Session(engine) as s, s.begin():` — around the whole job. Any exception rolls back
   everything (AC5, AC6, AC22). Rejected: fetch everything first, then write — more code, and
   rollback already gives the guarantee.
 - **Fresh gameweek state.** `league-sync`, `results-sync` and `backfill` run the reference sync
@@ -126,7 +126,7 @@ backend/tests/fpl/payloads/*.json.gz recorded public payloads
   `tests/fpl/fakes.py` with synthetic IDs (league IDs `987654301`, `987654302`; entry IDs from
   `880000001`) and names (`Synthetic Manager 001`, `Synthetic XI 001`).
 
-### Schema (`app/fpl/models.py`)
+### Schema (`app/fpl/models/`)
 
 All datetimes `DateTime(timezone=True)` (set via `sa_type`/`sa_column`); `season` is
 `str` FK → `season.label` on every table.
@@ -168,13 +168,15 @@ def take_deadline_snapshot(session: Session, client: FplClient, gameweek: int, n
 def sync_leagues(session: Session, client: FplClient, league_ids: list[int], gameweeks: list[int], now: datetime) -> None
 def sync_results(session: Session, client: FplClient, gameweek: int, now: datetime) -> None
 def backfill(session: Session, client: FplClient, league_ids: list[int], now: datetime) -> None
-# cli.py
-def run_command(argv: list[str], *, engine: Engine, client: FplClient, league_ids_raw: str, now: datetime) -> int
-def main(argv: list[str] | None = None) -> int   # builds Settings, engine, client; calls run_command
+# cli.py — Typer app; commands read their dependencies from ctx.obj
+class Deps: engine: Engine; client: FplClient; league_ids_raw: str; now: datetime
+def get_deps(ctx: typer.Context) -> Deps           # lazily from Settings unless injected (tests)
+def transaction(deps: Deps) -> ContextManager[Session]
+def main() -> None                                  # app(prog_name="python -m app.fpl")
 ```
 
-A precondition failure raises `JobError(reason)`; `run_command` prints `error: <reason>` to
-stderr and returns `1` for every `CollectorError` — the common base (in
+A precondition failure raises `JobError(reason)`; `transaction` prints `error: <reason>` to
+stderr and exits with `1` for every `CollectorError` — the common base (in
 `app/core/errors.py`, created in step 2) of `JobError`, `ConfigError`, `FplUnavailableError`,
 `FplNotFoundError` and `PayloadError`. An uncaught `FplNotFoundError` (a wrong league ID →
 404 on the standings) would otherwise end in a traceback instead of the one-line error.
@@ -421,11 +423,12 @@ about timing.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_deadline_snapshot.py`
 - [x] 14. CLI with one transaction per command — files: `backend/app/fpl/cli.py`,
       `backend/app/fpl/__main__.py`, `backend/tests/fpl/test_cli.py`.
-      argparse subcommands `reference-sync`, `deadline-snapshot --gameweek N` (the others
-      arrive in steps 17–19); `run_command` as in Approach, one `session.begin()` around the
-      job, `logging.basicConfig(level=INFO)` in `main` only, logs of counts and gameweek
+      Typer commands `reference-sync`, `deadline-snapshot --gameweek N` (the others
+      arrive in steps 17–19); `transaction` as in Approach, one `session.begin()` around the
+      job, `logging.basicConfig(level=INFO)` only when dependencies come from Settings, logs of counts and gameweek
       numbers only (e.g. `"reference sync: season=%s players=%d fixtures=%d"`).
-      Tests (via `run_command` with `db_engine` and `FakeFpl`): `reference-sync` returns 0
+      Tests (via Typer's `CliRunner` with injected `Deps`, `db_engine` and `FakeFpl`):
+      `reference-sync` exits 0
       and stores data; `fixtures/` answering 503 forever (after `bootstrap-static/` succeeded)
       → returns 1, stderr names `fixtures`, every table empty
       (`test_unavailable_api_writes_nothing`); bootstrap missing a used field → returns 1,
@@ -640,6 +643,7 @@ above, and a one-line result under Definition of Done.
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-27 — after the PR opened — the CLI stays as a permanent operations tool, so it moves from `argparse` to Typer (new dependency `typer`, which brings `rich`); `app/fpl/models.py` becomes the package `app/fpl/models/` split by subdomain (`reference`, `leagues`, `snapshots`). Recorded in DECISIONS by editing this PR's CLI row and adding a layout row.
 - 2026-09-26 — final review — which findings to fix? — Accepted `blocker` and `worth-fixing`: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12 (no blockers were reported). Rejected all `nit`: F13, F14, F15, F16, F17 and the 29 nits left out of the table.
 
 ## Review log

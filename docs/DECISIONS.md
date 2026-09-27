@@ -2,6 +2,8 @@
 
 Binding architectural and process decisions. Append rows at the end (append-only) — then
 parallel lanes merge trivially. Record a decision in the same PR in which it takes effect.
+A row added by a PR that is not merged yet is edited in place when that PR changes its mind;
+once a row is on `main`, a change is a new row that names the one it supersedes.
 
 | Date | Decision | Rejected alternatives | Rationale |
 |---|---|---|---|
@@ -27,5 +29,6 @@ parallel lanes merge trivially. Record a decision in the same PR in which it tak
 | 2026-09-26 | FPL entities are keyed by (season, FPL ID) | FPL ID alone | FPL IDs reset every July |
 | 2026-09-26 | FPL flags are kept as a change log (a baseline row plus a row on each change) with a full player snapshot per deadline; raw FPL payloads are archived only at deadline snapshots and results syncs | fixed snapshots only; archiving every response | an exact flag timeline to compare leaks against; raw data survives the season reset at a few MB per gameweek |
 | 2026-09-26 | Collector tables use composite natural primary keys `(season, FPL ID)` (and `(season, entry_id)`, `(season, league_fpl_id, …)`) | a surrogate `id` plus a unique `(season, FPL ID)` | `INSERT … ON CONFLICT` on the natural key gives the whole idempotency story for free; no FPL-ID → surrogate lookup on every write |
-| 2026-09-26 | Collector jobs never commit; the CLI opens one transaction per command around the whole job | jobs that fetch everything then write; per-step commits | a failure anywhere, including on the last manager of a league, leaves the database exactly as it was before the job (rollback gives this for free) |
+| 2026-09-26 | Collector jobs never commit; a Typer CLI (`python -m app.fpl`), kept for manual operations beside the spec 002 worker, opens one transaction per command around the whole job | jobs that fetch everything then write; per-step commits; an `argparse` CLI | a failure anywhere, including on the last manager of a league, leaves the database exactly as it was before the job (rollback gives this for free); the CLI is permanent, so typed options and generated help are worth one dependency |
 | 2026-09-26 | League standings are stored under the latest gameweek whose deadline has passed at sync time, because the FPL API only returns the current table | reconstructing historical standings; skipping standings entirely | exact per-gameweek points, totals and overall rank for every past gameweek come from each manager's picks endpoint (`manager_gameweek`) instead |
+| 2026-09-27 | Code is organised by business module (`app/fpl`, later `app/leaks`, `app/presser`…), each holding its own tables, payload schemas and jobs; a file that outgrows one subdomain becomes a package split by subdomain (e.g. `app/fpl/models/` with `reference`, `leagues`, `snapshots`) that re-exports its names | global `models/`, `schemas/`, `services/` layers; one file per class | a feature lives in one directory and parallel lanes rarely touch the same files; subdomain files keep related tables together without a file per class |

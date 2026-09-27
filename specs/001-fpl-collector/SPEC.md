@@ -227,7 +227,7 @@ Backfill, idempotency, privacy
 | Raw payload archive at key moments only (`bootstrap-static` at a deadline snapshot; `fixtures` and `live` at a results sync) | every response; none | survives the July reset and lets us derive fields we do not model today (e.g. xG for the presser) for about 40 × 2 MB per season; archiving every hourly poll would take several GB per season |
 | Database tests on testcontainers | Compose for tests + a service container in CI | `verify.command` stays self-contained for autonomous agents and parallel worktrees; one definition of the test database; no risk of hitting the dev database. Compose remains the development database |
 | Entities keyed by (season, FPL ID) | FPL ID alone | FPL IDs reset every season |
-| HTTP stubbed with `httpx.MockTransport`; CLI on `argparse` | respx; Typer | no extra dependencies for what the standard tools already do |
+| HTTP stubbed with `httpx.MockTransport`; CLI on Typer | respx; `argparse` | `MockTransport` needs no extra dependency; the CLI stays as the manual operations tool beside the spec 002 worker, so typed options and generated help are worth one dependency (owner, 2026-09-27) |
 | Ground truth only after `data_checked` | provisional data after `finished` | bonus points are final only after the check; settling leaks and the presser need final numbers |
 
 ## Owner decisions

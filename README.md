@@ -58,6 +58,7 @@ cp backend/.env.example backend/.env   # fill FPL_LEAGUE_IDS with your classic l
 docker compose up -d                   # PostgreSQL 16 with pgvector
 cd backend && uv run alembic upgrade head
 
+uv run python -m app.fpl --help                 # commands and options
 uv run python -m app.fpl reference-sync
 uv run python -m app.fpl deadline-snapshot --gameweek N
 uv run python -m app.fpl league-sync --gameweek N

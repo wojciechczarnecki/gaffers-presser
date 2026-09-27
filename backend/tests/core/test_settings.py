@@ -63,16 +63,39 @@ def test_database_url_not_read_by_tests():
     assert set(hits) <= allowed
 
 
-def test_missing_database_url_is_a_clean_error(monkeypatch, tmp_path, capsys):
-    from app.fpl.cli import main
+def test_missing_database_url_is_a_clean_error(monkeypatch, tmp_path):
+    from typer.testing import CliRunner
+
+    from app.fpl.cli import app
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("FPL_LEAGUE_IDS", "987654301")
 
-    code = main(["league-sync", "--gameweek", "1"])
+    result = CliRunner().invoke(app, ["league-sync", "--gameweek", "1"])
 
-    assert code == 1
-    err = capsys.readouterr().err
-    assert err.strip() == "error: DATABASE_URL must be set"
-    assert "987654301" not in err
+    assert result.exit_code == 1
+    assert result.stderr.strip() == "error: DATABASE_URL must be set"
+    assert "987654301" not in result.stderr
+
+
+def test_help_and_usage_errors_need_no_settings(monkeypatch, tmp_path):
+    from typer.testing import CliRunner
+
+    from app.fpl.cli import app
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["--help"])
+    assert result.exit_code == 0
+    commands = ("reference-sync", "deadline-snapshot", "league-sync", "results-sync", "backfill")
+    for command in commands:
+        assert command in result.stdout
+
+    assert runner.invoke(app, ["league-sync", "--help"]).exit_code == 0
+
+    result = runner.invoke(app, ["league-sync"])
+    assert result.exit_code == 2
+    assert "DATABASE_URL" not in result.stderr
