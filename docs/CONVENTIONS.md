@@ -23,6 +23,8 @@ this document holds the details.
   when rendering content.
 - Logs never carry manager names, league IDs, e-mail addresses or credentials.
 - Comments only where the code cannot express a constraint.
+- Layout: one directory per business module under `app/`; inside it, split a growing file into
+  a package by subdomain, never one file per class (see DECISIONS, 2026-09-27).
 
 ## User-facing text
 
