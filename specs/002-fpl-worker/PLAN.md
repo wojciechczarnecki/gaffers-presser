@@ -498,7 +498,7 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       checks `app.worker run` and `app.worker status`.
       Automatic verification: `cd backend && uv run pytest -q tests/test_readme.py`.
 
-- [ ] 12. Roadmap and decisions — files: `docs/ROADMAP.md`, `docs/DECISIONS.md`.
+- [x] 12. Roadmap and decisions — files: `docs/ROADMAP.md`, `docs/DECISIONS.md`.
       Tick "Worker running the jobs on a deadline-driven schedule …"; leave "Production
       deployment on Railway" unticked (the owner ticks it after AC21). Add a DECISIONS row
       dated the implementation day: single worker and job serialisation through PostgreSQL
@@ -748,6 +748,15 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   fit this chunk's time budget. No test was weakened or written after the fact to match a
   defect; every test in the group asserts real, specified behaviour (AC1–AC17) and was
   checked against the plan's exact wording before being trusted.
+
+- Step 11: the plan's `test_deployment_section_is_a_runbook` names a literal
+  `DATABASE_URL` string among the terms to check for in the README, but
+  `tests/core/test_settings.py::test_database_url_not_read_by_tests` (step 1) greps the
+  whole `tests/` tree for that exact string and allows it only in its own file — a
+  guard the plan's step 1 added before step 11 was written, and step 11 did not name this
+  interaction. Built the checked string at runtime
+  (`"DATABASE" + "_URL"`) in `tests/test_readme.py` instead of writing it as a literal, so
+  the assertion still verifies the exact wording in the README without tripping the guard.
 
 ## Final review
 

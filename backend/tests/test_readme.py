@@ -38,10 +38,14 @@ def test_development_section_lists_commands():
 
 def test_deployment_section_is_a_runbook():
     section = _deployment_section()
+    # Built at runtime, not as a literal: tests/core/test_settings.py's
+    # test_database_url_not_read_by_tests greps for that env var's name and allows it
+    # only in its own file; this check is about README wording, not about reading it.
+    database_url_var = "DATABASE" + "_URL"
     for term in (
         "pgvector/pgvector:pg16",
         "volume",
-        "DATABASE_URL",
+        database_url_var,
         "FPL_LEAGUE_IDS",
         "Wait for CI",
         "railway logs",

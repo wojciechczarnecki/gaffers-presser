@@ -13,7 +13,7 @@ and each LLM step that produces data has an evaluation set with recorded results
       (standings, managers, picks, transfers, chips); deadline snapshots; post-gameweek
       ground truth (starts, minutes, points) — on-demand CLI jobs and a backfill
       (spec: [001](../specs/001-fpl-collector/SPEC.md))
-- [ ] Worker running the jobs on a deadline-driven schedule, with a job run log, catch-up on
+- [x] Worker running the jobs on a deadline-driven schedule, with a job run log, catch-up on
       start, a container image and Railway configuration
       (spec: [002](../specs/002-fpl-worker/SPEC.md))
 - [ ] Production deployment on Railway: the owner follows the runbook and confirms the
