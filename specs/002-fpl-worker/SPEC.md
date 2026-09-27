@@ -193,6 +193,9 @@ Deployment
 - Migrations in production through the Railway pre-deploy command, on deploys the owner
   triggers — accepted.
 - Auto-deploy from `main` with "Wait for CI" — accepted.
+- Deployment deferred to about 2026-10-04 (Railway plan). The PR is merged without a
+  deploy. The roadmap item "Worker …" is ticked when the PR is done; the item "Production
+  deployment on Railway" is ticked by the owner after AC21 passes on the first deploy.
 - Production database from `pgvector/pgvector:pg16` with a volume — accepted.
 - New dependencies: none — accepted.
 
