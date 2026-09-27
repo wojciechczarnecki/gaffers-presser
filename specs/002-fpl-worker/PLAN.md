@@ -313,7 +313,7 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       seasons and both outcomes → the right latest and latest-success records.
       Automatic verification: `cd backend && uv run pytest -q tests/worker/test_store.py`.
 
-- [ ] 7. Worker loop and the simulated schedule — files: `backend/app/worker/loop.py`,
+- [x] 7. Worker loop and the simulated schedule — files: `backend/app/worker/loop.py`,
       `backend/tests/worker/sim.py`, `backend/tests/worker/test_loop.py`.
       `loop.py`: `Shutdown` imported from `jobs.py`; `Clock` protocol (`now() -> datetime`,
       `sleep(seconds: float) -> None`); `SystemClock`; `Worker(engine, client, league_ids,
