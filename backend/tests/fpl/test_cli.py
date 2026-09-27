@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -25,6 +26,11 @@ LEAGUE_1 = 987654301
 def invoke(args, *, engine, client, league_ids_raw, now):
     deps = Deps(engine=engine, client=client, league_ids_raw=league_ids_raw, now=now)
     return CliRunner().invoke(app, args, obj=deps)
+
+
+def plain(text):
+    # Typer forces Rich styling on GitHub Actions
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
 
 
 def _all_tables_empty(engine) -> bool:
@@ -342,7 +348,7 @@ def test_missing_option_is_a_usage_error(db):
     client = FakeFpl({}).client(sleep=lambda _: None)
     result = invoke(["league-sync"], engine=db, client=client, league_ids_raw="", now=NOW)
     assert result.exit_code == 2
-    assert "Missing option '--gameweek'" in result.stderr
+    assert "Missing option '--gameweek'" in plain(result.stderr)
     assert _all_tables_empty(db)
 
 
@@ -350,4 +356,4 @@ def test_unknown_command_is_a_usage_error(db):
     client = FakeFpl({}).client(sleep=lambda _: None)
     result = invoke(["no-such-job"], engine=db, client=client, league_ids_raw="", now=NOW)
     assert result.exit_code == 2
-    assert "no-such-job" in result.stderr
+    assert "no-such-job" in plain(result.stderr)
