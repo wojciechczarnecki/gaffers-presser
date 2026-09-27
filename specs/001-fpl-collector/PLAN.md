@@ -430,11 +430,11 @@ about timing.
       Tests (via Typer's `CliRunner` with injected `Deps`, `db_engine` and `FakeFpl`):
       `reference-sync` exits 0
       and stores data; `fixtures/` answering 503 forever (after `bootstrap-static/` succeeded)
-      → returns 1, stderr names `fixtures`, every table empty
-      (`test_unavailable_api_writes_nothing`); bootstrap missing a used field → returns 1,
+      → exits 1, stderr names `fixtures`, every table empty
+      (`test_unavailable_api_writes_nothing`); bootstrap missing a used field → exits 1,
       stderr names endpoint and field, tables empty (`test_payload_error_writes_nothing`);
-      `deadline-snapshot` at the deadline → returns 1, stderr names the reason, tables empty;
-      `bootstrap-static/` answering 404 → returns 1 with a one-line `error:` on stderr, no
+      `deadline-snapshot` at the deadline → exits 1, stderr names the reason, tables empty;
+      `bootstrap-static/` answering 404 → exits 1 with a one-line `error:` on stderr, no
       traceback (`test_not_found_is_a_clean_error`).
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_cli.py && uv run python -m app.fpl --help`
 
@@ -473,10 +473,10 @@ about timing.
       requested gameweek has `deadline_at > now`. CLI `league-sync --gameweek N`:
       `parse_league_ids(league_ids_raw)` first (before any request), then `sync_reference`,
       then `sync_leagues(..., [N], now)`.
-      Tests: before-deadline raises (`test_before_deadline_fails`) and via CLI returns 1 with
-      tables empty; `FPL_LEAGUE_IDS` empty / `"1,abc"` → returns 1, stderr contains
+      Tests: before-deadline raises (`test_before_deadline_fails`) and via CLI exits 1 with
+      tables empty; `FPL_LEAGUE_IDS` empty / `"1,abc"` → exits 1, stderr contains
       `FPL_LEAGUE_IDS`, no request made; the last manager's `transfers/` answering 503 forever
-      → returns 1, every table empty (`test_failure_on_last_manager_rolls_back`);
+      → exits 1, every table empty (`test_failure_on_last_manager_rolls_back`);
       `caplog.set_level(logging.DEBUG)` during a successful CLI league sync: `caplog.text`
       contains the job's summary line (positive control — the capture is live) and none of the
       synthetic manager names, team names, league IDs, entry IDs
@@ -500,7 +500,7 @@ about timing.
       live element given two `explain` entries and summed stats, with two GW1 fixtures for its
       team in a modified fixtures payload) stores the summed stats and both explain entries;
       a gameweek not finished, and finished but not checked, raise `JobError`; CLI
-      `results-sync` for such a gameweek returns 1 with tables empty;
+      `results-sync` for such a gameweek exits 1 with tables empty;
       `test_rerun_is_idempotent` (archive +2 allowed).
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_results_sync.py tests/fpl/test_cli.py`
 - [x] 19. Backfill — files: `backend/app/fpl/backfill.py`, `backend/app/fpl/cli.py`,
@@ -513,7 +513,7 @@ about timing.
       `now` between the GW3 and GW4 deadlines, live GW1–3, a synthetic league of 3 managers.
       Tests: `manager_gameweek`, `manager_pick` and `player_gameweek_result` hold rows for
       gameweeks 1, 2 and 3 only; `deadline_snapshot_player` empty; `raw_payload` has 6 rows;
-      bad `FPL_LEAGUE_IDS` → returns 1 naming the variable; `test_rerun_is_idempotent`
+      bad `FPL_LEAGUE_IDS` → exits 1 naming the variable; `test_rerun_is_idempotent`
       (archive +6 allowed).
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_backfill.py tests/fpl/test_cli.py`
 - [x] 20. Documentation — files: `README.md`, `docs/DECISIONS.md`, `docs/ROADMAP.md`,
@@ -577,7 +577,7 @@ No steps added (the one finding was rejected), so no second pass is needed.
   than storing orphan rows.
 - **Privacy in logs:** never log paths, URLs, league IDs, entry IDs or names; `httpx` INFO
   logging is silenced at client import. Exceptions carry endpoint templates only.
-- **Time:** every `now` is injected (`datetime.now(UTC)` only in `cli.main`); comparing aware
+- **Time:** every `now` is injected (`datetime.now(UTC)` only where `cli.get_deps` builds `Deps` from Settings); comparing aware
   and naive datetimes raises — the schema test and `AwareDatetime` catch it early.
 - **Idempotency of replaced sets:** picks and auto subs are replaced per
   `(entry, gameweek)`, the snapshot per gameweek; transfers and chips are upserted on natural

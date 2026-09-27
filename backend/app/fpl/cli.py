@@ -13,7 +13,7 @@ from sqlmodel import Session
 from app.core.errors import CollectorError
 from app.core.settings import load_settings, parse_league_ids
 from app.db.engine import make_engine
-from app.fpl.backfill import backfill
+from app.fpl.backfill import backfill as run_backfill
 from app.fpl.client import FplClient
 from app.fpl.leagues import sync_leagues
 from app.fpl.reference import sync_reference
@@ -31,7 +31,7 @@ class Deps:
     now: datetime
 
 
-GameweekOption = Annotated[int, typer.Option(help="FPL gameweek number.")]
+GameweekOption = Annotated[int, typer.Option(min=1, max=38, help="FPL gameweek number.")]
 
 app = typer.Typer(
     add_completion=False,
@@ -77,30 +77,24 @@ def transaction(deps: Deps) -> Iterator[Session]:
         raise fail(f"database error ({type(exc).__name__})") from None
 
 
-@app.command(
-    "reference-sync",
-    help="Sync the season, gameweeks, teams, players, fixtures and the flag change log.",
-)
-def reference_sync_command(ctx: typer.Context) -> None:
+@app.command(help="Sync the season, gameweeks, teams, players, fixtures and the flag change log.")
+def reference_sync(ctx: typer.Context) -> None:
     deps = get_deps(ctx)
     with transaction(deps) as session:
         season = sync_reference(session, deps.client, deps.now)
     logger.info("reference sync: season=%s", season)
 
 
-@app.command("deadline-snapshot", help="Capture every player's state before the gameweek deadline.")
-def deadline_snapshot_command(ctx: typer.Context, gameweek: GameweekOption) -> None:
+@app.command(help="Capture every player's state before the gameweek deadline.")
+def deadline_snapshot(ctx: typer.Context, gameweek: GameweekOption) -> None:
     deps = get_deps(ctx)
     with transaction(deps) as session:
         take_deadline_snapshot(session, deps.client, gameweek, deps.now)
     logger.info("deadline snapshot: gameweek=%d", gameweek)
 
 
-@app.command(
-    "league-sync",
-    help="Sync the configured leagues' standings, managers and picks for a gameweek.",
-)
-def league_sync_command(ctx: typer.Context, gameweek: GameweekOption) -> None:
+@app.command(help="Sync the configured leagues' standings, managers and picks for a gameweek.")
+def league_sync(ctx: typer.Context, gameweek: GameweekOption) -> None:
     deps = get_deps(ctx)
     with transaction(deps) as session:
         league_ids = parse_league_ids(deps.league_ids_raw)
@@ -108,22 +102,20 @@ def league_sync_command(ctx: typer.Context, gameweek: GameweekOption) -> None:
         sync_leagues(session, deps.client, league_ids, [gameweek], deps.now)
 
 
-@app.command("results-sync", help="Store the players' results for a finished and checked gameweek.")
-def results_sync_command(ctx: typer.Context, gameweek: GameweekOption) -> None:
+@app.command(help="Store the players' results for a finished and checked gameweek.")
+def results_sync(ctx: typer.Context, gameweek: GameweekOption) -> None:
     deps = get_deps(ctx)
     with transaction(deps) as session:
         sync_reference(session, deps.client, deps.now)
         sync_results(session, deps.client, gameweek, deps.now)
 
 
-@app.command(
-    "backfill", help="Fill GW1 to the latest finished gameweek for the configured leagues."
-)
-def backfill_command(ctx: typer.Context) -> None:
+@app.command(help="Fill GW1 to the latest finished gameweek for the configured leagues.")
+def backfill(ctx: typer.Context) -> None:
     deps = get_deps(ctx)
     with transaction(deps) as session:
         league_ids = parse_league_ids(deps.league_ids_raw)
-        backfill(session, deps.client, league_ids, deps.now)
+        run_backfill(session, deps.client, league_ids, deps.now)
 
 
 def main() -> None:

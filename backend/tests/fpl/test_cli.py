@@ -3,6 +3,7 @@ import re
 from datetime import UTC, datetime, timedelta
 
 import httpx
+import pytest
 from sqlmodel import Session, select
 from typer.testing import CliRunner
 
@@ -23,9 +24,13 @@ NOW = datetime(2026, 9, 26, tzinfo=UTC)
 LEAGUE_1 = 987654301
 
 
-def invoke(args, *, engine, client, league_ids_raw, now):
-    deps = Deps(engine=engine, client=client, league_ids_raw=league_ids_raw, now=now)
-    return CliRunner().invoke(app, args, obj=deps)
+@pytest.fixture
+def cli(db):
+    def invoke(*args, client, league_ids_raw="", now=NOW):
+        deps = Deps(engine=db, client=client, league_ids_raw=league_ids_raw, now=now)
+        return CliRunner().invoke(app, list(args), obj=deps)
+
+    return invoke
 
 
 def plain(text):
@@ -44,16 +49,16 @@ def _all_tables_empty(engine) -> bool:
     return True
 
 
-def test_reference_sync_returns_zero_and_stores_data(db):
+def test_reference_sync_stores_data(cli, db):
     fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
     client = fake.client(sleep=lambda _: None)
-    result = invoke(["reference-sync"], engine=db, client=client, league_ids_raw="", now=NOW)
+    result = cli("reference-sync", client=client)
     assert result.exit_code == 0
     with Session(db) as session:
         assert len(session.exec(select(Gameweek)).all()) == 38
 
 
-def test_unavailable_api_writes_nothing(db):
+def test_unavailable_api_writes_nothing(cli, db):
     fake = FakeFpl(
         {
             "bootstrap-static/": load("bootstrap-static"),
@@ -61,18 +66,18 @@ def test_unavailable_api_writes_nothing(db):
         }
     )
     client = fake.client(sleep=lambda _: None)
-    result = invoke(["reference-sync"], engine=db, client=client, league_ids_raw="", now=NOW)
+    result = cli("reference-sync", client=client)
     assert result.exit_code == 1
     assert "fixtures" in result.stderr
     assert _all_tables_empty(db)
 
 
-def test_payload_error_writes_nothing(db):
+def test_payload_error_writes_nothing(cli, db):
     bad_bootstrap = load("bootstrap-static")
     del bad_bootstrap["elements"][0]["status"]
     fake = FakeFpl({"bootstrap-static/": bad_bootstrap, "fixtures/": load("fixtures")})
     client = fake.client(sleep=lambda _: None)
-    result = invoke(["reference-sync"], engine=db, client=client, league_ids_raw="", now=NOW)
+    result = cli("reference-sync", client=client)
     assert result.exit_code == 1
     err = result.stderr
     assert "bootstrap-static" in err
@@ -80,16 +85,10 @@ def test_payload_error_writes_nothing(db):
     assert _all_tables_empty(db)
 
 
-def test_deadline_snapshot_at_deadline_writes_nothing(db):
+def test_deadline_snapshot_at_deadline_writes_nothing(cli, db):
     fake = FakeFpl({"bootstrap-static/": load("bootstrap-static")})
     client = fake.client(sleep=lambda _: None)
-    result = invoke(
-        ["deadline-snapshot", "--gameweek", "1"],
-        engine=db,
-        client=client,
-        league_ids_raw="",
-        now=NOW,
-    )
+    result = cli("deadline-snapshot", "--gameweek", "1", client=client)
     assert result.exit_code == 1
     assert "gameweek 1" in result.stderr
     assert _all_tables_empty(db)
@@ -100,22 +99,16 @@ def _player_ids(n: int = 15) -> list[int]:
     return [e["id"] for e in payload["elements"][:n]]
 
 
-def test_league_sync_rejects_bad_league_ids(db):
+def test_league_sync_rejects_bad_league_ids(cli):
     fake = FakeFpl({})
     client = fake.client(sleep=lambda _: None)
-    result = invoke(
-        ["league-sync", "--gameweek", "1"],
-        engine=db,
-        client=client,
-        league_ids_raw="1,abc",
-        now=NOW,
-    )
+    result = cli("league-sync", "--gameweek", "1", client=client, league_ids_raw="1, abc")
     assert result.exit_code == 1
     assert "FPL_LEAGUE_IDS" in result.stderr
     assert fake.requests == []
 
 
-def test_league_sync_before_deadline_writes_nothing(db):
+def test_league_sync_before_deadline_writes_nothing(cli, db):
     with Session(db) as session:
         apply_bootstrap(session, Bootstrap.model_validate(load("bootstrap-static")), NOW)
         session.commit()
@@ -129,20 +122,14 @@ def test_league_sync_before_deadline_writes_nothing(db):
     with Session(db) as session:
         before = table_contents(session)
 
-    result = invoke(
-        ["league-sync", "--gameweek", "6"],
-        engine=db,
-        client=client,
-        league_ids_raw=str(LEAGUE_1),
-        now=NOW,
-    )
+    result = cli("league-sync", "--gameweek", "6", client=client, league_ids_raw=str(LEAGUE_1))
     assert result.exit_code == 1
     assert "gameweek 6 deadline has not passed" in result.stderr
     with Session(db) as session:
         assert table_contents(session) == before
 
 
-def test_failure_on_last_manager_rolls_back(db):
+def test_failure_on_last_manager_rolls_back(cli, db):
     entry_ids = [880000001, 880000002]
     routes = synthetic_league(LEAGUE_1, entry_ids, gameweeks=[1], player_ids=_player_ids())
     routes["entry/880000002/transfers/"] = lambda request: httpx.Response(503)
@@ -151,18 +138,12 @@ def test_failure_on_last_manager_rolls_back(db):
     )
     client = fake.client(sleep=lambda _: None, max_attempts=1)
 
-    result = invoke(
-        ["league-sync", "--gameweek", "1"],
-        engine=db,
-        client=client,
-        league_ids_raw=str(LEAGUE_1),
-        now=NOW,
-    )
+    result = cli("league-sync", "--gameweek", "1", client=client, league_ids_raw=str(LEAGUE_1))
     assert result.exit_code == 1
     assert _all_tables_empty(db)
 
 
-def test_logs_carry_no_private_data(db, caplog):
+def test_logs_carry_no_private_data(cli, caplog):
     entry_ids = [880000001, 880000002]
     routes = synthetic_league(LEAGUE_1, entry_ids, gameweeks=[1], player_ids=_player_ids())
     fake = FakeFpl(
@@ -171,13 +152,7 @@ def test_logs_carry_no_private_data(db, caplog):
     client = fake.client(sleep=lambda _: None)
 
     with caplog.at_level(logging.DEBUG):
-        result = invoke(
-            ["league-sync", "--gameweek", "1"],
-            engine=db,
-            client=client,
-            league_ids_raw=str(LEAGUE_1),
-            now=NOW,
-        )
+        result = cli("league-sync", "--gameweek", "1", client=client, league_ids_raw=str(LEAGUE_1))
     assert result.exit_code == 0
     assert "league sync:" in caplog.text
     assert str(LEAGUE_1) not in caplog.text
@@ -187,7 +162,7 @@ def test_logs_carry_no_private_data(db, caplog):
         assert f"Synthetic XI {entry_id}" not in caplog.text
 
 
-def test_results_sync_unchecked_gameweek_writes_nothing(db):
+def test_results_sync_unchecked_gameweek_writes_nothing(cli, db):
     fake = FakeFpl(
         {
             "bootstrap-static/": load("bootstrap-static"),
@@ -196,34 +171,32 @@ def test_results_sync_unchecked_gameweek_writes_nothing(db):
         }
     )
     client = fake.client(sleep=lambda _: None)
-    result = invoke(
-        ["results-sync", "--gameweek", "30"], engine=db, client=client, league_ids_raw="", now=NOW
-    )
+    result = cli("results-sync", "--gameweek", "30", client=client)
     assert result.exit_code == 1
     assert "gameweek 30" in result.stderr
     assert _all_tables_empty(db)
 
 
-def test_backfill_rejects_bad_league_ids(db):
+def test_backfill_rejects_bad_league_ids(cli):
     fake = FakeFpl({})
     client = fake.client(sleep=lambda _: None)
-    result = invoke(["backfill"], engine=db, client=client, league_ids_raw="", now=NOW)
+    result = cli("backfill", client=client)
     assert result.exit_code == 1
     assert "FPL_LEAGUE_IDS" in result.stderr
     assert fake.requests == []
 
 
-def test_not_found_is_a_clean_error(db):
+def test_not_found_is_a_clean_error(cli):
     fake = FakeFpl({"bootstrap-static/": httpx.Response(404)})
     client = fake.client(sleep=lambda _: None)
-    result = invoke(["reference-sync"], engine=db, client=client, league_ids_raw="", now=NOW)
+    result = cli("reference-sync", client=client)
     assert result.exit_code == 1
     err = result.stderr
     assert err.startswith("error:")
     assert "Traceback" not in err
 
 
-def test_database_error_is_a_clean_error_without_private_data(db):
+def test_database_error_is_a_clean_error_without_private_data(cli, db):
     entry_ids = [880000001]
     routes = synthetic_league(LEAGUE_1, entry_ids, gameweeks=[1], player_ids=[99999999])
     fake = FakeFpl(
@@ -231,13 +204,7 @@ def test_database_error_is_a_clean_error_without_private_data(db):
     )
     client = fake.client(sleep=lambda _: None)
 
-    result = invoke(
-        ["league-sync", "--gameweek", "1"],
-        engine=db,
-        client=client,
-        league_ids_raw=str(LEAGUE_1),
-        now=NOW,
-    )
+    result = cli("league-sync", "--gameweek", "1", client=client, league_ids_raw=str(LEAGUE_1))
 
     assert result.exit_code == 1
     err = result.stderr
@@ -252,16 +219,10 @@ def test_engine_hides_statement_parameters(db):
     assert db.hide_parameters is True
 
 
-def test_standings_not_found_is_a_clean_error_without_league_id(db):
+def test_standings_not_found_is_a_clean_error_without_league_id(cli, db):
     fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
     client = fake.client(sleep=lambda _: None)
-    result = invoke(
-        ["league-sync", "--gameweek", "1"],
-        engine=db,
-        client=client,
-        league_ids_raw=str(LEAGUE_1),
-        now=NOW,
-    )
+    result = cli("league-sync", "--gameweek", "1", client=client, league_ids_raw=str(LEAGUE_1))
     assert result.exit_code == 1
     err = result.stderr
     assert err.startswith("error: leagues-classic/{league_id}/standings")
@@ -269,16 +230,10 @@ def test_standings_not_found_is_a_clean_error_without_league_id(db):
     assert _all_tables_empty(db)
 
 
-def test_deadline_snapshot_succeeds(db):
+def test_deadline_snapshot_succeeds(cli, db):
     bootstrap = load("bootstrap-static")
     client = FakeFpl({"bootstrap-static/": bootstrap}).client(sleep=lambda _: None)
-    result = invoke(
-        ["deadline-snapshot", "--gameweek", "6"],
-        engine=db,
-        client=client,
-        league_ids_raw="",
-        now=NOW,
-    )
+    result = cli("deadline-snapshot", "--gameweek", "6", client=client)
     assert result.exit_code == 0
     with Session(db) as session:
         rows = session.exec(select(DeadlineSnapshotPlayer)).all()
@@ -287,7 +242,7 @@ def test_deadline_snapshot_succeeds(db):
         assert len(session.exec(select(RawPayload)).all()) == 1
 
 
-def test_results_sync_succeeds(db):
+def test_results_sync_succeeds(cli, db):
     live = load("event-1-live")
     fake = FakeFpl(
         {
@@ -296,13 +251,7 @@ def test_results_sync_succeeds(db):
             "event/1/live/": live,
         }
     )
-    result = invoke(
-        ["results-sync", "--gameweek", "1"],
-        engine=db,
-        client=fake.client(sleep=lambda _: None),
-        league_ids_raw="",
-        now=NOW,
-    )
+    result = cli("results-sync", "--gameweek", "1", client=fake.client(sleep=lambda _: None))
     assert result.exit_code == 0
     with Session(db) as session:
         rows = session.exec(select(PlayerGameweekResult)).all()
@@ -312,7 +261,7 @@ def test_results_sync_succeeds(db):
         assert endpoints == {"event/1/live", "fixtures"}
 
 
-def test_backfill_succeeds(db):
+def test_backfill_succeeds(cli, db):
     bootstrap = load("bootstrap-static")
     for event in bootstrap["events"]:
         if event["id"] >= 2:
@@ -329,12 +278,8 @@ def test_backfill_succeeds(db):
             **routes,
         }
     )
-    result = invoke(
-        ["backfill"],
-        engine=db,
-        client=fake.client(sleep=lambda _: None),
-        league_ids_raw=str(LEAGUE_1),
-        now=now,
+    result = cli(
+        "backfill", client=fake.client(sleep=lambda _: None), league_ids_raw=str(LEAGUE_1), now=now
     )
     assert result.exit_code == 0
     with Session(db) as session:
@@ -344,16 +289,19 @@ def test_backfill_succeeds(db):
         assert results == {1}
 
 
-def test_missing_option_is_a_usage_error(db):
-    client = FakeFpl({}).client(sleep=lambda _: None)
-    result = invoke(["league-sync"], engine=db, client=client, league_ids_raw="", now=NOW)
+def test_missing_option_is_a_usage_error():
+    result = CliRunner().invoke(app, ["league-sync"])
     assert result.exit_code == 2
     assert "Missing option '--gameweek'" in plain(result.stderr)
-    assert _all_tables_empty(db)
 
 
-def test_unknown_command_is_a_usage_error(db):
-    client = FakeFpl({}).client(sleep=lambda _: None)
-    result = invoke(["no-such-job"], engine=db, client=client, league_ids_raw="", now=NOW)
+def test_gameweek_out_of_range_is_a_usage_error():
+    result = CliRunner().invoke(app, ["results-sync", "--gameweek", "39"])
+    assert result.exit_code == 2
+    assert "39 is not in the range 1<=x<=38" in plain(result.stderr)
+
+
+def test_unknown_command_is_a_usage_error():
+    result = CliRunner().invoke(app, ["no-such-job"])
     assert result.exit_code == 2
     assert "no-such-job" in plain(result.stderr)

@@ -2,9 +2,11 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from typer.testing import CliRunner
 
 from app.core.errors import ConfigError
 from app.core.settings import Settings, parse_league_ids
+from app.fpl.cli import app
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -64,10 +66,6 @@ def test_database_url_not_read_by_tests():
 
 
 def test_missing_database_url_is_a_clean_error(monkeypatch, tmp_path):
-    from typer.testing import CliRunner
-
-    from app.fpl.cli import app
-
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("FPL_LEAGUE_IDS", "987654301")
@@ -80,10 +78,6 @@ def test_missing_database_url_is_a_clean_error(monkeypatch, tmp_path):
 
 
 def test_help_and_usage_errors_need_no_settings(monkeypatch, tmp_path):
-    from typer.testing import CliRunner
-
-    from app.fpl.cli import app
-
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("DATABASE_URL", raising=False)
     runner = CliRunner()
