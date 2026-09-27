@@ -3,6 +3,9 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-09-27"
   - "spec-ready — 2026-09-27"
+metrics:
+  started_at: 2026-09-27T21:15
+  escalations: 0
 ---
 
 # SPEC 002 — FPL worker (deadline-driven schedule and Railway deployment)
