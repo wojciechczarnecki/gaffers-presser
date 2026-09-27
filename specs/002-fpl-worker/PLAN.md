@@ -272,7 +272,7 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       reference sync, due now).
       Automatic verification: `cd backend && uv run pytest -q tests/worker/test_schedule.py`.
 
-- [ ] 5. Job runner — files: `backend/app/worker/jobs.py`,
+- [x] 5. Job runner — files: `backend/app/worker/jobs.py`,
       `backend/tests/worker/test_jobs.py`.
       `class Shutdown(BaseException)` lives here (step 7 imports it).
       `run_job(engine, client, league_ids, action, now_fn, stop_event) -> RunRecord`: logs
