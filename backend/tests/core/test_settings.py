@@ -10,6 +10,7 @@ from typer.testing import CliRunner
 from app.core.errors import ConfigError
 from app.core.settings import Settings, normalize_database_url, parse_league_ids
 from app.fpl.cli import app
+from app.worker.cli import app as worker_app
 from tests.conftest import BACKEND_DIR
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -137,6 +138,65 @@ def test_missing_database_url_is_a_clean_error(monkeypatch, tmp_path):
     assert result.exit_code == 1
     assert result.stderr.strip() == "error: DATABASE_URL must be set"
     assert "987654301" not in result.stderr
+
+
+def test_worker_rejects_missing_database_url(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("FPL_LEAGUE_IDS", "987654301")
+
+    result = CliRunner().invoke(worker_app, ["run"])
+
+    assert result.exit_code != 0
+    assert "DATABASE_URL" in result.stderr
+    assert "987654301" not in result.stderr
+
+
+def test_worker_rejects_malformed_database_url(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", "mysql://u:secret@localhost/d")
+    monkeypatch.setenv("FPL_LEAGUE_IDS", "987654301")
+
+    result = CliRunner().invoke(worker_app, ["run"])
+
+    assert result.exit_code != 0
+    assert "DATABASE_URL" in result.stderr
+    assert "secret" not in result.stderr
+
+
+def test_worker_rejects_empty_league_ids(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://u:p@localhost:5432/d")
+    monkeypatch.setenv("FPL_LEAGUE_IDS", "")
+
+    result = CliRunner().invoke(worker_app, ["run"])
+
+    assert result.exit_code != 0
+    assert "FPL_LEAGUE_IDS" in result.stderr
+
+
+def test_worker_rejects_malformed_league_ids(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://u:p@localhost:5432/d")
+    monkeypatch.setenv("FPL_LEAGUE_IDS", "1, abc")
+
+    result = CliRunner().invoke(worker_app, ["run"])
+
+    assert result.exit_code != 0
+    assert "FPL_LEAGUE_IDS" in result.stderr
+
+
+@pytest.mark.parametrize("scheme", ["postgresql", "postgres", "postgresql+psycopg"])
+def test_database_url_schemes_connect_through_worker(
+    db_engine, postgres_url, monkeypatch, scheme, tmp_path
+):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", _with_scheme(postgres_url, scheme))
+    monkeypatch.setenv("FPL_LEAGUE_IDS", "1")
+
+    result = CliRunner().invoke(worker_app, ["status"])
+
+    assert result.exit_code == 0
 
 
 def test_help_and_usage_errors_need_no_settings(monkeypatch, tmp_path):
