@@ -234,7 +234,7 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       (red before: no `job_run` after `upgrade head`), then
       `cd backend && uv run pytest -q tests/fpl`.
 
-- [ ] 3. Advisory locks and the job lock in the FPL CLI — files: `backend/app/db/locks.py`,
+- [x] 3. Advisory locks and the job lock in the FPL CLI — files: `backend/app/db/locks.py`,
       `backend/app/fpl/cli.py`, `backend/tests/db/test_locks.py`.
       `locks.py`: two fixed `bigint` keys `SCHEDULE_LOCK_KEY`, `JOB_LOCK_KEY` (named
       constants); `acquire_job_lock(session) -> None` runs
@@ -641,6 +641,38 @@ fixable in the plan and is fixed, and the only migration is accepted by the owne
 ## Chunk notes
 
 _(filled in by /pipeline:implement in chunk mode — one entry per chunk that ends at a group boundary)_
+
+### Chunk 1 — Group 1 (Settings, job run log and the job lock)
+
+- Steps 1–3 done, each test-first and green; full stack (`ruff check`, `ruff format --check`,
+  `pytest -q`) green at 117 passed.
+- Step 1: `normalize_database_url()` in `app/core/settings.py` (uses
+  `sqlalchemy.engine.make_url`); `load_settings()` normalises `database_url` before
+  returning; `migrations/env.py::get_url()` normalises every source (`-x url`,
+  `sqlalchemy.url`, `load_settings()`). All new `DATABASE_URL`-reading tests live in
+  `tests/core/test_settings.py` per the guard test.
+- Step 2: `app/worker/models.py` defines `JobRun`; migration `0002_job_run` adds the table
+  and its index. `migrations/env.py`, `tests/db/test_migrations.py` and
+  `tests/fpl/fakes.py` import `app.worker.models` so `job_run` is on `SQLModel.metadata` in
+  every test process, per the plan's "Risks and traps" note.
+- Step 3: `app/db/locks.py` holds `SCHEDULE_LOCK_KEY` (8002001) and `JOB_LOCK_KEY`
+  (8002002) plus `acquire_job_lock(session)` / `try_schedule_lock(connection)`.
+  `app/fpl/cli.py::transaction()` calls `acquire_job_lock` right after `session.begin()`.
+  These two constants and functions are reused unchanged by the worker's job runner (step 5)
+  and its CLI (step 8) — the same keys, so the CLI and the worker serialise against each
+  other.
+- Deviation (recorded in `## Deviations`): `tests/fpl/test_models.py` had to be narrowed to
+  the FPL domain's own table names, because `SQLModel.metadata` is process-wide and now also
+  carries `job_run` once anything imports `app.worker.models` in the same process — this was
+  not anticipated by the plan's own "Metadata registration" risk note (which only mentioned
+  the migration tests).
+- Trap for the next group: importing `app.worker.models` anywhere makes `job_run` visible on
+  `SQLModel.metadata` for the rest of that pytest process — any future test that asserts on
+  the *whole* metadata (table-name sets, blanket per-table conventions) must scope itself to
+  the tables it actually owns, the way `tests/fpl/test_models.py` now does, rather than assume
+  metadata contains only its own domain's tables.
+- Running `implement_iterations` total: 0 (every step went green on the first attempt; no
+  step needed a second run of its verification commands after a fix).
 
 ## Deviations
 

@@ -13,6 +13,7 @@ from sqlmodel import Session
 from app.core.errors import CollectorError
 from app.core.settings import load_settings, parse_league_ids
 from app.db.engine import make_engine
+from app.db.locks import acquire_job_lock
 from app.fpl.backfill import backfill as run_backfill
 from app.fpl.client import FplClient
 from app.fpl.leagues import sync_leagues
@@ -70,6 +71,7 @@ def _deps_from_settings() -> Deps:
 def transaction(deps: Deps) -> Iterator[Session]:
     try:
         with Session(deps.engine) as session, session.begin():
+            acquire_job_lock(session)
             yield session
     except CollectorError as exc:
         raise fail(str(exc)) from None
