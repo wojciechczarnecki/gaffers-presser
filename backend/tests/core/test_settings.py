@@ -1,14 +1,22 @@
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 from typer.testing import CliRunner
 
 from app.core.errors import ConfigError
-from app.core.settings import Settings, parse_league_ids
+from app.core.settings import Settings, normalize_database_url, parse_league_ids
 from app.fpl.cli import app
+from tests.conftest import BACKEND_DIR
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _with_scheme(url: str, scheme: str) -> str:
+    return url.replace("postgresql+psycopg://", f"{scheme}://", 1)
 
 
 def test_parse_league_ids_valid():
@@ -38,6 +46,60 @@ def test_parse_league_ids_non_numeric():
 def test_parse_league_ids_negative():
     with pytest.raises(ConfigError, match="FPL_LEAGUE_IDS"):
         parse_league_ids("-3")
+
+
+@pytest.mark.parametrize("scheme", ["postgresql", "postgres", "postgresql+psycopg"])
+def test_normalize_database_url_accepts_postgres_schemes(scheme):
+    url = normalize_database_url(f"{scheme}://u:p@localhost:5432/d")
+    assert url == "postgresql+psycopg://u:p@localhost:5432/d"
+
+
+def test_normalize_database_url_rejects_other_scheme():
+    with pytest.raises(ConfigError, match="DATABASE_URL must be a PostgreSQL URL"):
+        normalize_database_url("mysql://u:p@localhost/d")
+
+
+def test_normalize_database_url_rejects_malformed_url():
+    with pytest.raises(ConfigError, match="DATABASE_URL must be a PostgreSQL URL"):
+        normalize_database_url("not a url")
+
+
+@pytest.mark.parametrize("raw", ["", "   "])
+def test_normalize_database_url_rejects_empty(raw):
+    with pytest.raises(ConfigError, match="DATABASE_URL must be set"):
+        normalize_database_url(raw)
+
+
+def test_normalize_database_url_error_does_not_contain_the_password():
+    with pytest.raises(ConfigError) as exc_info:
+        normalize_database_url("mysql://u:secret@localhost/d")
+    assert "secret" not in str(exc_info.value)
+
+
+@pytest.mark.parametrize("scheme", ["postgresql", "postgres", "postgresql+psycopg"])
+def test_database_url_schemes_connect_through_cli(postgres_url, monkeypatch, scheme):
+    monkeypatch.setenv("DATABASE_URL", _with_scheme(postgres_url, scheme))
+
+    from app.fpl.cli import _deps_from_settings
+
+    deps = _deps_from_settings()
+    with deps.engine.connect() as conn:
+        assert conn.execute(text("SELECT 1")).scalar() == 1
+
+
+@pytest.mark.parametrize("scheme", ["postgresql", "postgres", "postgresql+psycopg"])
+def test_database_url_schemes_connect_through_alembic(db_engine, postgres_url, scheme):
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    env["DATABASE_URL"] = _with_scheme(postgres_url, scheme)
+    alembic = str(Path(sys.executable).parent / "alembic")
+    result = subprocess.run(
+        [alembic, "upgrade", "head"],
+        cwd=BACKEND_DIR,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_settings_reads_env_vars(monkeypatch):

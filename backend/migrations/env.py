@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
 import app.fpl.models  # noqa: F401
-from app.core.settings import Settings
+from app.core.settings import load_settings, normalize_database_url
 
 config = context.config
 
@@ -19,9 +19,9 @@ def get_url() -> str:
     url = context.get_x_argument(as_dictionary=True).get("url") or config.get_main_option(
         "sqlalchemy.url"
     )
-    if url:
-        return url
-    return Settings().database_url
+    if not url:
+        url = load_settings().database_url
+    return normalize_database_url(url)
 
 
 def run_migrations_online() -> None:

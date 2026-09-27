@@ -1,7 +1,14 @@
 from pydantic import ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
 
 from app.core.errors import ConfigError
+
+_POSTGRES_DRIVERNAMES = {"postgresql", "postgres", "postgresql+psycopg"}
+_SCHEME_ERROR = ConfigError(
+    "DATABASE_URL must be a PostgreSQL URL (postgresql://, postgres:// or postgresql+psycopg://)"
+)
 
 
 class Settings(BaseSettings):
@@ -13,9 +20,24 @@ class Settings(BaseSettings):
 
 def load_settings() -> Settings:
     try:
-        return Settings()
+        settings = Settings()
     except ValidationError:
         raise ConfigError("DATABASE_URL must be set") from None
+    settings.database_url = normalize_database_url(settings.database_url)
+    return settings
+
+
+def normalize_database_url(raw: str) -> str:
+    raw = raw.strip()
+    if not raw:
+        raise ConfigError("DATABASE_URL must be set")
+    try:
+        url = make_url(raw)
+    except ArgumentError:
+        raise _SCHEME_ERROR from None
+    if url.drivername not in _POSTGRES_DRIVERNAMES:
+        raise _SCHEME_ERROR
+    return url.set(drivername="postgresql+psycopg").render_as_string(hide_password=False)
 
 
 def parse_league_ids(raw: str) -> list[int]:

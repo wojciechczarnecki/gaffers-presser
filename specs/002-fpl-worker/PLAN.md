@@ -168,7 +168,7 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
 
 ### Group 1 — Settings, job run log and the job lock
 
-- [ ] 1. Accept `postgresql://`, `postgres://` and `postgresql+psycopg://` in `DATABASE_URL`
+- [x] 1. Accept `postgresql://`, `postgres://` and `postgresql+psycopg://` in `DATABASE_URL`
       — files: `backend/app/core/settings.py`, `backend/migrations/env.py`,
       `backend/tests/core/test_settings.py`.
       Add `normalize_database_url(raw: str) -> str`: strip; empty →
