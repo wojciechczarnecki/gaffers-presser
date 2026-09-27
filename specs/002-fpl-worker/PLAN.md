@@ -473,7 +473,7 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       `pull_request` trigger, a job containing `docker build -f backend/Dockerfile`).
       Automatic verification: `cd backend && uv run pytest -q tests/test_deployment.py`.
 
-- [ ] 11. README: worker commands and the "Deployment" runbook — files: `README.md`,
+- [x] 11. README: worker commands and the "Deployment" runbook — files: `README.md`,
       `backend/tests/test_readme.py`.
       Development: add `uv run python -m app.worker run` and `uv run python -m app.worker
       status`. A new `## Deployment` section, a numbered runbook for the owner: (1) a

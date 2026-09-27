@@ -19,9 +19,35 @@ def _development_section() -> str:
     return match.group(1)
 
 
+def _deployment_section() -> str:
+    text = README.read_text(encoding="utf-8")
+    match = re.search(r"## Deployment\n(.*?)(?=\n## |\Z)", text, re.DOTALL)
+    assert match, "README.md has no '## Deployment' section"
+    return match.group(1)
+
+
 def test_development_section_lists_commands():
     section = _development_section()
     assert "docker compose up -d" in section
     assert "alembic upgrade head" in section
     for command in COMMANDS:
         assert command in section
+    assert "app.worker run" in section
+    assert "app.worker status" in section
+
+
+def test_deployment_section_is_a_runbook():
+    section = _deployment_section()
+    for term in (
+        "pgvector/pgvector:pg16",
+        "volume",
+        "DATABASE_URL",
+        "FPL_LEAGUE_IDS",
+        "Wait for CI",
+        "railway logs",
+        "railway ssh",
+        "python -m app.worker status",
+        "alembic upgrade head",
+        "catch-up",
+    ):
+        assert term in section, f"{term!r} missing from the Deployment section"
