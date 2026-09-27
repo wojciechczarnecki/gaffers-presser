@@ -16,8 +16,9 @@
   back too); Railway starts the new deployment before it stops the old one — the schedule
   lock makes the new worker wait.
 - **New dependency:** no — the loop, the locks and the signal handling use the standard
-  library and PostgreSQL; the Docker image pins the base `python` image and the `uv` image
-  the project already uses (build tooling, no Python package).
+  library and PostgreSQL; the Docker image pins the base `python:3.12-slim` image and the
+  `uv` 0.12.5 image — the uv version the project is developed with (build tooling, no Python
+  package).
 - **Data migration:** yes — `0002_job_run` adds the `job_run` table and one index; no
   existing table or row changes. Accepted in SPEC → "Owner decisions"; agents apply it only
   to the test and development databases, production gets it through the Railway pre-deploy
@@ -90,7 +91,11 @@ Design choices:
   rather than a stop flag checked between jobs: a job can take a minute or more (client
   retries, timeouts), and AC16 needs exit within 10 s; the exception unwinds the job's
   `session.begin()` block, which rolls back. `BaseException` so the runner's
-  `except Exception` does not swallow it.
+  `except Exception` does not swallow it. The handler also sets a `stop_event`
+  (`threading.Event`) before raising, and the runner and the loop honour it: an `Exception`
+  raised while `Shutdown` unwinds (for example a rollback on a connection interrupted
+  mid-query) would otherwise replace `Shutdown`, be logged as a failed job and keep the
+  worker running.
 - **Log rows written after the job**, in their own transaction, rather than a "running" row
   updated at the end: one insert, and an interrupted job leaves neither data nor a row.
 - **Results and league sync scheduled independently** (league N is not blocked by a failing
@@ -151,8 +156,8 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
 | AC12 | 8 | `tests/worker/test_cli.py::test_status_on_empty_database`, `::test_status_shows_latest_runs_and_next_actions` | |
 | AC13 | 1, 8 | `tests/core/test_settings.py::test_worker_rejects_*` | |
 | AC14 | 1, 8 | `tests/core/test_settings.py::test_database_url_schemes_*` | |
-| AC15 | 3, 5, 8 | `tests/db/test_locks.py::test_cli_job_waits_for_running_job`, `tests/worker/test_jobs.py::test_worker_job_waits_for_running_job`, `tests/worker/test_cli.py::test_second_worker_waits_for_schedule_lock` | |
-| AC16 | 8 | `tests/worker/test_cli.py::test_sigterm_during_job_rolls_back_and_exits_0`, `::test_sigterm_while_idle_exits_0_within_10_s` | |
+| AC15 | 3, 5, 7, 8 | `tests/db/test_locks.py::test_cli_job_waits_for_running_job`, `tests/worker/test_jobs.py::test_worker_job_waits_for_running_job`, `tests/worker/test_cli.py::test_second_worker_waits_for_schedule_lock`, `tests/worker/test_loop.py::test_heartbeat_failure_ends_run` | |
+| AC16 | 5, 7, 8 | `tests/worker/test_jobs.py::test_error_after_stop_request_raises_shutdown`, `tests/worker/test_loop.py::test_stop_event_ends_run_after_action`, `tests/worker/test_cli.py::test_sigterm_during_job_rolls_back_and_exits_0`, `::test_sigterm_while_idle_exits_0_within_10_s`, `::test_sigterm_while_waiting_for_schedule_lock_exits_0`, `::test_sigterm_masked_by_a_job_error_exits_0` + e2e `docker stop` | |
 | AC17 | 5, 7 | `tests/worker/test_jobs.py::test_job_logged_at_start_and_end`, `tests/worker/test_loop.py::test_simulated_gameweek_logs_carry_no_private_data` | |
 | AC18 | 9, 10 | `tests/test_deployment.py::test_dockerfile_*`, `::test_ci_builds_image_on_pull_request` + e2e `docker build` / `docker run` | |
 | AC19 | 9 | `tests/test_deployment.py::test_railway_config` | |
@@ -269,14 +274,16 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
 
 - [ ] 5. Job runner — files: `backend/app/worker/jobs.py`,
       `backend/tests/worker/test_jobs.py`.
-      `run_job(engine, client, league_ids, action, now_fn) -> RunRecord`: logs
+      `class Shutdown(BaseException)` lives here (step 7 imports it).
+      `run_job(engine, client, league_ids, action, now_fn, stop_event) -> RunRecord`: logs
       `job started: job=<job> gameweek=<gw|->`; opens `Session(engine)` + `begin()`,
       `acquire_job_lock`, dispatches (`reference_sync` → `sync_reference`, returns the
       season for the row; `deadline_snapshot` → `take_deadline_snapshot(session, client,
       gw, now)`; `results_sync` → `sync_results(session, client, gw, now)`;
       `league_sync` → `sync_leagues(session, client, league_ids, [gw], now)`), `now` =
       `now_fn()` at the start. `except Exception as exc` → outcome `failed`,
-      `error_class = type(exc).__name__`; `BaseException` passes through untouched. Then a
+      `error_class = type(exc).__name__` — unless `stop_event.is_set()`, then
+      `raise Shutdown from exc` with no log row; `BaseException` passes through untouched. Then a
       new transaction inserts the `JobRun` row (a `SQLAlchemyError` there is logged as
       `job run log write failed: <class>` and swallowed); finally logs
       `job finished: job=… gameweek=… outcome=… duration=<s>s[ error=<class>]`. Log lines
@@ -288,6 +295,9 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       (`fixtures/` → 503, `max_attempts=1`: `table_contents` without `job_run` unchanged,
       one `failed` row with `error_class == "FplUnavailableError"`, no exception raised);
       `test_worker_job_waits_for_running_job` (the step-3 thread pattern with `run_job`);
+      `test_error_after_stop_request_raises_shutdown` (a `fixtures/` route that sets the
+      `stop_event` and returns 503: `run_job` raises `Shutdown`, no `job_run` row,
+      `table_contents` unchanged);
       `test_job_logged_at_start_and_end` (`caplog`: exactly one `job started` and one
       `job finished` line per run, with gameweek and outcome).
       Automatic verification: `cd backend && uv run pytest -q tests/worker/test_jobs.py`.
@@ -305,12 +315,15 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
 
 - [ ] 7. Worker loop and the simulated schedule — files: `backend/app/worker/loop.py`,
       `backend/tests/worker/sim.py`, `backend/tests/worker/test_loop.py`.
-      `loop.py`: `class Shutdown(BaseException)`; `Clock` protocol (`now() -> datetime`,
+      `loop.py`: `Shutdown` imported from `jobs.py`; `Clock` protocol (`now() -> datetime`,
       `sleep(seconds: float) -> None`); `SystemClock`; `Worker(engine, client, league_ids,
-      clock)` with `run()`: one reference sync, then forever: `load_state` (a
-      `SQLAlchemyError` → log the class, `clock.sleep(60)`, continue), log a missed snapshot
-      once per gameweek, run the first of `due_actions`, else sleep until the next planned
-      action (at most 1 h). `Shutdown` propagates out of `run()`.
+      clock, stop_event=None, heartbeat=None)` with `run()`: one reference sync, then
+      forever: `heartbeat()` if given (its exception propagates out of `run()` — the CLI
+      turns it into exit 1), `load_state` (a `SQLAlchemyError` → log the class,
+      `clock.sleep(60)`, continue), log a missed snapshot once per gameweek, run the first of
+      `due_actions`, else sleep until the next planned action (at most 1 h); after every
+      action and every sleep, `stop_event.is_set()` → `raise Shutdown`. `Shutdown`
+      propagates out of `run()`.
       `tests/worker/sim.py`: `FakeClock(start, end)` — `sleep` advances time and raises
       `Shutdown` once `now >= end`; `SimulatedFpl` — a `FakeFpl` whose `bootstrap-static/`
       route is a callable over the fake clock: the recorded payload trimmed to the first 20
@@ -331,7 +344,11 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       - `test_failed_snapshot_retried_until_deadline_then_missed` (AC3): snapshots fail from
         D6 − 31 min on: a failed row each minute from T-30 through D6 − 1 min, none at or
         after D6; `caplog` has `deadline snapshot missed: gameweek=6` exactly once; the
-        simulation runs 2 h past D6.
+        simulation runs 2 h past D6. The deadline snapshot fetches the same
+        `bootstrap-static/` as the reference sync, so the failure window (D6 − 31 min to D6)
+        fails the reference syncs in it too: assert on the snapshot rows, and that the
+        reference syncs in the window are `failed` and retried 15 min apart, with the first
+        one after D6 `succeeded`.
       - `test_results_then_league_after_data_checked` (AC4): GW6 `finished` at D6 + 48 h,
         `data_checked` at D6 + 70 h 10 min: nothing before, then results 6 and league 6 at
         the first reference sync after the flag, in that order, and never again in the next
@@ -359,6 +376,11 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       - `test_simulated_gameweek_logs_carry_no_private_data` (AC17): the AC9 simulation
         under `caplog` at DEBUG — the league ID, both entry IDs, `Synthetic Manager` and
         `Synthetic XI` never appear; one `job started` and one `job finished` line per row.
+      - `test_heartbeat_failure_ends_run`: a `heartbeat` that raises `OperationalError` on
+        its second call → `run()` raises it, no further job runs.
+      - `test_stop_event_ends_run_after_action`: a `stop_event` set by an FPL route during
+        the start reference sync that still succeeds → `run()` raises `Shutdown` right after
+        that job, one `job_run` row.
       Keep `tests/worker/test_loop.py` under about 60 s (the trimmed payload is the lever).
       Automatic verification: `cd backend && uv run pytest -q tests/worker/test_loop.py
       --durations=5`.
@@ -370,12 +392,16 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       league_ids_raw, clock)` injected through `ctx.obj` as in `app/fpl/cli.py`.
       `run`: logging to stderr at INFO with UTC ISO timestamps; settings through
       `load_settings()` and `parse_league_ids()` before anything else (`ConfigError` →
-      `error: <message>`, exit 1); a dedicated `engine.connect()` polls
-      `try_schedule_lock` every 30 s through `clock.sleep` (logging
-      `waiting for the schedule lock held by another worker` once); installs SIGTERM and
-      SIGINT handlers that raise `Shutdown` (and ignore a second signal); `Worker.run()`;
-      on `Shutdown` logs `worker stopped` and exits 0; restores the previous handlers and
-      closes the lock connection in `finally`.
+      `error: <message>`, exit 1); installs SIGTERM and SIGINT handlers that set the
+      `stop_event` and raise `Shutdown` (and ignore a second signal) BEFORE waiting for the
+      lock, so a worker stopped while it waits (the old/new deployment overlap) also exits 0;
+      a dedicated connection `engine.connect().execution_options(isolation_level=
+      "AUTOCOMMIT")` (no transaction left open for weeks) polls `try_schedule_lock` every
+      30 s through `clock.sleep` (logging `waiting for the schedule lock held by another
+      worker` once); `Worker.run()` with `stop_event` and `heartbeat` = `SELECT 1` on the
+      lock connection; on `Shutdown` logs `worker stopped` and exits 0; any other exception
+      out of `run()` (a lost lock connection) → logs `worker failed: <class>` and exits 1;
+      restores the previous handlers and closes the lock connection in `finally`.
       `status`: needs only `DATABASE_URL`; prints `Latest runs:` with one line per job
       (UTC time `YYYY-MM-DDTHH:MM:SSZ`, gameweek or `-`, outcome, or `never`) and
       `Next actions:` from `plan(load_state(engine), now)` (`due now` for `at <= now`);
@@ -384,8 +410,16 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       `reference_sync` due now); `test_status_shows_latest_runs_and_next_actions` (seeded
       calendar and runs → the latest times and the T-30/T-5 snapshot times of GW6);
       `test_second_worker_waits_for_schedule_lock` (the test holds the schedule lock on its
-      own connection; `run` with a `FakeClock` ending 10 min later → exit 0, no FPL request,
-      no `job_run` row; after release, a new `run` performs a reference sync);
+      own connection; `run` with a `FakeClock` whose sleep hook releases the lock once 10
+      simulated minutes have passed and which ends 1 h later: no FPL request and no
+      `job_run` row before the release, then the same `run` performs its reference sync —
+      the waiting worker takes over when the first one stops; exit 0);
+      `test_sigterm_while_waiting_for_schedule_lock_exits_0` (lock held by the test, a clock
+      with real `time.sleep`, `threading.Timer(1, os.kill, …)` → exit 0 in under 10 s, no
+      `job_run` row);
+      `test_sigterm_masked_by_a_job_error_exits_0` (a `fixtures/` route that sends SIGTERM
+      to itself, catches the `Shutdown` and raises `RuntimeError` instead → exit 0, no
+      `job_run` row, no further FPL request);
       `test_sigterm_during_job_rolls_back_and_exits_0` (the `fixtures/` route calls
       `os.kill(os.getpid(), signal.SIGTERM)` → exit 0, `table_contents` empty, no `job_run`
       row, the original SIGTERM handler restored); `test_sigterm_while_idle_exits_0_within_10_s`
@@ -410,7 +444,8 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       `uv sync --frozen --no-install-project` from `backend/pyproject.toml` +
       `backend/uv.lock` (no `dev` extra), then copy `backend/app`, `backend/migrations`,
       `backend/alembic.ini` to `/app` and `uv sync --frozen`; `ENV
-      PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1`; a non-root user (`useradd --uid 10001
+      PATH=/app/.venv/bin:$PATH PYTHONUNBUFFERED=1 UV_PYTHON_DOWNLOADS=never` (uv uses the
+      base image's Python, never a downloaded one); a non-root user (`useradd --uid 10001
       app`, `USER app`); `WORKDIR /app`; `CMD ["python", "-m", "app.worker", "run"]` (exec
       form, so SIGTERM reaches Python). `.dockerignore`: `.git`, `**/.venv`, `**/.env`,
       `**/__pycache__`, `docs`, `specs`, `backend/tests`, `frontend`.
@@ -491,8 +526,9 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
 - **Advisory lock connection.** The schedule lock lives as long as its connection; the lock
   connection must never go back to the pool while the worker runs, and a dropped
   connection must end the process (Railway restarts it) rather than run on without the
-  lock — the loop runs `SELECT 1` on it each iteration and lets the error end `run` with
-  exit 1.
+  lock — the loop calls the `heartbeat` (`SELECT 1` on it) each iteration and lets the
+  error end `run` with exit 1 (steps 7 and 8). The connection is in `AUTOCOMMIT`, so it
+  never sits idle in a transaction for the worker's life.
 - **Simulation speed.** About 300 reference syncs in the AC9 test; with the full 667-player
   payload the test takes minutes. Trim the payload (step 7), not the time span.
 - **Time.** Every `now` comes from the clock (`FakeClock` in tests) and is tz-aware UTC;
@@ -522,7 +558,14 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
    gaffers-presser-worker:dev python -m app.worker status` → exit 0, `Latest runs:` and
    `Next actions:` printed (the `postgresql://` scheme proves AC14 in the image). No
    `run` against the real FPL API is required.
-4. Record the results of 1–3 under "Definition of Done".
+4. The worker process in the image, and SIGTERM reaching Python as PID 1 (AC16, exec-form
+   `CMD`): `docker run -d --name presser-e2e --network host --env-file backend/.env
+   gaffers-presser-worker:dev` (the default `CMD`; the local database from item 3; a few
+   real FPL requests); wait up to 60 s until `docker logs presser-e2e` shows
+   `job finished: job=reference_sync`; `time docker stop -t 10 presser-e2e` → under 10 s;
+   `docker inspect -f '{{.State.ExitCode}}' presser-e2e` → `0`; the logs end with
+   `worker stopped` and carry no league ID; `docker rm presser-e2e`.
+5. Record the results of 1–4 under "Definition of Done".
 
 ### Manual (performed by the owner)
 
@@ -546,7 +589,54 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-27 — /pipeline:plan-review
+
+Findings (severity counted before the fixes: 0 `blocker`, 1 `major`, 6 `minor`):
+
+| # | Severity | Finding | Change |
+|---|----------|---------|--------|
+| R1 | `major` | AC16: `Shutdown` raised by the signal handler can be replaced by an `Exception` thrown while it unwinds (a rollback on a psycopg connection interrupted mid-query, e.g. while waiting on the job lock behind a CLI backfill). `run_job`'s `except Exception` would log a `failed` run and the loop would carry on — with the second signal ignored, the worker would not stop. | A `stop_event` set by the handler before raising; `run_job` re-raises `Shutdown` when it is set (no log row); the loop checks it after every action and sleep. `Shutdown` moved to `jobs.py` (step 5) so step 5 does not depend forward on step 7. New tests in steps 5, 7, 8; design choice and AC16 matrix row updated. |
+| R2 | `minor` | Step 8 installed the signal handlers after the schedule-lock wait, so a worker stopped while waiting (the Railway old/new overlap) got the default SIGTERM action and a non-zero exit. | Handlers installed before the wait; `test_sigterm_while_waiting_for_schedule_lock_exits_0`. |
+| R3 | `minor` | The lock-connection `SELECT 1` check lived only in "Risks and traps", in no step; the lock connection would also sit idle in an open transaction for weeks (SQLAlchemy autobegin). | `heartbeat` parameter of `Worker` (step 7) wired to the lock connection in step 8, exit 1 on its failure, `AUTOCOMMIT` lock connection; `test_heartbeat_failure_ends_run`; risk entry updated. |
+| R4 | `minor` | The deadline snapshot fetches `bootstrap-static/` like the reference sync (`app/fpl/snapshot.py`), so the AC3 simulation cannot fail snapshots alone — reference syncs fail in the same window. | Step 7 AC3 test states the side effect and what to assert. |
+| R5 | `minor` | The AC15 test showed a waiting worker and a fresh start after release, not that the waiting worker itself takes over when the first stops. | The same `run` continues after the lock is released mid-simulation. |
+| R6 | `minor` | The end-to-end part never ran the worker process in the image nor proved SIGTERM reaches Python as PID 1 — automatable, so it cannot be left out. | Automatic e2e item 4: `docker run` the default `CMD`, `docker stop -t 10`, exit code 0, `worker stopped`. |
+| R7 | `minor` | Owner summary said the image pins "the uv image the project already uses" (CI does not pin uv); without `UV_PYTHON_DOWNLOADS=never` uv could fetch its own Python in the image. | Summary names uv 0.12.5 (the local version); `UV_PYTHON_DOWNLOADS=never` in the Dockerfile `ENV`. |
+
+Checked and found correct (later stages need not repeat it):
+
+- Coverage: AC1–AC20 each have steps and a named proving test; AC21 is manual; the matrix
+  matches the steps; the fourth column is present.
+- Schedule rules traced by hand against the recorded calendar (GW5 `2026-09-18T17:30Z`,
+  GW6 `2026-10-10T10:00Z`, GW7 `2026-10-17T10:00Z`, GW1–5 finished + data-checked): the
+  reference formula gives hourly → exactly `D − 48 h` → every 15 min → the last one at `D`
+  → hourly; T-30 coincides with a 15-min reference sync and the snapshot goes first; the
+  retry rule gives one-minute retries to `D − 1 min` from either slot; the missed rule
+  does not fire when T-30 succeeded and T-5 failed; AC4/AC7 timings (first hourly sync after
+  `D6 + 70 h 10 min`) hold.
+- 001 job signatures and guards match the runner's dispatch (`sync_reference` returns the
+  season; `take_deadline_snapshot`, `sync_results`, `sync_leagues(…, [gw], now)`); league
+  standings go under the latest passed gameweek, so catch-up of GW1–5 matches 001 backfill
+  semantics.
+- Log privacy: `app/fpl/client.py` already raises the `httpx`/`httpcore` loggers to
+  WARNING, so request URLs with league IDs do not reach INFO logs; client errors carry
+  endpoint templates only.
+- Settings: pydantic-settings env vars override `backend/.env`, so the Alembic scheme test
+  is not shadowed; `sqlalchemy` has no `postgres` dialect and `psycopg2` is not installed,
+  so step 1 is red before the change.
+- DECISIONS (searched: worker, schedul, railway, lock, docker, commit, cron, transaction):
+  no row is broken; the 2026-09-27 rows already hold the schedule and deployment; the
+  advisory-lock row in step 12 follows the practice of the other 2026-09-26/27 rows (no ADR).
+- Conventions: tests before code, recorded payloads with synthetic league data, own
+  containers, `DATABASE_URL` guard test respected, UTC everywhere, no product text.
+- Migration `0002` accepted in SPEC → "Owner decisions"; no new dependency (base images are
+  the deployment the SPEC scopes). Groups: three, no boundary leaves work half done, no
+  forward dependency after R1.
+- `railway.json` keys (`preDeployCommand` as an array, `restartPolicyType "ALWAYS"`, a
+  superset of "restart on failure") match Railway config-as-code.
+
+Decision: the plan is ready — every AC has a proving test, the one `major` finding was
+fixable in the plan and is fixed, and the only migration is accepted by the owner.
 
 ## Chunk notes
 
