@@ -463,7 +463,7 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       --help` exits 0; `docker run --rm gaffers-presser-worker:dev id -u` prints `10001`;
       `docker run --rm gaffers-presser-worker:dev alembic --help` exits 0.
 
-- [ ] 10. CI image job — files: `.github/workflows/ci.yml`,
+- [x] 10. CI image job — files: `.github/workflows/ci.yml`,
       `backend/tests/test_deployment.py`.
       A job `image` (no `working-directory`): `actions/checkout@v7`, then
       `docker build -f backend/Dockerfile -t gaffers-presser-worker:ci .` and

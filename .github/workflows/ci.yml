@@ -37,3 +37,15 @@ jobs:
 
       - name: Run tests
         run: uv run pytest -q
+
+  image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the worker image
+        run: docker build -f backend/Dockerfile -t gaffers-presser-worker:ci .
+
+      - name: Smoke-test the worker image
+        run: docker run --rm gaffers-presser-worker:ci python -m app.worker run --help
