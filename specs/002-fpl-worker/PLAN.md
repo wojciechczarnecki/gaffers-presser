@@ -436,7 +436,7 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
 
 ### Group 3 — Deployment and documents
 
-- [ ] 9. Container image and Railway config — files: `backend/Dockerfile`, `.dockerignore`,
+- [x] 9. Container image and Railway config — files: `backend/Dockerfile`, `.dockerignore`,
       `railway.json`, `backend/tests/test_deployment.py`.
       `backend/Dockerfile`, built with the repository root as context
       (`docker build -f backend/Dockerfile .`): base `python:3.12-slim-bookworm` pinned to an
