@@ -13,7 +13,7 @@ and each LLM step that produces data has an evaluation set with recorded results
       (standings, managers, picks, transfers, chips); snapshots around each deadline;
       post-gameweek ground truth (starts, minutes, points)
       (specs: [001](../specs/001-fpl-collector/SPEC.md) — foundation, jobs and backfill;
-      002 — worker, schedule, deployment)
+      [002](../specs/002-fpl-worker/SPEC.md) — worker, schedule, deployment)
 
 ## Stage 1 — Tweet ingest and extraction
 
