@@ -3,12 +3,20 @@ name = "gaffers-presser-backend"
 version = "0.1.0"
 description = "Backend of The Gaffer's Presser"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "sqlmodel==0.0.47",
+    "alembic==1.20.0",
+    "psycopg[binary]==3.3.6",
+    "httpx==0.28.1",
+    "pydantic-settings==2.15.0",
+    "typer==0.27.2",
+]
 
 [project.optional-dependencies]
 dev = [
     "pytest==9.1.1",
     "ruff==0.16.9",
+    "testcontainers[postgres]==4.15.0",
 ]
 
 [tool.ruff]

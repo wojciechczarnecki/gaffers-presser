@@ -1,0 +1,19 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: presser
+      POSTGRES_PASSWORD: presser
+      POSTGRES_DB: presser
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - presser-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U presser"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  presser-db:

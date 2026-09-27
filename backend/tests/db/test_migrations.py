@@ -1,0 +1,62 @@
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+from alembic.autogenerate import compare_metadata
+from alembic.runtime.migration import MigrationContext
+from sqlalchemy import inspect
+from sqlmodel import SQLModel
+from testcontainers.postgres import PostgresContainer
+
+import app.fpl.models  # noqa: F401
+from app.db.engine import make_engine
+from tests.conftest import BACKEND_DIR, run_alembic
+
+
+@pytest.fixture(scope="module")
+def migration_url():
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
+        yield container.get_connection_url()
+
+
+def test_upgrade_downgrade_upgrade(migration_url):
+    engine = make_engine(migration_url)
+
+    run_alembic(migration_url, "upgrade", "head")
+    with engine.connect() as conn:
+        tables = set(inspect(conn).get_table_names())
+    assert tables == set(SQLModel.metadata.tables.keys()) | {"alembic_version"}
+
+    run_alembic(migration_url, "downgrade", "base")
+    with engine.connect() as conn:
+        tables = set(inspect(conn).get_table_names())
+    assert tables == {"alembic_version"}
+
+    run_alembic(migration_url, "upgrade", "head")
+    with engine.connect() as conn:
+        tables = set(inspect(conn).get_table_names())
+    assert tables == set(SQLModel.metadata.tables.keys()) | {"alembic_version"}
+
+
+def test_models_match_migration(migration_url):
+    run_alembic(migration_url, "upgrade", "head")
+    engine = make_engine(migration_url)
+    with engine.connect() as conn:
+        context = MigrationContext.configure(conn)
+        diff = compare_metadata(context, SQLModel.metadata)
+    assert diff == []
+
+
+def test_alembic_cli_runs_from_backend(migration_url):
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    alembic = str(Path(sys.executable).parent / "alembic")
+    result = subprocess.run(
+        [alembic, "-x", f"url={migration_url}", "upgrade", "head"],
+        cwd=BACKEND_DIR,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr

@@ -1,0 +1,136 @@
+import logging
+import time
+from collections.abc import Callable
+from typing import Any
+
+import httpx
+
+from app.fpl.errors import FplNotFoundError, FplUnavailableError
+from app.fpl.schemas import (
+    Bootstrap,
+    Fetched,
+    Fixture,
+    History,
+    Live,
+    Picks,
+    StandingsPage,
+    Transfer,
+    parse,
+    parse_list,
+)
+
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+USER_AGENT = "gaffers-presser/0.1 (+https://github.com/wojciechczarnecki/gaffers-presser)"
+
+GAME_UPDATING_MESSAGE = "The game is being updated."
+
+
+def _is_game_updating(response: httpx.Response) -> bool:
+    try:
+        body = response.json()
+    except ValueError:
+        body = response.text
+    return body == GAME_UPDATING_MESSAGE
+
+
+class FplClient:
+    def __init__(
+        self,
+        transport: httpx.BaseTransport | None = None,
+        base_url: str = "https://fantasy.premierleague.com/api/",
+        min_interval: float = 0.5,
+        max_attempts: int = 5,
+        backoff_base: float = 1.0,
+        timeout: float = 20.0,
+        sleep: Callable[[float], None] = time.sleep,
+        monotonic: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._client = httpx.Client(
+            transport=transport,
+            base_url=base_url,
+            timeout=timeout,
+            headers={"User-Agent": USER_AGENT},
+        )
+        self._min_interval = min_interval
+        self._max_attempts = max_attempts
+        self._backoff_base = backoff_base
+        self._sleep = sleep
+        self._monotonic = monotonic
+        self._last_request_at: float | None = None
+
+    def close(self) -> None:
+        self._client.close()
+
+    def _throttle(self) -> None:
+        if self._last_request_at is not None:
+            elapsed = self._monotonic() - self._last_request_at
+            remaining = self._min_interval - elapsed
+            if remaining > 0:
+                self._sleep(remaining)
+        self._last_request_at = self._monotonic()
+
+    def _get_json(self, endpoint_template: str, path: str, params: dict | None = None) -> Any:
+        for attempt in range(1, self._max_attempts + 1):
+            self._throttle()
+            try:
+                response = self._client.get(path, params=params)
+            except httpx.TransportError:
+                pass
+            else:
+                if response.status_code == 404:
+                    raise FplNotFoundError(endpoint_template)
+                retryable = (
+                    response.status_code == 429
+                    or response.status_code >= 500
+                    or _is_game_updating(response)
+                )
+                if not retryable and response.status_code >= 400:
+                    raise FplUnavailableError(endpoint_template)
+                if not retryable:
+                    try:
+                        return response.json()
+                    except ValueError:
+                        pass
+            if attempt == self._max_attempts:
+                raise FplUnavailableError(endpoint_template)
+            self._sleep(self._backoff_base * 2 ** (attempt - 1))
+        raise FplUnavailableError(endpoint_template)
+
+    def bootstrap(self) -> Fetched[Bootstrap]:
+        raw = self._get_json("bootstrap-static", "bootstrap-static/")
+        return Fetched(parse(Bootstrap, "bootstrap-static", raw), raw)
+
+    def fixtures(self) -> Fetched[list[Fixture]]:
+        raw = self._get_json("fixtures", "fixtures/")
+        return Fetched(parse_list(Fixture, "fixtures", raw), raw)
+
+    def live(self, gw: int) -> Fetched[Live]:
+        endpoint_template = "event/{gw}/live"
+        raw = self._get_json(endpoint_template, f"event/{gw}/live/")
+        return Fetched(parse(Live, endpoint_template, raw), raw)
+
+    def league_standings(self, league_id: int, page: int) -> StandingsPage:
+        endpoint_template = "leagues-classic/{league_id}/standings"
+        raw = self._get_json(
+            endpoint_template,
+            f"leagues-classic/{league_id}/standings/",
+            params={"page_standings": page},
+        )
+        return parse(StandingsPage, endpoint_template, raw)
+
+    def entry_picks(self, entry_id: int, gw: int) -> Picks:
+        endpoint_template = "entry/{entry_id}/event/{gw}/picks"
+        raw = self._get_json(endpoint_template, f"entry/{entry_id}/event/{gw}/picks/")
+        return parse(Picks, endpoint_template, raw)
+
+    def entry_history(self, entry_id: int) -> History:
+        endpoint_template = "entry/{entry_id}/history"
+        raw = self._get_json(endpoint_template, f"entry/{entry_id}/history/")
+        return parse(History, endpoint_template, raw)
+
+    def entry_transfers(self, entry_id: int) -> list[Transfer]:
+        endpoint_template = "entry/{entry_id}/transfers"
+        raw = self._get_json(endpoint_template, f"entry/{entry_id}/transfers/")
+        return parse_list(Transfer, endpoint_template, raw)

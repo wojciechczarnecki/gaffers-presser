@@ -48,7 +48,26 @@ Langfuse, uv; hosted on Railway.
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q
 ```
 
-Running the application locally arrives with the FPL collector (stage 0).
+Tests that need PostgreSQL start their own throwaway container (testcontainers) — Docker is
+required, but no running database is.
+
+Running the FPL collector locally:
+
+```bash
+cp backend/.env.example backend/.env   # fill FPL_LEAGUE_IDS with your classic league IDs
+docker compose up -d                   # PostgreSQL 16 with pgvector
+cd backend && uv run alembic upgrade head
+
+uv run python -m app.fpl --help                 # commands and options
+uv run python -m app.fpl reference-sync
+uv run python -m app.fpl deadline-snapshot --gameweek N
+uv run python -m app.fpl league-sync --gameweek N
+uv run python -m app.fpl results-sync --gameweek N
+uv run python -m app.fpl backfill
+```
+
+`FPL_LEAGUE_IDS` never holds a real league ID in the repository, logs or tests — see
+`backend/.env.example`.
 
 The project is built with a spec-driven agentic workflow
 ([agentic-pipeline](https://github.com/wojciechczarnecki/agentic-pipeline)): every feature
