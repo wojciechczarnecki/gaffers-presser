@@ -302,7 +302,7 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       `job finished` line per run, with gameweek and outcome).
       Automatic verification: `cd backend && uv run pytest -q tests/worker/test_jobs.py`.
 
-- [ ] 6. State store — files: `backend/app/worker/store.py`,
+- [x] 6. State store — files: `backend/app/worker/store.py`,
       `backend/tests/worker/test_store.py`.
       `load_state(engine) -> ScheduleState`: the season rule, that season's gameweeks,
       `latest` and `latest_success` with `DISTINCT ON (job, gameweek_fpl_id) … ORDER BY job,
