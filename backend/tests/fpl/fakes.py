@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlmodel import Session, SQLModel
 
 import app.fpl.models  # noqa: F401  (registers tables on SQLModel.metadata)
+import app.worker.models  # noqa: F401  (registers tables on SQLModel.metadata)
 from app.fpl.client import FplClient
 
 Route = dict | httpx.Response | Callable[[httpx.Request], httpx.Response]
@@ -46,9 +47,15 @@ class FakeFpl:
 DEFAULT_EXCLUDE = {"observed_at", "fetched_at", "captured_at"}
 
 
-def table_contents(session: Session, exclude: set[str] = DEFAULT_EXCLUDE) -> dict[str, list[tuple]]:
+def table_contents(
+    session: Session,
+    exclude: set[str] = DEFAULT_EXCLUDE,
+    tables: set[str] | None = None,
+) -> dict[str, list[tuple]]:
     contents: dict[str, list[tuple]] = {}
     for name, table in SQLModel.metadata.tables.items():
+        if tables is not None and name not in tables:
+            continue
         cols = [c for c in table.columns if c.name not in exclude]
         rows = session.execute(select(*cols)).all()
         contents[name] = sorted(tuple(row) for row in rows)

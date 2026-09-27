@@ -196,7 +196,7 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
       (red before the change: the `postgres://`/`postgresql://` cases fail on the missing
       dialect/driver), then `cd backend && uv run pytest -q tests/fpl/test_cli.py tests/db`.
 
-- [ ] 2. The job run log table and migration `0002` — files:
+- [x] 2. The job run log table and migration `0002` — files:
       `backend/app/worker/__init__.py`, `backend/app/worker/models.py`,
       `backend/migrations/versions/0002_job_run.py`, `backend/migrations/env.py`,
       `backend/tests/db/test_migrations.py`, `backend/tests/fpl/fakes.py`.
@@ -645,6 +645,15 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+
+- Step 2: `tests/fpl/test_models.py` asserts on `SQLModel.metadata.tables` as if it held only
+  the FPL domain's tables. `SQLModel.metadata` is process-wide, and `tests/fpl/fakes.py` now
+  imports `app.worker.models` (required by the plan so `job_run` is registered for every test
+  process), so `job_run` also appears there once any test in the session has loaded `fakes.py`.
+  Narrowed the three affected assertions (`test_table_names_match_schema`,
+  `test_every_datetime_column_is_timezone_aware`, `test_every_table_is_keyed_or_linked_by_season`)
+  to the FPL domain's own table names instead of the whole metadata, so they keep checking the
+  same FPL conventions without depending on which other modules happen to be imported in-process.
 
 ## Final review
 
