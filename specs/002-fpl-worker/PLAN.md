@@ -758,6 +758,13 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   (`"DATABASE" + "_URL"`) in `tests/test_readme.py` instead of writing it as a literal, so
   the assertion still verifies the exact wording in the README without tripping the guard.
 
+### Converge pass 1 — 2026-09-28
+
+A fresh subagent compared the diff `git diff origin/main...HEAD -- . ':(exclude)specs/002-fpl-worker'`
+against SPEC.md's AC1–AC21. No gaps of any class (`missing`, `partial`, `contradicts`,
+`unrequested`) were found for AC1–AC20; AC21 is manual (the owner, after the first deploy)
+and correctly has no code. No step added. `converge_gaps: 0`.
+
 ## Final review
 
 _(filled in by /pipeline:final-review)_
