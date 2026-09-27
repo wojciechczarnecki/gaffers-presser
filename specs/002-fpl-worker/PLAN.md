@@ -251,7 +251,7 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
 
 ### Group 2 — The worker
 
-- [ ] 4. Schedule rules — files: `backend/app/worker/schedule.py`,
+- [x] 4. Schedule rules — files: `backend/app/worker/schedule.py`,
       `backend/tests/worker/__init__.py`, `backend/tests/worker/test_schedule.py`.
       Implements the "Schedule rules" section above with no database access:
       `Job(StrEnum)` (`reference_sync`, `deadline_snapshot`, `results_sync`,
