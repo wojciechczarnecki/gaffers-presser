@@ -516,7 +516,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       0 records → `-`; two sources kept apart; failed polls counted); markdown table header
       and row format — files: the module, the test file.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_measure.py`
-- [ ] 16. Commands: `app/tweets/cli.py` (Typer, `measure` and `summary` as in
+- [x] 16. Commands: `app/tweets/cli.py` (Typer, `measure` and `summary` as in
       "Measurement"; injectable deps via `ctx.obj` like `WorkerDeps`: source builders,
       clock, sleep; each builder is called, used and closed inside its source's thread,
       `check_source` runs up front in the main thread for the skip messages) and `app/tweets/__main__.py`. Tests `tests/tweets/test_cli.py` with two
