@@ -4,15 +4,16 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.runnables import RunnableConfig
 from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.extraction.config import TracingConfig
-from app.extraction.flow import PROMPT_VERSION, build_flow
+from app.extraction.flow import PROMPT_VERSION, Flow, build_flow
 from app.extraction.linking import PlayerIndex, load_aliases, load_players
 from app.extraction.pricing import compute_cost, load_prices
 from app.extraction.providers import ChatModelSpec
-from app.extraction.schemas import PostInput
+from app.extraction.schemas import FlowResult, PostInput
 from app.extraction.store import ExtractionRecord, save_extraction
 from app.extraction.tracing import run_config
 from app.tweets.loop import Clock
@@ -41,6 +42,43 @@ class StoredOutcome:
     cost_usd: float | None
 
 
+@dataclass(frozen=True)
+class RetryOutcome:
+    result: FlowResult | None
+    attempts: int
+    error: Exception | None
+    stopped: bool = False
+
+
+def run_with_retries(
+    flow: Flow,
+    post: PostInput,
+    config: RunnableConfig,
+    clock: Clock,
+    stop_event: threading.Event,
+) -> RetryOutcome:
+    attempts = 0
+    last_exc: Exception | None = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        if stop_event.is_set():
+            return RetryOutcome(None, attempts, last_exc, stopped=True)
+        attempts = attempt
+        try:
+            result = flow.run(post, config=config)
+            return RetryOutcome(result, attempts, None)
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("extraction attempt failed: %s", type(exc).__name__)
+            if attempt >= MAX_ATTEMPTS:
+                break
+            if stop_event.is_set():
+                return RetryOutcome(None, attempts, last_exc, stopped=True)
+            clock.sleep(RETRY_BACKOFF_SECONDS[attempt - 1])
+            if stop_event.is_set():
+                return RetryOutcome(None, attempts, last_exc, stopped=True)
+    return RetryOutcome(None, attempts, last_exc)
+
+
 def extract_post(
     engine: Engine,
     runtime: ExtractionRuntime,
@@ -61,28 +99,12 @@ def extract_post(
     flow = build_flow(spec, index)
     config = run_config(post.x_id, PROMPT_VERSION, runtime.provider, runtime.model, handler)
 
-    attempts = 0
-    last_exc: Exception | None = None
-    result = None
-
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        if stop_event.is_set():
-            return None
-        attempts = attempt
-        try:
-            result = flow.run(post, config=config)
-            last_exc = None
-            break
-        except Exception as exc:
-            last_exc = exc
-            logger.warning("extraction attempt failed: %s", type(exc).__name__)
-            if attempt >= MAX_ATTEMPTS:
-                break
-            if stop_event.is_set():
-                return None
-            clock.sleep(RETRY_BACKOFF_SECONDS[attempt - 1])
-            if stop_event.is_set():
-                return None
+    retry = run_with_retries(flow, post, config, clock, stop_event)
+    if retry.stopped:
+        return None
+    attempts = retry.attempts
+    last_exc = retry.error
+    result = retry.result
 
     finished_at = clock.now()
 

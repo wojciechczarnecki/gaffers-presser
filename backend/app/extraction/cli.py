@@ -14,11 +14,13 @@ from app.core.errors import CollectorError, ConfigError
 from app.core.settings import ExtractionSettings, load_settings
 from app.db.engine import make_engine
 from app.extraction.config import resolve_llm, resolve_tracing
-from app.extraction.linking import load_players
+from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
+from app.extraction.flow import PROMPT_VERSION, build_flow
+from app.extraction.linking import PlayerIndex, load_aliases, load_players
 from app.extraction.providers import ChatModelSpec, build_chat_model
-from app.extraction.service import ExtractionRuntime, extract_post
+from app.extraction.service import ExtractionRuntime, extract_post, run_with_retries
 from app.extraction.store import posts_for_reextract
-from app.extraction.tracing import flush, make_handler
+from app.extraction.tracing import flush, make_handler, run_config
 from app.tweets.loop import Clock
 from app.worker.loop import SystemClock
 
@@ -166,6 +168,81 @@ def snapshot_players(
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n")
     typer.echo(f"players: {len(players)}")
+
+
+@app.command(help="Pre-label local posts with a model into candidate evaluation cases.")
+def prelabel(
+    ctx: typer.Context,
+    output: Annotated[Path, typer.Option("--output")],
+    since: str | None = typer.Option(None, "--since"),
+    until: str | None = typer.Option(None, "--until"),
+    limit: int | None = typer.Option(None, "--limit"),
+    provider: str | None = typer.Option(None, "--provider"),
+    model: str | None = typer.Option(None, "--model"),
+    eval_set: Annotated[Path | None, typer.Option("--eval-set")] = None,
+) -> None:
+    deps = get_deps(ctx)
+    try:
+        spec = deps.build_spec(provider, model)
+    except CollectorError as exc:
+        raise fail(str(exc)) from None
+
+    existing = load_cases(output) if output.exists() else []
+    known_ids = {case.id for case in existing}
+    if eval_set is not None:
+        known_ids |= {case.id for case in load_cases(eval_set)}
+
+    since_dt = _parse_iso(since) if since is not None else datetime(1970, 1, 1, tzinfo=UTC)
+    until_dt = _parse_iso(until) if until is not None else datetime(9999, 1, 1, tzinfo=UTC)
+    with Session(deps.engine) as session:
+        posts = posts_for_reextract(session, since=since_dt, until=until_dt)
+        players, teams = load_players(session)
+    player_aliases, team_aliases = load_aliases()
+    flow = build_flow(spec, PlayerIndex(players, teams, player_aliases, team_aliases))
+
+    skipped = sum(1 for post in posts if str(post.x_id) in known_ids)
+    pending = [post for post in posts if str(post.x_id) not in known_ids]
+    if limit is not None:
+        pending = pending[:limit]
+
+    stop_event = threading.Event()
+    new_cases: list[EvalCase] = []
+    failures = 0
+    for post in pending:
+        config = run_config(post.x_id, PROMPT_VERSION, spec.provider, spec.model, None)
+        outcome = run_with_retries(flow, post, config, deps.clock, stop_event)
+        if outcome.result is None:
+            failures += 1
+            continue
+        new_cases.append(
+            EvalCase(
+                id=str(post.x_id),
+                author_handle=post.author_handle,
+                text=post.text,
+                created_at=post.created_at,
+                is_repost=post.is_repost,
+                is_reply=post.is_reply,
+                split="dev" if post.x_id % 10 < 3 else "test",
+                synthetic=False,
+                reviewed=False,
+                tags=[],
+                expected_events=[
+                    ExpectedEvent(
+                        mention=event.mention,
+                        fpl_id=event.player_fpl_id,
+                        event_type=event.event_type,
+                        certainty=event.certainty,
+                    )
+                    for event in outcome.result.events
+                ],
+            )
+        )
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    write_cases(output, [*existing, *new_cases])
+    typer.echo(f"cases written: {len(new_cases)}")
+    typer.echo(f"skipped: {skipped}")
+    typer.echo(f"failures: {failures}")
 
 
 def main() -> None:

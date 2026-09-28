@@ -382,7 +382,7 @@ every expected `fpl_id` exists in the snapshot.
 | AC21 | 13 | `tests/worker/test_cli.py::test_sigterm_with_extraction_exits_within_10_s` | |
 | AC22 | 15 | `tests/extraction/test_cli.py::test_reextract_*` | |
 | AC23 | 16, 20 | `tests/extraction/evaluation/test_cases.py`, `tests/extraction/evaluation/test_eval_set.py` | step 16 (schema + composition rules, stubbed `composition_problems`): `uv run pytest -q tests/extraction/evaluation/test_cases.py` → `assert any(keyword in problem for problem in problems), problems` (`AssertionError: []`); step 20 (the committed set): see step 20 |
-| AC24 | 18, 19 | `tests/extraction/test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | |
+| AC24 | 18, 19 | `tests/extraction/test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | step 18 (stubbed `prelabel`): `uv run pytest -q tests/extraction/test_cli.py -k prelabel` → `assert ['1'] == ['1', '3']` (`test_prelabel_skips_ids_already_in_the_set`), `assert 0 == 1` (`test_prelabel_config_error_names_variable`); step 19: see step 19 |
 | AC25 | 17, 19 | `tests/extraction/evaluation/test_metrics.py`, `tests/extraction/test_cli.py::test_evaluate_*` | step 17 (metrics, stubbed `compute_metrics`): `uv run pytest -q tests/extraction/evaluation/test_metrics.py` → `assert (metrics.precision, metrics.recall, metrics.f1) == (1.0, 1.0, 1.0)` (15 failed, 4 passed); step 19: see step 19 |
 | AC26 | — | manual | manual — the owner's review and comparison run |
 | AC27 | 22 | `tests/extraction/test_config.py::test_default_model_matches_adr_0006` | |
@@ -610,7 +610,7 @@ from `backend/`.
       Files: `backend/app/extraction/evaluation/metrics.py`,
       `backend/tests/extraction/evaluation/test_metrics.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/evaluation/test_metrics.py`
-- [ ] 18. `prelabel` command (see CLI). Tests (DB + fake): writes candidates with
+- [x] 18. `prelabel` command (see CLI). Tests (DB + fake): writes candidates with
       `reviewed: false`, the split rule, expected events from the linked result; skips X IDs
       already in the set; `--limit`; config error without a key.
       Files: `backend/app/extraction/cli.py`, `backend/tests/extraction/test_cli.py`.

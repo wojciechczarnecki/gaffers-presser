@@ -7,6 +7,7 @@ from typer.testing import CliRunner
 
 from app.core.settings import ExtractionSettings
 from app.extraction.cli import ExtractionCliDeps, app, build_spec_from_settings
+from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
 from app.extraction.linking import load_snapshot
 from app.extraction.models import Extraction
 from app.extraction.providers import ChatModelSpec
@@ -314,3 +315,144 @@ def test_snapshot_players_writes_the_latest_season(db, tmp_path):
     assert [p.web_name for p in players] == ["Current"]
     assert players[0].season == "2026/27"
     assert [t.season for t in teams] == ["2026/27"]
+
+
+def _seed_haaland(session) -> None:
+    session.add(Season(label="2026/27"))
+    session.add(Team(season="2026/27", fpl_id=1, name="Man City", short_name="MCI"))
+    session.flush()
+    session.add(
+        Player(
+            season="2026/27",
+            fpl_id=5,
+            web_name="Haaland",
+            first_name="Erling",
+            second_name="Haaland",
+            team_fpl_id=1,
+            position=4,
+        )
+    )
+    session.commit()
+
+
+def _haaland_out(certainty="confirmed") -> ExtractionOutput:
+    return ExtractionOutput(
+        events=[ExtractedEvent(player="Haaland", team=None, event_type="out", certainty=certainty)]
+    )
+
+
+def _existing_case(case_id: str) -> EvalCase:
+    return EvalCase(
+        id=case_id,
+        author_handle="reporter",
+        text="existing",
+        created_at=NOW,
+        is_repost=False,
+        is_reply=False,
+        split="test",
+        synthetic=False,
+        reviewed=True,
+        tags=[],
+        expected_events=[
+            ExpectedEvent(mention="X", fpl_id=None, event_type="out", certainty="confirmed")
+        ],
+    )
+
+
+def test_prelabel_writes_unreviewed_candidates_with_the_split_rule(db, tmp_path):
+    with Session(db) as session:
+        _seed_haaland(session)
+        for x_id in (10, 11, 13):  # 10 % 10 = 0 and 13 % 10 = 3
+            session.add(_tweet(x_id, created_at=NOW + timedelta(minutes=x_id)))
+        session.commit()
+    build_spec, _ = _build_spec(_haaland_out(), ExtractionOutput(events=[]), _haaland_out())
+    output = tmp_path / "cases.jsonl"
+
+    result = CliRunner().invoke(
+        app,
+        ["prelabel", "--output", str(output), "--provider", "fake", "--model", "m"],
+        obj=_deps(db, build_spec),
+    )
+
+    assert result.exit_code == 0, result.output
+    cases = {c.id: c for c in load_cases(output)}
+    assert set(cases) == {"10", "11", "13"}
+    assert all(
+        c.reviewed is False and c.synthetic is False and c.tags == [] for c in cases.values()
+    )
+    assert cases["10"].split == "dev"
+    assert cases["11"].split == "dev"
+    assert cases["13"].split == "test"
+    assert cases["10"].author_handle == "reporter"
+    assert cases["10"].text == "Post 10"
+    assert [
+        (e.mention, e.fpl_id, e.event_type, e.certainty) for e in cases["10"].expected_events
+    ] == [("Haaland", 5, "out", "confirmed")]
+    assert cases["11"].expected_events == []
+    assert "cases written: 3" in result.stdout
+
+
+def test_prelabel_skips_ids_already_in_the_set(db, tmp_path):
+    with Session(db) as session:
+        _seed_haaland(session)
+        for x_id in (1, 2, 3):
+            session.add(_tweet(x_id, created_at=NOW + timedelta(minutes=x_id)))
+        session.commit()
+    output = tmp_path / "cases.jsonl"
+    write_cases(output, [_existing_case("1")])
+    eval_set = tmp_path / "other.jsonl"
+    write_cases(eval_set, [_existing_case("2")])
+    build_spec, _ = _build_spec(ExtractionOutput(events=[]))
+
+    result = CliRunner().invoke(
+        app,
+        ["prelabel", "--output", str(output), "--eval-set", str(eval_set), "--provider", "f"],
+        obj=_deps(db, build_spec),
+    )
+
+    assert result.exit_code == 0, result.output
+    cases = load_cases(output)
+    assert [c.id for c in cases] == ["1", "3"]
+    assert cases[0].reviewed is True  # the existing case is untouched
+    assert "skipped: 2" in result.stdout
+
+
+def test_prelabel_limit_and_range(db, tmp_path):
+    with Session(db) as session:
+        _seed_haaland(session)
+        for x_id in (1, 2, 3, 4):
+            session.add(_tweet(x_id, created_at=NOW + timedelta(hours=x_id)))
+        session.commit()
+    build_spec, _ = _build_spec(ExtractionOutput(events=[]), ExtractionOutput(events=[]))
+    output = tmp_path / "cases.jsonl"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "prelabel",
+            "--output",
+            str(output),
+            "--since",
+            (NOW + timedelta(hours=2)).isoformat(),
+            "--limit",
+            "2",
+        ],
+        obj=_deps(db, build_spec),
+    )
+
+    assert result.exit_code == 0, result.output
+    assert [c.id for c in load_cases(output)] == ["2", "3"]
+
+
+def test_prelabel_config_error_names_variable(db, tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    settings = ExtractionSettings(llm_provider="", llm_model="")
+    output = tmp_path / "cases.jsonl"
+    result = CliRunner().invoke(
+        app,
+        ["prelabel", "--output", str(output), "--provider", "openai", "--model", "m"],
+        obj=_deps(db, build_spec_from_settings(settings), settings=settings),
+    )
+    assert result.exit_code == 1
+    assert "OPENAI_API_KEY" in result.stderr
+    assert not output.exists()
