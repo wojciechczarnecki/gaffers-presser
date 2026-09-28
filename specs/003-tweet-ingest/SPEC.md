@@ -190,12 +190,12 @@ Latency measurement
   failed polls; tested on a synthetic record set with known percentiles.
 - [ ] AC17: A source whose credentials are missing is skipped with a message; the command
   still measures the others.
-- [ ] AC18 (manual, owner): before the merge, the owner runs the measurement locally for
+- [x] AC18 (manual, owner): before the merge, the owner runs the measurement locally for
   twscrape and twitterapi.io (official X API only if credits were bought) at the window
   interval (20 s) with ≥20 controlled posts published from the dedicated account on the
   watched list at known times; no real deadline window is required. The summaries are
   committed as a report under `docs/` in this PR.
-- [ ] AC19: An ADR records the default source chosen from the report and the measured p95
+- [x] AC19: An ADR records the default source chosen from the report and the measured p95
   detection latency; DECISIONS gets the row. If no candidate reaches p95 ≤ 60 s detection
   latency, the ADR says so and BACKLOG #2 is triggered.
 
