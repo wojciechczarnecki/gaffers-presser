@@ -366,7 +366,7 @@ every expected `fpl_id` exists in the snapshot.
 | AC5 | 2, 11, 13 | `tests/extraction/test_config.py::test_errors_never_carry_values`, `tests/extraction/test_service.py::test_credentials_never_logged_or_stored`, `tests/worker/test_cli.py::test_worker_rejects_llm_provider_without_key` | |
 | AC6 | 5, 7 | `tests/extraction/test_flow.py::test_typed_result`, `::test_no_events_is_empty_result` | |
 | AC7 | 7 | `tests/extraction/test_flow.py::test_leaked_xi_gives_starters_and_benched`, `::test_out_and_starts_gives_two_events` | |
-| AC8 | 4, 20 | `tests/content/test_prompts.py::test_extraction_prompt_states_relevance_rule`, `tests/extraction/evaluation/test_eval_set.py::test_relevance_categories` | |
+| AC8 | 4, 20 | `tests/content/test_prompts.py::test_extraction_prompt_states_relevance_rule`, `tests/extraction/evaluation/test_eval_set.py::test_relevance_categories` | step 20: `uv run pytest -q tests/extraction/evaluation/test_eval_set.py::test_relevance_categories` → `FileNotFoundError: .../evals/extraction/v1/cases.jsonl` (set missing) |
 | AC9 | 7, 10 | `tests/extraction/test_flow.py::test_repost_is_extracted_with_author`, `tests/extraction/test_store.py::test_current_extraction_exposes_post_flags` | |
 | AC10 | 6 | `tests/extraction/test_linking.py` | |
 | AC11 | 7 | `tests/extraction/test_flow.py::test_disambiguation_*` | |
@@ -381,7 +381,7 @@ every expected `fpl_id` exists in the snapshot.
 | AC20 | 11, 14 | `tests/extraction/test_service.py::test_worker_extraction_records_latency`, `tests/worker/test_cli.py::test_status_shows_extraction*` | |
 | AC21 | 13 | `tests/worker/test_cli.py::test_sigterm_with_extraction_exits_within_10_s` | |
 | AC22 | 15 | `tests/extraction/test_cli.py::test_reextract_*` | |
-| AC23 | 16, 20 | `tests/extraction/evaluation/test_cases.py`, `tests/extraction/evaluation/test_eval_set.py` | step 16 (schema + composition rules, stubbed `composition_problems`): `uv run pytest -q tests/extraction/evaluation/test_cases.py` → `assert any(keyword in problem for problem in problems), problems` (`AssertionError: []`); step 20 (the committed set): see step 20 |
+| AC23 | 16, 20 | `tests/extraction/evaluation/test_cases.py`, `tests/extraction/evaluation/test_eval_set.py` | step 16 (schema + composition rules, stubbed `composition_problems`): `uv run pytest -q tests/extraction/evaluation/test_cases.py` → `assert any(keyword in problem for problem in problems), problems` (`AssertionError: []`); step 20 (the committed set, files missing): `cd backend && uv run pytest -q tests/extraction/evaluation/test_eval_set.py` → `FileNotFoundError: .../evals/extraction/v1/cases.jsonl` (4 failed; the plan names missing files as the red state) |
 | AC24 | 18, 19 | `tests/extraction/test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | step 18 (stubbed `prelabel`): `uv run pytest -q tests/extraction/test_cli.py -k prelabel` → `assert ['1'] == ['1', '3']` (`test_prelabel_skips_ids_already_in_the_set`), `assert 0 == 1` (`test_prelabel_config_error_names_variable`); step 19 (stubbed `evaluate`): `uv run pytest -q tests/extraction/test_cli.py -k evaluate` → `assert 0 == 1` (`test_evaluate_refuses_unreviewed`, `test_evaluate_requires_pln_rate`, `test_evaluate_config_error_names_variable`), `FileNotFoundError` on the results file (`test_evaluate_writes_results`, `test_evaluate_only_selected_split`, `test_evaluate_case_error_is_recorded_and_run_continues`); `test_evaluate_traces_with_run_name` exercises the runner written in the same step and was not seen red |
 | AC25 | 17, 19 | `tests/extraction/evaluation/test_metrics.py`, `tests/extraction/test_cli.py::test_evaluate_*` | step 17 (metrics, stubbed `compute_metrics`): `uv run pytest -q tests/extraction/evaluation/test_metrics.py` → `assert (metrics.precision, metrics.recall, metrics.f1) == (1.0, 1.0, 1.0)` (15 failed, 4 passed); step 19 (stubbed `evaluate`): `uv run pytest -q tests/extraction/test_cli.py -k evaluate` → `assert 0 == 1` (`test_evaluate_refuses_unreviewed`, `test_evaluate_requires_pln_rate`, `test_evaluate_config_error_names_variable`), `FileNotFoundError` on the results file (`test_evaluate_writes_results`, `test_evaluate_only_selected_split`, `test_evaluate_case_error_is_recorded_and_run_continues`); `test_evaluate_traces_with_run_name` exercises the runner written in the same step and was not seen red |
 | AC26 | — | manual | manual — the owner's review and comparison run |
@@ -628,7 +628,7 @@ from `backend/`.
       Files: `backend/app/extraction/evaluation/runner.py`, `backend/app/extraction/cli.py`,
       `backend/tests/extraction/test_cli.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_cli.py -k evaluate`
-- [ ] 20. Evaluation set v1 data (see Evaluation set): write the proving test
+- [x] 20. Evaluation set v1 data (see Evaluation set): write the proving test
       `tests/extraction/evaluation/test_eval_set.py` first (`test_schema`,
       `test_composition` via `composition_problems` → `[]`, `test_relevance_categories`,
       `test_fpl_ids_in_snapshot`) and run it red (files missing); then
