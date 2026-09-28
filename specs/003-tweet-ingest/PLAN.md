@@ -508,7 +508,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
 
 ### Group 4 — Measurement and documentation
 
-- [ ] 15. Latency records and summary: `app/tweets/measure.py` — `LatencyRecord`,
+- [x] 15. Latency records and summary: `app/tweets/measure.py` — `LatencyRecord`,
       `record_to_json` / `read_records(path)`, `summarise(records, poll_counts) ->
       list[SourceSummary]`, `format_summary(summaries, markdown: bool) -> str`, nearest-rank
       percentile as in "Measurement". Tests `tests/tweets/test_measure.py`:
