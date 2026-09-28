@@ -988,6 +988,76 @@ Full stack (`cd backend && uv run ruff check . && uv run ruff format --check . &
 pytest -q`) is green: 438 passed (plus the pre-existing BACKLOG #10 flaky warning). Applied
 locally: `uv run alembic upgrade head` → `0004 (head)`.
 
+### Chunk 4 — Group 4 (Worker loop, status and the re-extraction CLI) — 2026-09-28
+
+Steps 12, 13, 14, 15 done, each with its own test-first commit
+(`app/extraction/loop.py` + `test_loop.py`; `app/worker/cli.py` wiring +
+`test_cli.py`; the `status` extraction section; `app/extraction/cli.py` +
+`__main__.py` + `test_cli.py`). Decisions taken within the plan's latitude:
+
+- `ExtractionLoop` shares one `Clock` for both the idle-poll sleep and the timestamps
+  `extract_post` records (`started_at`/`finished_at`), same as the tweet poller's
+  `StopAwareClock` pattern; `IDLE_POLL_SECONDS = 2.0`, `ITERATION_ERROR_SLEEP_SECONDS = 30.0`
+  live in `loop.py` since the plan named the values but not their home.
+- Worker `run()`: `deps.extraction is None` → log `"extraction disabled"`; otherwise, when
+  `deps.extraction.tracing is None`, log the Langfuse warning once, then start the
+  extractor with `clock=deps.extraction.clock` (mirrors `deps.tweet_ingest.clock`). The
+  `finally` block now computes one shared 5 s deadline (`time.monotonic() + 5`) and joins
+  the tweet and extraction threads against the *remaining* time on that same deadline, not
+  5 s each, per the plan's shutdown-bound requirement.
+- `status`'s `Extraction:` block reuses `extraction_status(engine)` from step 10 as-is; a
+  `null` `latency_seconds` prints as `-`.
+- `app/extraction/cli.py`'s `ExtractionCliDeps(engine, settings, build_spec, clock)` matches
+  the plan's four fields exactly; `build_spec_from_settings(settings) -> BuildSpec` is a
+  named (not leading-underscore) helper so tests can build a deps object whose `build_spec`
+  exercises the real `resolve_llm`/`build_chat_model` path (for the config-error test)
+  without needing a real `DATABASE_URL` — the engine comes from the test's own `db`
+  fixture, never from `_deps_from_settings()`, so the CLI wiring's `load_settings()` call is
+  never reached in that test, matching how the worker's own config-error tests avoid it.
+  `reextract` builds one `ChatModelSpec` up front (via `deps.build_spec(provider, model)`)
+  and reuses it — and the tracing handler — across every selected post, consistent with
+  `extract_post` itself only building a flow once per post-level call it makes.
+- Typer: with only one command (`reextract`) registered, Typer collapses the app into a
+  single-command CLI and no longer accepts `reextract` as the first argument (breaks both
+  `python -m app.extraction reextract ...` and the `--help` listing showing it as a
+  subcommand). Fixed with a no-op `@app.callback()` — a known Typer pattern — which keeps
+  `app` a multi-command group; steps 16/18/19 add three more commands, after which the
+  callback becomes redundant but harmless.
+
+Traps the next group will meet too:
+
+- A test that scripts a `FakeChatModel` with a `threading.Event` response to make the
+  extractor block **must** release that event (`event.set()`) in the test's own
+  `finally`/teardown before the test function returns. The abandoned daemon extractor
+  thread itself never blocks process exit, but the *first* version of
+  `test_polls_continue_while_extraction_blocks` left its event unset forever — the test
+  body passed in ~7.5 s, then the whole pytest process hung indefinitely afterward
+  (confirmed with an explicit `timeout` guard: killed after 60 s / 170 s with exit 124,
+  no further output). Root cause was not fully pinned down (a leaked, permanently-blocked
+  daemon thread interacting with session-scoped fixture teardown — most likely the
+  Postgres testcontainer's shutdown waiting on a client that, while not holding any
+  transaction, never disconnects), but the fix (always release scripted blocking events
+  before the test returns, as `test_sigterm_with_extraction_blocked_in_a_call_exits_within_10_s`
+  already did) resolved it: 108 tests (`tests/worker/test_cli.py tests/extraction`) then
+  pass and the process exits cleanly (exit 0) in under 30 s. Any future test that leaves a
+  `FakeChatModel` mid-call must follow the same rule.
+- Always run this project's test suites (and especially any new "blocked call" test) under
+  an explicit `timeout` guard while developing — a hang here is silent (no assertion
+  failure, no traceback) and only shows up as the process never returning.
+- Adding a status section or a CLI command that changes `stdout` output can break an
+  unrelated pre-existing test that slices `result.stdout` from a fixed marker line to "the
+  rest of the output" (`_tweet_status_lines` in `tests/worker/test_cli.py`) — such helpers
+  need an explicit end marker, not just a start one, once a new section can follow.
+
+Running `implement_iterations` total: 3 (1 carried over from chunk 1, unchanged through
+chunks 2–3, plus 2 in this chunk: the `test_polls_continue_while_extraction_blocks` hang
+diagnosis-and-fix above, and the Typer single-command collapse in step 15).
+
+Full stack (`cd backend && uv run ruff check . && uv run ruff format --check . && uv run
+pytest -q`) is green: 461 passed (plus the pre-existing BACKLOG #10 flaky warning), run
+twice under an explicit `timeout` guard (once in the background, confirmed again in the
+foreground per the coordinator's instruction) — both exit 0, ~100 s.
+
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
