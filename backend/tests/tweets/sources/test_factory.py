@@ -1,4 +1,8 @@
+import asyncio
+import tempfile
+
 import pytest
+from twscrape import API
 
 from app.core.errors import ConfigError
 from app.core.settings import TweetSettings
@@ -58,3 +62,20 @@ def test_missing_credentials_names_the_variable(monkeypatch, name, missing_varia
     settings = _settings(monkeypatch)
     with pytest.raises(ConfigError, match=missing_variable):
         build_source(name, settings)
+
+
+def test_empty_accounts_db_falls_back_to_a_working_default(monkeypatch, tmp_path):
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    settings = _settings(
+        monkeypatch,
+        TWSCRAPE_USERNAME="dedicated",
+        TWSCRAPE_COOKIES=f"auth_token={SENTINEL}; ct0={SENTINEL}",
+        TWSCRAPE_ACCOUNTS_DB="",
+    )
+    assert settings.twscrape_accounts_db == str(tmp_path / "twscrape-accounts.db")
+
+    source = build_source("twscrape", settings)
+    source.close()
+
+    accounts = asyncio.run(API(pool=settings.twscrape_accounts_db).pool.get_all())
+    assert [account.username for account in accounts] == ["dedicated"]

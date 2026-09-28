@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 
-from pydantic import SecretStr, ValidationError
+from pydantic import Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
@@ -22,13 +22,15 @@ class Settings(BaseSettings):
 
 
 class TweetSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
 
     tweet_source: str = ""
     x_list_id: str = ""
     twscrape_username: str = ""
     twscrape_cookies: SecretStr | None = None
-    twscrape_accounts_db: str = str(Path(tempfile.gettempdir()) / "twscrape-accounts.db")
+    twscrape_accounts_db: str = Field(
+        default_factory=lambda: str(Path(tempfile.gettempdir()) / "twscrape-accounts.db")
+    )
     twitterapi_io_key: SecretStr | None = None
     x_api_bearer_token: SecretStr | None = None
 
