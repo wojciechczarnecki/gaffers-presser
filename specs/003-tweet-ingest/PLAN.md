@@ -650,6 +650,12 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-28 · implement (owner question, not an escalation) · The SPEC asked for tweepy or
+  X's official SDK (`xdk`) for the official X API adapter; the plan uses the pinned `httpx`
+  instead. Keep `httpx`, or switch to `tweepy` / `xdk`? · **Decision: keep plain `httpx`**
+  (one GET endpoint with a bearer token; raw JSON and `MockTransport` tests as in the FPL
+  client; no extra dependencies; `xdk` is still 0.x). This supersedes the SPEC wording.
+
 ## Review log
 
 ### 2026-09-28 — /pipeline:plan-review
