@@ -546,7 +546,7 @@ from `backend/`.
 
 ### Group 4 — Worker loop, status and the re-extraction CLI
 
-- [ ] 12. `app/extraction/loop.py`: `ExtractionLoop`, `start_extractor(engine, runtime,
+- [x] 12. `app/extraction/loop.py`: `ExtractionLoop`, `start_extractor(engine, runtime,
       stop_event, clock=None) -> Thread` (name `extractor`, daemon, `Shutdown` swallowed
       like `start_poller`); the handler built once per loop and flushed on exit. Tests (DB,
       a scripted clock): `test_new_post_picked_within_5_s` (a post inserted during an idle

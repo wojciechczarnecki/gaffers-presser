@@ -1,0 +1,245 @@
+import threading
+import time
+from datetime import UTC, datetime, timedelta
+
+from sqlmodel import Session, select
+
+from app.extraction.loop import ExtractionLoop
+from app.extraction.models import Extraction
+from app.extraction.providers import ChatModelSpec
+from app.extraction.schemas import ExtractionOutput
+from app.extraction.service import ExtractionRuntime
+from app.tweets.models import Tweet
+from tests.extraction.fakes import FakeChatModel
+
+NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
+
+
+def _tweet_row(x_id: int, created_at: datetime = NOW) -> Tweet:
+    return Tweet(
+        x_id=x_id,
+        author_handle="reporter",
+        text="Haaland starts today.",
+        created_at=created_at,
+        first_fetched_at=created_at,
+        source="list",
+        is_repost=False,
+        is_reply=False,
+        raw={},
+    )
+
+
+def _runtime(*responses) -> ExtractionRuntime:
+    fake = FakeChatModel(responses=list(responses))
+    spec = ChatModelSpec(provider="fake", model="fake-model", chat_model=fake)
+    return ExtractionRuntime(
+        provider="fake", model="fake-model", make_spec=lambda: spec, tracing=None
+    )
+
+
+def _wait_for(predicate, timeout: float = 5.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return
+        time.sleep(0.02)
+
+
+def test_new_post_picked_within_5_s(db):
+    stop_event = threading.Event()
+
+    class ScriptedClock:
+        def __init__(self) -> None:
+            self._now = NOW
+            self._inserted = False
+
+        def now(self) -> datetime:
+            return self._now
+
+        def sleep(self, seconds: float) -> None:
+            self._now += timedelta(seconds=seconds)
+            if not self._inserted:
+                self._inserted = True
+                with Session(db) as session:
+                    session.add(_tweet_row(x_id=1))
+                    session.commit()
+
+    clock = ScriptedClock()
+    runtime = _runtime(ExtractionOutput(events=[]))
+    loop = ExtractionLoop(db, runtime, clock, stop_event)
+
+    thread = threading.Thread(target=loop.run, daemon=True)
+    thread.start()
+
+    rows: list[Extraction] = []
+
+    def _fetch() -> bool:
+        nonlocal rows
+        with Session(db) as session:
+            rows = session.exec(select(Extraction)).all()
+        return len(rows) >= 1
+
+    _wait_for(_fetch)
+    stop_event.set()
+    thread.join(timeout=2)
+
+    assert len(rows) == 1
+    assert (rows[0].started_at - NOW).total_seconds() <= 5
+
+
+def test_oldest_first(db):
+    stop_event = threading.Event()
+    with Session(db) as session:
+        session.add(_tweet_row(x_id=2, created_at=NOW + timedelta(minutes=1)))
+        session.add(_tweet_row(x_id=1, created_at=NOW))
+        session.commit()
+
+    class CountingClock:
+        def __init__(self) -> None:
+            self._now = NOW
+
+        def now(self) -> datetime:
+            return self._now
+
+        def sleep(self, seconds: float) -> None:
+            self._now += timedelta(seconds=seconds)
+
+    runtime = _runtime(ExtractionOutput(events=[]), ExtractionOutput(events=[]))
+    loop = ExtractionLoop(db, runtime, CountingClock(), stop_event)
+
+    thread = threading.Thread(target=loop.run, daemon=True)
+    thread.start()
+
+    rows: list[Extraction] = []
+
+    def _fetch() -> bool:
+        nonlocal rows
+        with Session(db) as session:
+            rows = session.exec(select(Extraction).order_by(Extraction.id)).all()
+        return len(rows) >= 2
+
+    _wait_for(_fetch)
+    stop_event.set()
+    thread.join(timeout=2)
+
+    assert [row.tweet_x_id for row in rows] == [1, 2]
+
+
+def test_failure_does_not_stop_the_loop(db):
+    stop_event = threading.Event()
+    with Session(db) as session:
+        session.add(_tweet_row(x_id=1, created_at=NOW))
+        session.add(_tweet_row(x_id=2, created_at=NOW + timedelta(minutes=1)))
+        session.commit()
+
+    class NoSleepClock:
+        def __init__(self) -> None:
+            self._now = NOW
+
+        def now(self) -> datetime:
+            return self._now
+
+        def sleep(self, seconds: float) -> None:
+            self._now += timedelta(seconds=seconds)
+
+    runtime = _runtime(
+        RuntimeError("a"), RuntimeError("b"), RuntimeError("c"), ExtractionOutput(events=[])
+    )
+    loop = ExtractionLoop(db, runtime, NoSleepClock(), stop_event)
+
+    thread = threading.Thread(target=loop.run, daemon=True)
+    thread.start()
+
+    rows: list[Extraction] = []
+
+    def _fetch() -> bool:
+        nonlocal rows
+        with Session(db) as session:
+            rows = session.exec(select(Extraction).order_by(Extraction.id)).all()
+        return len(rows) >= 2
+
+    _wait_for(_fetch)
+    stop_event.set()
+    thread.join(timeout=2)
+
+    assert len(rows) == 2
+    by_x_id = {row.tweet_x_id: row.status for row in rows}
+    assert by_x_id[1] == "failed"
+    assert by_x_id[2] == "extracted"
+
+
+def test_db_error_survives_iteration(db, monkeypatch, caplog):
+    stop_event = threading.Event()
+    with Session(db) as session:
+        session.add(_tweet_row(x_id=1, created_at=NOW))
+        session.commit()
+
+    from app.extraction import loop as loop_module
+
+    original_next_pending = loop_module.next_pending
+    calls = {"n": 0}
+
+    def flaky_next_pending(session):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("db hiccup")
+        return original_next_pending(session)
+
+    monkeypatch.setattr(loop_module, "next_pending", flaky_next_pending)
+
+    class NoSleepClock:
+        def __init__(self) -> None:
+            self._now = NOW
+            self.sleeps: list[float] = []
+
+        def now(self) -> datetime:
+            return self._now
+
+        def sleep(self, seconds: float) -> None:
+            self.sleeps.append(seconds)
+            self._now += timedelta(seconds=seconds)
+
+    clock = NoSleepClock()
+    runtime = _runtime(ExtractionOutput(events=[]))
+    loop = ExtractionLoop(db, runtime, clock, stop_event)
+
+    rows: list[Extraction] = []
+
+    def _fetch() -> bool:
+        nonlocal rows
+        with Session(db) as session:
+            rows = session.exec(select(Extraction)).all()
+        return len(rows) >= 1
+
+    with caplog.at_level("ERROR"):
+        thread = threading.Thread(target=loop.run, daemon=True)
+        thread.start()
+        _wait_for(_fetch)
+        stop_event.set()
+        thread.join(timeout=2)
+
+    assert len(rows) == 1
+    assert 30.0 in clock.sleeps
+    assert "RuntimeError" in caplog.text
+
+
+def test_stops_on_stop_event(db):
+    stop_event = threading.Event()
+
+    class WaitingClock:
+        def now(self) -> datetime:
+            return NOW
+
+        def sleep(self, seconds: float) -> None:
+            stop_event.wait(min(seconds, 0.05))
+
+    runtime = _runtime()
+    loop = ExtractionLoop(db, runtime, WaitingClock(), stop_event)
+
+    thread = threading.Thread(target=loop.run, daemon=True)
+    thread.start()
+    time.sleep(0.1)
+    stop_event.set()
+    thread.join(timeout=2)
+
+    assert not thread.is_alive()
