@@ -381,7 +381,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       after importing the adapter module; no test builds a real `twscrape.API` against the
       network — files: `app/tweets/sources/twscrape_source.py`, payloads, README, test file.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/sources/test_twscrape_source.py`
-- [ ] 7. Factory: `app/tweets/sources/__init__.py` `SOURCE_NAMES` and
+- [x] 7. Factory: `app/tweets/sources/__init__.py` `SOURCE_NAMES` and
       `build_source(name, settings) -> TweetSource` (calls `check_source` first). Tests
       `tests/tweets/sources/test_factory.py`: with `TWEET_SOURCE` set to each name (and its
       credentials via `monkeypatch.setenv`, `TWSCRAPE_ACCOUNTS_DB` in `tmp_path`),
