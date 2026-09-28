@@ -749,6 +749,52 @@ not just the tweets subset.
 Running `implement_iterations` total: 1 (one extra pass on step 6's payload redaction tests
 before they passed; every other step's automatic verification was green on the first run).
 
+### Chunk 2 — Group 2 (Storage and polling) — 2026-09-28
+
+Carried out steps 8–11. `app/tweets/models.py` (`Tweet`, `TweetPoll`) and migration `0003_tweets`
+add only the two new tables; applied locally to the Compose database (`localhost`, so
+`migrations.localHosts` matched) with `uv run alembic upgrade head`.
+`test_job_run_migration_keeps_collector_data` now upgrades to `0002` (not `head`) before
+comparing collector contents, and excludes `tweet`/`tweet_poll` from that comparison, because
+`downgrade -1` from `head` now removes revision `0003`, not `job_run` — as the plan's "Risks
+and traps" flagged. A new `test_tweet_migration_adds_only_new_tables` proves the add-only
+migration and its downgrade the same way.
+
+`PollRecord` (the dataclass `next_poll_at` and `poll_once` both need) lives in
+`app/tweets/store.py`, not `app/tweets/schedule.py`: step 9 (store) needs the type before
+step 10 (schedule) exists, so `schedule.py` imports it from `store.py` instead of owning it —
+a naming latitude within the plan, not a deviation, since the plan's "Tables"/"Polling
+schedule" sections describe the fields and behaviour, not which module declares the
+dataclass.
+
+`store_posts` uses `INSERT … ON CONFLICT (x_id) DO NOTHING RETURNING x_id` directly on
+`Tweet.__table__` (not `app/db/upsert.py`, which the plan already ruled out because it would
+overwrite `first_fetched_at`); `latest_success_by_source` is one
+`SELECT DISTINCT ON (source) …` query, checked in `test_latest_success_per_source` with a
+`before_cursor_execute` listener counting exactly one execution.
+
+`poll_once` reads `last_seen_id` in its own short session before fetching, then stores in a
+second transaction after the fetch returns (`fetched_at = now_fn()` taken right after
+`collect_new`, as the plan's "Design choices" specifies); a `SourceRateLimitedError` and any
+other `Exception` (including one raised from `store_posts`, covering a mid-store database
+error) both land in the same `try`, so a failure anywhere in the poll still writes exactly one
+`tweet_poll` row with `error_class` only — never the exception's own message — matching
+`app/worker/jobs.py`'s pattern.
+
+One trap for the next chunk: seeding `Gameweek` rows in a test needs `session.flush()` right
+after `session.add(Season(...))` in the same transaction — skipping it raises a
+`ForeignKeyViolation` because SQLAlchemy does not reorder a mixed `Season`/`Gameweek`
+`INSERT ... VALUES` batch across tables. `tests/worker/test_cli.py` already does this; step 9's
+first `test_upcoming_deadlines` run hit exactly this and needed the flush added.
+
+Ran the full `cd backend && uv run ruff check . && uv run ruff format --check . && uv run
+pytest -q` (264 tests) green at the end of the chunk.
+
+Running `implement_iterations` total: 3 (chunk 1's 1, plus 2 in this chunk — one pass fixing
+the `Gameweek` seeding FK order in `test_store.py::test_upcoming_deadlines`, one pass removing
+an unused `TweetPoll` import that `ruff check` caught in `test_store.py`; every other step's
+automatic verification was green on the first run after its confirmed-red step).
+
 ## Deviations
 
 - Step 6 payloads: the trimmed twscrape sdist fixture (`tests/mocked-data/raw_list_timeline.json`,
