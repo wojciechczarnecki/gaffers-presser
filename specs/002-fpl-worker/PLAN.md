@@ -576,12 +576,31 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
-      fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` row on advisory locks added
-- [ ] spec status: `implemented`
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+      fully green — 177 passed
+- [x] end-to-end verification (automatic) performed, result recorded here:
+      1. Full stack check: green, 177 passed.
+      2. Image: `docker build -f backend/Dockerfile -t gaffers-presser-worker:dev .` → exit
+         0; `docker run --rm gaffers-presser-worker:dev python -m app.worker run --help` →
+         exit 0; `docker run --rm gaffers-presser-worker:dev id -u` → `10001`.
+      3. Container against the local database: `docker compose up -d`; `alembic upgrade
+         head` applied `0001 -> 0002`; `docker run --rm --network host -e
+         DATABASE_URL=postgresql://presser:presser@localhost:5432/presser
+         gaffers-presser-worker:dev python -m app.worker status` → exit 0, printed
+         `Latest runs:` and `Next actions:` (the `postgresql://` scheme connects through the
+         image, proving AC14).
+      4. Worker process in the image with real SIGTERM handling: `docker run -d --name
+         presser-e2e --network host --env-file backend/.env gaffers-presser-worker:dev`
+         (default `CMD`, local database, real FPL requests); within 2 s the logs showed
+         `job finished: job=reference_sync` and the catch-up sequence (a missed-snapshot
+         line, then `results_sync`/`league_sync` for gameweek 1 in progress);
+         `docker stop -t 10 presser-e2e` returned in 0.156 s; `docker inspect -f
+         '{{.State.ExitCode}}' presser-e2e` → `0`; logs ended with `worker stopped`; a grep
+         for both configured league IDs and `leak` over the full log found nothing;
+         `docker rm presser-e2e` and `docker compose down` cleaned up.
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` row on advisory locks added
+- [x] spec status: `implemented`
 
 ## Owner decisions
 

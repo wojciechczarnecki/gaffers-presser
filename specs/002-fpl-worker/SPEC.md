@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-09-27"
   - "spec-ready — 2026-09-27"
   - "plan-draft — 2026-09-27"
   - "plan-approved — 2026-09-27"
+  - "implemented — 2026-09-28"
 metrics:
   started_at: 2026-09-27T21:15
   escalations: 0
@@ -12,6 +13,12 @@ metrics:
   plan_review_blockers: 0
   plan_review_majors: 1
   plan_changes: 7
+  implement_steps: 12
+  implement_iterations: 7
+  implement_chunks: 3
+  converge_gaps: 0
+  deviations_minor: 3
+  deviations_major: 0
 ---
 
 # SPEC 002 — FPL worker (deadline-driven schedule and Railway deployment)
