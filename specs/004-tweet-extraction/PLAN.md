@@ -496,7 +496,7 @@ from `backend/`.
 
 ### Group 3 — Storage and the extraction service
 
-- [ ] 9. Data migration (separate step): models `Extraction`, `ExtractionEvent` in
+- [x] 9. Data migration (separate step): models `Extraction`, `ExtractionEvent` in
       `app/extraction/models.py` (see Tables); migration `0004_extraction.py`
       (`down_revision = "0003"`, creates both tables and indexes; downgrade drops them);
       `import app.extraction.models` in `migrations/env.py` and in
