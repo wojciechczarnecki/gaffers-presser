@@ -106,7 +106,12 @@ Design choices:
 - **Polling in a thread of the worker process**, started after the schedule lock is taken
   (so an overlapping old and new deployment never poll together), with its own clock whose
   `sleep` is `stop_event.wait`: the FPL loop stays unchanged and single-threaded; the SPEC
-  and DECISIONS already fixed "one process, separate loop".
+  and DECISIONS already fixed "one process, separate loop". **A source is built, used and
+  closed in the thread that polls it** (the poller thread, or one measurement thread per
+  source): twscrape's `add_account_cookies` is a coroutine and its `aiosqlite` pool and the
+  adapter's `asyncio.Runner` must stay on one thread, and closing an `httpx.Client` from
+  another thread races an in-flight poll. Other threads only get a `make_source` callable
+  and run `check_source` up front.
 - **Schedule derived from the poll log** (the newest `tweet_poll` row of the active source)
   and the gameweek calendar, re-read on every wake-up, as the FPL schedule is: a restart
   and `status` compute the same next poll the loop acts on.
@@ -138,7 +143,9 @@ Design choices:
 "TWSCRAPE_COOKIES"], "twitterapi_io": ["TWITTERAPI_IO_KEY"], "x_api":
 ["X_API_BEARER_TOKEN"]}`; `check_source(settings, name) -> None` raises
 `ConfigError("<VAR> must be set for TWEET_SOURCE=<name>")` naming the first missing
-variable; `resolve_ingest(settings) -> IngestConfig | None` returns `None` for an empty
+variable, and for twscrape `ConfigError("TWSCRAPE_COOKIES must include auth_token and ct0")`
+when the cookie string lacks either name (checked on the parsed names, never echoing the
+value — the same rule twscrape's `add_account_cookies` enforces with a `ValueError` later); `resolve_ingest(settings) -> IngestConfig | None` returns `None` for an empty
 `TWEET_SOURCE`, raises `ConfigError("TWEET_SOURCE must be one of: twscrape, twitterapi_io,
 x_api")` for an unknown name (the given value is not echoed), `ConfigError("X_LIST_ID must
 be set to the numeric ID of the watched X List")` for a missing or non-numeric list ID, and
@@ -181,13 +188,20 @@ a variable's value.
   - **twscrape** — set `os.environ.setdefault("TWS_TELEMETRY", "0")` before importing
     twscrape and `twscrape.logger.set_log_level("ERROR")`; `API(pool=accounts_db,
     raise_when_no_account=True)`; on construction
-    `pool.add_account_cookies(username, cookies)`; pages from
+    `runner.run(pool.add_account_cookies(username, cookies))` (a coroutine in 0.20.1; it
+    upserts the account and re-activates it, so a restart heals an account twscrape marked
+    inactive); pages from
     `list_timeline_raw(list_id)`; each response's JSON parsed with
     `twscrape.models.parse_tweets(page_dict)`. Mapping: `id`, `user.username`,
     `rawContent`, `date`, `is_repost = retweetedTweet is not None`,
     `is_reply = inReplyToTweetId is not None`; `raw = json.loads(tweet.json())`.
-    `NoAccountError` → `SourceRateLimitedError` with the seconds to
-    `pool.next_available_at(<queue>)` when it gives a time, else `SourceUnavailableError`.
+    `NoAccountError` → `SourceRateLimitedError` with the seconds until
+    `runner.run(pool.next_available_at("ListLatestTweetsTimeline"))`, which in 0.20.1 is a
+    coroutine returning `None` (no active account → `SourceUnavailableError` instead),
+    `"now"` (→ `retry_after = 0`) or a **local wall-clock string `"%H:%M:%S"`** — not a
+    datetime: the adapter converts it against local `datetime.now()`, rolling to the next
+    day when the time has passed, and falls back to `retry_after=None` on anything
+    unparsable.
     `max_pages = 5`. For tests the constructor accepts an injected `api` object (a fake with
     an async `list_timeline_raw` yielding `httpx.Response`s).
 - HTTP adapters: `httpx.Client(transport=…, timeout=10.0)` injectable like `FplClient`; no
@@ -304,7 +318,8 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       `_env_file=None` and `monkeypatch.setenv`): empty `TWEET_SOURCE` → `None`
       (`test_empty_source_disables_ingest`); unknown name → error naming `TWEET_SOURCE`
       without the given value; per source, each missing variable → error naming it; missing
-      or non-numeric `X_LIST_ID`; secret values set to a sentinel (`"sentinel-secret-…"`)
+      or non-numeric `X_LIST_ID`; `TWSCRAPE_COOKIES` without `auth_token` or `ct0` →
+      error naming the variable; secret values set to a sentinel (`"sentinel-secret-…"`)
       never appear in `str(error)` or `repr(settings)` — files: `app/core/settings.py`,
       `app/tweets/__init__.py`, `app/tweets/config.py`, `tests/tweets/test_config.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_config.py tests/core/test_settings.py`
@@ -357,7 +372,10 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       objects; a fake pool recording `add_account_cookies` and answering
       `next_available_at`): `test_page_normalised`; `test_stops_at_last_seen` (the fake
       generator is not advanced past the page holding the last seen ID and is closed);
-      `NoAccountError` with / without a next-available time; a page that fails to parse →
+      `NoAccountError` with the fake pool answering `"now"`, a local `"%H:%M:%S"` string
+      (a fixed injected local clock; one case past midnight), `None` (→
+      `SourceUnavailableError`) and garbage (→ `retry_after=None`); construction runs
+      `add_account_cookies` as a coroutine; a page that fails to parse →
       `SourcePayloadError`; `test_errors_never_carry_the_cookies` (sentinel cookies absent
       from errors, `caplog` and `capfd` — loguru writes to stderr); `TWS_TELEMETRY` is `"0"`
       after importing the adapter module; no test builds a real `twscrape.API` against the
@@ -436,16 +454,21 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
 ### Group 3 — Worker integration
 
 - [ ] 12. Polling loop: `app/tweets/loop.py` — `StopAwareClock(stop_event)` (`now` = UTC,
-      `sleep` = `stop_event.wait(seconds)`), `TweetPoller(engine, source, list_id, clock,
-      stop_event)` with `run()` as in "Polling schedule" (catches `Exception` per iteration,
-      logs the class, sleeps `MAX_SLEEP` and continues; returns when `stop_event` is set;
-      `Shutdown` from a fake clock ends it), and `start_poller(...) -> threading.Thread`
-      (daemon, named `tweet-poller`, target catches `Shutdown`). Tests
+      `sleep` = `stop_event.wait(seconds)`), `TweetPoller(engine, make_source, list_id,
+      clock, stop_event)` with `run()` as in "Polling schedule" (builds the source lazily
+      inside the per-iteration `try`, so a build failure is logged by class and retried
+      after `MAX_SLEEP`; catches `Exception` per iteration, logs the class, sleeps
+      `MAX_SLEEP` and continues; returns when `stop_event` is set; `Shutdown` from a fake
+      clock ends it; closes the source in its own `finally`, on the poller thread), and
+      `start_poller(...) -> threading.Thread` (daemon, named `tweet-poller`, target catches
+      `Shutdown`). Tests
       `tests/tweets/test_loop.py` (`db` fixture, gameweek rows seeded with `Season` +
       `Gameweek`, `FakeClock` from `tests/worker/sim.py`): polls every 20 s from T−10 min to
       the deadline, then 30 min; `test_failures_do_not_stop_polling` (scripted failures and a
       429 with `retry_after=60` → rows keep coming at the right times); a deadline added to
-      the calendar mid-run is picked up within 60 s; `test_stop_event_ends_loop_promptly`
+      the calendar mid-run is picked up within 60 s; `make_source` raising once → logged,
+      next iteration builds and polls; the fake source's `close()` is called on the poller
+      thread (record `threading.current_thread().name`); `test_stop_event_ends_loop_promptly`
       (real `StopAwareClock`, thread joined < 1 s after `stop_event.set()`) — files: the
       module, the test file.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_loop.py`
@@ -455,9 +478,10 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       `StopAwareClock(stop_event)`); `_deps_from_settings` loads `TweetSettings`, calls
       `resolve_ingest` (a `ConfigError` → `fail(...)`, exit 1) and wraps `build_source`.
       In `run`: after the schedule lock is taken, if `tweet_ingest is None` log
-      `tweet ingest disabled` once; else build the source and `start_poller`; `worker.run()`
-      as before; in `finally` (before releasing the lock): `stop_event.set()`,
-      `thread.join(timeout=5)`, `source.close()`. Tests in `tests/worker/test_cli.py`:
+      `tweet ingest disabled` once; else `start_poller` with `make_source` (the source is
+      built and closed on the poller thread — see "Design choices"); `worker.run()` as
+      before; in `finally` (before releasing the lock): `stop_event.set()`,
+      `thread.join(timeout=5)` — the main thread never touches the source. Tests in `tests/worker/test_cli.py`:
       `test_run_without_tweet_source_logs_disabled_once` (and no `tweet_poll` rows; the
       existing worker tests stay unchanged and green);
       `test_polls_continue_while_a_deadline_snapshot_blocks` (calendar seeded with D6; FPL
@@ -494,7 +518,8 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_measure.py`
 - [ ] 16. Commands: `app/tweets/cli.py` (Typer, `measure` and `summary` as in
       "Measurement"; injectable deps via `ctx.obj` like `WorkerDeps`: source builders,
-      clock, sleep) and `app/tweets/__main__.py`. Tests `tests/tweets/test_cli.py` with two
+      clock, sleep; each builder is called, used and closed inside its source's thread,
+      `check_source` runs up front in the main thread for the skip messages) and `app/tweets/__main__.py`. Tests `tests/tweets/test_cli.py` with two
       `FakeSource`s and a fake clock: `test_measure_writes_one_record_per_source_and_post`
       (a post seen by both sources gives two records with each source's own first fetch; a
       post seen again gives no new record; a post older than the start is not recorded;
@@ -513,9 +538,9 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       `docs/DECISIONS.md` row (2026-09-28: adapters — twscrape library, twitterapi.io and the
       official X API v2 through plain `httpx`; posts keyed by X ID, first fetch wins; the
       last seen ID from the stored posts; twscrape telemetry off). Tests: extend
-      `tests/test_readme.py` (`app.tweets measure`, `app.tweets summary`, `TWEET_SOURCE` in
-      the Development section; `TWEET_SOURCE`, `X_LIST_ID`, `TWSCRAPE_COOKIES`,
-      `TWITTERAPI_IO_KEY`, `X_API_BEARER_TOKEN` in `docs/DEPLOYMENT.md`); new
+      `tests/test_readme.py` (`app.tweets measure`, `app.tweets summary` and all seven
+      variables of "Configuration" in the Development section — AC20 asks the README to
+      list them; the same seven in `docs/DEPLOYMENT.md`); new
       `tests/test_env_example.py` (every `TweetSettings` field's variable is listed in
       `backend/.env.example` and every tweet variable there has an empty value) — files:
       those documents and tests.
@@ -548,7 +573,15 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
   with it, the adapter turns `NoAccountError` into a rate-limit outcome.
 - **twscrape's async API in a thread.** One `asyncio.Runner` per adapter instance, created
   and used only in the thread that polls (the poller thread, or one measurement thread per
-  source); `close()` closes the generator and the runner.
+  source); the adapter is constructed (async `add_account_cookies`) and `close()`d (the
+  generator and the runner) in that same thread — never from the worker's main thread.
+- **twscrape hides some breakages.** Its `QueueClient` swallows an unexpected HTTP status
+  (e.g. a 404 after X rotates a GraphQL ID) by locking the account for 15 min, which our
+  adapter then sees as `NoAccountError` → `rate_limited` with ~900 s; a GraphQL error
+  response without data is logged by twscrape and parsed as an empty page → `succeeded`
+  with 0 posts. Both are recorded in `tweet_poll` (a long `rate_limited` streak, or no new
+  posts for a whole window), which is the input Stage 5 alerting needs; M1 and M2 show
+  whether 0.20.1's IDs still work.
 - **Migration test coupling.** `test_job_run_migration_keeps_collector_data` downgrades
   `-1` from `head` and expects `job_run` to vanish — after 0003 it must upgrade to `0002`
   instead (step 8). `test_upgrade_downgrade_upgrade` and `test_models_match_migration`
@@ -619,7 +652,62 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-28 — /pipeline:plan-review
+
+Anti-anchoring leads (from the SPEC alone): module `app/tweets` with a protocol + three
+adapters on recorded payloads; posts keyed by X ID with insert-or-ignore; a pure schedule
+function tested at the boundaries; the poll loop in a thread of the worker; twscrape's async
+API as the main integration risk; AC18/AC19 need a pause for the owner's run. The plan
+matches all of them; the differences below came from checking the twscrape 0.20.1 wheel
+(`accounts_pool.py`, `queue_client.py`, `api.py`, `logger.py`, `telemetry.py`) against the
+plan's assumptions.
+
+Findings:
+
+| # | Severity | Finding | Change |
+|---|---|---|---|
+| 1 | `major` | Steps 12/13/16 built the source on one thread and polled it on another, and step 13 called `source.close()` from the main thread. In twscrape 0.20.1 `add_account_cookies` is a coroutine (aiosqlite), so construction already needs the adapter's `asyncio.Runner`; closing the runner or an `httpx.Client` from the main thread while the poller may be mid-request is a race. | "Design choices": a source is built, used and closed in its polling thread; step 12 `TweetPoller` takes `make_source`, builds lazily inside the per-iteration `try`, closes in its own `finally`; step 13 main thread only sets the event and joins; step 16 builds in each measurement thread; tests added; risk updated. |
+| 2 | `major` | `AccountsPool.next_available_at` returns `None`, `"now"` or a local `"%H:%M:%S"` string, not a datetime; the plan's "seconds to next_available_at" and a fake pool answering a time would pass tests while the real adapter mis-computes `retry_after` (AC11). | twscrape adapter mapping spelt out (queue name, the three return forms, local-time conversion with midnight rollover, fallback `None`); step 6 tests each form. |
+| 3 | `minor` | The Configuration table says `TWSCRAPE_COOKIES` must hold `auth_token` and `ct0`, but `check_source` did not check it; twscrape would raise a `ValueError` later on the poller thread instead of the clear configuration error AC3 asks for. | `check_source` raises `ConfigError` naming the variable; step 2 test added. |
+| 4 | `minor` | AC20 requires the README to list the new variables; step 17's test checked only `TWEET_SOURCE` in the README and five of the seven variables in DEPLOYMENT. | Step 17 test checks all seven variables in both. |
+| 5 | `minor` | Not mentioned: twscrape turns an unexpected HTTP status into a 15-min account lock (→ our `rate_limited`) and a GraphQL error without data into an empty page (→ `succeeded`, 0 posts). | Risk added; no code change — the poll log already records both for Stage 5. |
+
+Checked and found correct (later stages need not repeat):
+
+- **coverage:** every AC1–AC20 has steps and a named proving test; the matrix matches the
+  steps; AC18 manual, AC19 `n/a` with a reason.
+- **compliance:** CONVENTIONS (recorded synthetic payloads, no network in pytest, container
+  DB, exact pin, UTC, logs without handles/list ID/secrets, no docstrings, one module
+  `app/tweets`); DECISIONS rows for ADR 0003, one long-running worker, modules per area,
+  advisory locks (poller starts after the schedule lock), 60 s detection-only target and the
+  2026-09-28 polling-cadence row — none broken; PROJECT.md already carries the detection-only
+  wording.
+- **minimality:** plain `httpx` for twitterapi.io and the X API reuses the pinned client and
+  the `FplClient`/`MockTransport` pattern; one paging rule for all adapters; no scope beyond
+  the SPEC.
+- **feasibility:** no forward dependencies (config → base/paging → adapters → factory →
+  models/migration → store → schedule → ingest → loop → worker → status → measure → docs →
+  report); migration 0003 only adds tables and the `test_job_run_migration_keeps_collector_data`
+  coupling is handled; `x_id` BIGINT fits X IDs; UTC parsing per source; the 10 s shutdown
+  bound holds with a 5 s join of a daemon thread; the AC10 test is deterministic (poller on
+  its own `FakeClock`: 9 polls from D−5 min to D−2 min, as `FakeClock` raises `Shutdown` at
+  its end); twscrape telemetry is read at run time (`TWS_TELEMETRY == "0"`), `set_log_level`
+  exists, `list_timeline_raw` / `raise_when_no_account` / `add_account_cookies` exist in 0.20.1.
+- **E2E:** automatic part runnable locally (Compose DB, CLI error paths, measure with no
+  credentials, Docker build); manual part is only what needs the owner's X account and keys
+  (M1, M2).
+- **testability:** every step has an `Automatic verification:` line with exact test paths.
+- **groups:** five groups, every step in exactly one, no boundary leaves work half done;
+  Group 5 waits for the owner's M1 by design (step 18 escalates without the file).
+- **test-first:** the preamble and every AC step write the proving test first; the fourth
+  matrix column is present.
+- **summary:** new dependency (twscrape only, fewer than the owner accepted) and the
+  add-only migration are flagged and both covered by SPEC → "Owner decisions".
+- **language:** the plan is in English, as `language: "en"`.
+
+Decision: the plan is ready for implementation — both majors were fixable in the plan and
+are fixed, no blocker remains, and the only new dependency and the migration are accepted in
+SPEC → "Owner decisions".
 
 ## Chunk notes
 
