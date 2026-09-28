@@ -323,7 +323,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       never appear in `str(error)` or `repr(settings)` — files: `app/core/settings.py`,
       `app/tweets/__init__.py`, `app/tweets/config.py`, `tests/tweets/test_config.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_config.py tests/core/test_settings.py`
-- [ ] 3. Normalised form, protocol, errors and paging: `app/tweets/sources/__init__.py`
+- [x] 3. Normalised form, protocol, errors and paging: `app/tweets/sources/__init__.py`
       (empty for now), `app/tweets/sources/base.py`, `app/tweets/sources/paging.py`
       (`collect_new`) as in "Normalised post and paging". Tests
       `tests/tweets/sources/test_paging.py` with an in-memory fake source (pages of
