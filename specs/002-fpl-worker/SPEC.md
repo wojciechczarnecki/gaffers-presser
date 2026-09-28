@@ -26,6 +26,10 @@ metrics:
   findings_accepted: 10
   findings_rejected: 5
   finished_at: 2026-09-28T08:51
+  cost_plan_cents: 151
+  cost_plan_review_cents: 103
+  cost_implement_cents: 1038
+  cost_final_review_cents: 651
 ---
 
 # SPEC 002 — FPL worker (deadline-driven schedule and Railway deployment)
