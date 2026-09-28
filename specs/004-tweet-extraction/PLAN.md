@@ -403,7 +403,7 @@ from `backend/`.
       Files: `backend/pyproject.toml`, `backend/uv.lock`, `backend/tests/extraction/__init__.py`,
       `backend/tests/extraction/test_dependency.py`.
       Automatic verification: `cd backend && uv lock --check && uv run pytest -q tests/extraction/test_dependency.py && docker build -f Dockerfile -t presser-004 .. && docker run --rm presser-004 python -c "import langgraph, langfuse, langchain_google_genai, langchain_openai, langchain_anthropic"`
-- [ ] 2. `ExtractionSettings` and `app/extraction/config.py` (see Configuration). Tests:
+- [x] 2. `ExtractionSettings` and `app/extraction/config.py` (see Configuration). Tests:
       disabled when `LLM_PROVIDER` empty; each provider resolves with its key; unknown
       provider and each missing key → `ConfigError` naming the variable; overrides;
       `resolve_tracing` with both / one / no keys; `test_errors_never_carry_values` (set

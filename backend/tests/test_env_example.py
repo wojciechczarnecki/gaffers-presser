@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.core.settings import TweetSettings
+from app.core.settings import ExtractionSettings, TweetSettings
 
 ROOT = Path(__file__).resolve().parents[2]
 ENV_EXAMPLE = ROOT / "backend" / ".env.example"
@@ -13,6 +13,19 @@ _FIELD_TO_VARIABLE = {
     "twscrape_accounts_db": "TWSCRAPE_ACCOUNTS_DB",
     "twitterapi_io_key": "TWITTERAPI_IO_KEY",
     "x_api_bearer_token": "X_API_BEARER_TOKEN",
+}
+
+_EXTRACTION_FIELD_TO_VARIABLE = {
+    "llm_provider": "LLM_PROVIDER",
+    "llm_model": "LLM_MODEL",
+    "google_api_key": "GOOGLE_API_KEY",
+    "openai_api_key": "OPENAI_API_KEY",
+    "anthropic_api_key": "ANTHROPIC_API_KEY",
+    "openrouter_api_key": "OPENROUTER_API_KEY",
+    "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
+    "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
+    "langfuse_host": "LANGFUSE_HOST",
+    "usd_pln_rate": "USD_PLN_RATE",
 }
 
 
@@ -42,3 +55,27 @@ def test_every_tweet_variable_is_an_empty_placeholder():
             seen.add(name)
             assert value == "", f"{name} must be an empty placeholder in .env.example"
     assert seen == tweet_variables
+
+
+def test_every_extraction_setting_field_has_its_variable_covered():
+    assert set(ExtractionSettings.model_fields) == set(_EXTRACTION_FIELD_TO_VARIABLE)
+
+
+def test_every_extraction_setting_is_listed_in_env_example():
+    text = ENV_EXAMPLE.read_text(encoding="utf-8")
+    for variable in _EXTRACTION_FIELD_TO_VARIABLE.values():
+        assert variable in text, f"{variable!r} missing from backend/.env.example"
+
+
+def test_every_extraction_variable_is_an_empty_placeholder():
+    extraction_variables = set(_EXTRACTION_FIELD_TO_VARIABLE.values())
+    seen = set()
+    for line in _lines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        name, _, value = stripped.partition("=")
+        if name in extraction_variables:
+            seen.add(name)
+            assert value == "", f"{name} must be an empty placeholder in .env.example"
+    assert seen == extraction_variables

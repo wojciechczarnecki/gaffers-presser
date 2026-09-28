@@ -21,6 +21,21 @@ class Settings(BaseSettings):
     fpl_league_ids: str = ""
 
 
+class ExtractionSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
+
+    llm_provider: str = ""
+    llm_model: str = ""
+    google_api_key: SecretStr | None = None
+    openai_api_key: SecretStr | None = None
+    anthropic_api_key: SecretStr | None = None
+    openrouter_api_key: SecretStr | None = None
+    langfuse_public_key: SecretStr | None = None
+    langfuse_secret_key: SecretStr | None = None
+    langfuse_host: str = "https://cloud.langfuse.com"
+    usd_pln_rate: float | None = None
+
+
 class TweetSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
 
