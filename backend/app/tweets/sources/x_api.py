@@ -12,6 +12,8 @@ from app.tweets.sources.base import (
     SourceUnavailableError,
 )
 
+logger = logging.getLogger(__name__)
+
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
@@ -50,6 +52,16 @@ def _to_post(tweet: dict, users_by_id: dict[str, dict]) -> FetchedPost:
         is_reply=bool(ref_types & _REPLY_TYPES),
         raw={"tweet": tweet, "author": author},
     )
+
+
+def _map_posts(tweets: list, users_by_id: dict[str, dict]) -> list[FetchedPost]:
+    page = []
+    for tweet in tweets:
+        try:
+            page.append(_to_post(tweet, users_by_id))
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            logger.warning("x_api: skipped a post that failed to map: %s", type(exc).__name__)
+    return page
 
 
 class XApiSource:
@@ -96,13 +108,20 @@ class XApiSource:
                 body = response.json()
             except ValueError:
                 raise SourcePayloadError("x_api: malformed response body") from None
+            if not isinstance(body, dict):
+                raise SourcePayloadError("x_api: malformed response body")
+            if "data" not in body and body.get("errors"):
+                raise SourceUnavailableError("x_api: source reported an error")
             try:
                 users_by_id = {
                     user["id"]: user for user in body.get("includes", {}).get("users", [])
                 }
-                page = [_to_post(tweet, users_by_id) for tweet in body.get("data", [])]
-            except (KeyError, TypeError, ValueError):
-                raise SourcePayloadError("x_api: malformed tweet payload") from None
+            except (KeyError, TypeError, AttributeError):
+                raise SourcePayloadError("x_api: malformed user payload") from None
+            tweets = body.get("data", [])
+            if not isinstance(tweets, list):
+                raise SourcePayloadError("x_api: malformed tweet payload")
+            page = _map_posts(tweets, users_by_id)
 
             yield page
 

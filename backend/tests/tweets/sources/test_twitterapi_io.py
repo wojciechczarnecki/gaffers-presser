@@ -44,6 +44,21 @@ def test_page_normalised():
     assert normal.raw["id"] == "1000"
 
 
+def test_post_that_fails_to_map_is_skipped(caplog):
+    payload = load("twitterapi_io-page-1")
+    payload["tweets"][1]["author"] = None
+    fake = FakeHttp({"twitter/list/tweets?listId=42&cursor=": payload})
+    source = _source(fake)
+    try:
+        with caplog.at_level("WARNING"):
+            page = next(source.pages(42))
+    finally:
+        source.close()
+
+    assert [p.x_id for p in page] == [1002, 1000]
+    assert "twitterapi_io: skipped a post that failed to map: TypeError" in caplog.text
+
+
 def test_follows_cursor_until_last_seen():
     fake = FakeHttp(
         {
@@ -69,6 +84,8 @@ def test_follows_cursor_until_last_seen():
         (httpx.Response(401), SourceUnavailableError),
         (httpx.Response(200, json={"status": "error", "tweets": []}), SourceUnavailableError),
         (httpx.Response(200, text="not json"), SourcePayloadError),
+        (httpx.Response(200, json={"status": "success"}), SourcePayloadError),
+        (httpx.Response(200, json=["not", "an", "object"]), SourcePayloadError),
     ],
 )
 def test_error_paths(response, expected_error):

@@ -44,6 +44,30 @@ def test_page_normalised():
     assert normal.raw["author"]["username"] == "synthetic_leaker_1"
 
 
+def test_post_that_fails_to_map_is_skipped(caplog):
+    payload = load("x_api-page-1")
+    payload["data"][1]["author_id"] = "unknown-user"
+    fake = FakeHttp({f"2/lists/42/tweets?{_PAGE1_QUERY}": payload})
+    source = _source(fake)
+    try:
+        with caplog.at_level("WARNING"):
+            page = next(source.pages(42))
+    finally:
+        source.close()
+
+    assert [p.x_id for p in page] == [2002, 2000]
+    assert "x_api: skipped a post that failed to map: KeyError" in caplog.text
+
+
+def test_empty_page_without_errors_is_an_empty_page():
+    fake = FakeHttp({f"2/lists/42/tweets?{_PAGE1_QUERY}": {"meta": {"result_count": 0}}})
+    source = _source(fake)
+    try:
+        assert list(source.pages(42)) == [[]]
+    finally:
+        source.close()
+
+
 def test_follows_token_until_last_seen():
     fake = FakeHttp(
         {
@@ -84,7 +108,11 @@ def test_rate_limit_uses_reset_header_against_injected_now():
         (httpx.Response(500), SourceUnavailableError),
         (httpx.Response(401), SourceUnavailableError),
         (httpx.Response(200, text="not json"), SourcePayloadError),
-        (httpx.Response(200, json={"data": [{"id": "1"}]}), SourcePayloadError),
+        (httpx.Response(200, json={"data": "not-a-list"}), SourcePayloadError),
+        (
+            httpx.Response(200, json={"errors": [{"title": "Not Found Error"}]}),
+            SourceUnavailableError,
+        ),
     ],
 )
 def test_error_paths(response, expected_error):

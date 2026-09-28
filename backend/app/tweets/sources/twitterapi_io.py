@@ -11,6 +11,8 @@ from app.tweets.sources.base import (
     SourceUnavailableError,
 )
 
+logger = logging.getLogger(__name__)
+
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
@@ -37,6 +39,18 @@ def _to_post(tweet: dict) -> FetchedPost:
         is_reply=bool(tweet.get("isReply")),
         raw=tweet,
     )
+
+
+def _map_posts(tweets: list) -> list[FetchedPost]:
+    page = []
+    for tweet in tweets:
+        try:
+            page.append(_to_post(tweet))
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            logger.warning(
+                "twitterapi_io: skipped a post that failed to map: %s", type(exc).__name__
+            )
+    return page
 
 
 class TwitterApiIoSource:
@@ -80,12 +94,12 @@ class TwitterApiIoSource:
                 body = response.json()
             except ValueError:
                 raise SourcePayloadError("twitterapi_io: malformed response body") from None
-            if body.get("status") == "error":
+            if isinstance(body, dict) and body.get("status") == "error":
                 raise SourceUnavailableError("twitterapi_io: source reported an error")
-            try:
-                page = [_to_post(tweet) for tweet in body["tweets"]]
-            except (KeyError, TypeError, ValueError):
-                raise SourcePayloadError("twitterapi_io: malformed tweet payload") from None
+            tweets = body.get("tweets") if isinstance(body, dict) else None
+            if not isinstance(tweets, list):
+                raise SourcePayloadError("twitterapi_io: malformed tweet payload")
+            page = _map_posts(tweets)
 
             yield page
 
