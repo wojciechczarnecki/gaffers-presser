@@ -382,8 +382,8 @@ every expected `fpl_id` exists in the snapshot.
 | AC21 | 13 | `tests/worker/test_cli.py::test_sigterm_with_extraction_exits_within_10_s` | |
 | AC22 | 15 | `tests/extraction/test_cli.py::test_reextract_*` | |
 | AC23 | 16, 20 | `tests/extraction/evaluation/test_cases.py`, `tests/extraction/evaluation/test_eval_set.py` | step 16 (schema + composition rules, stubbed `composition_problems`): `uv run pytest -q tests/extraction/evaluation/test_cases.py` → `assert any(keyword in problem for problem in problems), problems` (`AssertionError: []`); step 20 (the committed set): see step 20 |
-| AC24 | 18, 19 | `tests/extraction/test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | step 18 (stubbed `prelabel`): `uv run pytest -q tests/extraction/test_cli.py -k prelabel` → `assert ['1'] == ['1', '3']` (`test_prelabel_skips_ids_already_in_the_set`), `assert 0 == 1` (`test_prelabel_config_error_names_variable`); step 19: see step 19 |
-| AC25 | 17, 19 | `tests/extraction/evaluation/test_metrics.py`, `tests/extraction/test_cli.py::test_evaluate_*` | step 17 (metrics, stubbed `compute_metrics`): `uv run pytest -q tests/extraction/evaluation/test_metrics.py` → `assert (metrics.precision, metrics.recall, metrics.f1) == (1.0, 1.0, 1.0)` (15 failed, 4 passed); step 19: see step 19 |
+| AC24 | 18, 19 | `tests/extraction/test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | step 18 (stubbed `prelabel`): `uv run pytest -q tests/extraction/test_cli.py -k prelabel` → `assert ['1'] == ['1', '3']` (`test_prelabel_skips_ids_already_in_the_set`), `assert 0 == 1` (`test_prelabel_config_error_names_variable`); step 19 (stubbed `evaluate`): `uv run pytest -q tests/extraction/test_cli.py -k evaluate` → `assert 0 == 1` (`test_evaluate_refuses_unreviewed`, `test_evaluate_requires_pln_rate`, `test_evaluate_config_error_names_variable`), `FileNotFoundError` on the results file (`test_evaluate_writes_results`, `test_evaluate_only_selected_split`, `test_evaluate_case_error_is_recorded_and_run_continues`); `test_evaluate_traces_with_run_name` exercises the runner written in the same step and was not seen red |
+| AC25 | 17, 19 | `tests/extraction/evaluation/test_metrics.py`, `tests/extraction/test_cli.py::test_evaluate_*` | step 17 (metrics, stubbed `compute_metrics`): `uv run pytest -q tests/extraction/evaluation/test_metrics.py` → `assert (metrics.precision, metrics.recall, metrics.f1) == (1.0, 1.0, 1.0)` (15 failed, 4 passed); step 19 (stubbed `evaluate`): `uv run pytest -q tests/extraction/test_cli.py -k evaluate` → `assert 0 == 1` (`test_evaluate_refuses_unreviewed`, `test_evaluate_requires_pln_rate`, `test_evaluate_config_error_names_variable`), `FileNotFoundError` on the results file (`test_evaluate_writes_results`, `test_evaluate_only_selected_split`, `test_evaluate_case_error_is_recorded_and_run_continues`); `test_evaluate_traces_with_run_name` exercises the runner written in the same step and was not seen red |
 | AC26 | — | manual | manual — the owner's review and comparison run |
 | AC27 | 22 | `tests/extraction/test_config.py::test_default_model_matches_adr_0006` | |
 | AC28 | 2, 21 | `tests/test_env_example.py::test_every_extraction_setting_*`, `tests/test_readme.py` (extended) | |
@@ -615,7 +615,7 @@ from `backend/`.
       already in the set; `--limit`; config error without a key.
       Files: `backend/app/extraction/cli.py`, `backend/tests/extraction/test_cli.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_cli.py -k prelabel`
-- [ ] 19. `app/extraction/evaluation/runner.py` + the `evaluate` command (see CLI): runs
+- [x] 19. `app/extraction/evaluation/runner.py` + the `evaluate` command (see CLI): runs
       the flow per case against the snapshot index (no database needed), timing each case,
       and calls `metrics`. Tests (fake model, a tiny case file and snapshot in `tmp_path`):
       `test_evaluate_refuses_unreviewed` (exit 1, count printed, no model call);
@@ -1061,6 +1061,16 @@ foreground per the coordinator's instruction) — both exit 0, ~100 s.
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+
+- Step 18/19: the retry rule was extracted from `extract_post` into `run_with_retries` in
+  `app/extraction/service.py` (behaviour unchanged, existing service tests green) so that
+  `prelabel` and `evaluate` reuse the same 3-attempt/back-off rule as the plan asks ("the
+  service's retry rule"). A file outside the plan's step file lists, minor.
+- Step 19: `ExtractionCliDeps.engine` is `Engine | None` and `_deps_from_settings` yields
+  `None` when `DATABASE_URL` is unset, because the plan requires `evaluate` to need no
+  database while `Settings.database_url` is mandatory; DB-using commands fail with
+  `DATABASE_URL must be set` through `db_engine(deps)`. Minor.
+- Step 19: `run_config` accepts `x_id: int | str` (synthetic case ids are `syn-NNN`). Minor.
 
 ## Final review
 

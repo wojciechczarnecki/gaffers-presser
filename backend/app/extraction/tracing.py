@@ -21,7 +21,7 @@ def make_handler(tracing: TracingConfig | None) -> CallbackHandler | None:
 
 
 def run_config(
-    x_id: int,
+    x_id: int | str,
     prompt_version: str,
     provider: str,
     model: str,

@@ -1,22 +1,26 @@
+import json
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from app.core.settings import ExtractionSettings
 from app.extraction.cli import ExtractionCliDeps, app, build_spec_from_settings
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
-from app.extraction.linking import load_snapshot
+from app.extraction.evaluation.runner import run_evaluation
+from app.extraction.linking import PlayerIndex, PlayerRecord, load_snapshot
 from app.extraction.models import Extraction
+from app.extraction.pricing import Price
 from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import ExtractedEvent, ExtractionOutput
 from app.extraction.store import ExtractionRecord, save_extraction
 from app.fpl.models.reference import Player, Season, Team
 from app.tweets.models import Tweet
 from tests.conftest import BACKEND_DIR
-from tests.extraction.fakes import FakeChatModel
+from tests.extraction.fakes import FakeChatModel, RecordingHandler
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
 
@@ -456,3 +460,244 @@ def test_prelabel_config_error_names_variable(db, tmp_path, monkeypatch):
     assert result.exit_code == 1
     assert "OPENAI_API_KEY" in result.stderr
     assert not output.exists()
+
+
+def _snapshot(path):
+    path.write_text(
+        json.dumps(
+            {
+                "season": "2026/27",
+                "players": [
+                    {
+                        "season": "2026/27",
+                        "fpl_id": 5,
+                        "web_name": "Haaland",
+                        "first_name": "Erling",
+                        "second_name": "Haaland",
+                        "team_fpl_id": 1,
+                    }
+                ],
+                "teams": [
+                    {"season": "2026/27", "fpl_id": 1, "name": "Man City", "short_name": "MCI"}
+                ],
+            }
+        )
+    )
+
+
+def _eval_case(case_id: str, split: str, reviewed: bool = True, events: bool = True) -> EvalCase:
+    return EvalCase(
+        id=case_id,
+        author_handle="reporter",
+        text=f"Haaland is out {case_id}",
+        created_at=NOW,
+        is_repost=False,
+        is_reply=False,
+        split=split,
+        synthetic=False,
+        reviewed=reviewed,
+        tags=[],
+        expected_events=(
+            [ExpectedEvent(mention="Haaland", fpl_id=5, event_type="out", certainty="confirmed")]
+            if events
+            else []
+        ),
+    )
+
+
+class _Files:
+    def __init__(self, tmp_path, cases):
+        self.cases = tmp_path / "cases.jsonl"
+        self.players = tmp_path / "players.json"
+        self.results = tmp_path / "results"
+        write_cases(self.cases, cases)
+        _snapshot(self.players)
+
+    def args(self, *extra, split="test"):
+        return [
+            "evaluate",
+            "--split",
+            split,
+            "--provider",
+            "fake",
+            "--model",
+            "m",
+            "--cases",
+            str(self.cases),
+            "--players",
+            str(self.players),
+            "--output-dir",
+            str(self.results),
+            *extra,
+        ]
+
+
+def _no_db_deps(build_spec, settings=None) -> ExtractionCliDeps:
+    return ExtractionCliDeps(
+        engine=None,
+        settings=settings or ExtractionSettings(usd_pln_rate=4.0),
+        build_spec=build_spec,
+        clock=FixedClock(NOW),
+    )
+
+
+def _forbidden_build_spec(provider, model):
+    raise AssertionError("no model may be built")
+
+
+def test_evaluate_refuses_unreviewed(tmp_path):
+    files = _Files(
+        tmp_path,
+        [_eval_case("1", "test", reviewed=False), _eval_case("2", "test", reviewed=False)],
+    )
+    # Neither USD_PLN_RATE nor a key is set: the reviewed check comes first.
+    deps = _no_db_deps(_forbidden_build_spec, ExtractionSettings(usd_pln_rate=None))
+
+    result = CliRunner().invoke(app, files.args(), obj=deps)
+
+    assert result.exit_code == 1
+    assert "2 cases of the test split are not reviewed" in result.stderr
+    assert not files.results.exists()
+
+
+def test_evaluate_requires_pln_rate(tmp_path):
+    files = _Files(tmp_path, [_eval_case("1", "test")])
+    deps = _no_db_deps(_forbidden_build_spec, ExtractionSettings(usd_pln_rate=None))
+
+    result = CliRunner().invoke(app, files.args(), obj=deps)
+
+    assert result.exit_code == 1
+    assert "USD_PLN_RATE" in result.stderr
+
+
+def test_evaluate_config_error_names_variable(tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    files = _Files(tmp_path, [_eval_case("1", "test")])
+    settings = ExtractionSettings(llm_provider="", llm_model="", usd_pln_rate=4.0)
+    deps = _no_db_deps(build_spec_from_settings(settings), settings)
+
+    args = files.args()
+    args[args.index("fake")] = "openai"
+    result = CliRunner().invoke(app, args, obj=deps)
+
+    assert result.exit_code == 1
+    assert "OPENAI_API_KEY" in result.stderr
+
+
+def test_evaluate_writes_results(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "app.extraction.evaluation.runner.load_prices",
+        lambda: {"fake:m": Price(input_per_million=1.0, output_per_million=2.0, checked="x")},
+    )
+    files = _Files(tmp_path, [_eval_case("1", "test"), _eval_case("2", "test", events=False)])
+    build_spec, _ = _build_spec(_haaland_out(), _haaland_out(), model="m")
+
+    result = CliRunner().invoke(
+        app,
+        files.args("--run-name", "run-1", "--posts-per-month", "1050"),
+        obj=_no_db_deps(build_spec),
+    )
+
+    assert result.exit_code == 0, result.output
+    data = json.loads((files.results / "run-1.json").read_text())
+    assert (data["run_name"], data["provider"], data["model"]) == ("run-1", "fake", "m")
+    assert data["prompt_version"].startswith("extraction@")
+    assert data["split"] == "test"
+    metrics = data["metrics"]
+    for key in (
+        "precision",
+        "recall",
+        "f1",
+        "linking_accuracy",
+        "false_alarm_rate",
+        "certainty_accuracy",
+        "certainty_confusion",
+        "latency_p50_seconds",
+        "latency_p95_seconds",
+        "mean_input_tokens",
+        "mean_output_tokens",
+        "mean_cost_usd",
+        "projected_monthly_cost_pln",
+        "passes",
+    ):
+        assert key in metrics, key
+    # case 1 right, case 2 (no expected events) got one event: a false alarm and an extra event
+    assert metrics["recall"] == 1.0
+    assert metrics["precision"] == 0.5
+    assert metrics["false_alarm_rate"] == 1.0
+    assert metrics["linking_accuracy"] == 1.0
+    assert metrics["mean_input_tokens"] == 10
+    assert metrics["mean_output_tokens"] == 5
+    assert metrics["mean_cost_usd"] == pytest.approx(2e-5)
+    assert metrics["projected_monthly_cost_pln"] == pytest.approx(2e-5 * 1050 * 4.0)
+    assert metrics["passes"] is False
+    by_id = {c["id"]: c for c in data["case_results"]}
+    assert by_id["1"]["predicted"][0]["fpl_id"] == 5
+    assert by_id["1"]["expected"][0]["event_type"] == "out"
+    assert "f1" in result.stdout
+
+
+def test_evaluate_only_selected_split(tmp_path):
+    files = _Files(
+        tmp_path,
+        [_eval_case("1", "test"), _eval_case("2", "dev", reviewed=False)],
+    )
+    build_spec, _ = _build_spec(_haaland_out())  # a second call would raise IndexError
+
+    result = CliRunner().invoke(app, files.args("--run-name", "r"), obj=_no_db_deps(build_spec))
+
+    assert result.exit_code == 0, result.output
+    data = json.loads((files.results / "r.json").read_text())
+    assert [c["id"] for c in data["case_results"]] == ["1"]
+
+
+def test_evaluate_case_error_is_recorded_and_run_continues(tmp_path):
+    files = _Files(tmp_path, [_eval_case("1", "test"), _eval_case("2", "test")])
+    build_spec, _ = _build_spec(
+        RuntimeError("boom"), RuntimeError("boom"), RuntimeError("boom"), _haaland_out()
+    )
+
+    result = CliRunner().invoke(app, files.args("--run-name", "r"), obj=_no_db_deps(build_spec))
+
+    assert result.exit_code == 0, result.output
+    data = json.loads((files.results / "r.json").read_text())
+    assert data["errored_cases"] == 1
+    by_id = {c["id"]: c for c in data["case_results"]}
+    assert by_id["1"]["error_class"] == "RuntimeError"
+    assert by_id["1"]["attempts"] == 3
+    assert by_id["1"]["predicted"] == []
+    assert by_id["2"]["error_class"] is None
+    assert data["metrics"]["recall"] == 0.5
+
+
+def test_evaluate_traces_with_run_name():
+    handler = RecordingHandler()
+    fake = FakeChatModel(responses=[_haaland_out()])
+    spec = ChatModelSpec(provider="fake", model="m", chat_model=fake)
+    players = [
+        PlayerRecord(
+            season="2026/27",
+            fpl_id=5,
+            web_name="Haaland",
+            first_name="Erling",
+            second_name="Haaland",
+            team_fpl_id=1,
+        )
+    ]
+
+    run_evaluation(
+        [_eval_case("1", "test")],
+        spec,
+        PlayerIndex(players, []),
+        handler,
+        run_name="eval-run-7",
+        split="test",
+        clock=FixedClock(NOW),
+        posts_per_month=1050,
+        usd_pln_rate=4.0,
+    )
+
+    assert handler.chat_model_starts
+    for start in handler.chat_model_starts:
+        assert start["metadata"]["langfuse_session_id"] == "eval-run-7"
+        assert start["metadata"]["x_id"] == "1"

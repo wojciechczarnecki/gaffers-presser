@@ -1,4 +1,5 @@
 import json
+import re
 import threading
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -7,6 +8,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlmodel import Session
 
@@ -15,8 +17,9 @@ from app.core.settings import ExtractionSettings, load_settings
 from app.db.engine import make_engine
 from app.extraction.config import resolve_llm, resolve_tracing
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
+from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.flow import PROMPT_VERSION, build_flow
-from app.extraction.linking import PlayerIndex, load_aliases, load_players
+from app.extraction.linking import PlayerIndex, load_aliases, load_players, load_snapshot
 from app.extraction.providers import ChatModelSpec, build_chat_model
 from app.extraction.service import ExtractionRuntime, extract_post, run_with_retries
 from app.extraction.store import posts_for_reextract
@@ -43,7 +46,7 @@ def fail(message: str) -> typer.Exit:
 
 @dataclass(frozen=True)
 class ExtractionCliDeps:
-    engine: Engine
+    engine: Engine | None
     settings: ExtractionSettings
     build_spec: BuildSpec
     clock: Clock
@@ -59,17 +62,29 @@ def build_spec_from_settings(settings: ExtractionSettings) -> BuildSpec:
     return build_spec
 
 
+def db_engine(deps: ExtractionCliDeps) -> Engine:
+    if deps.engine is None:
+        raise fail("DATABASE_URL must be set")
+    return deps.engine
+
+
 def get_deps(ctx: typer.Context) -> ExtractionCliDeps:
     if ctx.obj is None:  # tests inject their own
         ctx.obj = _deps_from_settings()
     return ctx.obj
 
 
+def _engine_from_env() -> Engine | None:
+    try:
+        return make_engine(load_settings().database_url)
+    except ValidationError:
+        return None  # `evaluate` needs no database; the other commands say so through db_engine
+
+
 def _deps_from_settings() -> ExtractionCliDeps:
     settings = ExtractionSettings()
-    db_settings = load_settings()
     return ExtractionCliDeps(
-        engine=make_engine(db_settings.database_url),
+        engine=_engine_from_env(),
         settings=settings,
         build_spec=build_spec_from_settings(settings),
         clock=SystemClock(),
@@ -109,7 +124,7 @@ def reextract(
     since_dt = _parse_iso(since) if since is not None else None
     until_dt = _parse_iso(until) if until is not None else None
 
-    with Session(deps.engine) as session:
+    with Session(db_engine(deps)) as session:
         posts = posts_for_reextract(
             session, x_id=x_id, since=since_dt, until=until_dt, failed=failed
         )
@@ -129,7 +144,13 @@ def reextract(
     try:
         for post in posts:
             outcome = extract_post(
-                deps.engine, runtime, post, deps.clock, stop_event, handler, record_latency=False
+                db_engine(deps),
+                runtime,
+                post,
+                deps.clock,
+                stop_event,
+                handler,
+                record_latency=False,
             )
             if outcome is None:
                 continue
@@ -156,7 +177,7 @@ def snapshot_players(
     output: Annotated[Path, typer.Option("--output")],
 ) -> None:
     deps = get_deps(ctx)
-    with Session(deps.engine) as session:
+    with Session(db_engine(deps)) as session:
         players, teams = load_players(session)
     if not players:
         raise fail("no players in the database")
@@ -194,7 +215,7 @@ def prelabel(
 
     since_dt = _parse_iso(since) if since is not None else datetime(1970, 1, 1, tzinfo=UTC)
     until_dt = _parse_iso(until) if until is not None else datetime(9999, 1, 1, tzinfo=UTC)
-    with Session(deps.engine) as session:
+    with Session(db_engine(deps)) as session:
         posts = posts_for_reextract(session, since=since_dt, until=until_dt)
         players, teams = load_players(session)
     player_aliases, team_aliases = load_aliases()
@@ -243,6 +264,90 @@ def prelabel(
     typer.echo(f"cases written: {len(new_cases)}")
     typer.echo(f"skipped: {skipped}")
     typer.echo(f"failures: {failures}")
+
+
+EVALS_DIR = Path(__file__).resolve().parents[2] / "evals" / "extraction"
+DEFAULT_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
+DEFAULT_PLAYERS_PATH = EVALS_DIR / "v1" / "players-2026-27.json"
+DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
+
+
+@app.command(help="Evaluate a provider and model on a split of the evaluation set.")
+def evaluate(
+    ctx: typer.Context,
+    split: Annotated[str, typer.Option("--split")],
+    provider: str | None = typer.Option(None, "--provider"),
+    model: str | None = typer.Option(None, "--model"),
+    run_name: str | None = typer.Option(None, "--run-name"),
+    posts_per_month: float = typer.Option(1050.0, "--posts-per-month"),
+    cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
+    players_path: Annotated[Path, typer.Option("--players")] = DEFAULT_PLAYERS_PATH,
+    output_dir: Annotated[Path, typer.Option("--output-dir")] = DEFAULT_RESULTS_DIR,
+) -> None:
+    deps = get_deps(ctx)
+
+    selected = [case for case in load_cases(cases_path) if case.split == split]
+    unreviewed = [case for case in selected if not case.reviewed]
+    if unreviewed:
+        raise fail(f"{len(unreviewed)} cases of the {split} split are not reviewed")
+    if not selected:
+        raise fail(f"the {split} split has no cases")
+
+    usd_pln_rate = deps.settings.usd_pln_rate
+    if usd_pln_rate is None:
+        raise fail("USD_PLN_RATE must be set")
+
+    try:
+        spec = deps.build_spec(provider, model)
+    except CollectorError as exc:
+        raise fail(str(exc)) from None
+
+    name = run_name or _default_run_name(split, spec, deps.clock.now())
+    players, teams = load_snapshot(players_path)
+    player_aliases, team_aliases = load_aliases()
+    index = PlayerIndex(players, teams, player_aliases, team_aliases)
+    handler = make_handler(resolve_tracing(deps.settings))
+    try:
+        report = run_evaluation(
+            selected,
+            spec,
+            index,
+            handler,
+            run_name=name,
+            split=split,
+            clock=deps.clock,
+            posts_per_month=posts_per_month,
+            usd_pln_rate=usd_pln_rate,
+        )
+    finally:
+        flush(handler)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    result_path = output_dir / f"{name}.json"
+    result_path.write_text(json.dumps(report.to_json_dict(), ensure_ascii=False, indent=1) + "\n")
+
+    m = report.metrics
+    typer.echo(f"run: {name} ({spec.provider}:{spec.model}, {split}, {m.cases} cases)")
+    typer.echo(f"errored cases: {m.errored_cases}")
+    typer.echo(f"precision: {m.precision:.3f}  recall: {m.recall:.3f}  f1: {m.f1:.3f}")
+    typer.echo(f"linking accuracy: {m.linking_accuracy:.3f} ({m.linking_paired} paired)")
+    typer.echo(f"false alarm rate: {m.false_alarm_rate:.3f}")
+    typer.echo(f"certainty accuracy: {m.certainty_accuracy:.3f}")
+    typer.echo(f"latency p50/p95: {_fmt(m.latency_p50_seconds)} / {_fmt(m.latency_p95_seconds)} s")
+    typer.echo(f"mean tokens in/out: {_fmt(m.mean_input_tokens)} / {_fmt(m.mean_output_tokens)}")
+    typer.echo(f"mean cost per post: {_fmt(m.mean_cost_usd, 6)} USD")
+    typer.echo(f"projected monthly cost: {_fmt(m.projected_monthly_cost_pln, 2)} PLN")
+    typer.echo(f"passes thresholds: {'yes' if m.passes else 'no'}")
+    typer.echo(f"results: {result_path}")
+
+
+def _fmt(value: float | None, digits: int = 2) -> str:
+    return "n/a" if value is None else f"{value:.{digits}f}"
+
+
+def _default_run_name(split: str, spec: ChatModelSpec, now: datetime) -> str:
+    raw = f"{split}-{spec.provider}-{spec.model}-{now:%Y%m%dT%H%M}"
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", raw)
 
 
 def main() -> None:
