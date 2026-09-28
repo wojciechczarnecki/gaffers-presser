@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import typer
-from sqlalchemy import Engine, text
+from sqlalchemy import Connection, Engine, text
 
 from app.core.errors import CollectorError
 from app.core.settings import load_settings, parse_league_ids
@@ -15,12 +15,13 @@ from app.db.locks import try_schedule_lock
 from app.fpl.client import FplClient
 from app.worker.jobs import Shutdown
 from app.worker.loop import Clock, SystemClock, Worker
-from app.worker.schedule import Job, plan
+from app.worker.schedule import Job, outlook
 from app.worker.store import latest_runs_by_job, load_state
 
 logger = logging.getLogger(__name__)
 
 SCHEDULE_LOCK_POLL_SECONDS = 30.0
+WORKER_LOG_HANDLER = "app.worker"
 
 
 @dataclass(frozen=True)
@@ -48,15 +49,18 @@ def fail(message: str) -> typer.Exit:
 
 
 def _configure_logging() -> None:
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    if any(h.get_name() == WORKER_LOG_HANDLER for h in root.handlers):
+        return
     handler = logging.StreamHandler()
+    handler.set_name(WORKER_LOG_HANDLER)
     handler.setFormatter(
         _UtcFormatter(
             fmt="%(asctime)s.%(msecs)03dZ %(levelname)s %(name)s %(message)s",
             datefmt="%Y-%m-%dT%H:%M:%S",
         )
     )
-    root = logging.getLogger()
-    root.setLevel(logging.INFO)
     root.addHandler(handler)
 
 
@@ -107,8 +111,9 @@ def run(ctx: typer.Context) -> None:
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
 
-    lock_connection = deps.engine.connect().execution_options(isolation_level="AUTOCOMMIT")
+    lock_connection: Connection | None = None
     try:
+        lock_connection = deps.engine.connect().execution_options(isolation_level="AUTOCOMMIT")
         logged_waiting = False
         while not try_schedule_lock(lock_connection):
             if not logged_waiting:
@@ -136,10 +141,11 @@ def run(ctx: typer.Context) -> None:
     finally:
         signal.signal(signal.SIGTERM, previous_sigterm)
         signal.signal(signal.SIGINT, previous_sigint)
-        # A pooled connection returned via close() keeps its session-held advisory
-        # lock until the pool actually disconnects it; invalidate() forces that now.
-        lock_connection.invalidate()
-        lock_connection.close()
+        if lock_connection is not None:
+            # A pooled connection returned via close() keeps its session-held advisory
+            # lock until the pool actually disconnects it; invalidate() forces that now.
+            lock_connection.invalidate()
+            lock_connection.close()
 
 
 @app.command(help="Print the latest run of each job and the next planned actions.")
@@ -159,7 +165,7 @@ def status(ctx: typer.Context) -> None:
 
     typer.echo("Next actions:")
     state = load_state(deps.engine)
-    for action in plan(state, now):
+    for action in outlook(state, now):
         gw = action.gameweek if action.gameweek is not None else "-"
         when = "due now" if action.at <= now else _fmt(action.at)
         typer.echo(f"  {action.job.value} gameweek={gw}: {when}")

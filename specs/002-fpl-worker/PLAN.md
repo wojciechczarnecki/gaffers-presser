@@ -142,26 +142,26 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 4, 7 | `tests/worker/test_schedule.py::test_reference_cadence*`, `tests/worker/test_loop.py::test_reference_sync_cadence` | |
-| AC2 | 4, 7 | `tests/worker/test_schedule.py::test_snapshot_slots*`, `tests/worker/test_loop.py::test_deadline_snapshots_at_t30_and_t5` | |
-| AC3 | 4, 7 | `tests/worker/test_schedule.py::test_snapshot_retry*`, `tests/worker/test_loop.py::test_failed_snapshot_retried_until_deadline_then_missed` | |
-| AC4 | 4, 7 | `tests/worker/test_schedule.py::test_results_then_league*`, `tests/worker/test_loop.py::test_results_then_league_after_data_checked` | |
-| AC5 | 4, 5, 7 | `tests/worker/test_jobs.py::test_failed_job_is_logged_and_rolled_back`, `tests/worker/test_loop.py::test_failed_sync_retried_after_15_min` | |
-| AC6 | 7 | `tests/worker/test_loop.py::test_catch_up_on_empty_database_and_restart` | |
-| AC7 | 7 | `tests/worker/test_loop.py::test_restart_after_downtime` | |
-| AC8 | 4, 7 | `tests/worker/test_schedule.py::test_no_future_deadline*`, `tests/worker/test_loop.py::test_no_future_deadline_daily_reference_only` | |
-| AC9 | 7 | `tests/worker/test_loop.py::test_simulated_gameweek_sequence` | |
-| AC10 | 2, 5 | `tests/worker/test_jobs.py::test_successful_job_logs_run`, `::test_failed_job_is_logged_and_rolled_back` | |
-| AC11 | 2 | `tests/db/test_migrations.py::test_job_run_migration_keeps_collector_data` | |
-| AC12 | 8 | `tests/worker/test_cli.py::test_status_on_empty_database`, `::test_status_shows_latest_runs_and_next_actions` | |
-| AC13 | 1, 8 | `tests/core/test_settings.py::test_worker_rejects_*` | |
-| AC14 | 1, 8 | `tests/core/test_settings.py::test_database_url_schemes_*` | |
-| AC15 | 3, 5, 7, 8 | `tests/db/test_locks.py::test_cli_job_waits_for_running_job`, `tests/worker/test_jobs.py::test_worker_job_waits_for_running_job`, `tests/worker/test_cli.py::test_second_worker_waits_for_schedule_lock`, `tests/worker/test_loop.py::test_heartbeat_failure_ends_run` | |
-| AC16 | 5, 7, 8 | `tests/worker/test_jobs.py::test_error_after_stop_request_raises_shutdown`, `tests/worker/test_loop.py::test_stop_event_ends_run_after_action`, `tests/worker/test_cli.py::test_sigterm_during_job_rolls_back_and_exits_0`, `::test_sigterm_while_idle_exits_0_within_10_s`, `::test_sigterm_while_waiting_for_schedule_lock_exits_0`, `::test_sigterm_masked_by_a_job_error_exits_0` + e2e `docker stop` | |
-| AC17 | 5, 7 | `tests/worker/test_jobs.py::test_job_logged_at_start_and_end`, `tests/worker/test_loop.py::test_simulated_gameweek_logs_carry_no_private_data` | |
-| AC18 | 9, 10 | `tests/test_deployment.py::test_dockerfile_*`, `::test_ci_builds_image_on_pull_request` + e2e `docker build` / `docker run` | |
-| AC19 | 9 | `tests/test_deployment.py::test_railway_config` | |
-| AC20 | 11 | `tests/test_readme.py::test_deployment_section_is_a_runbook` | |
+| AC1 | 4, 7 | `tests/worker/test_schedule.py::test_reference_cadence*`, `tests/worker/test_loop.py::test_reference_sync_cadence` | none — written together with the code in Group 2 (see Deviations) |
+| AC2 | 4, 7 | `tests/worker/test_schedule.py::test_snapshot_slots*`, `tests/worker/test_loop.py::test_deadline_snapshots_at_t30_and_t5` | none — written together with the code in Group 2 (see Deviations) |
+| AC3 | 4, 7 | `tests/worker/test_schedule.py::test_snapshot_retry*`, `tests/worker/test_loop.py::test_failed_snapshot_retried_until_deadline_then_missed` | none — written together with the code in Group 2 (see Deviations) |
+| AC4 | 4, 7 | `tests/worker/test_schedule.py::test_results_then_league*`, `tests/worker/test_loop.py::test_results_then_league_after_data_checked` | none — written together with the code in Group 2 (see Deviations) |
+| AC5 | 4, 5, 7 | `tests/worker/test_jobs.py::test_failed_job_is_logged_and_rolled_back`, `tests/worker/test_loop.py::test_failed_sync_retried_after_15_min` | none — written together with the code in Group 2 (see Deviations) |
+| AC6 | 7 | `tests/worker/test_loop.py::test_catch_up_on_empty_database_and_restart` | none — written together with the code in Group 2 (see Deviations) |
+| AC7 | 7 | `tests/worker/test_loop.py::test_restart_after_downtime` | none — written together with the code in Group 2 (see Deviations) |
+| AC8 | 4, 7 | `tests/worker/test_schedule.py::test_no_future_deadline*`, `tests/worker/test_loop.py::test_no_future_deadline_daily_reference_only` | none — written together with the code in Group 2 (see Deviations) |
+| AC9 | 7 | `tests/worker/test_loop.py::test_simulated_gameweek_sequence` | none — written together with the code in Group 2 (see Deviations) |
+| AC10 | 2, 5 | `tests/worker/test_jobs.py::test_successful_job_logs_run`, `::test_failed_job_is_logged_and_rolled_back` | none — written together with the code in Group 2 (see Deviations) |
+| AC11 | 2 | `tests/db/test_migrations.py::test_job_run_migration_keeps_collector_data` | step 2: `job_run` missing after `upgrade head` |
+| AC12 | 8 | `tests/worker/test_cli.py::test_status_on_empty_database`, `::test_status_shows_latest_runs_and_next_actions` | none — written together with the code in Group 2 (see Deviations) |
+| AC13 | 1, 8 | `tests/core/test_settings.py::test_worker_rejects_*` | none — written together with the code in Group 2 (see Deviations) |
+| AC14 | 1, 8 | `tests/core/test_settings.py::test_database_url_schemes_*` | step 1: the `postgres://` / `postgresql://` cases failed on the missing dialect/driver |
+| AC15 | 3, 5, 7, 8 | `tests/db/test_locks.py::test_cli_job_waits_for_running_job`, `tests/worker/test_jobs.py::test_worker_job_waits_for_running_job`, `tests/worker/test_cli.py::test_second_worker_waits_for_schedule_lock`, `tests/worker/test_loop.py::test_heartbeat_failure_ends_run` | step 3: the CLI finished at once without waiting; final review F1: `test_worker_job_waits_for_running_job` and `test_snapshot_waiting_past_the_deadline_fails_the_guard` fail (2 failed) with the fix removed |
+| AC16 | 5, 7, 8 | `tests/worker/test_jobs.py::test_error_after_stop_request_raises_shutdown`, `tests/worker/test_loop.py::test_stop_event_ends_run_after_action`, `tests/worker/test_cli.py::test_sigterm_during_job_rolls_back_and_exits_0`, `::test_sigterm_while_idle_exits_0_within_10_s`, `::test_sigterm_while_waiting_for_schedule_lock_exits_0`, `::test_sigterm_masked_by_a_job_error_exits_0` + e2e `docker stop` | none — written together with the code in Group 2 (see Deviations) |
+| AC17 | 5, 7 | `tests/worker/test_jobs.py::test_job_logged_at_start_and_end`, `tests/worker/test_loop.py::test_simulated_gameweek_logs_carry_no_private_data` | none — written together with the code in Group 2 (see Deviations) |
+| AC18 | 9, 10 | `tests/test_deployment.py::test_dockerfile_*`, `::test_ci_builds_image_on_pull_request` + e2e `docker build` / `docker run` | re-run at the final review (2026-09-28) against `origin/main`: `test_dockerfile_*`, `test_ci_builds_image_on_pull_request` failed (files absent) |
+| AC19 | 9 | `tests/test_deployment.py::test_railway_config` | same re-run: `test_railway_config` failed (`railway.json` absent) |
+| AC20 | 11 | `tests/test_readme.py::test_deployment_section_is_a_runbook` | same re-run: `test_deployment_section_is_a_runbook` failed (no Deployment section) |
 | AC21 | — | manual (owner, first deploy) | manual |
 
 ## Steps
@@ -927,3 +927,22 @@ Rejected:
   (a dropped pooled connection, a missing table), so the branch is reachable.
 
 Left out: 30 nit findings
+
+### 2026-09-28 — /pipeline:final-review (apply)
+
+Owner decisions: F1–F10 accepted, F11–F15 rejected (see "Owner decisions"). Fixes:
+
+| Id | Change |
+|----|--------|
+| F1 | `app/worker/jobs.py::run_job` reads `now_fn()` again after `acquire_job_lock`, so the job's `now`, its deadline guard and the run's `started_at` never predate the lock wait. The FPL CLI's `Deps.now` became `Deps.clock` (a callable); every command reads it inside `transaction()`, after the job lock. Tests: `tests/worker/test_jobs.py::test_worker_job_waits_for_running_job` (asserts `started_at` after the wait), `::test_snapshot_waiting_past_the_deadline_fails_the_guard`, `tests/db/test_locks.py::test_cli_snapshot_reads_the_clock_after_the_lock_wait`; both worker tests fail with the fix removed. |
+| F2 | `app/worker/cli.py::run` opens the lock connection inside the `try`; the `finally` skips an unset connection. Tests: `tests/worker/test_cli.py::test_unreachable_database_exits_1_with_error_class` (exit 1, `worker failed: OperationalError`, no credentials, SIGTERM handler restored), `::test_lost_lock_connection_exits_1` (the lock backend is terminated → the heartbeat fails → exit 1). |
+| F3 | `app/worker/schedule.py::outlook` = `plan` plus every remaining snapshot slot of the upcoming gameweek; `status` prints it, the loop still uses `plan`. Tests: four `test_outlook_*` cases in `tests/worker/test_schedule.py`; `test_status_shows_latest_runs_and_next_actions` asserts both the 09:30 and the 09:55 slots. |
+| F4 | `tests/worker/test_loop.py`: AC1, AC3, AC8 and AC9 assert exact run lists built by arithmetic — AC9 the full 292-row `(job, gameweek, started_at)` sequence; AC3 the 30 failed snapshots `D6-30m + k·1m` and the reference syncs at `D6-30m`, `D6-15m` (failed), `D6` (succeeded); AC8 `[start, +24 h, +48 h]` with GW1–38 seeded. |
+| F5 | The AC9 simulation runs with `league_ids=[LEAGUE_ID]` and asserts the stored domain data: GW6 deadline snapshot players, GW6 player results, the synthetic league's standings under GW6 and GW6 picks for both entries. |
+| F6 | `tests/worker/test_store.py::test_load_state_ignores_gameweek_runs_of_a_previous_season` — 2025/26 GW7 runs appear in neither `latest` nor `latest_success`. |
+| F7 | The fourth column of the AC → steps matrix is filled: recorded reds for AC11, AC14, AC15; AC18–AC20 re-run at this review against `origin/main` (6 failed); the Group 2 ACs are marked as written together with the code (see Deviations). |
+| F8 | `tests/worker/test_jobs.py`: the success line asserts `duration=12.5s` and no `error=`; `::test_failed_job_logged_with_error_class_only` asserts `outcome=failed`, the duration and `error=FplUnavailableError` with no response text. |
+| F9 | `tests/worker/test_jobs.py::test_log_write_failure_is_logged_and_job_data_kept` (a `CHECK (false)` constraint on `job_run`: the job's data is committed, `job run log write failed: IntegrityError`, no constraint text); `tests/worker/test_loop.py::test_state_load_failure_is_logged_and_retried_after_60_s`. |
+| F10 | `tests/conftest.py`: `held_advisory_lock` (release with unlock + `invalidate()` in a `finally`), `wait_for_lock_waiter` (polls `pg_locks` for an ungranted advisory lock instead of sleeping 1 s), and an autouse fixture that drops the worker's root log handler after each test; `_configure_logging` is idempotent (a named handler). Lock tests use daemon threads. `pytest -s` over the worker CLI and settings tests prints no "Logging error". |
+
+Verification: `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` — 189 passed.

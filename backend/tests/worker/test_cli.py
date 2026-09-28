@@ -1,3 +1,4 @@
+import logging
 import os
 import signal
 import subprocess
@@ -12,12 +13,14 @@ from sqlalchemy import text
 from sqlmodel import Session, select
 from typer.testing import CliRunner
 
+from app.db.engine import make_engine
+from app.db.locks import SCHEDULE_LOCK_KEY
 from app.fpl.models import Gameweek, Season
 from app.worker.cli import WorkerDeps, app
 from app.worker.jobs import Shutdown
 from app.worker.models import JobRun
 from app.worker.schedule import Job
-from tests.conftest import BACKEND_DIR
+from tests.conftest import BACKEND_DIR, held_advisory_lock
 from tests.fpl.fakes import FakeFpl
 from tests.fpl.payloads import load
 
@@ -121,49 +124,88 @@ def test_status_shows_latest_runs_and_next_actions(cli, db):
     result = cli("status", clock=FixedClock(D6 - timedelta(hours=1)))
     assert result.exit_code == 0
     assert "reference_sync: 2026-10-10T09:00:00Z gameweek=- outcome=succeeded" in result.stdout
-    assert "deadline_snapshot gameweek=6: 2026-10-10T09:30:00Z" in result.stdout
+    lines = result.stdout.splitlines()
+    snapshot_lines = [line.strip() for line in lines if "deadline_snapshot gameweek=6:" in line]
+    assert snapshot_lines == [
+        "deadline_snapshot gameweek=6: 2026-10-10T09:30:00Z",
+        "deadline_snapshot gameweek=6: 2026-10-10T09:55:00Z",
+    ]
 
 
 def test_second_worker_waits_for_schedule_lock(cli, db):
-    lock_conn = db.connect().execution_options(isolation_level="AUTOCOMMIT")
-    lock_conn.execute(text("SELECT pg_advisory_lock(8002001)"))
-
     released_at = NOW + timedelta(minutes=10)
-    clock = ReleasingClock(
-        NOW,
-        release_after=timedelta(minutes=10),
-        end_after=timedelta(hours=1),
-        release_fn=lambda: lock_conn.execute(text("SELECT pg_advisory_unlock(8002001)")),
-    )
     fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
-    result = cli("run", client=fake.client(sleep=lambda _: None), clock=clock)
+    with held_advisory_lock(db, SCHEDULE_LOCK_KEY) as release:
+        clock = ReleasingClock(
+            NOW,
+            release_after=timedelta(minutes=10),
+            end_after=timedelta(hours=1),
+            release_fn=release,
+        )
+        result = cli("run", client=fake.client(sleep=lambda _: None), clock=clock)
 
     assert result.exit_code == 0
     with Session(db) as session:
         rows = session.exec(select(JobRun)).all()
     assert rows
     assert all(r.started_at >= released_at for r in rows)
-    lock_conn.close()
 
 
 def test_sigterm_while_waiting_for_schedule_lock_exits_0(cli, db):
-    lock_conn = db.connect().execution_options(isolation_level="AUTOCOMMIT")
-    lock_conn.execute(text("SELECT pg_advisory_lock(8002001)"))
-
-    timer = threading.Timer(1, os.kill, args=(os.getpid(), signal.SIGTERM))
-    timer.start()
-    start = time.monotonic()
-    result = cli("run", clock=RealClock(NOW))
-    elapsed = time.monotonic() - start
-    timer.cancel()
+    with held_advisory_lock(db, SCHEDULE_LOCK_KEY):
+        timer = threading.Timer(1, os.kill, args=(os.getpid(), signal.SIGTERM))
+        timer.start()
+        try:
+            start = time.monotonic()
+            result = cli("run", clock=RealClock(NOW))
+            elapsed = time.monotonic() - start
+        finally:
+            timer.cancel()
 
     assert result.exit_code == 0
     assert elapsed < 10
     with Session(db) as session:
         assert session.exec(select(JobRun)).all() == []
 
-    lock_conn.execute(text("SELECT pg_advisory_unlock(8002001)"))
-    lock_conn.close()
+
+def test_unreachable_database_exits_1_with_error_class(caplog):
+    engine = make_engine("postgresql+psycopg://nobody:secret@127.0.0.1:1/none")
+    previous = signal.getsignal(signal.SIGTERM)
+    deps = WorkerDeps(
+        engine=engine,
+        client=FakeFpl({}).client(sleep=lambda _: None),
+        league_ids_raw="1",
+        clock=FixedClock(NOW),
+    )
+    with caplog.at_level(logging.INFO):
+        result = CliRunner().invoke(app, ["run"], obj=deps)
+
+    assert result.exit_code == 1
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert "worker failed: OperationalError" in caplog.text
+    assert "secret" not in caplog.text
+    assert "nobody" not in caplog.text
+    assert signal.getsignal(signal.SIGTERM) == previous
+
+
+def test_lost_lock_connection_exits_1(cli, db, caplog):
+    terminate = text(
+        "SELECT pg_terminate_backend(pid) FROM pg_locks"
+        " WHERE locktype = 'advisory' AND objid = :key AND granted"
+    )
+
+    class TerminatingClock(FixedClock):
+        def sleep(self, seconds: float) -> None:
+            with db.connect() as connection:
+                connection.execute(terminate, {"key": SCHEDULE_LOCK_KEY})
+                connection.commit()
+
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    with caplog.at_level(logging.INFO):
+        result = cli("run", client=fake.client(sleep=lambda _: None), clock=TerminatingClock(NOW))
+
+    assert result.exit_code == 1
+    assert "worker failed: OperationalError" in caplog.text
 
 
 def test_sigterm_while_idle_exits_0_within_10_s(cli, db):

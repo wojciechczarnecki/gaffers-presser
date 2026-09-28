@@ -162,6 +162,24 @@ def plan(state: ScheduleState, now: datetime) -> list[PlannedAction]:
     return sorted(actions, key=lambda a: a.at)
 
 
+def outlook(state: ScheduleState, now: datetime) -> list[PlannedAction]:
+    actions = plan(state, now)
+    snapshot = next((a for a in actions if a.job == Job.deadline_snapshot), None)
+    if snapshot is None:
+        return actions
+    gw = _gameweek_with_deadline_after(state.gameweeks, now)
+    later_slots = [
+        slot
+        for slot in (gw.deadline_at - SNAPSHOT_SLOT_T30, gw.deadline_at - SNAPSHOT_SLOT_T5)
+        if slot > snapshot.at
+    ]
+    actions.extend(
+        PlannedAction(at=slot, job=Job.deadline_snapshot, gameweek=gw.fpl_id, season=state.season)
+        for slot in later_slots
+    )
+    return sorted(actions, key=lambda a: a.at)
+
+
 def _priority_key(action: PlannedAction) -> tuple[int, int, int]:
     if action.job == Job.deadline_snapshot:
         return (0, 0, 0)

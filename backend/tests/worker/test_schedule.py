@@ -8,6 +8,7 @@ from app.worker.schedule import (
     ScheduleState,
     due_actions,
     missed_snapshot,
+    outlook,
     plan,
 )
 
@@ -229,3 +230,43 @@ def test_due_actions_priority_snapshot_then_reference_then_gameweek_jobs():
 
     due2 = due_actions(state, now)
     assert [a.job for a in due2] == [Job.reference_sync, Job.results_sync, Job.league_sync]
+
+
+def _snapshot_times(actions):
+    return [a.at for a in actions if a.job == Job.deadline_snapshot]
+
+
+def test_outlook_lists_both_remaining_snapshot_slots():
+    state = _state([_gw(6, D6)])
+    now = D6 - timedelta(hours=1)
+    assert _snapshot_times(outlook(state, now)) == [
+        D6 - timedelta(minutes=30),
+        D6 - timedelta(minutes=5),
+    ]
+    assert _snapshot_times(plan(state, now)) == [D6 - timedelta(minutes=30)]
+
+
+def test_outlook_lists_only_t5_after_t30_succeeded():
+    success = _run(Job.deadline_snapshot, 6, D6 - timedelta(minutes=30), "succeeded")
+    state = _state([_gw(6, D6)], latest_success={(Job.deadline_snapshot, 6): success})
+    assert _snapshot_times(outlook(state, D6 - timedelta(minutes=20))) == [
+        D6 - timedelta(minutes=5)
+    ]
+
+
+def test_outlook_keeps_t5_behind_a_t30_retry():
+    failed = _run(Job.deadline_snapshot, 6, D6 - timedelta(minutes=30), "failed")
+    state = _state([_gw(6, D6)], latest={(Job.deadline_snapshot, 6): failed})
+    assert _snapshot_times(outlook(state, D6 - timedelta(minutes=29))) == [
+        failed.finished_at + timedelta(minutes=1),
+        D6 - timedelta(minutes=5),
+    ]
+
+
+def test_outlook_without_future_deadline_equals_plan():
+    started = D6 - timedelta(hours=90)
+    state = _state(
+        [_gw(6, started - timedelta(days=1))],
+        latest={(Job.reference_sync, None): _run(Job.reference_sync, None, started, "succeeded")},
+    )
+    assert outlook(state, started) == plan(state, started)

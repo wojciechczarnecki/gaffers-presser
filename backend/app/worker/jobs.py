@@ -88,6 +88,8 @@ def run_job(
     try:
         with Session(engine) as session, session.begin():
             acquire_job_lock(session)
+            # The job's `now` (and its deadline guard) must not predate the lock wait.
+            started_at = now_fn()
             season = _dispatch(session, client, league_ids, action, started_at)
     except Exception as exc:
         if stop_event.is_set():

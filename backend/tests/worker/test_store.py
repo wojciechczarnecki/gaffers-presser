@@ -81,6 +81,25 @@ def test_load_state_picks_latest_season_and_scoped_runs(db_session):
     ].started_at != D - timedelta(days=400)
 
 
+def test_load_state_ignores_gameweek_runs_of_a_previous_season(db_session):
+    db_session.add_all([Season(label="2025/26"), Season(label="2026/27")])
+    db_session.flush()
+    db_session.add_all(
+        [
+            _job_run(Job.results_sync, "2025/26", 7, D - timedelta(days=300), "succeeded"),
+            _job_run(Job.league_sync, "2025/26", 7, D - timedelta(days=300), "succeeded"),
+            _job_run(Job.deadline_snapshot, "2025/26", 7, D - timedelta(days=301), "failed"),
+        ]
+    )
+    db_session.commit()
+
+    state = load_state(db_session.get_bind())
+    assert state.season == "2026/27"
+    for job in (Job.results_sync, Job.league_sync, Job.deadline_snapshot):
+        assert (job, 7) not in state.latest
+        assert (job, 7) not in state.latest_success
+
+
 def test_latest_runs_by_job(db_session):
     db_session.add_all(
         [

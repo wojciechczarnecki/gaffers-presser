@@ -15,7 +15,7 @@ ENTRY_IDS = [880000001, 880000002]
 PLAYER_IDS = list(range(1, 21))
 
 
-def _trimmed_bootstrap() -> dict:
+def trimmed_bootstrap() -> dict:
     payload = load("bootstrap-static")
     payload["elements"] = payload["elements"][:20]
     return payload
@@ -25,7 +25,7 @@ def _trimmed_fixtures() -> list[dict]:
     return [f for f in load("fixtures") if f["event"] in (5, 6, 7)]
 
 
-def _trimmed_live() -> dict:
+def trimmed_live() -> dict:
     live = load("event-3-live")
     live["elements"] = [el for el in live["elements"] if el["id"] in PLAYER_IDS]
     return live
@@ -63,9 +63,9 @@ class SimulatedFpl:
         self._clock = clock
         self._gameweek_overrides = gameweek_overrides or {}
         self._failure_windows = failure_windows or {}
-        self._base_bootstrap = _trimmed_bootstrap()
+        self._base_bootstrap = trimmed_bootstrap()
         self._fixtures = _trimmed_fixtures()
-        self._live = _trimmed_live()
+        self._live = trimmed_live()
 
     def _failing(self, route: str) -> bool:
         now = self._clock.now()
