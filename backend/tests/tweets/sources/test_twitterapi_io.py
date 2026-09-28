@@ -1,8 +1,10 @@
-from datetime import UTC, datetime
+import json
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
 
+from app.core.errors import CollectorError
 from app.tweets.sources.base import (
     SourcePayloadError,
     SourceRateLimitedError,
@@ -34,10 +36,12 @@ def test_page_normalised():
 
     assert [p.x_id for p in page] == [1002, 1001, 1000]
     repost, reply, normal = page
-    assert repost.is_repost is True
-    assert repost.is_reply is False
-    assert reply.is_reply is True
-    assert normal.is_repost is False
+    assert (repost.is_repost, repost.is_reply) == (True, False)
+    assert (reply.is_repost, reply.is_reply) == (False, True)
+    assert reply.author_handle == "synthetic_leaker_2"
+    assert normal.x_id == 1000
+    assert (normal.is_repost, normal.is_reply) == (False, False)
+    assert normal.created_at.utcoffset() == timedelta(0)
     assert normal.author_handle == "synthetic_leaker_1"
     assert normal.text == "Synthetic squad news for gameweek"
     assert normal.created_at == datetime(2026, 9, 28, 8, 0, 0, tzinfo=UTC)
@@ -139,16 +143,64 @@ def test_connect_error_is_source_unavailable():
         source.close()
 
 
-def test_errors_never_carry_the_key(caplog):
-    fake = FakeHttp({"twitter/list/tweets?listId=42&cursor=": httpx.Response(500)})
+def test_empty_page_is_an_empty_list():
+    fake = FakeHttp(
+        {
+            "twitter/list/tweets?listId=42&cursor=": {
+                "status": "success",
+                "tweets": [],
+                "has_next_page": False,
+                "next_cursor": "",
+            }
+        }
+    )
     source = _source(fake)
     try:
-        with pytest.raises(SourceUnavailableError) as exc_info:
-            with caplog.at_level("DEBUG"):
+        assert list(source.pages(42)) == [[]]
+    finally:
+        source.close()
+
+
+def _raise_connect_error(request: httpx.Request) -> httpx.Response:
+    raise httpx.ConnectError(f"boom {request.headers['x-api-key']}")
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(429, headers={"Retry-After": "30"}),
+        httpx.Response(500),
+        httpx.Response(401),
+        httpx.Response(200, json={"status": "error", "msg": "bad", "tweets": []}),
+        httpx.Response(200, text="not json"),
+        httpx.Response(200, json={"status": "success"}),
+        _raise_connect_error,
+    ],
+    ids=["429", "500", "401", "status-error", "not-json", "no-tweets", "connect-error"],
+)
+def test_error_paths_never_carry_the_key(caplog, response):
+    fake = FakeHttp({"twitter/list/tweets?listId=42&cursor=": response})
+    source = _source(fake)
+    try:
+        with caplog.at_level("DEBUG"):
+            with pytest.raises(CollectorError) as exc_info:
                 next(source.pages(42))
     finally:
         source.close()
-    assert SENTINEL_KEY not in str(exc_info.value)
-    assert SENTINEL_KEY not in caplog.text
+    for text in (str(exc_info.value), repr(exc_info.value), caplog.text):
+        assert "sentinel-secret" not in text
+    assert exc_info.value.__cause__ is None
     assert fake.requests[0].headers["x-api-key"] == SENTINEL_KEY
-    assert SENTINEL_KEY not in str(fake.requests[0].url)
+    assert "sentinel-secret" not in str(fake.requests[0].url)
+
+
+def test_normalised_posts_carry_no_key():
+    fake = FakeHttp({"twitter/list/tweets?listId=42&cursor=": load("twitterapi_io-page-1")})
+    source = _source(fake)
+    try:
+        page = next(source.pages(42))
+    finally:
+        source.close()
+    assert page
+    for post in page:
+        assert "sentinel-secret" not in json.dumps(post.raw)

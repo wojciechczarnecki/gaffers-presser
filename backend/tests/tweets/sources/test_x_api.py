@@ -1,8 +1,10 @@
-from datetime import UTC, datetime
+import json
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
 
+from app.core.errors import CollectorError
 from app.tweets.sources.base import (
     SourcePayloadError,
     SourceRateLimitedError,
@@ -37,10 +39,16 @@ def test_page_normalised():
 
     assert [p.x_id for p in page] == [2002, 2001, 2000]
     repost, reply, normal = page
-    assert repost.is_repost is True
-    assert reply.is_reply is True
+    assert (repost.is_repost, repost.is_reply) == (True, False)
+    assert (reply.is_repost, reply.is_reply) == (False, True)
+    assert reply.author_handle == "synthetic_leaker_2"
+    assert normal.x_id == 2000
     assert normal.author_handle == "synthetic_leaker_1"
+    assert normal.text == "Synthetic squad news for gameweek"
     assert normal.created_at == datetime(2026, 9, 28, 8, 0, 0, tzinfo=UTC)
+    assert normal.created_at.utcoffset() == timedelta(0)
+    assert (normal.is_repost, normal.is_reply) == (False, False)
+    assert normal.raw["tweet"]["id"] == "2000"
     assert normal.raw["author"]["username"] == "synthetic_leaker_1"
 
 
@@ -125,15 +133,86 @@ def test_error_paths(response, expected_error):
         source.close()
 
 
-def test_errors_never_carry_the_token(caplog):
-    fake = FakeHttp({f"2/lists/42/tweets?{_PAGE1_QUERY}": httpx.Response(500)})
+def test_rate_limit_without_reset_header_has_none():
+    fake = FakeHttp({f"2/lists/42/tweets?{_PAGE1_QUERY}": httpx.Response(429)})
     source = _source(fake)
     try:
-        with pytest.raises(SourceUnavailableError) as exc_info:
-            with caplog.at_level("DEBUG"):
+        with pytest.raises(SourceRateLimitedError) as exc_info:
+            next(source.pages(42))
+    finally:
+        source.close()
+    assert exc_info.value.retry_after is None
+
+
+def test_rate_limit_with_past_reset_is_zero():
+    fake = FakeHttp(
+        {
+            f"2/lists/42/tweets?{_PAGE1_QUERY}": httpx.Response(
+                429, headers={"x-rate-limit-reset": "900"}
+            )
+        }
+    )
+    source = _source(fake, now=lambda: 970.0)
+    try:
+        with pytest.raises(SourceRateLimitedError) as exc_info:
+            next(source.pages(42))
+    finally:
+        source.close()
+    assert exc_info.value.retry_after == 0.0
+
+
+def test_connect_error_is_source_unavailable():
+    def raise_connect_error(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("boom")
+
+    fake = FakeHttp({f"2/lists/42/tweets?{_PAGE1_QUERY}": raise_connect_error})
+    source = _source(fake)
+    try:
+        with pytest.raises(SourceUnavailableError):
+            next(source.pages(42))
+    finally:
+        source.close()
+
+
+def _raise_connect_error(request: httpx.Request) -> httpx.Response:
+    raise httpx.ConnectError(f"boom {request.headers['authorization']}")
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(429, headers={"x-rate-limit-reset": "1000"}),
+        httpx.Response(500),
+        httpx.Response(401),
+        httpx.Response(200, text="not json"),
+        httpx.Response(200, json={"data": "not-a-list"}),
+        httpx.Response(200, json={"errors": [{"title": "Not Found Error"}]}),
+        _raise_connect_error,
+    ],
+    ids=["429", "500", "401", "not-json", "bad-data", "errors", "connect-error"],
+)
+def test_error_paths_never_carry_the_token(caplog, response):
+    fake = FakeHttp({f"2/lists/42/tweets?{_PAGE1_QUERY}": response})
+    source = _source(fake)
+    try:
+        with caplog.at_level("DEBUG"):
+            with pytest.raises(CollectorError) as exc_info:
                 next(source.pages(42))
     finally:
         source.close()
-    assert SENTINEL_TOKEN not in str(exc_info.value)
-    assert SENTINEL_TOKEN not in caplog.text
+    for text in (str(exc_info.value), repr(exc_info.value), caplog.text):
+        assert "sentinel-secret" not in text
+    assert exc_info.value.__cause__ is None
     assert fake.requests[0].headers["authorization"] == f"Bearer {SENTINEL_TOKEN}"
+
+
+def test_normalised_posts_carry_no_token():
+    fake = FakeHttp({f"2/lists/42/tweets?{_PAGE1_QUERY}": load("x_api-page-1")})
+    source = _source(fake)
+    try:
+        page = next(source.pages(42))
+    finally:
+        source.close()
+    assert page
+    for post in page:
+        assert "sentinel-secret" not in json.dumps(post.raw)

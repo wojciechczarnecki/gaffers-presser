@@ -1,9 +1,13 @@
+import asyncio
+import json
 import os
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
-from twscrape import NoAccountError
+from twscrape import API, NoAccountError
 
+from app.core.errors import CollectorError
 from app.tweets.sources.base import (
     SourcePayloadError,
     SourceRateLimitedError,
@@ -64,11 +68,16 @@ def test_page_normalised():
 
     assert [p.x_id for p in page] == [3003, 3002, 3001]
     repost, reply, normal = page
-    assert repost.is_repost is True
-    assert reply.is_reply is True
-    assert normal.is_repost is False
-    assert normal.is_reply is False
+    assert (repost.is_repost, repost.is_reply) == (True, False)
+    assert (reply.is_repost, reply.is_reply) == (False, True)
+    assert normal.x_id == 3001
+    assert normal.author_handle == "synthetic_leaker_3"
+    assert normal.text == "Synthetic post text for testing purposes."
+    assert normal.created_at == datetime(2026, 8, 6, 21, 6, 52, tzinfo=UTC)
+    assert normal.created_at.utcoffset() == timedelta(0)
+    assert (normal.is_repost, normal.is_reply) == (False, False)
     assert normal.raw["id_str"] == "3001"
+    assert normal.raw["user"]["username"] == "synthetic_leaker_3"
     assert api.pool.add_account_cookies_calls == [("dedicated", SENTINEL_COOKIES)]
 
 
@@ -208,17 +217,70 @@ def test_tws_telemetry_disabled_after_import():
     assert os.environ.get("TWS_TELEMETRY") == "0"
 
 
-def test_errors_never_carry_the_cookies(caplog, capfd):
-    api = FakeApi([httpx.Response(200, text="not json")])
+def test_empty_page_is_an_empty_list():
+    payload = load("twscrape-page-1")
+    payload["data"]["list"]["tweets_timeline"]["timeline"]["instructions"] = []
+    api = FakeApi([httpx.Response(200, json=payload)])
     source = _source(api)
     try:
+        assert next(source.pages(1)) == []
+    finally:
+        source.close()
+
+
+def test_normalised_posts_carry_no_cookie():
+    api = FakeApi([_response("twscrape-page-1")])
+    source = _source(api)
+    try:
+        page = next(source.pages(1))
+    finally:
+        source.close()
+    assert page
+    for post in page:
+        assert "sentinel-secret" not in json.dumps(post.raw)
+
+
+@pytest.mark.parametrize(
+    "script,pool",
+    [
+        (httpx.Response(200, text="not json"), FakePool()),
+        (NoAccountError("locked"), FakePool(next_available="now")),
+        (NoAccountError("locked"), FakePool(next_available=None)),
+    ],
+    ids=["malformed", "rate-limited", "no-account"],
+)
+def test_error_paths_never_carry_the_cookies(caplog, capfd, script, pool):
+    source = _source(FakeApi([script], pool=pool))
+    try:
         with caplog.at_level("DEBUG"):
-            with pytest.raises(SourcePayloadError) as exc_info:
+            with pytest.raises(CollectorError) as exc:
                 next(source.pages(1))
     finally:
         source.close()
     captured = capfd.readouterr()
-    assert SENTINEL_COOKIES not in str(exc_info.value)
-    assert SENTINEL_COOKIES not in caplog.text
-    assert SENTINEL_COOKIES not in captured.err
-    assert SENTINEL_COOKIES not in captured.out
+    for text in (str(exc.value), repr(exc.value), caplog.text, captured.err, captured.out):
+        assert "sentinel-secret" not in text
+
+
+def test_real_twscrape_pool_rate_limit_carries_no_cookie(tmp_path, caplog, capfd):
+    accounts_db = str(tmp_path / "accounts.db")
+
+    async def lock_account() -> None:
+        pool = API(pool=accounts_db).pool
+        await pool.add_account_cookies("dedicated", SENTINEL_COOKIES)
+        unlock_at = int((datetime.now(UTC) + timedelta(minutes=5)).timestamp())
+        await pool.lock_until("dedicated", "ListLatestTweetsTimeline", unlock_at)
+
+    asyncio.run(lock_account())
+    source = TwscrapeSource(username="dedicated", cookies=SENTINEL_COOKIES, accounts_db=accounts_db)
+    try:
+        with caplog.at_level("DEBUG"):
+            with pytest.raises(SourceRateLimitedError) as exc:
+                next(source.pages(1))
+    finally:
+        source.close()
+
+    assert 240 < exc.value.retry_after <= 300
+    captured = capfd.readouterr()
+    for text in (str(exc.value), repr(exc.value), caplog.text, captured.err, captured.out):
+        assert "sentinel-secret" not in text

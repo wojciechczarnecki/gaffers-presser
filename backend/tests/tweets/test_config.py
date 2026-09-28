@@ -60,8 +60,9 @@ def test_twscrape_cookies_must_include_auth_token_and_ct0(monkeypatch):
         TWSCRAPE_USERNAME="dedicated",
         TWSCRAPE_COOKIES=f"ct0={SENTINEL}",
     )
-    with pytest.raises(ConfigError, match="TWSCRAPE_COOKIES"):
+    with pytest.raises(ConfigError, match="TWSCRAPE_COOKIES") as exc_info:
         resolve_ingest(settings)
+    assert "sentinel-secret" not in str(exc_info.value)
 
 
 def test_twscrape_cookies_with_both_names_pass(monkeypatch):
