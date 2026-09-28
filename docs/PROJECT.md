@@ -73,9 +73,10 @@ Grouped by roadmap stage (`docs/ROADMAP.md`).
 
 ## Non-functional requirements
 
-- **Latency:** in the final window before a deadline, a leak must reach the owner's inbox
-  within **60 s** of being posted (p95), measured and reported. Outside that window a
-  coarser polling interval is acceptable.
+- **Latency:** in the final window before a deadline, our system must fetch a leak within
+  **60 s** of it being posted (p95 detection latency), measured and reported; extraction and
+  e-mail delivery come on top of it. Outside that window a coarser polling interval is
+  acceptable.
 - **Budget:** external APIs ≤ **20 PLN/month** in total (LLM, embeddings, X data, e-mail).
   Hosting (the owner's existing Railway account) is budgeted separately.
 - **Language:** product content in Polish FPL slang; repository, code, docs in English.
