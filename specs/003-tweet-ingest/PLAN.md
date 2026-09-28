@@ -334,7 +334,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       `tests/tweets/fakes.py` (`FakeSource` — scripted pages or exceptions per call,
       reused later).
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/sources/test_paging.py`
-- [ ] 4. twitterapi.io adapter. Recorded payloads (synthetic, shaped on the documented
+- [x] 4. twitterapi.io adapter. Recorded payloads (synthetic, shaped on the documented
       response; handles like `synthetic_leaker_1`, texts in English/Polish without real
       people): `tests/tweets/payloads/twitterapi_io-page-1.json.gz`, `-page-2.json.gz`
       (page 1 has `has_next_page: true` and a cursor; includes one repost and one reply),
