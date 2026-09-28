@@ -2,17 +2,26 @@ import logging
 import signal
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import typer
 from sqlalchemy import Connection, Engine, text
+from sqlmodel import Session
 
 from app.core.errors import CollectorError
-from app.core.settings import load_settings, parse_league_ids
+from app.core.settings import TweetSettings, load_settings, parse_league_ids
 from app.db.engine import make_engine
 from app.db.locks import try_schedule_lock
 from app.fpl.client import FplClient
+from app.tweets.config import resolve_ingest
+from app.tweets.loop import Clock as TweetClock
+from app.tweets.loop import start_poller
+from app.tweets.schedule import mode, next_poll_at
+from app.tweets.sources import build_source
+from app.tweets.sources.base import TweetSource
+from app.tweets.store import latest_poll, latest_success_by_source, upcoming_deadlines
 from app.worker.jobs import Shutdown
 from app.worker.loop import Clock, SystemClock, Worker
 from app.worker.schedule import Job, outlook
@@ -25,11 +34,20 @@ WORKER_LOG_HANDLER = "app.worker"
 
 
 @dataclass(frozen=True)
+class TweetIngest:
+    source_name: str
+    list_id: int
+    make_source: Callable[[], TweetSource]
+    clock: TweetClock | None = None
+
+
+@dataclass(frozen=True)
 class WorkerDeps:
     engine: Engine
     client: FplClient
     league_ids_raw: str
     clock: Clock
+    tweet_ingest: TweetIngest | None = None
 
 
 app = typer.Typer(
@@ -73,14 +91,24 @@ def get_deps(ctx: typer.Context) -> WorkerDeps:
 def _deps_from_settings() -> WorkerDeps:
     _configure_logging()
     try:
+        tweet_settings = TweetSettings()
+        ingest_config = resolve_ingest(tweet_settings)
         settings = load_settings()
     except CollectorError as exc:
         raise fail(str(exc)) from None
+    tweet_ingest = None
+    if ingest_config is not None:
+        tweet_ingest = TweetIngest(
+            source_name=ingest_config.source_name,
+            list_id=ingest_config.list_id,
+            make_source=lambda: build_source(ingest_config.source_name, ingest_config.settings),
+        )
     return WorkerDeps(
         engine=make_engine(settings.database_url),
         client=FplClient(),
         league_ids_raw=settings.fpl_league_ids,
         clock=SystemClock(),
+        tweet_ingest=tweet_ingest,
     )
 
 
@@ -112,6 +140,7 @@ def run(ctx: typer.Context) -> None:
     signal.signal(signal.SIGINT, handle_signal)
 
     lock_connection: Connection | None = None
+    tweet_thread: threading.Thread | None = None
     try:
         lock_connection = deps.engine.connect().execution_options(isolation_level="AUTOCOMMIT")
         logged_waiting = False
@@ -120,6 +149,17 @@ def run(ctx: typer.Context) -> None:
                 logger.info("waiting for the schedule lock held by another worker")
                 logged_waiting = True
             deps.clock.sleep(SCHEDULE_LOCK_POLL_SECONDS)
+
+        if deps.tweet_ingest is None:
+            logger.info("tweet ingest disabled")
+        else:
+            tweet_thread = start_poller(
+                deps.engine,
+                deps.tweet_ingest.make_source,
+                deps.tweet_ingest.list_id,
+                stop_event,
+                clock=deps.tweet_ingest.clock,
+            )
 
         def heartbeat() -> None:
             lock_connection.execute(text("SELECT 1"))
@@ -139,6 +179,9 @@ def run(ctx: typer.Context) -> None:
         logger.error("worker failed: %s", type(exc).__name__)
         raise typer.Exit(1) from None
     finally:
+        if tweet_thread is not None:
+            stop_event.set()
+            tweet_thread.join(timeout=5)
         signal.signal(signal.SIGTERM, previous_sigterm)
         signal.signal(signal.SIGINT, previous_sigint)
         if lock_connection is not None:
@@ -169,6 +212,23 @@ def status(ctx: typer.Context) -> None:
         gw = action.gameweek if action.gameweek is not None else "-"
         when = "due now" if action.at <= now else _fmt(action.at)
         typer.echo(f"  {action.job.value} gameweek={gw}: {when}")
+
+    if deps.tweet_ingest is None:
+        typer.echo("Tweet ingest: disabled")
+    else:
+        source_name = deps.tweet_ingest.source_name
+        with Session(deps.engine) as session:
+            deadlines = upcoming_deadlines(session, now)
+        last_success = latest_success_by_source(deps.engine).get(source_name)
+        last = latest_poll(deps.engine, source_name)
+        next_at = next_poll_at(deadlines, last, now)
+        typer.echo("Tweet ingest:")
+        typer.echo(f"  source: {source_name}")
+        last_success_str = "never" if last_success is None else _fmt(last_success.started_at)
+        typer.echo(f"  last successful poll: {last_success_str}")
+        next_str = "due now" if next_at <= now else _fmt(next_at)
+        typer.echo(f"  next poll: {next_str}")
+        typer.echo(f"  mode: {mode(deadlines, now)}")
 
 
 def main() -> None:

@@ -16,13 +16,16 @@ from typer.testing import CliRunner
 from app.db.engine import make_engine
 from app.db.locks import SCHEDULE_LOCK_KEY
 from app.fpl.models import Gameweek, Season
-from app.worker.cli import WorkerDeps, app
+from app.tweets.models import TweetPoll
+from app.worker.cli import TweetIngest, WorkerDeps, _fmt, app
 from app.worker.jobs import Shutdown
 from app.worker.models import JobRun
 from app.worker.schedule import Job
 from tests.conftest import BACKEND_DIR, held_advisory_lock
 from tests.fpl.fakes import FakeFpl
 from tests.fpl.payloads import load
+from tests.tweets.fakes import FakeSource
+from tests.worker.sim import FakeClock
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 D6 = datetime(2026, 10, 10, 10, 0, tzinfo=UTC)
@@ -76,12 +79,13 @@ class ReleasingClock:
 
 @pytest.fixture
 def cli(db):
-    def invoke(*args, client=None, league_ids_raw="1", clock=None):
+    def invoke(*args, client=None, league_ids_raw="1", clock=None, tweet_ingest=None):
         deps = WorkerDeps(
             engine=db,
             client=client or FakeFpl({}).client(sleep=lambda _: None),
             league_ids_raw=league_ids_raw,
             clock=clock or FixedClock(NOW),
+            tweet_ingest=tweet_ingest,
         )
         return CliRunner().invoke(app, list(args), obj=deps)
 
@@ -263,6 +267,204 @@ def test_sigterm_during_job_rolls_back_and_exits_0(cli, db):
         assert session.exec(select(Season)).all() == []
         assert session.exec(select(JobRun)).all() == []
     assert signal.getsignal(signal.SIGTERM) == previous
+
+
+def test_run_without_tweet_source_logs_disabled_once(cli, db, caplog):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+
+    timer = threading.Timer(1, os.kill, args=(os.getpid(), signal.SIGTERM))
+    timer.start()
+    try:
+        with caplog.at_level(logging.INFO):
+            result = cli(
+                "run", client=fake.client(sleep=lambda _: None), clock=RealClock(far_future)
+            )
+    finally:
+        timer.cancel()
+
+    assert result.exit_code == 0
+    assert caplog.text.count("tweet ingest disabled") == 1
+    with Session(db) as session:
+        assert session.exec(select(TweetPoll)).all() == []
+
+
+def test_sigterm_with_tweet_ingest_exits_within_10_s(cli, db):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    source = FakeSource(pages=[[]])
+    tweet_ingest = TweetIngest(source_name="fake", list_id=1, make_source=lambda: source)
+
+    timer = threading.Timer(1, os.kill, args=(os.getpid(), signal.SIGTERM))
+    timer.start()
+    start = time.monotonic()
+    try:
+        result = cli(
+            "run",
+            client=fake.client(sleep=lambda _: None),
+            clock=RealClock(far_future),
+            tweet_ingest=tweet_ingest,
+        )
+    finally:
+        elapsed = time.monotonic() - start
+        timer.cancel()
+
+    assert result.exit_code == 0
+    assert elapsed < 10
+    assert not any(t.name == "tweet-poller" and t.is_alive() for t in threading.enumerate())
+
+
+def test_polls_continue_while_a_deadline_snapshot_blocks(db):
+    with Session(db) as session, session.begin():
+        session.add(Season(label="2026/27"))
+        session.flush()
+        session.add(
+            Gameweek(
+                season="2026/27",
+                fpl_id=6,
+                name="GW6",
+                deadline_at=D6,
+                finished=False,
+                data_checked=False,
+            )
+        )
+
+    tweet_start = D6 - timedelta(minutes=5)
+    tweet_end = D6 - timedelta(minutes=2)
+
+    calls = {"n": 0}
+    release_event = threading.Event()
+    unblocked_after: dict[str, float | None] = {"seconds": None}
+
+    def bootstrap_route(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 2:
+            block_started = time.monotonic()
+            release_event.wait(timeout=10)
+            unblocked_after["seconds"] = time.monotonic() - block_started
+        return httpx.Response(200, json=load("bootstrap-static"))
+
+    fake = FakeFpl({"bootstrap-static/": bootstrap_route, "fixtures/": load("fixtures")})
+
+    def watch_and_release() -> None:
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            with Session(db) as session:
+                count = len(session.exec(select(TweetPoll)).all())
+            if count >= 9:
+                break
+            time.sleep(0.02)
+        release_event.set()
+        time.sleep(0.2)
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    watcher = threading.Thread(target=watch_and_release, daemon=True)
+    watcher.start()
+
+    poller_source = FakeSource(pages=[[]])
+    tweet_ingest = TweetIngest(
+        source_name="fake",
+        list_id=1,
+        make_source=lambda: poller_source,
+        clock=FakeClock(tweet_start, tweet_end),
+    )
+    deps = WorkerDeps(
+        engine=db,
+        client=fake.client(sleep=lambda _: None, max_attempts=1),
+        league_ids_raw="1",
+        clock=RealClock(tweet_start),
+        tweet_ingest=tweet_ingest,
+    )
+
+    start = time.monotonic()
+    result = CliRunner().invoke(app, ["run"], obj=deps)
+    elapsed = time.monotonic() - start
+    watcher.join(timeout=1)
+
+    assert result.exit_code == 0
+    assert elapsed < 10
+    assert calls["n"] == 2
+    assert unblocked_after["seconds"] is not None
+    assert unblocked_after["seconds"] < 5
+
+    with Session(db) as session:
+        rows = session.exec(
+            select(TweetPoll).where(TweetPoll.outcome == "succeeded").order_by(TweetPoll.started_at)
+        ).all()
+    assert len(rows) == 9
+    started = [r.started_at for r in rows]
+    assert started[0] == tweet_start
+    assert all(
+        (started[i + 1] - started[i]) == timedelta(seconds=20) for i in range(len(started) - 1)
+    )
+
+
+def test_worker_rejects_tweet_source_without_credentials(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("TWEET_SOURCE", "x_api")
+    monkeypatch.setenv("X_LIST_ID", "123")
+
+    result = CliRunner().invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert "X_API_BEARER_TOKEN" in result.stderr
+
+
+def test_status_shows_tweet_ingest_disabled(cli):
+    result = cli("status")
+    assert result.exit_code == 0
+    assert "Tweet ingest: disabled" in result.stdout
+
+
+def test_status_shows_tweet_ingest_never_polled(cli):
+    tweet_ingest = TweetIngest(source_name="twitterapi_io", list_id=1, make_source=lambda: None)
+    result = cli("status", tweet_ingest=tweet_ingest)
+    assert result.exit_code == 0
+    lines = result.stdout.splitlines()
+    assert "Tweet ingest:" in lines
+    assert "  source: twitterapi_io" in lines
+    assert "  last successful poll: never" in lines
+    assert "  next poll: due now" in lines
+    assert "  mode: sparse" in lines
+
+
+def test_status_shows_tweet_ingest_with_polls_in_window(cli, db):
+    from app.tweets.store import PollRecord, write_poll
+
+    with Session(db) as session, session.begin():
+        session.add(Season(label="2026/27"))
+        session.flush()
+        session.add(
+            Gameweek(
+                season="2026/27",
+                fpl_id=6,
+                name="GW6",
+                deadline_at=D6,
+                finished=False,
+                data_checked=False,
+            )
+        )
+
+    now = D6 - timedelta(minutes=45)
+    write_poll(
+        db,
+        PollRecord(
+            source="twitterapi_io",
+            started_at=now - timedelta(seconds=20),
+            finished_at=now - timedelta(seconds=19),
+            outcome="succeeded",
+            new_posts=2,
+        ),
+    )
+    tweet_ingest = TweetIngest(source_name="twitterapi_io", list_id=1, make_source=lambda: None)
+    result = cli("status", clock=FixedClock(now), tweet_ingest=tweet_ingest)
+    assert result.exit_code == 0
+    lines = result.stdout.splitlines()
+    assert "Tweet ingest:" in lines
+    assert "  source: twitterapi_io" in lines
+    assert f"  last successful poll: {_fmt(now - timedelta(seconds=20))}" in lines
+    assert "  next poll: due now" in lines
+    assert "  mode: window" in lines
 
 
 def test_worker_help():

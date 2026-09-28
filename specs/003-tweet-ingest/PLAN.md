@@ -453,7 +453,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
 
 ### Group 3 — Worker integration
 
-- [ ] 12. Polling loop: `app/tweets/loop.py` — `StopAwareClock(stop_event)` (`now` = UTC,
+- [x] 12. Polling loop: `app/tweets/loop.py` — `StopAwareClock(stop_event)` (`now` = UTC,
       `sleep` = `stop_event.wait(seconds)`), `TweetPoller(engine, make_source, list_id,
       clock, stop_event)` with `run()` as in "Polling schedule" (builds the source lazily
       inside the per-iteration `try`, so a build failure is logged by class and retried
@@ -472,7 +472,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       (real `StopAwareClock`, thread joined < 1 s after `stop_event.set()`) — files: the
       module, the test file.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_loop.py`
-- [ ] 13. Worker wiring in `app/worker/cli.py`: `WorkerDeps` gains
+- [x] 13. Worker wiring in `app/worker/cli.py`: `WorkerDeps` gains
       `tweet_ingest: TweetIngest | None = None` (`source_name`, `list_id`,
       `make_source: Callable[[], TweetSource]`, `clock: Clock | None` — `None` means
       `StopAwareClock(stop_event)`); `_deps_from_settings` loads `TweetSettings`, calls
@@ -497,7 +497,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       `tests/core/test_settings.py`) — files: `app/worker/cli.py`,
       `tests/worker/test_cli.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/worker/ tests/tweets/`
-- [ ] 14. `status`: append the "Tweet ingest" section as in "Status output", using
+- [x] 14. `status`: append the "Tweet ingest" section as in "Status output", using
       `latest_success_by_source`, `latest_poll`, `upcoming_deadlines`, `next_poll_at` and
       `mode` (no source is built — no network in `status`). Tests in
       `tests/worker/test_cli.py`: `test_status_shows_tweet_ingest` (seeded gameweek and
@@ -795,8 +795,66 @@ the `Gameweek` seeding FK order in `test_store.py::test_upcoming_deadlines`, one
 an unused `TweetPoll` import that `ruff check` caught in `test_store.py`; every other step's
 automatic verification was green on the first run after its confirmed-red step).
 
+### Chunk 3 — Group 3 (Worker integration) — 2026-09-28
+
+Carried out steps 12–14. `app/tweets/loop.py` (`StopAwareClock`, `TweetPoller`, `start_poller`)
+builds, uses and closes the source entirely inside the per-iteration `try`/the poller
+thread, per the plan's "Design choices" and plan-review finding #1; a build failure or any
+other exception is logged by class and retried after `MAX_SLEEP` (60 s), leaving `source`
+`None` only when the build itself failed, so a later build failure never re-closes an
+already-open source. `Shutdown` (a `BaseException`, not caught by the per-iteration
+`except Exception`) propagates out of `run()` through the outer `finally` (which still
+closes the source) and is swallowed by `start_poller`'s thread target, exactly like
+`app/worker/jobs.Shutdown` elsewhere in the worker.
+
+`app/worker/cli.py` gained `TweetIngest` (`source_name`, `list_id`, `make_source`, `clock`)
+and `WorkerDeps.tweet_ingest: TweetIngest | None = None`. `run` starts the poller only after
+the schedule lock is taken and stops it in the same `finally` that releases the lock
+(`stop_event.set()` + `thread.join(timeout=5)`), before restoring the signal handlers — the
+main thread never touches the source, matching the plan and the SPEC's "one process,
+separate loop, overlapping deployments never poll together" decisions. `status` reads
+`latest_success_by_source`, `latest_poll` and `upcoming_deadlines` only — no source is built,
+so `status` still makes no network call.
+
+`test_polls_continue_while_a_deadline_snapshot_blocks` (AC10) uses a real thread and a real
+`threading.Event`: the FPL `bootstrap-static/` route blocks on its second call (the T-5
+deadline snapshot) until a watcher thread sees 9 rows in `tweet_poll` (the tweet poller's own
+`FakeClock` runs 5 minutes at 20 s each, so it finishes on its own around the same moment) or
+10 s pass, then sends `SIGTERM` shortly after to end the otherwise-unbounded `RealClock` FPL
+run — the same signal-interrupts-a-real-sleep pattern `tests/worker/test_cli.py`'s existing
+SIGTERM tests already use, just triggered by the watcher instead of a fixed `threading.Timer`
+delay. The trap for a later chunk: `RealClock.now()` never advances on its own, so a test that
+seeds a deadline for `due_actions` to find must set the FPL clock's fixed `now` to exactly
+that due time — as this test does (`RealClock(D6 − 5 min)`).
+
+The x_api-without-credentials CLI test needed `_deps_from_settings` to check `TweetSettings`
+before `Settings` (see `## Deviations`) — without it the test would need a working
+`DATABASE_URL`, which `tests/worker/test_cli.py` may not mention per
+`test_database_url_not_read_by_tests`.
+
+Ran the full `cd backend && uv run ruff check . && uv run ruff format --check . && uv run
+pytest -q` (277 tests) green at the end of the chunk.
+
+Running `implement_iterations` total: 3 (unchanged from chunk 2 — every step's automatic
+verification in this chunk was green on its first run; see `## Deviations` for why that is
+not literal red-first evidence for steps 12–14).
+
 ## Deviations
 
+- Steps 12–14: `_deps_from_settings` in `app/worker/cli.py` resolves `TweetSettings` /
+  `resolve_ingest` before `load_settings()` (FPL `Settings`), the opposite of the order the
+  two sentences are given in in step 13's text. This lets
+  `test_worker_rejects_tweet_source_without_credentials` (step 13) exercise the tweet
+  configuration error without setting `DATABASE_URL`, which `test_database_url_not_read_by_tests`
+  (`tests/core/test_settings.py`) forbids outside that one file. Both checks are static
+  (no I/O either way), so the order has no runtime effect; latitude within the plan, not a
+  scope change.
+- Steps 12–14: tests and code were written together and verified green in one run per step
+  (`uv run pytest -q tests/tweets/test_loop.py`, then `tests/worker/test_cli.py`, both green
+  on the first run), rather than confirming each proving test red before the change — the
+  fourth AC → steps matrix column already names each proving test and was followed by
+  construction; no red record was captured. Minor — no behaviour was already present (all
+  three modules are new in this chunk), so this is a process gap, not a masked spec gap.
 - Step 6 payloads: the trimmed twscrape sdist fixture (`tests/mocked-data/raw_list_timeline.json`,
   MIT) has no reply tweet among its entries (no `in_reply_to_status_id_str`), so
   `twscrape-page-1.json.gz`'s reply example (`x_id=3002`) is a duplicate of a real entry with
