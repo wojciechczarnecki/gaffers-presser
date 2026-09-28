@@ -1,7 +1,10 @@
+import json
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
+from pathlib import Path
+from typing import Annotated
 
 import typer
 from sqlalchemy import Engine
@@ -11,6 +14,7 @@ from app.core.errors import CollectorError, ConfigError
 from app.core.settings import ExtractionSettings, load_settings
 from app.db.engine import make_engine
 from app.extraction.config import resolve_llm, resolve_tracing
+from app.extraction.linking import load_players
 from app.extraction.providers import ChatModelSpec, build_chat_model
 from app.extraction.service import ExtractionRuntime, extract_post
 from app.extraction.store import posts_for_reextract
@@ -142,6 +146,26 @@ def reextract(
     typer.echo(f"events: {events}")
     typer.echo(f"failures: {failures}")
     typer.echo(f"total cost: {f'${total_cost:.4f}' if any_cost else 'n/a'}")
+
+
+@app.command("snapshot-players", help="Write the latest season's players and teams as JSON.")
+def snapshot_players(
+    ctx: typer.Context,
+    output: Annotated[Path, typer.Option("--output")],
+) -> None:
+    deps = get_deps(ctx)
+    with Session(deps.engine) as session:
+        players, teams = load_players(session)
+    if not players:
+        raise fail("no players in the database")
+    payload = {
+        "season": players[0].season,
+        "players": [asdict(p) for p in sorted(players, key=lambda p: p.fpl_id)],
+        "teams": [asdict(t) for t in sorted(teams, key=lambda t: t.fpl_id)],
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n")
+    typer.echo(f"players: {len(players)}")
 
 
 def main() -> None:

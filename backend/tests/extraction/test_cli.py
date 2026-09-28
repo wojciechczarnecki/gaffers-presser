@@ -7,10 +7,12 @@ from typer.testing import CliRunner
 
 from app.core.settings import ExtractionSettings
 from app.extraction.cli import ExtractionCliDeps, app, build_spec_from_settings
+from app.extraction.linking import load_snapshot
 from app.extraction.models import Extraction
 from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import ExtractedEvent, ExtractionOutput
 from app.extraction.store import ExtractionRecord, save_extraction
+from app.fpl.models.reference import Player, Season, Team
 from app.tweets.models import Tweet
 from tests.conftest import BACKEND_DIR
 from tests.extraction.fakes import FakeChatModel
@@ -275,3 +277,40 @@ def test_help():
         cwd=str(BACKEND_DIR),
     )
     assert result.returncode == 0
+
+
+def _seed_players(session, season: str, fpl_id: int, web_name: str) -> None:
+    session.add(Season(label=season))
+    session.add(Team(season=season, fpl_id=1, name="Team One", short_name="ONE"))
+    session.flush()
+    session.add(
+        Player(
+            season=season,
+            fpl_id=fpl_id,
+            web_name=web_name,
+            first_name="First",
+            second_name="Last",
+            team_fpl_id=1,
+            position=1,
+        )
+    )
+    session.commit()
+
+
+def test_snapshot_players_writes_the_latest_season(db, tmp_path):
+    with Session(db) as session:
+        _seed_players(session, "2025/26", 1, "Old")
+        _seed_players(session, "2026/27", 2, "Current")
+    build_spec, _ = _build_spec()
+    output = tmp_path / "players.json"
+
+    result = CliRunner().invoke(
+        app, ["snapshot-players", "--output", str(output)], obj=_deps(db, build_spec)
+    )
+
+    assert result.exit_code == 0, result.output
+    assert output.exists()
+    players, teams = load_snapshot(output)
+    assert [p.web_name for p in players] == ["Current"]
+    assert players[0].season == "2026/27"
+    assert [t.season for t in teams] == ["2026/27"]

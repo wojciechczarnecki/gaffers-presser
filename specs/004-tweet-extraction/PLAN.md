@@ -381,7 +381,7 @@ every expected `fpl_id` exists in the snapshot.
 | AC20 | 11, 14 | `tests/extraction/test_service.py::test_worker_extraction_records_latency`, `tests/worker/test_cli.py::test_status_shows_extraction*` | |
 | AC21 | 13 | `tests/worker/test_cli.py::test_sigterm_with_extraction_exits_within_10_s` | |
 | AC22 | 15 | `tests/extraction/test_cli.py::test_reextract_*` | |
-| AC23 | 16, 20 | `tests/extraction/evaluation/test_cases.py`, `tests/extraction/evaluation/test_eval_set.py` | |
+| AC23 | 16, 20 | `tests/extraction/evaluation/test_cases.py`, `tests/extraction/evaluation/test_eval_set.py` | step 16 (schema + composition rules, stubbed `composition_problems`): `uv run pytest -q tests/extraction/evaluation/test_cases.py` → `assert any(keyword in problem for problem in problems), problems` (`AssertionError: []`); step 20 (the committed set): see step 20 |
 | AC24 | 18, 19 | `tests/extraction/test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | |
 | AC25 | 17, 19 | `tests/extraction/evaluation/test_metrics.py`, `tests/extraction/test_cli.py::test_evaluate_*` | |
 | AC26 | — | manual | manual — the owner's review and comparison run |
@@ -589,7 +589,7 @@ from `backend/`.
 
 ### Group 5 — Evaluation tooling, evaluation set v1 and documentation
 
-- [ ] 16. `app/extraction/evaluation/cases.py`: the `EvalCase` / `ExpectedEvent` Pydantic
+- [x] 16. `app/extraction/evaluation/cases.py`: the `EvalCase` / `ExpectedEvent` Pydantic
       models (see Evaluation set), `load_cases(path)`, `write_cases(path, cases)`,
       `composition_problems(cases, snapshot) -> list[str]` (the rules above); plus
       `snapshot-players` in the CLI. Tests: schema accepts/rejects (bad split, bad event
