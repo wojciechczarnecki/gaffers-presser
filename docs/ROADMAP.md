@@ -22,9 +22,11 @@ and each LLM step that produces data has an evaluation set with recorded results
 
 ## Stage 1 — Tweet ingest and extraction
 
-- [ ] Latency spike: measure post-to-inbox time for each tweet source candidate; decide the
-      polling strategy against the 60 s target (spec: TBD)
-- [ ] Swappable tweet source (free scraper first) and ingest of watched accounts (spec: TBD)
+- [x] Swappable tweet source (twscrape, twitterapi.io, official X API) and ingest of the
+      watched X List: storage, deadline-aware polling in the worker, measurement tooling
+      (spec: [003](../specs/003-tweet-ingest/SPEC.md))
+- [ ] Detection-latency measurement (post → first fetch ≤ 60 s p95) and the default-source
+      choice — the owner's run, report and ADR 0005 (spec 003 AC18/AC19, BACKLOG #9)
 - [ ] LangGraph extraction flow: player linking to FPL IDs, event type
       (out / doubt / benched / confirmed starter), certainty; Langfuse tracing; extraction
       evaluation set (spec: TBD)

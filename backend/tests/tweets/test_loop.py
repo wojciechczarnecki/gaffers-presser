@@ -1,0 +1,248 @@
+import logging
+import threading
+import time
+from datetime import UTC, datetime, timedelta
+
+import pytest
+from sqlmodel import Session, select
+
+from app.fpl.models import Gameweek, Season
+from app.tweets.loop import StopAwareClock, TweetPoller, start_poller
+from app.tweets.models import TweetPoll
+from app.tweets.sources.base import SourceRateLimitedError, SourceUnavailableError
+from app.worker.jobs import Shutdown
+from tests.tweets.fakes import FakeSource
+from tests.worker.sim import FakeClock
+
+DEADLINE = datetime(2026, 10, 10, 18, 30, 0, tzinfo=UTC)
+
+
+class ScriptedSource:
+    def __init__(self, scripts: list) -> None:
+        self.name = "fake"
+        self.max_pages = 5
+        self._scripts = list(scripts)
+        self._i = 0
+        self.closed = False
+
+    def pages(self, list_id: int):
+        script = self._scripts[self._i]
+        self._i += 1
+        if isinstance(script, Exception):
+            raise script
+        return iter(script)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def _seed_gameweek(db, deadline_at: datetime) -> None:
+    with Session(db) as session, session.begin():
+        session.add(Season(label="2026/27"))
+        session.flush()
+        session.add(
+            Gameweek(
+                season="2026/27",
+                fpl_id=6,
+                name="GW6",
+                deadline_at=deadline_at,
+                finished=False,
+                data_checked=False,
+            )
+        )
+
+
+def _poll_times(db) -> list[tuple[datetime, str]]:
+    with Session(db) as session:
+        rows = session.exec(select(TweetPoll).order_by(TweetPoll.started_at)).all()
+    return [(row.started_at, row.outcome) for row in rows]
+
+
+def test_polls_at_window_then_sparse_interval(db):
+    _seed_gameweek(db, DEADLINE)
+    start = DEADLINE - timedelta(seconds=100)
+    end = DEADLINE + timedelta(minutes=40, seconds=1)
+    clock = FakeClock(start, end)
+    stop_event = threading.Event()
+    source = FakeSource(pages=[[]])
+    poller = TweetPoller(db, lambda: source, list_id=123, clock=clock, stop_event=stop_event)
+
+    with pytest.raises(Shutdown):
+        poller.run()
+
+    times = [t for t, _outcome in _poll_times(db)]
+    assert times == [
+        start,
+        start + timedelta(seconds=20),
+        start + timedelta(seconds=40),
+        start + timedelta(seconds=60),
+        start + timedelta(seconds=80),
+        DEADLINE,
+        DEADLINE + timedelta(minutes=30),
+    ]
+
+
+def test_build_failure_is_logged_and_retried(db, caplog):
+    calls = {"n": 0}
+    source = FakeSource(pages=[[]])
+
+    def make_source():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("boom")
+        return source
+
+    start = datetime(2026, 9, 28, 12, 0, 0, tzinfo=UTC)
+    end = start + timedelta(seconds=61)
+    clock = FakeClock(start, end)
+    stop_event = threading.Event()
+    poller = TweetPoller(db, make_source, list_id=1, clock=clock, stop_event=stop_event)
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(Shutdown):
+            poller.run()
+
+    assert calls["n"] == 2
+    assert "tweet poller iteration failed: RuntimeError" in caplog.text
+    assert len(_poll_times(db)) == 1
+
+
+def test_failures_do_not_stop_polling(db):
+    scripts = [
+        SourceUnavailableError("down"),
+        [],
+        SourceRateLimitedError("rate limited", retry_after=3600),
+        [],
+    ]
+    source = ScriptedSource(scripts)
+    start = datetime(2026, 9, 28, 12, 0, 0, tzinfo=UTC)
+    end = start + timedelta(seconds=5401)
+    clock = FakeClock(start, end)
+    stop_event = threading.Event()
+    poller = TweetPoller(db, lambda: source, list_id=1, clock=clock, stop_event=stop_event)
+
+    with pytest.raises(Shutdown):
+        poller.run()
+
+    rows = _poll_times(db)
+    # The hour-long retry-after is capped at the sparse interval.
+    assert [t for t, _outcome in rows] == [
+        start,
+        start + timedelta(seconds=1800),
+        start + timedelta(seconds=3600),
+        start + timedelta(seconds=5400),
+    ]
+    assert [outcome for _t, outcome in rows] == [
+        "failed",
+        "succeeded",
+        "rate_limited",
+        "succeeded",
+    ]
+
+
+def test_unrecorded_poll_still_delays_the_next_one(db, monkeypatch):
+    monkeypatch.setattr("app.tweets.ingest.write_poll", lambda engine, record: None)
+    _seed_gameweek(db, DEADLINE)
+    start = DEADLINE - timedelta(seconds=100)
+    end = start + timedelta(seconds=41)
+    clock = FakeClock(start, end)
+    stop_event = threading.Event()
+
+    class CountingSource(FakeSource):
+        def pages(self, list_id: int):
+            if self.pull_count >= 10:
+                stop_event.set()
+            return super().pages(list_id)
+
+    source = CountingSource(pages=[[]])
+    poller = TweetPoller(db, lambda: source, list_id=1, clock=clock, stop_event=stop_event)
+
+    with pytest.raises(Shutdown):
+        poller.run()
+
+    assert source.pull_count == 3
+    assert _poll_times(db) == []
+
+
+def test_deadline_added_mid_run_is_picked_up_within_60_s(db):
+    start = datetime(2026, 9, 28, 12, 0, 0, tzinfo=UTC)
+    deadline = start + timedelta(minutes=40)
+    end = start + timedelta(seconds=90)
+
+    class DeadlineAddingClock(FakeClock):
+        def __init__(self, start, end) -> None:
+            super().__init__(start, end)
+            self._elapsed = timedelta(0)
+            self._added = False
+
+        def sleep(self, seconds: float) -> None:
+            self._elapsed += timedelta(seconds=seconds)
+            if not self._added and self._elapsed >= timedelta(seconds=30):
+                self._added = True
+                _seed_gameweek(db, deadline)
+            super().sleep(seconds)
+
+    clock = DeadlineAddingClock(start, end)
+    stop_event = threading.Event()
+    source = FakeSource(pages=[[]])
+    poller = TweetPoller(db, lambda: source, list_id=1, clock=clock, stop_event=stop_event)
+
+    with pytest.raises(Shutdown):
+        poller.run()
+
+    times = [t for t, _outcome in _poll_times(db)]
+    assert times == [
+        start,
+        start + timedelta(seconds=60),
+        start + timedelta(seconds=80),
+    ]
+
+
+def test_close_runs_on_the_poller_thread(db):
+    close_thread_names = []
+    built = threading.Event()
+
+    class RecordingSource(FakeSource):
+        def close(self) -> None:
+            close_thread_names.append(threading.current_thread().name)
+            super().close()
+
+    source = RecordingSource(pages=[[]])
+
+    def make_source():
+        built.set()
+        return source
+
+    stop_event = threading.Event()
+    thread = start_poller(db, make_source, list_id=1, stop_event=stop_event)
+    assert built.wait(timeout=5)
+    stop_event.set()
+    thread.join(timeout=2)
+
+    assert not thread.is_alive()
+    assert close_thread_names == ["tweet-poller"]
+    assert source.closed
+
+
+def test_stop_event_ends_loop_promptly(db):
+    source = FakeSource(pages=[[]])
+    stop_event = threading.Event()
+    sleeping = threading.Event()
+
+    class SignallingClock(StopAwareClock):
+        def sleep(self, seconds: float) -> None:
+            sleeping.set()
+            super().sleep(seconds)
+
+    thread = start_poller(
+        db, lambda: source, list_id=1, stop_event=stop_event, clock=SignallingClock(stop_event)
+    )
+    assert sleeping.wait(timeout=5)
+
+    start = time.monotonic()
+    stop_event.set()
+    thread.join(timeout=1)
+    elapsed = time.monotonic() - start
+
+    assert not thread.is_alive()
+    assert elapsed < 1

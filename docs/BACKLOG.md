@@ -18,3 +18,5 @@ require one.
 | 6 | P3 | Rename the product (Polish or neutral brand, no FPL/PL trademarks) | before any public launch or monetization |
 | 7 | P3 | Alert event types beyond the four in scope (position change, set pieces, goalkeeper change) | subscribers ask for them |
 | 8 | P2 | Keep podcast transcription (Whisper, PyTorch) out of the production image — a separate package or dependency group | adding podcast transcripts (stage 4) |
+| 9 | P1 | Run the pre-merge tweet-source latency measurement (M1, ≥ 20 controlled posts), write the latency report and ADR 0005 choosing the default source (spec 003, AC18/AC19), then tick the Stage 1 "Detection-latency measurement" item in the ROADMAP | before the tweet ingest is relied on in production |
+| 10 | P3 | `tests/worker/test_cli.py::test_polls_continue_while_a_deadline_snapshot_blocks` intermittently emits a `PytestUnraisableExceptionWarning` — the SIGTERM handler's `Shutdown` lands inside a SQLAlchemy GC callback (seen before and after the final review of spec 003; the test passes) | the warning turns into a failure, or pytest starts running with `-W error` |

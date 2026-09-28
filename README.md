@@ -78,6 +78,28 @@ uv run python -m app.worker status    # latest run of each job and the next plan
 `FPL_LEAGUE_IDS` never holds a real league ID in the repository, logs or tests — see
 `backend/.env.example`.
 
+Tweet ingest — a separate polling loop inside the same worker, watching one public X List
+for team-news leaks. Disabled unless `TWEET_SOURCE` is set in `backend/.env`; the worker
+otherwise runs the FPL jobs exactly as above. Configuration (`backend/.env.example` has all
+seven): `TWEET_SOURCE` (`twscrape` | `twitterapi_io` | `x_api`), `X_LIST_ID`, and the
+credentials of the chosen source — `TWSCRAPE_USERNAME` / `TWSCRAPE_COOKIES` /
+`TWSCRAPE_ACCOUNTS_DB` for `twscrape`, `TWITTERAPI_IO_KEY` for `twitterapi_io`,
+`X_API_BEARER_TOKEN` for `x_api`. `uv run python -m app.worker status` then also shows the
+source, the last successful poll, the next poll and the current mode (window / sparse).
+
+Measuring detection latency per source (posts a source publisher publishes on X → the
+moment our system first fetches them), side by side, without a database:
+
+```bash
+uv run python -m app.tweets measure --interval-seconds 20 --duration-minutes 45 \
+  --output measurements/latency.jsonl                 # polls every configured source
+uv run python -m app.tweets summary measurements/latency.jsonl --markdown  # per-source table
+```
+
+`backend/measurements/` is gitignored; a source with missing credentials is skipped with a
+message and the rest are still measured. Each record is appended to the output file as it is
+measured, so Ctrl-C stops the run early and still prints the summary of what was collected.
+
 The project is built with a spec-driven agentic workflow
 ([agentic-pipeline](https://github.com/wojciechczarnecki/agentic-pipeline)): every feature
 goes from an approved spec through a reviewed plan and implementation to a pull request.
