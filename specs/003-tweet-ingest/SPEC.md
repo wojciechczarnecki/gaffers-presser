@@ -19,6 +19,9 @@ metrics:
   deviations_minor: 5
   deviations_major: 0
   implement_chunks: 5
+  final_review_blockers: 1
+  final_review_worth_fixing: 14
+  final_review_nits: 5
 ---
 
 # SPEC 003 — Tweet sources, ingest and latency measurement

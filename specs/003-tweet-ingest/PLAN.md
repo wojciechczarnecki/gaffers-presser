@@ -973,4 +973,161 @@ run; the two extra passes were caught only by the step-closing `<verify.command>
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-28 — /pipeline:final-review (report)
+
+Three independent perspectives (compliance, quality, tests) on `git diff origin/main...HEAD`;
+every finding below was checked in the code by the final reviewer (F1, F3, F7 reproduced).
+`<verify.command>` green: 293 passed.
+
+AC → evidence:
+
+| AC | Evidence | Verdict |
+|---|---|---|
+| AC1 | `test_page_normalised` in `tests/tweets/sources/test_{twitterapi_io,x_api,twscrape_source}.py` | partial — F11 |
+| AC2 | `tests/tweets/sources/test_paging.py` (stop at last seen, no further pull, `max_pages`, dedupe, order); adapter `test_follows_*` / `test_stops_at_last_seen` | ok (adapter-level gap: F20) |
+| AC3 | `tests/tweets/test_config.py`, `tests/tweets/sources/test_factory.py` | ok |
+| AC4 | `test_empty_source_disables_ingest`, `tests/worker/test_cli.py::test_run_without_tweet_source_logs_disabled_once` | ok |
+| AC5 | `test_errors_never_carry_{key,token,cookies}`, `test_failed_poll_record_and_logs_carry_no_secret`, `test_secret_values_never_appear_in_error_or_repr` | partial — F12 |
+| AC6 | `tests/tweets/test_store.py::test_same_post_stored_once_first_fetch_kept` | ok |
+| AC7 | `tests/tweets/test_store.py::test_stored_post_fields` | ok |
+| AC8 | `tests/db/test_migrations.py::test_tweet_migration_adds_only_new_tables` + drift tests | ok |
+| AC9 | `tests/tweets/test_schedule.py::test_interval_at_window_boundaries`, `tests/tweets/test_loop.py` window/sparse cadence | ok |
+| AC10 | `tests/worker/test_cli.py::test_polls_continue_while_a_deadline_snapshot_blocks` | ok |
+| AC11 | `tests/tweets/test_loop.py::test_failures_do_not_stop_polling`, `test_schedule.py` rate-limit tests, `test_ingest.py` failure tests | ok (runtime risks F2, F3) |
+| AC12 | `test_ingest.py::test_every_poll_leaves_a_record_*`, `test_store.py::test_latest_success_per_source` | partial — F9 |
+| AC13 | `tests/worker/test_cli.py::test_status_shows_tweet_ingest_{disabled,never_polled,with_polls_in_window}` | partial — F13 |
+| AC14 | `test_loop.py::test_stop_event_ends_loop_promptly`, `test_cli.py::test_sigterm_with_tweet_ingest_exits_within_10_s` | ok (flakiness F15) |
+| AC15 | `tests/tweets/test_cli.py::test_measure_writes_one_record_per_source_and_post` | partial — F14 |
+| AC16 | `tests/tweets/test_measure.py::test_summary_percentiles` and neighbours | ok |
+| AC17 | `tests/tweets/test_cli.py::test_measure_skips_source_without_credentials` | ok |
+| AC18 | deferred by owner decision 2026-09-28 → BACKLOG #9 (P1, trigger set) | deferred as decided |
+| AC19 | deferred by owner decision 2026-09-28 → BACKLOG #9; ROADMAP item unticked and names ADR 0005 | deferred as decided |
+| AC20 | `backend/.env.example`, `docs/DEPLOYMENT.md`, `README.md`; `tests/test_readme.py`, `tests/test_env_example.py` | ok, but the empty placeholder triggers F1 |
+
+Owner decisions (plain `httpx`; step 18 deferred) carried out as decided; the five
+`## Deviations` are justified and minor; nothing outside the scope in the branch.
+
+Findings:
+
+- **F1** `blocker` — `backend/.env.example:19` + `backend/app/core/settings.py:31` — the
+  README's `cp backend/.env.example backend/.env` leaves `TWSCRAPE_ACCOUNTS_DB=` empty;
+  pydantic-settings keeps `""` instead of the temp-file default, twscrape opens SQLite at
+  `""` (a fresh private database per connection) → `OperationalError: no such table:
+  accounts` on every poll (reproduced); the worker logs failures forever and the owner's M1
+  run would record twscrape as 100 % failed, i.e. the ADR would reject it on false evidence.
+  `tests/test_env_example.py` enforces the empty value and the factory test always sets a
+  path, so nothing catches it. Fix: `env_ignore_empty=True` on `TweetSettings` (or a
+  validator mapping `""` to the default); test that an empty value gives the default path and
+  that a twscrape source built from such settings reads its account back.
+- **F2** `worth-fixing` — `backend/app/tweets/loop.py:60-64` + `backend/app/tweets/store.py:87`
+  — when the database accepts reads but rejects writes, `write_poll` swallows the error,
+  `latest_poll` still returns the old row, `next_at <= now` and the poller calls the source
+  again with no sleep (paid calls for twitterapi.io, ban risk for twscrape; a `retry_after`
+  is lost). Fix: keep the last `PollRecord` from `poll_once` in memory and schedule from the
+  later of it and the stored row (or sleep at least `WINDOW_INTERVAL` after every poll).
+- **F3** `worth-fixing` — `backend/app/tweets/sources/twscrape_source.py:28-46` — twscrape's
+  `next_available_at` truncates `datetime.now() + remaining` to whole seconds; when less than
+  a second remains, the string is already in the past for our `datetime.now()`, the adapter
+  adds a day → `retry_after ≈ 86 400 s` and polling stops for a day, deadline windows
+  included. Fix: treat a past time within e.g. 12 h as `0`, and cap `retry_after` in
+  `next_poll_at` (e.g. at `SPARSE_INTERVAL`).
+- **F4** `worth-fixing` — `backend/app/tweets/sources/twitterapi_io.py:85-88`,
+  `backend/app/tweets/sources/x_api.py:99-105` — one post that fails to map (`"author":
+  null`, an `author_id` missing from `includes.users`) fails the whole page with
+  `SourcePayloadError`; `since_id` never moves past it, so every poll fails until the post
+  drops beyond `max_pages`, then a silent gap. An X API `200` with `errors` and no `data`
+  (list not found / not authorised) is recorded as `succeeded, 0 posts`. Fix: skip and log
+  (class only) a post that fails to map; `errors` without `data` → `SourceUnavailableError`.
+- **F5** `worth-fixing` — `backend/app/tweets/sources/paging.py:15-17` (and
+  `backend/app/tweets/cli.py:89`) — a post that appears on the timeline a few seconds after a
+  newer one (lower ID, later visibility) is `<= since_id` on the next poll and is never
+  stored (FR-1.4 "keep every post"); in `measure` exactly the slow posts drop out, flattering
+  the p95 for the ADR. Fix: `since_id` only decides when to stop paging; store every post on
+  the pages fetched (`ON CONFLICT DO NOTHING` already dedupes); `measure` dedupes by a
+  per-source set of seen IDs.
+- **F6** `worth-fixing` — `backend/app/tweets/cli.py:78,141,164-177` — `measure` is fragile
+  for the 45-min M1 run: a `make_source()` failure kills its thread with a traceback and the
+  summary shows `polls 0 / failed 0`; records are written only after `join()`, so Ctrl-C or a
+  crash loses everything, and the non-daemon threads keep the process alive until the
+  duration ends. Fix: count a failed build and print it; append and flush each JSONL line as
+  recorded; stop the threads through an `Event` on `KeyboardInterrupt`.
+- **F7** `worth-fixing` — `backend/tests/tweets/payloads/twscrape-page-{1,2}.json.gz` — the
+  redacted twscrape fixture still carries real user IDs (`rest_id` / `user_id_str`, e.g.
+  1495480590572961792), real `pbs.twimg.com/profile_banners/<uid>` and `profile_images`
+  URLs, `location: "Estonia"` and real `t.co` links — they resolve to real accounts, while
+  the payload README says nothing is real. Fix: replace user IDs, image URLs, location,
+  creation dates and `t.co` links with synthetic values; a test greps the payloads for
+  `pbs.twimg.com/profile_`.
+- **F8** `worth-fixing` — `specs/003-tweet-ingest/PLAN.md` "AC → steps matrix" — the fourth
+  column ("Red before the change") is empty for 18 of 20 rows (only AC18 `manual`, AC19
+  `n/a`), and four proving-test names no longer exist (`test_failed_poll_is_recorded`,
+  `test_rate_limit_delays_next_poll`, `test_every_poll_leaves_a_record`,
+  `test_status_shows_tweet_ingest` were split/renamed). Fix: fill the column (red evidence
+  for steps 1–11, "not captured — see Deviations" for AC rows proven in steps 12–17) and
+  update the names.
+- **F9** `worth-fixing` — `backend/tests/tweets/test_ingest.py:22-51,92-108` (AC12) — the
+  tests assert the returned `PollRecord`, never the stored `tweet_poll` row
+  (`error_class`, `retry_after_seconds`, `finished_at` could be dropped by `write_poll`), nor
+  `Tweet.first_fetched_at == START + 1 s` (the latency basis); the no-secret row check
+  passes with zero rows. Fix: read the single row back and assert every field and the count.
+- **F10** `worth-fixing` — `backend/tests/tweets/test_ingest.py:60-75`
+  (`test_second_poll_passes_stored_max_id_as_since_id`) — with `since_id=None` the first
+  page still yields `new_posts == 1` (post 5 hits the conflict), so the test cannot fail.
+  Fix: assert the `since_id` reaching `collect_new`, or put the new post on page 2 and assert
+  page 2 was pulled.
+- **F11** `worth-fixing` — `backend/tests/tweets/sources/test_twscrape_source.py:57-72`,
+  `test_x_api.py:30` (AC1) — twscrape's normalisation test skips `author_handle`, `text` and
+  `created_at` (value and UTC); X API skips `text` and the negative flags. Mapping
+  `displayname` for `username` or a naive `created_at` would pass. Fix: assert every field of
+  one post per adapter.
+- **F12** `worth-fixing` — `test_twitterapi_io.py:125`, `test_x_api.py:100`,
+  `test_twscrape_source.py:185`, `tests/tweets/test_config.py:55-64` (AC5 + error paths) — the
+  secret checks cover one error path per adapter (500 / malformed page), not "each adapter's
+  error paths"; the stored `raw` is never checked; the twscrape check searches the whole
+  cookie string (a partial leak passes) and its `capfd` part never runs twscrape code; the
+  cookie `ConfigError` is not checked for the value. X API lacks the ConnectError, 429
+  without / with a past `x-rate-limit-reset` cases the plan asked for; no adapter has an
+  empty-page test. Fix: parametrise the sentinel check (substring `sentinel-secret`) over
+  every error path, assert it absent from `post.raw`, add the missing cases.
+- **F13** `worth-fixing` — `backend/tests/worker/test_cli.py`
+  (`test_status_shows_tweet_ingest_with_polls_in_window`, AC13) — every populated case
+  prints `next poll: due now` and has no failed poll newer than the last success, so a wrong
+  next-poll time or "last successful" reading the latest poll of any outcome passes; the
+  expectation uses the code's own `_fmt`. Fix: seed a success then a later failed poll with
+  `now` before the next poll, assert literal lines.
+- **F14** `worth-fixing` — `backend/tests/tweets/test_cli.py:60-106,168-210` (AC15) — the
+  measurement test checks only `(source, x_id)` keys; `first_fetched_at`, `created_at` and
+  `latency_seconds` are never asserted (a scripted post currently yields a negative latency
+  unnoticed). Fix: return a post from a later poll per source and assert exact per-source
+  fetch time and latency.
+- **F15** `worth-fixing` — `backend/tests/tweets/test_loop.py:176-208` — real
+  `time.sleep(0.05)` before setting stop: on a loaded CI runner the poller may not have built
+  the source (`test_close_runs_on_the_poller_thread` fails spuriously) and
+  `test_stop_event_ends_loop_promptly` can pass without interrupting a sleep. Fix: wait on an
+  `Event` set from `make_source` / the clock's `sleep`, then set stop.
+- **F16** `nit` — `backend/app/tweets/cli.py:132-141` — `measure --source bogus` raises an
+  uncaught `KeyError` from `SOURCE_REQUIREMENTS`; a repeated `--source` starts two threads and
+  doubles the records. Fix: validate against `SOURCE_NAMES`, dedupe.
+- **F17** `nit` — `backend/app/tweets/cli.py:104` — `measure` sleeps the full interval after
+  each poll (interval + poll time) while the worker schedules from `started_at`, biasing the
+  measured latency slightly upwards. Fix: sleep `max(0, interval − elapsed)`.
+- **F18** `nit` — `backend/app/worker/cli.py:18-24` — the worker imports
+  `app.tweets.sources` and with it twscrape (loguru reconfiguration, fake-useragent) even with
+  ingest disabled; a broken twscrape import would stop the FPL jobs, against AC4's intent.
+  Fix: import `build_source` lazily inside `make_source`.
+- **F19** `nit` — `backend/app/tweets/sources/twscrape_source.py` — twscrape's loguru output
+  at ERROR still prints the dedicated account's handle and tracebacks to stderr outside the
+  worker's log format, and its `_write_dump` writes raw responses under `/tmp/twscrape/`.
+  Fix: route loguru into `logging` (or drop its sink) and note it in `docs/DEPLOYMENT.md`.
+- **F20** `nit` — `test_twitterapi_io.py:47`, `test_x_api.py:47`,
+  `test_twscrape_source.py:75-84` — page 2 of every recorded payload is also the last page,
+  so the adapter-level "stop at the last seen ID" assertions hold even without the stop rule
+  (`test_paging.py` proves the rule itself); no adapter test exercises its own `max_pages`.
+  Fix: give page 2 a next cursor/token (a third twscrape page) and assert no further pull.
+
+Rejected:
+
+- "`status` exits 1 on an invalid tweet configuration" — intended: plan step 13 makes a
+  tweet `ConfigError` fail fast in `_deps_from_settings`, shared by `run` and `status`.
+
+Left out: 18 nit findings
