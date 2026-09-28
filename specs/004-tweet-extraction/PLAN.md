@@ -784,6 +784,8 @@ Record the results in this section under "End-to-end verification results".
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-28 · implement (Group 2, step 8) · Question: `langfuse.langchain.CallbackHandler` (pinned `langfuse==4.15.6`) imports the `langchain` package at load time, which is not on the accepted dependency list. Decision: add `langchain` as an accepted dependency with an exact pin matching the major version of `langchain-core`; the tracing design of the plan stays unchanged.
+
 ## Review log
 
 ### 2026-09-28 — /pipeline:plan-review
