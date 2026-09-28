@@ -847,6 +847,46 @@ findings were fixable and fixed in the plan itself.
 
 _(filled in by /pipeline:implement in chunk mode — one entry per chunk that ends at a group boundary)_
 
+### Chunk 1 — Group 1 (Dependencies, configuration, providers, prompts) — 2026-09-28
+
+Steps 1–5 done, each with its own test-first commit. Decisions taken within the plan's
+latitude:
+
+- `resolve_llm` takes `provider`/`model` overrides as explicit parameters (not a dataclass),
+  matching how the reextract/evaluate CLIs will call it in later groups.
+- `DEFAULT_MODEL_BY_PROVIDER` is an empty dict in `config.py` for now, filled by step 22;
+  until then an empty `LLM_MODEL` always raises, as AC1/step 2 require.
+- `providers.py` reads each provider's constructor field names directly
+  (`ChatOpenAI.model_name`/`openai_api_key`/`openai_api_base`,
+  `ChatAnthropic.model`/`anthropic_api_key`/`default_request_timeout`,
+  `ChatGoogleGenerativeAI.model`/`google_api_key`/`timeout`) — checked interactively against
+  the installed SDKs, since the field names are not identical across the three packages.
+- `FakeChatModel.bind_tools` returns `self.bind(_fake_tool_name=...)` rather than a
+  `model_copy()` — this keeps the *same* instance (and its mutable script/index/received
+  list) shared across the extract and link-disambiguation structured-output runnables built
+  from one chat model, which later flow tests (step 7) will need when a post triggers both
+  an extraction and a disambiguation call from the same `FakeChatModel`.
+
+Traps the next group will meet too:
+
+- `with_structured_output(..., include_raw=True)` needs `bind_tools` to be overridden (not
+  just `_generate`) — the base `BaseChatModel.with_structured_output` checks
+  `type(self).bind_tools is BaseChatModel.bind_tools` and raises `NotImplementedError`
+  otherwise.
+- The tool name `with_structured_output` looks for when parsing (`PydanticToolsParser`) is
+  the schema's class name (`ExtractionOutput`, `Disambiguation`) — `FakeChatModel` derives it
+  from `tools[0].__name__` in `bind_tools`; step 7's flow code must not rename these schemas.
+- `ChatOpenAI`'s `temperature` field reads back as `None` (not unset) when omitted from the
+  constructor — `test_reasoning_models_get_no_temperature` asserts `is None`, not "attribute
+  absent".
+
+Running `implement_iterations` total: 1 (one red run in step 4: the relevance-rule keyword
+test failed once on a line-wrapped phrase in the prompt markdown; fixed by normalising
+whitespace in the test rather than reflowing the prompt).
+
+Full stack (`cd backend && uv run ruff check . && uv run ruff format --check . && uv run
+pytest -q`) is green: 389 passed. Docker image builds with the new dependencies importable.
+
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
