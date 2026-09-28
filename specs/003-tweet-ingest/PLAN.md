@@ -529,7 +529,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       counted as failed polls, the command still finishes; `summary` on a written file;
       `python -m app.tweets --help` via subprocess — files: the two modules, the test file.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_cli.py`
-- [ ] 17. Documentation: `backend/.env.example` (the seven variables with empty values and
+- [x] 17. Documentation: `backend/.env.example` (the seven variables with empty values and
       comments — placeholders only), `docs/DEPLOYMENT.md` (the new worker variables as an
       optional step: no `TWEET_SOURCE` = ingest off; which variables per source; secrets
       only in Railway variables; `status` shows the ingest), `README.md` "Development"

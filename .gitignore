@@ -13,6 +13,9 @@ ENV/
 .env.local
 *.local
 
+# Tweet ingest latency measurements (owner's local runs)
+backend/measurements/
+
 # IDE
 .idea/
 .vscode/

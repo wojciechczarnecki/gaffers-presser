@@ -13,6 +13,16 @@ COMMANDS = [
     "backfill",
 ]
 
+TWEET_VARIABLES = [
+    "TWEET_SOURCE",
+    "X_LIST_ID",
+    "TWSCRAPE_USERNAME",
+    "TWSCRAPE_COOKIES",
+    "TWSCRAPE_ACCOUNTS_DB",
+    "TWITTERAPI_IO_KEY",
+    "X_API_BEARER_TOKEN",
+]
+
 
 def _development_section() -> str:
     text = README.read_text(encoding="utf-8")
@@ -40,6 +50,10 @@ def test_development_section_lists_commands():
         assert command in section
     assert "app.worker run" in section
     assert "app.worker status" in section
+    assert "app.tweets measure" in section
+    assert "app.tweets summary" in section
+    for variable in TWEET_VARIABLES:
+        assert variable in section, f"{variable!r} missing from the README Development section"
 
 
 def test_deployment_doc_is_a_runbook():
@@ -61,3 +75,5 @@ def test_deployment_doc_is_a_runbook():
         "catch-up",
     ):
         assert term in section, f"{term!r} missing from docs/DEPLOYMENT.md"
+    for variable in TWEET_VARIABLES:
+        assert variable in section, f"{variable!r} missing from docs/DEPLOYMENT.md"

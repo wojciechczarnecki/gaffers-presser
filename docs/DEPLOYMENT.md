@@ -29,3 +29,16 @@ below; agents never touch production.
    gameweek order, then follows the normal hourly/15-minute reference schedule. A
    `deadline snapshot missed` log line for the latest already-passed gameweek is expected —
    no snapshot was taken for it before this deploy existed.
+7. **Tweet ingest (optional).** With no `TWEET_SOURCE` set, the worker runs exactly as
+   above; `python -m app.worker status` shows `Tweet ingest: disabled`. To turn it on, set
+   the worker service's variables:
+   - `TWEET_SOURCE` — one of `twscrape`, `twitterapi_io`, `x_api`.
+   - `X_LIST_ID` — the watched X List's numeric ID.
+   - per source: `twscrape` needs `TWSCRAPE_USERNAME` and `TWSCRAPE_COOKIES` (and, if the
+     image's default temp location is unsuitable, `TWSCRAPE_ACCOUNTS_DB`); `twitterapi_io`
+     needs `TWITTERAPI_IO_KEY`; `x_api` needs `X_API_BEARER_TOKEN`.
+   - All credentials go in Railway's variables, never in the repository or in logs; an
+     unknown source name or a missing credential fails the worker on start with a message
+     naming the missing variable, never its value.
+   `python -m app.worker status` then also prints the source, the last successful poll, the
+   next poll and the current mode (`window` near a deadline, `sparse` otherwise).
