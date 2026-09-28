@@ -713,6 +713,36 @@ SPEC → "Owner decisions".
 
 _(filled in by /pipeline:implement in chunk mode — one entry per chunk that ends at a group boundary)_
 
+### Chunk 1 — Group 1 (Tweet sources) — 2026-09-28
+
+Carried out steps 1–7. `uv run` auto-syncs `uv.lock` against `pyproject.toml`, so step 1's
+`uv lock`/`uv sync --all-extras` had nothing left to do once the dependency test ran; verified
+with `uv lock --check` anyway.
+
+For step 6's synthetic payloads: twscrape 0.20.1's own MIT test fixture
+(`tests/mocked-data/raw_list_timeline.json`, fetched from the sdist via `curl` into the
+scratchpad) has no reply tweet, so the reply example is a duplicate entry with reply fields
+added by hand — see `## Deviations`. Redacting the fixture needed several passes (profile
+`description`/`profile_bio.description`, the `note_tweet` long-form `text`, and `entities.url`
+sub-objects each needed their own rule) before `grep` found no leftover real name, handle or
+text; the next chunk touching these payloads should know the redaction helper lives only in
+this chunk's shell history, not in the repo — regenerate from the sdist fixture with the same
+rules if the payloads ever need to change.
+
+`twscrape.list_timeline_raw` already does its own GraphQL cursor pagination internally and
+yields one raw page (`httpx.Response`) per GraphQL round trip; our adapter and `collect_new`
+never see or need a cursor — each "page" from the fake `api` in tests is just the next item
+from that async generator. `AccountsPool.add_account_cookies` writes to a local SQLite file
+with no network call, so `test_factory.py`'s twscrape case needs no transport stub, only
+`TWSCRAPE_ACCOUNTS_DB` pointed at `tmp_path`.
+
+Ran the full `cd backend && uv run ruff check . && uv run ruff format --check . && uv run
+pytest -q` (242 tests, including the Postgres-container tests) green at the end of the chunk,
+not just the tweets subset.
+
+Running `implement_iterations` total: 1 (one extra pass on step 6's payload redaction tests
+before they passed; every other step's automatic verification was green on the first run).
+
 ## Deviations
 
 - Step 6 payloads: the trimmed twscrape sdist fixture (`tests/mocked-data/raw_list_timeline.json`,
