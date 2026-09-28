@@ -410,7 +410,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       `migrations.localHosts` host: `uv run alembic upgrade head` — files: the models,
       migration, `env.py`, `tests/fpl/fakes.py`, `tests/db/test_migrations.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/db/test_migrations.py`
-- [ ] 9. Store: `app/tweets/store.py` — `store_posts(session, posts, source, fetched_at)
+- [x] 9. Store: `app/tweets/store.py` — `store_posts(session, posts, source, fetched_at)
       -> int` (`insert … ON CONFLICT (x_id) DO NOTHING RETURNING x_id`, returns the new
       count), `last_seen_id(session) -> int | None`, `write_poll(engine, record)` (own
       transaction, `SQLAlchemyError` logged by class only, like `_write_log_row`),
