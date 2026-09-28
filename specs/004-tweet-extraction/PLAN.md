@@ -416,7 +416,7 @@ from `backend/`.
       `backend/app/extraction/config.py`, `backend/tests/extraction/test_config.py`,
       `backend/.env.example`, `backend/tests/test_env_example.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_config.py tests/test_env_example.py tests/core/test_settings.py`
-- [ ] 3. `app/extraction/providers.py` (see Providers). Tests build each provider's model
+- [x] 3. `app/extraction/providers.py` (see Providers). Tests build each provider's model
       with a dummy key offline and assert the class, model name, `temperature == 0`,
       retries off, the OpenRouter base URL and `structured_kwargs`;
       `test_reasoning_models_get_no_temperature` (`openai` + `gpt-5-nano` and `openrouter` +
