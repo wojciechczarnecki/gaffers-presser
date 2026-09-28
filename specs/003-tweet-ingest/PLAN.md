@@ -841,6 +841,13 @@ not literal red-first evidence for steps 12–14).
 
 ## Deviations
 
+- Steps 12–14 landed in one commit (`ea9e5e9`) instead of one commit per step, and the
+  chunk note for this chunk is part of that same commit rather than a separate
+  `docs: add chunk note 3 for 003` commit — a commit-granularity slip against
+  `docs/CONVENTIONS.md` ("Agent commits: after every green step, only the files of that
+  step") and this skill's chunk-note convention. No file outside these three steps' own
+  scope is in that commit, and nothing here changes scope, architecture or the data schema,
+  so left as recorded rather than rewriting already-pushed-adjacent history.
 - Steps 12–14: `_deps_from_settings` in `app/worker/cli.py` resolves `TweetSettings` /
   `resolve_ingest` before `load_settings()` (FPL `Settings`), the opposite of the order the
   two sentences are given in in step 13's text. This lets
