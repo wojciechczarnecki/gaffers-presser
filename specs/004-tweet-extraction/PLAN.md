@@ -526,7 +526,7 @@ from `backend/`.
       `test_posts_for_reextract_selectors`; `test_extraction_status_counts`.
       Files: `backend/app/extraction/store.py`, `backend/tests/extraction/test_store.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_store.py`
-- [ ] 11. `app/extraction/pricing.py` + `prices.toml`, and `app/extraction/service.py`:
+- [x] 11. `app/extraction/pricing.py` + `prices.toml`, and `app/extraction/service.py`:
       `extract_post(engine, runtime, post, clock, stop_event, handler, record_latency) ->
       StoredOutcome` — builds the index (`load_players`), runs the flow with the run config,
       retries (see Worker), stores `extracted` / `failed` with `started_at` / `finished_at`
