@@ -394,7 +394,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
 
 ### Group 2 — Storage and polling
 
-- [ ] 8. Data migration (own step): `app/tweets/models.py` (`Tweet`, `TweetPoll` as in
+- [x] 8. Data migration (own step): `app/tweets/models.py` (`Tweet`, `TweetPoll` as in
       "Tables"; `raw` as `Column(JSONB, nullable=False)`, `x_id` as
       `Column(BigInteger, primary_key=True, autoincrement=False)`),
       `app/tweets/__init__.py` re-exports them (registers the tables),
