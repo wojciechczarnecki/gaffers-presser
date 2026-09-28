@@ -707,6 +707,8 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
   latency report + ADR 0005 choosing the default source, trigger: before the tweet ingest is
   relied on in production), and keep the ROADMAP item honest about the missing measurement.
   The implementation is complete with steps 1–17; the stage may finish as `implemented`.
+- 2026-09-28 · final review (report) · Which findings to fix? · **Decision: accept
+  `blocker` and `worth-fixing` — F1–F15 accepted; F16–F20 (`nit`) rejected.**
 
 ## Review log
 
