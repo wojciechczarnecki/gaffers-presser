@@ -383,7 +383,7 @@ every expected `fpl_id` exists in the snapshot.
 | AC22 | 15 | `tests/extraction/test_cli.py::test_reextract_*` | |
 | AC23 | 16, 20 | `tests/extraction/evaluation/test_cases.py`, `tests/extraction/evaluation/test_eval_set.py` | step 16 (schema + composition rules, stubbed `composition_problems`): `uv run pytest -q tests/extraction/evaluation/test_cases.py` → `assert any(keyword in problem for problem in problems), problems` (`AssertionError: []`); step 20 (the committed set): see step 20 |
 | AC24 | 18, 19 | `tests/extraction/test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | |
-| AC25 | 17, 19 | `tests/extraction/evaluation/test_metrics.py`, `tests/extraction/test_cli.py::test_evaluate_*` | |
+| AC25 | 17, 19 | `tests/extraction/evaluation/test_metrics.py`, `tests/extraction/test_cli.py::test_evaluate_*` | step 17 (metrics, stubbed `compute_metrics`): `uv run pytest -q tests/extraction/evaluation/test_metrics.py` → `assert (metrics.precision, metrics.recall, metrics.f1) == (1.0, 1.0, 1.0)` (15 failed, 4 passed); step 19: see step 19 |
 | AC26 | — | manual | manual — the owner's review and comparison run |
 | AC27 | 22 | `tests/extraction/test_config.py::test_default_model_matches_adr_0006` | |
 | AC28 | 2, 21 | `tests/test_env_example.py::test_every_extraction_setting_*`, `tests/test_readme.py` (extended) | |
@@ -600,7 +600,7 @@ from `backend/`.
       `backend/tests/extraction/evaluation/__init__.py`,
       `backend/tests/extraction/evaluation/test_cases.py`, `backend/tests/extraction/test_cli.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/evaluation/test_cases.py tests/extraction/test_cli.py`
-- [ ] 17. `app/extraction/evaluation/metrics.py` (see Evaluation set and metrics). Tests
+- [x] 17. `app/extraction/evaluation/metrics.py` (see Evaluation set and metrics). Tests
       on synthetic predictions with hand-computed values: perfect run; one missed event
       (recall), one extra event (precision), wrong event type; unlinked match by mention;
       linking accuracy with a wrong `fpl_id` and with an unpaired mention; false alarms on
