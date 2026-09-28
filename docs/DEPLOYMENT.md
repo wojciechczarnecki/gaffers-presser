@@ -43,3 +43,24 @@ below; agents never touch production.
      naming the missing variable, never its value.
    `python -m app.worker status` then also prints the source, the last successful poll, the
    next poll and the current mode (`window` near a deadline, `sparse` otherwise).
+8. **Tweet extraction (optional).** With no `LLM_PROVIDER` set, the worker runs exactly as
+   above and logs `extraction disabled` once; `python -m app.worker status` shows
+   `Extraction: disabled`. To turn it on, set the worker service's variables (placeholders
+   only here; the values go in Railway's variables, never in the repository or in logs):
+   - `LLM_PROVIDER` — one of `google`, `openai`, `anthropic`, `openrouter`.
+   - `LLM_MODEL` — the model name for that provider (required until ADR 0006 names a
+     default).
+   - the key of the chosen provider: `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
+     or `OPENROUTER_API_KEY`. An unknown provider or a missing key fails the worker on start
+     with a message naming the variable, never its value.
+   - `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` from a Langfuse Cloud project in the EU
+     region, and `LANGFUSE_HOST` (defaults to `https://cloud.langfuse.com`, the EU region).
+     Without both keys extraction still runs, untraced, and the worker logs one warning.
+   - `USD_PLN_RATE` — only the evaluation command needs it; the worker does not.
+   `python -m app.worker status` then prints `Extraction:` with the model, the posts waiting,
+   the failed posts and the latest extraction. New posts are extracted oldest first within
+   seconds of being stored, in their own thread, so a slow provider never delays tweet polls
+   or FPL jobs; a failed post is stored as `failed` and never blocks the rest. Re-extraction
+   and evaluation run from a shell with the production variables, or locally:
+   `python -m app.extraction reextract --failed`, `python -m app.extraction prelabel`,
+   `python -m app.extraction evaluate` (see the README's Development section).

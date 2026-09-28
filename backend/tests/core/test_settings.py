@@ -215,3 +215,15 @@ def test_help_and_usage_errors_need_no_settings(monkeypatch, tmp_path):
     result = runner.invoke(app, ["league-sync"])
     assert result.exit_code == 2
     assert "DATABASE_URL" not in result.stderr
+
+
+def test_extraction_cli_without_database_url_leaves_the_engine_unset(monkeypatch, tmp_path):
+    # `evaluate` needs no database; the other extraction commands say so through db_engine.
+    from app.extraction.cli import _deps_from_settings
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
+    deps = _deps_from_settings()
+
+    assert deps.engine is None

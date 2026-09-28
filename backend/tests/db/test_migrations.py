@@ -12,6 +12,7 @@ from sqlalchemy import text as sa_text
 from sqlmodel import Session, SQLModel
 from testcontainers.postgres import PostgresContainer
 
+import app.extraction.models  # noqa: F401
 import app.fpl.models  # noqa: F401
 import app.tweets.models  # noqa: F401
 import app.worker.models  # noqa: F401
@@ -69,7 +70,13 @@ def test_job_run_migration_keeps_collector_data():
             apply_bootstrap(session, Bootstrap.model_validate(load("bootstrap-static")), NOW)
             session.commit()
 
-        collector_tables = set(SQLModel.metadata.tables.keys()) - {"job_run", "tweet", "tweet_poll"}
+        collector_tables = set(SQLModel.metadata.tables.keys()) - {
+            "job_run",
+            "tweet",
+            "tweet_poll",
+            "extraction",
+            "extraction_event",
+        }
         with Session(engine) as session:
             before = table_contents(session, tables=collector_tables)
 
@@ -107,11 +114,16 @@ def test_tweet_migration_adds_only_new_tables():
                 {"now": NOW},
             )
 
-        other_tables = set(SQLModel.metadata.tables.keys()) - {"tweet", "tweet_poll"}
+        other_tables = set(SQLModel.metadata.tables.keys()) - {
+            "tweet",
+            "tweet_poll",
+            "extraction",
+            "extraction_event",
+        }
         with Session(engine) as session:
             before = table_contents(session, tables=other_tables)
 
-        run_alembic(url, "upgrade", "head")
+        run_alembic(url, "upgrade", "0003")
         with engine.connect() as conn:
             tables = set(inspect(conn).get_table_names())
         assert {"tweet", "tweet_poll"} <= tables
@@ -124,6 +136,54 @@ def test_tweet_migration_adds_only_new_tables():
         assert "tweet" not in tables
         assert "tweet_poll" not in tables
         assert "job_run" in tables
+        with Session(engine) as session:
+            assert table_contents(session, tables=other_tables) == before
+
+
+def test_extraction_migration_adds_only_new_tables():
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
+        url = container.get_connection_url()
+        run_alembic(url, "upgrade", "0003")
+        engine = make_engine(url)
+
+        with Session(engine) as session:
+            apply_bootstrap(session, Bootstrap.model_validate(load("bootstrap-static")), NOW)
+            session.commit()
+        with engine.begin() as conn:
+            conn.execute(
+                sa_text(
+                    "INSERT INTO job_run (job, season, gameweek_fpl_id, started_at,"
+                    " finished_at, outcome) VALUES ('reference_sync', NULL, NULL,"
+                    " :now, :now, 'succeeded')"
+                ),
+                {"now": NOW},
+            )
+            conn.execute(
+                sa_text(
+                    "INSERT INTO tweet (x_id, author_handle, text, created_at,"
+                    " first_fetched_at, source, is_repost, is_reply, raw) VALUES"
+                    " (1, 'reporter', 'some text', :now, :now, 'list', false, false, '{}')"
+                ),
+                {"now": NOW},
+            )
+
+        other_tables = set(SQLModel.metadata.tables.keys()) - {"extraction", "extraction_event"}
+        with Session(engine) as session:
+            before = table_contents(session, tables=other_tables)
+
+        run_alembic(url, "upgrade", "head")
+        with engine.connect() as conn:
+            tables = set(inspect(conn).get_table_names())
+        assert {"extraction", "extraction_event"} <= tables
+        with Session(engine) as session:
+            assert table_contents(session, tables=other_tables) == before
+
+        run_alembic(url, "downgrade", "-1")
+        with engine.connect() as conn:
+            tables = set(inspect(conn).get_table_names())
+        assert "extraction" not in tables
+        assert "extraction_event" not in tables
+        assert "tweet" in tables
         with Session(engine) as session:
             assert table_contents(session, tables=other_tables) == before
 

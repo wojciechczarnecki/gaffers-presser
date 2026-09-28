@@ -4,6 +4,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
+import app.extraction.models  # noqa: F401
 import app.fpl.models  # noqa: F401
 import app.tweets.models  # noqa: F401
 import app.worker.models  # noqa: F401

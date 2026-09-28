@@ -15,6 +15,9 @@ from typer.testing import CliRunner
 
 from app.db.engine import make_engine
 from app.db.locks import SCHEDULE_LOCK_KEY
+from app.extraction.providers import ChatModelSpec
+from app.extraction.schemas import ExtractionOutput
+from app.extraction.service import ExtractionRuntime
 from app.fpl.models import Gameweek, Season
 from app.tweets.models import TweetPoll
 from app.worker.cli import TweetIngest, WorkerDeps, app
@@ -22,6 +25,7 @@ from app.worker.jobs import Shutdown
 from app.worker.models import JobRun
 from app.worker.schedule import Job
 from tests.conftest import BACKEND_DIR, held_advisory_lock
+from tests.extraction.fakes import FakeChatModel
 from tests.fpl.fakes import FakeFpl
 from tests.fpl.payloads import load
 from tests.tweets.fakes import FakeSource
@@ -79,17 +83,86 @@ class ReleasingClock:
 
 @pytest.fixture
 def cli(db):
-    def invoke(*args, client=None, league_ids_raw="1", clock=None, tweet_ingest=None):
+    def invoke(
+        *args, client=None, league_ids_raw="1", clock=None, tweet_ingest=None, extraction=None
+    ):
         deps = WorkerDeps(
             engine=db,
             client=client or FakeFpl({}).client(sleep=lambda _: None),
             league_ids_raw=league_ids_raw,
             clock=clock or FixedClock(NOW),
             tweet_ingest=tweet_ingest,
+            extraction=extraction,
         )
         return CliRunner().invoke(app, list(args), obj=deps)
 
     return invoke
+
+
+def _extraction_runtime_and_fake(
+    *responses, tracing=None
+) -> tuple[ExtractionRuntime, FakeChatModel]:
+    fake = FakeChatModel(responses=list(responses))
+    spec = ChatModelSpec(provider="fake", model="fake-model", chat_model=fake)
+    runtime = ExtractionRuntime(
+        provider="fake",
+        model="fake-model",
+        make_spec=lambda: spec,
+        tracing=tracing,
+        prices={},
+        aliases=([], []),
+    )
+    return runtime, fake
+
+
+def _extraction_runtime(*responses, tracing=None) -> ExtractionRuntime:
+    return _extraction_runtime_and_fake(*responses, tracing=tracing)[0]
+
+
+def _seed_tweet(db, x_id: int = 1, first_fetched_at: datetime = NOW) -> None:
+    from app.tweets.models import Tweet
+
+    with Session(db) as session:
+        session.add(
+            Tweet(
+                x_id=x_id,
+                author_handle="reporter",
+                text="Haaland starts.",
+                created_at=first_fetched_at,
+                first_fetched_at=first_fetched_at,
+                source="fake",
+                is_repost=False,
+                is_reply=False,
+                raw={},
+            )
+        )
+        session.commit()
+
+
+def _wait_until(predicate, timeout: float = 5.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def _sigterm_when(predicate) -> threading.Thread:
+    def target() -> None:
+        _wait_until(predicate)
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    thread = threading.Thread(target=target, daemon=True)
+    thread.start()
+    return thread
+
+
+def _extractions(db):
+    from app.extraction.models import Extraction
+
+    with Session(db) as session:
+        return session.exec(select(Extraction)).all()
 
 
 def test_status_on_empty_database(cli):
@@ -314,6 +387,288 @@ def test_sigterm_with_tweet_ingest_exits_within_10_s(cli, db):
     assert not any(t.name == "tweet-poller" and t.is_alive() for t in threading.enumerate())
 
 
+def test_run_without_llm_logs_extraction_disabled_once(cli, db, caplog):
+    from app.extraction.models import Extraction
+
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+
+    timer = threading.Timer(1, os.kill, args=(os.getpid(), signal.SIGTERM))
+    timer.start()
+    try:
+        with caplog.at_level(logging.INFO):
+            result = cli(
+                "run", client=fake.client(sleep=lambda _: None), clock=RealClock(far_future)
+            )
+    finally:
+        timer.cancel()
+
+    assert result.exit_code == 0
+    assert caplog.text.count("extraction disabled") == 1
+    with Session(db) as session:
+        assert session.exec(select(Extraction)).all() == []
+
+
+def test_run_without_langfuse_warns_once(cli, db, caplog):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    extraction = _extraction_runtime(ExtractionOutput(events=[]), tracing=None)
+
+    timer = threading.Timer(1, os.kill, args=(os.getpid(), signal.SIGTERM))
+    timer.start()
+    try:
+        with caplog.at_level(logging.WARNING):
+            result = cli(
+                "run",
+                client=fake.client(sleep=lambda _: None),
+                clock=RealClock(far_future),
+                extraction=extraction,
+            )
+    finally:
+        timer.cancel()
+
+    assert result.exit_code == 0
+    assert caplog.text.count("langfuse tracing disabled") == 1
+    assert "LANGFUSE_PUBLIC_KEY" in caplog.text
+    assert "LANGFUSE_SECRET_KEY" in caplog.text
+
+
+def test_sigterm_with_extraction_exits_within_10_s(cli, db):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    _seed_tweet(db)
+    extraction, llm = _extraction_runtime_and_fake(ExtractionOutput(events=[]))
+
+    killer = _sigterm_when(lambda: len(_extractions(db)) >= 1)
+    start = time.monotonic()
+    result = cli(
+        "run",
+        client=fake.client(sleep=lambda _: None),
+        clock=RealClock(far_future),
+        extraction=extraction,
+    )
+    elapsed = time.monotonic() - start
+    killer.join(timeout=1)
+
+    assert result.exit_code == 0
+    assert elapsed < 10
+    assert len(llm.received_messages) == 1
+    assert not any(t.name == "extractor" and t.is_alive() for t in threading.enumerate())
+
+
+def test_run_stores_extraction_with_latency(cli, db):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    _seed_tweet(db, first_fetched_at=datetime.now(UTC) - timedelta(seconds=30))
+    extraction = _extraction_runtime(ExtractionOutput(events=[]))
+
+    killer = _sigterm_when(lambda: len(_extractions(db)) >= 1)
+    result = cli(
+        "run",
+        client=fake.client(sleep=lambda _: None),
+        clock=RealClock(far_future),
+        extraction=extraction,
+    )
+    killer.join(timeout=1)
+
+    assert result.exit_code == 0
+    rows = _extractions(db)
+    assert [(row.tweet_x_id, row.status) for row in rows] == [(1, "extracted")]
+    assert rows[0].latency_seconds is not None
+    assert 30 <= rows[0].latency_seconds < 60
+
+
+def test_sigterm_with_extraction_blocked_in_a_call_exits_within_10_s(cli, db):
+    # A blocked provider call cannot be interrupted: the daemon thread is abandoned after
+    # the shared join deadline, but the worker itself must still exit within the bound.
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    _seed_tweet(db)
+    block = threading.Event()
+    extraction, llm = _extraction_runtime_and_fake(block)
+
+    killer = _sigterm_when(lambda: len(llm.received_messages) >= 1)
+    start = time.monotonic()
+    try:
+        result = cli(
+            "run",
+            client=fake.client(sleep=lambda _: None),
+            clock=RealClock(far_future),
+            extraction=extraction,
+        )
+    finally:
+        elapsed = time.monotonic() - start
+        killer.join(timeout=1)
+        block.set()
+
+    assert result.exit_code == 0
+    assert elapsed < 10
+    assert len(llm.received_messages) == 1
+    assert _extractions(db) == []
+
+
+def test_polls_continue_while_extraction_blocks(db):
+    with Session(db) as session, session.begin():
+        session.add(Season(label="2026/27"))
+        session.flush()
+        session.add(
+            Gameweek(
+                season="2026/27",
+                fpl_id=6,
+                name="GW6",
+                deadline_at=D6,
+                finished=False,
+                data_checked=False,
+            )
+        )
+        from app.tweets.models import Tweet
+
+        session.add(
+            Tweet(
+                x_id=1,
+                author_handle="reporter",
+                text="Haaland starts.",
+                created_at=D6 - timedelta(days=1),
+                first_fetched_at=D6 - timedelta(days=1),
+                source="fake",
+                is_repost=False,
+                is_reply=False,
+                raw={},
+            )
+        )
+
+    tweet_start = D6 - timedelta(minutes=5)
+    tweet_end = D6 - timedelta(minutes=2)
+
+    calls = {"n": 0}
+    release_event = threading.Event()
+    unblocked_after: dict[str, float | None] = {"seconds": None}
+
+    def bootstrap_route(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 2:
+            block_started = time.monotonic()
+            release_event.wait(timeout=10)
+            unblocked_after["seconds"] = time.monotonic() - block_started
+        return httpx.Response(200, json=load("bootstrap-static"))
+
+    fake = FakeFpl({"bootstrap-static/": bootstrap_route, "fixtures/": load("fixtures")})
+
+    def watch_and_release() -> None:
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            with Session(db) as session:
+                count = len(session.exec(select(TweetPoll)).all())
+            if count >= 9:
+                break
+            time.sleep(0.02)
+        release_event.set()
+        time.sleep(0.2)
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    watcher = threading.Thread(target=watch_and_release, daemon=True)
+    watcher.start()
+
+    extraction_block = threading.Event()
+    extraction, llm = _extraction_runtime_and_fake(extraction_block)
+    poller_source = FakeSource(pages=[[]])
+
+    def make_source_once_extraction_blocks() -> FakeSource:
+        # Every poll then happens while the extractor is inside its blocked model call.
+        assert _wait_until(lambda: len(llm.received_messages) >= 1)
+        return poller_source
+
+    tweet_ingest = TweetIngest(
+        source_name="fake",
+        list_id=1,
+        make_source=make_source_once_extraction_blocks,
+        clock=FakeClock(tweet_start, tweet_end),
+    )
+    deps = WorkerDeps(
+        engine=db,
+        client=fake.client(sleep=lambda _: None, max_attempts=1),
+        league_ids_raw="1",
+        clock=RealClock(tweet_start),
+        tweet_ingest=tweet_ingest,
+        extraction=extraction,
+    )
+
+    start = time.monotonic()
+    try:
+        result = CliRunner().invoke(app, ["run"], obj=deps)
+    finally:
+        # The extractor's fake call blocks forever otherwise: releasing it lets the
+        # abandoned daemon thread unwind instead of outliving the test.
+        extraction_block.set()
+    elapsed = time.monotonic() - start
+    watcher.join(timeout=1)
+
+    assert result.exit_code == 0
+    assert elapsed < 10
+    assert calls["n"] == 2
+    assert len(llm.received_messages) == 1
+    assert _extractions(db) == []
+
+    with Session(db) as session:
+        rows = session.exec(
+            select(TweetPoll).where(TweetPoll.outcome == "succeeded").order_by(TweetPoll.started_at)
+        ).all()
+    assert len(rows) == 9
+
+
+def test_worker_rejects_llm_provider_without_key(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+
+    result = CliRunner().invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert "OPENAI_API_KEY" in result.stderr
+
+
+def test_worker_rejects_unknown_llm_provider(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LLM_PROVIDER", "unknown")
+
+    result = CliRunner().invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert "LLM_PROVIDER must be one of" in result.stderr
+
+
+def test_worker_rejects_malformed_extraction_variable_naming_it_only(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("USD_PLN_RATE", "4,05")
+
+    result = CliRunner().invoke(app, ["status"])
+
+    assert result.exit_code == 1
+    assert "USD_PLN_RATE" in result.stderr
+    assert "4,05" not in result.stderr
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+
+
+def test_worker_rejects_unreadable_prices_file_at_start(monkeypatch, tmp_path):
+    import tomllib
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_MODEL", "gpt-test")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-sentinel-value")
+
+    def broken_prices():
+        raise tomllib.TOMLDecodeError("Invalid value (at line 1, column 5)")
+
+    monkeypatch.setattr("app.extraction.service.load_prices", broken_prices)
+
+    result = CliRunner().invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert "prices.toml" in result.stderr
+    assert "TOMLDecodeError" in result.stderr
+    assert "sk-sentinel-value" not in result.stderr
+
+
 def test_polls_continue_while_a_deadline_snapshot_blocks(db):
     with Session(db) as session, session.begin():
         session.add(Season(label="2026/27"))
@@ -459,7 +814,9 @@ def _tweet_poll(started_at: datetime, outcome: str, **fields):
 
 def _tweet_status_lines(result) -> list[str]:
     lines = result.stdout.splitlines()
-    return lines[lines.index("Tweet ingest:") :]
+    start = lines.index("Tweet ingest:")
+    end = lines.index("Extraction: disabled", start)
+    return lines[start:end]
 
 
 def test_status_shows_tweet_ingest_with_polls_in_window(cli, db):
@@ -526,6 +883,84 @@ def test_status_shows_rate_limited_next_poll_in_sparse_mode(cli, db):
         "  next poll: 2026-10-10T07:29:00Z",
         "  mode: sparse",
     ]
+
+
+def test_status_shows_extraction_disabled(cli):
+    result = cli("status")
+    assert result.exit_code == 0
+    assert "Extraction: disabled" in result.stdout
+
+
+def test_status_shows_extraction_never(cli, db):
+    extraction = _extraction_runtime()
+    result = cli("status", extraction=extraction)
+    assert result.exit_code == 0
+    lines = result.stdout.splitlines()
+    assert "Extraction:" in lines
+    assert "  model: fake:fake-model" in lines
+    assert "  posts waiting: 0" in lines
+    assert "  failed posts: 0" in lines
+    assert "  latest extraction: never" in lines
+
+
+def test_status_shows_extraction_counts_and_latest(cli, db):
+    from app.extraction.store import ExtractionRecord, save_extraction
+    from app.tweets.models import Tweet
+
+    with Session(db) as session:
+        session.add(
+            Tweet(
+                x_id=1,
+                author_handle="reporter",
+                text="Haaland starts.",
+                created_at=NOW,
+                first_fetched_at=NOW,
+                source="fake",
+                is_repost=False,
+                is_reply=False,
+                raw={},
+            )
+        )
+        session.add(
+            Tweet(
+                x_id=2,
+                author_handle="reporter",
+                text="Saka doubtful.",
+                created_at=NOW,
+                first_fetched_at=NOW,
+                source="fake",
+                is_repost=False,
+                is_reply=False,
+                raw={},
+            )
+        )
+        session.commit()
+        save_extraction(
+            session,
+            ExtractionRecord(
+                tweet_x_id=1,
+                status="failed",
+                provider="fake",
+                model="fake-model",
+                prompt_version="v1",
+                started_at=NOW,
+                finished_at=NOW + timedelta(seconds=3),
+                attempts=3,
+                error_class="RuntimeError",
+                latency_seconds=3.0,
+            ),
+            [],
+        )
+
+    extraction = _extraction_runtime()
+    result = cli("status", extraction=extraction)
+    assert result.exit_code == 0
+    lines = result.stdout.splitlines()
+    assert "Extraction:" in lines
+    assert "  model: fake:fake-model" in lines
+    assert "  posts waiting: 1" in lines  # x_id=2 has no extraction yet
+    assert "  failed posts: 1" in lines
+    assert "  latest extraction: 2026-09-26T00:00:03Z x_id=1 status=failed latency=3.0" in lines
 
 
 def test_worker_help():

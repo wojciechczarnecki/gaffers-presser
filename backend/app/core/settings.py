@@ -21,6 +21,21 @@ class Settings(BaseSettings):
     fpl_league_ids: str = ""
 
 
+class ExtractionSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
+
+    llm_provider: str = ""
+    llm_model: str = ""
+    google_api_key: SecretStr | None = None
+    openai_api_key: SecretStr | None = None
+    anthropic_api_key: SecretStr | None = None
+    openrouter_api_key: SecretStr | None = None
+    langfuse_public_key: SecretStr | None = None
+    langfuse_secret_key: SecretStr | None = None
+    langfuse_host: str = "https://cloud.langfuse.com"
+    usd_pln_rate: float | None = None
+
+
 class TweetSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
 
@@ -33,6 +48,14 @@ class TweetSettings(BaseSettings):
     )
     twitterapi_io_key: SecretStr | None = None
     x_api_bearer_token: SecretStr | None = None
+
+
+def load_extraction_settings() -> ExtractionSettings:
+    try:
+        return ExtractionSettings()
+    except ValidationError as exc:
+        variables = sorted({str(error["loc"][0]).upper() for error in exc.errors() if error["loc"]})
+        raise ConfigError(f"invalid value of {', '.join(variables)}") from None
 
 
 def load_settings() -> Settings:
