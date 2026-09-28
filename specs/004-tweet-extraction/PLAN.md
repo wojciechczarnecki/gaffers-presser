@@ -384,8 +384,8 @@ every expected `fpl_id` exists in the snapshot.
 | AC23 | 16, 20 | `tests/extraction/evaluation/test_cases.py`, `tests/extraction/evaluation/test_eval_set.py` | step 16 (schema + composition rules, stubbed `composition_problems`): `uv run pytest -q tests/extraction/evaluation/test_cases.py` → `assert any(keyword in problem for problem in problems), problems` (`AssertionError: []`); step 20 (the committed set, files missing): `cd backend && uv run pytest -q tests/extraction/evaluation/test_eval_set.py` → `FileNotFoundError: .../evals/extraction/v1/cases.jsonl` (4 failed; the plan names missing files as the red state) |
 | AC24 | 18, 19 | `tests/extraction/test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | step 18 (stubbed `prelabel`): `uv run pytest -q tests/extraction/test_cli.py -k prelabel` → `assert ['1'] == ['1', '3']` (`test_prelabel_skips_ids_already_in_the_set`), `assert 0 == 1` (`test_prelabel_config_error_names_variable`); step 19 (stubbed `evaluate`): `uv run pytest -q tests/extraction/test_cli.py -k evaluate` → `assert 0 == 1` (`test_evaluate_refuses_unreviewed`, `test_evaluate_requires_pln_rate`, `test_evaluate_config_error_names_variable`), `FileNotFoundError` on the results file (`test_evaluate_writes_results`, `test_evaluate_only_selected_split`, `test_evaluate_case_error_is_recorded_and_run_continues`); `test_evaluate_traces_with_run_name` exercises the runner written in the same step and was not seen red |
 | AC25 | 17, 19 | `tests/extraction/evaluation/test_metrics.py`, `tests/extraction/test_cli.py::test_evaluate_*` | step 17 (metrics, stubbed `compute_metrics`): `uv run pytest -q tests/extraction/evaluation/test_metrics.py` → `assert (metrics.precision, metrics.recall, metrics.f1) == (1.0, 1.0, 1.0)` (15 failed, 4 passed); step 19 (stubbed `evaluate`): `uv run pytest -q tests/extraction/test_cli.py -k evaluate` → `assert 0 == 1` (`test_evaluate_refuses_unreviewed`, `test_evaluate_requires_pln_rate`, `test_evaluate_config_error_names_variable`), `FileNotFoundError` on the results file (`test_evaluate_writes_results`, `test_evaluate_only_selected_split`, `test_evaluate_case_error_is_recorded_and_run_continues`); `test_evaluate_traces_with_run_name` exercises the runner written in the same step and was not seen red |
-| AC26 | — | manual | manual — the owner's review and comparison run (descoped to the follow-up spec, BACKLOG #13) |
-| AC27 | 22 | `tests/extraction/test_config.py::test_default_model_matches_adr_0006` | n/a — descoped to the follow-up spec by the owner decision (BACKLOG #13) |
+| AC26 | — | manual | manual — the owner's review and comparison run (descoped to the follow-up spec, BACKLOG #14) |
+| AC27 | 22 | `tests/extraction/test_config.py::test_default_model_matches_adr_0006` | n/a — descoped to the follow-up spec by the owner decision (BACKLOG #14) |
 | AC28 | 2, 21 | `tests/test_env_example.py::test_every_extraction_setting_*`, `tests/test_readme.py` (extended) | step 21: `cd backend && uv run pytest -q tests/test_readme.py` → `AssertionError: 'LLM_PROVIDER' missing from the README Development section` and `... from docs/DEPLOYMENT.md` (2 failed) |
 
 ## Steps
@@ -662,7 +662,7 @@ from `backend/`.
 
 ### Group 6 — Comparison results, ADR 0006 and the default model (after the owner's run)
 
-- [~] 22. **Descoped by the owner decision of 2026-09-28 (Group 6): moved to a follow-up spec (BACKLOG #13); not carried out in 004.** Original text: Precondition: the owner has reviewed every case (`reviewed: true` for all) and
+- [~] 22. **Descoped by the owner decision of 2026-09-28 (Group 6): moved to a follow-up spec (BACKLOG #14); not carried out in 004.** Original text: Precondition: the owner has reviewed every case (`reviewed: true` for all) and
       committed or left in the working tree the result files
       `backend/evals/extraction/results/*.json` for at least one model per provider on the
       test split. If either is missing, end the chunk with `RESULT: ESCALATE` naming what
@@ -693,7 +693,7 @@ A fresh subagent compared the diff with the SPEC. Gaps and verdicts:
 
 - `partial` AC23 (136 cases vs "about 150 real"): rejected — the database holds only 107 posts (the SPEC's Context says 107); the count is capped by data, not by code, and the per-event/certainty minimums hold.
 - `partial` AC23/AC24/AC26 (all `reviewed: false`): rejected — the owner's review step, not a code defect.
-- `missing` AC26, AC27: rejected — descoped to a follow-up spec by the owner decision of 2026-09-28 (BACKLOG #13, ROADMAP).
+- `missing` AC26, AC27: rejected — descoped to a follow-up spec by the owner decision of 2026-09-28 (BACKLOG #14, ROADMAP).
 - `partial` AC3 (cost not passed to Langfuse), AC20 (latency null for CLI re-extraction), AC14 (duration includes setup): rejected — Langfuse computes cost from the model name; AC20 concerns worker extractions and is tested; the duration is cosmetic.
 - `unrequested` `snapshot-players`, tags, team aliases, provider compatibility special cases: rejected — each is asked for by the plan (steps 6, 16, 20, 3) and supports an AC.
 
@@ -1147,7 +1147,7 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
 
 Three independent perspectives (SPEC/PLAN compliance, quality and maintainability, tests)
 reviewed `git diff origin/main...HEAD`; every finding below was checked in the code by the
-final reviewer. Out of scope by the owner decision: step 22, AC26, AC27 (BACKLOG #13) and the
+final reviewer. Out of scope by the owner decision: step 22, AC26, AC27 (BACKLOG #14) and the
 `reviewed: false` state of the evaluation set.
 
 #### AC → evidence
@@ -1179,8 +1179,8 @@ final reviewer. Out of scope by the owner decision: step 22, AC26, AC27 (BACKLOG
 | AC23 | `evals/extraction/v1/cases.jsonl` (107 real + 29 synthetic, dev 33 %); `test_cases.py`, `test_eval_set.py` | ok — 107 real cases capped by the data (accepted in converge pass 1) |
 | AC24 | `cli.py::prelabel`, `evaluate` refusal; `test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | ok |
 | AC25 | `evaluation/metrics.py`, `runner.py`; `test_metrics.py`, `test_cli.py::test_evaluate_*` | partial — errored cases bias the pass metrics (F6); evaluate needs a database (F4) |
-| AC26 | — | descoped (owner decision, BACKLOG #13) |
-| AC27 | — | descoped (owner decision, BACKLOG #13) |
+| AC26 | — | descoped (owner decision, BACKLOG #14) |
+| AC27 | — | descoped (owner decision, BACKLOG #14) |
 | AC28 | `.env.example`, `docs/DEPLOYMENT.md`, README, BACKLOG; `test_readme.py`, `test_env_example.py` | ok |
 
 #### Findings
@@ -1262,8 +1262,8 @@ final reviewer. Out of scope by the owner decision: step 22, AC26, AC27 (BACKLOG
   seen red`.
 - **F14** `worth-fixing` `specs/004-tweet-extraction/SPEC.md:26-34,109-139,267-275` — the
   SPEC (the contract) still lists the comparison run, ADR 0006 and the default model in Goal,
-  Scope and AC26/AC27 with no mark; the descoping lives only in PLAN and BACKLOG #13. Fix: a
-  one-line note under Scope and at AC26/AC27 pointing at the owner decision and BACKLOG #13.
+  Scope and AC26/AC27 with no mark; the descoping lives only in PLAN and BACKLOG #14. Fix: a
+  one-line note under Scope and at AC26/AC27 pointing at the owner decision and BACKLOG #14.
 - **N1** `nit` `backend/app/extraction/cli.py:127-130` — `reextract --x-id <unknown>` prints
   `posts processed: 0` and exits 0; a typo is indistinguishable from a no-op. Fix:
   `fail("no post with X ID <id>")`; test.
@@ -1343,7 +1343,7 @@ Owner decision: F1–F14 accepted, N1–N5 rejected (and the 20 left-out nits). 
   `::test_failed_posts_count_uses_the_latest_extraction_only` (failed→extracted,
   extracted→failed and both `finished_at` ties broken by `id`).
 - **F13** — the fourth column of the AC → steps matrix is filled for every row.
-- **F14** — SPEC Scope and AC26/AC27 point at the owner decision and BACKLOG #13.
+- **F14** — SPEC Scope and AC26/AC27 point at the owner decision and BACKLOG #14.
 
 BACKLOG: #10 now also names `test_polls_continue_while_extraction_blocks` (the same
 `PytestUnraisableExceptionWarning`, seen once locally; the test passed). Items whose trigger
