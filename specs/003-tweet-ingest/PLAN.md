@@ -350,7 +350,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       only in the `X-API-Key` header, never in the URL) — files:
       `app/tweets/sources/twitterapi_io.py`, the payloads, loader, fakes, test file.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/sources/test_twitterapi_io.py`
-- [ ] 5. Official X API v2 adapter (plain `httpx`). Synthetic payloads on the documented
+- [x] 5. Official X API v2 adapter (plain `httpx`). Synthetic payloads on the documented
       v2 shape: `tests/tweets/payloads/x_api-page-1.json.gz` (with `meta.next_token`),
       `-page-2.json.gz`; one post with `referenced_tweets` `retweeted`, one `replied_to`.
       Tests `tests/tweets/sources/test_x_api.py`: `test_page_normalised` (author resolved
