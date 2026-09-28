@@ -29,6 +29,8 @@
       "Bash(docker compose config*)",
       "Bash(docker compose version*)",
       "Bash(docker compose down)",
+      "Bash(docker compose down *)",
+      "Bash(docker compose rm*)",
       "Bash(docker info*)",
       "Bash(docker ps*)",
       "Bash(claude plugin list*)",
@@ -67,8 +69,8 @@
       "Edit(**/scripts/git-hooks/**)",
       "Bash(uv pip *)",
       "Bash(uvx *)",
-      "Bash(docker compose down *)",
-      "Bash(docker compose rm*)"
+      "Bash(docker compose down *-v*)",
+      "Bash(docker compose down *--volumes*)"
     ],
     "deny": [
       "Bash(gh pr merge*)",
