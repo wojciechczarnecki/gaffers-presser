@@ -7,7 +7,7 @@ import pytest
 from sqlmodel import Session, select
 
 from app.fpl.models import Gameweek, Season
-from app.tweets.loop import TweetPoller, start_poller
+from app.tweets.loop import StopAwareClock, TweetPoller, start_poller
 from app.tweets.models import TweetPoll
 from app.tweets.sources.base import SourceRateLimitedError, SourceUnavailableError
 from app.worker.jobs import Shutdown
@@ -139,6 +139,30 @@ def test_failures_do_not_stop_polling(db):
     ]
 
 
+def test_unrecorded_poll_still_delays_the_next_one(db, monkeypatch):
+    monkeypatch.setattr("app.tweets.ingest.write_poll", lambda engine, record: None)
+    _seed_gameweek(db, DEADLINE)
+    start = DEADLINE - timedelta(seconds=100)
+    end = start + timedelta(seconds=41)
+    clock = FakeClock(start, end)
+    stop_event = threading.Event()
+
+    class CountingSource(FakeSource):
+        def pages(self, list_id: int):
+            if self.pull_count >= 10:
+                stop_event.set()
+            return super().pages(list_id)
+
+    source = CountingSource(pages=[[]])
+    poller = TweetPoller(db, lambda: source, list_id=1, clock=clock, stop_event=stop_event)
+
+    with pytest.raises(Shutdown):
+        poller.run()
+
+    assert source.pull_count == 3
+    assert _poll_times(db) == []
+
+
 def test_deadline_added_mid_run_is_picked_up_within_60_s(db):
     start = datetime(2026, 9, 28, 12, 0, 0, tzinfo=UTC)
     deadline = start + timedelta(minutes=40)
@@ -175,6 +199,7 @@ def test_deadline_added_mid_run_is_picked_up_within_60_s(db):
 
 def test_close_runs_on_the_poller_thread(db):
     close_thread_names = []
+    built = threading.Event()
 
     class RecordingSource(FakeSource):
         def close(self) -> None:
@@ -182,9 +207,14 @@ def test_close_runs_on_the_poller_thread(db):
             super().close()
 
     source = RecordingSource(pages=[[]])
+
+    def make_source():
+        built.set()
+        return source
+
     stop_event = threading.Event()
-    thread = start_poller(db, lambda: source, list_id=1, stop_event=stop_event)
-    time.sleep(0.05)
+    thread = start_poller(db, make_source, list_id=1, stop_event=stop_event)
+    assert built.wait(timeout=5)
     stop_event.set()
     thread.join(timeout=2)
 
@@ -196,8 +226,17 @@ def test_close_runs_on_the_poller_thread(db):
 def test_stop_event_ends_loop_promptly(db):
     source = FakeSource(pages=[[]])
     stop_event = threading.Event()
-    thread = start_poller(db, lambda: source, list_id=1, stop_event=stop_event)
-    time.sleep(0.05)
+    sleeping = threading.Event()
+
+    class SignallingClock(StopAwareClock):
+        def sleep(self, seconds: float) -> None:
+            sleeping.set()
+            super().sleep(seconds)
+
+    thread = start_poller(
+        db, lambda: source, list_id=1, stop_event=stop_event, clock=SignallingClock(stop_event)
+    )
+    assert sleeping.wait(timeout=5)
 
     start = time.monotonic()
     stop_event.set()

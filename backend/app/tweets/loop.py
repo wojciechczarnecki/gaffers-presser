@@ -10,7 +10,7 @@ from sqlmodel import Session
 from app.tweets.ingest import poll_once
 from app.tweets.schedule import MAX_SLEEP, next_poll_at
 from app.tweets.sources.base import TweetSource
-from app.tweets.store import latest_poll, upcoming_deadlines
+from app.tweets.store import PollRecord, latest_poll, upcoming_deadlines
 from app.worker.jobs import Shutdown
 
 logger = logging.getLogger(__name__)
@@ -33,6 +33,12 @@ class StopAwareClock:
         self._stop_event.wait(seconds)
 
 
+def _later(stored: PollRecord | None, remembered: PollRecord | None) -> PollRecord | None:
+    if stored is None or remembered is None:
+        return stored or remembered
+    return remembered if remembered.started_at > stored.started_at else stored
+
+
 class TweetPoller:
     def __init__(
         self,
@@ -47,6 +53,9 @@ class TweetPoller:
         self._list_id = list_id
         self._clock = clock
         self._stop_event = stop_event
+        # The poll log write may fail while reads still work; the in-memory record keeps
+        # the schedule from treating an unrecorded poll as never having happened.
+        self._last_record: PollRecord | None = None
 
     def run(self) -> None:
         source: TweetSource | None = None
@@ -57,11 +66,13 @@ class TweetPoller:
                         source = self._make_source()
                     with Session(self._engine) as session:
                         deadlines = upcoming_deadlines(session, self._clock.now())
-                    last = latest_poll(self._engine, source.name)
+                    last = _later(latest_poll(self._engine, source.name), self._last_record)
                     now = self._clock.now()
                     next_at = next_poll_at(deadlines, last, now)
                     if next_at <= now:
-                        poll_once(self._engine, source, self._list_id, self._clock.now)
+                        self._last_record = poll_once(
+                            self._engine, source, self._list_id, self._clock.now
+                        )
                     else:
                         sleep_seconds = min(
                             (next_at - now).total_seconds(), MAX_SLEEP.total_seconds()
