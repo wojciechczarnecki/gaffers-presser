@@ -305,7 +305,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
 
 ### Group 1 — Tweet sources
 
-- [ ] 1. Add the dependency `twscrape==0.20.1` to `[project].dependencies` (exact pin), run
+- [x] 1. Add the dependency `twscrape==0.20.1` to `[project].dependencies` (exact pin), run
       `uv lock`, `uv sync --all-extras`. Add `tests/tweets/__init__.py`,
       `tests/tweets/sources/__init__.py`, and `tests/tweets/sources/test_dependency.py`
       asserting `importlib.metadata.version("twscrape") == "0.20.1"` — files:
