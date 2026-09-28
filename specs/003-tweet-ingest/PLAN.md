@@ -548,7 +548,13 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
 
 ### Group 5 — Measurement report and ADR (after the owner's run)
 
-- [ ] 18. Precondition: the owner's measurement output from manual scenario M1 is at
+- [ ] 18. **Deferred** (owner decision, 2026-09-28 — see "Owner decisions"): the owner's M1
+      measurement output was not available, so this step was not carried out. AC18/AC19 and
+      the latency report + ADR 0005 leave this spec's scope; tracked as BACKLOG #9
+      (trigger: before the tweet ingest is relied on in production). The implementation is
+      complete with steps 1–17; this step is not ticked and is not part of the Definition of
+      Done below. Precondition (for whoever picks up BACKLOG #9): the owner's measurement
+      output from manual scenario M1 is at
       `backend/measurements/latency.jsonl` (gitignored). If it is missing, stop with
       `RESULT: ESCALATE` asking the owner to run M1 — do not invent numbers. Then: run
       `uv run python -m app.tweets summary measurements/latency.jsonl --markdown`; write
@@ -561,6 +567,24 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       #2 trigger note if triggered; `docs/adr/README.md` index if it lists ADRs; tick the
       Stage 1 item in `docs/ROADMAP.md` — files: those documents.
       Automatic verification: `cd backend && uv run python -m app.tweets summary measurements/latency.jsonl && cd .. && grep -q "0005" docs/DECISIONS.md && grep -q "\[x\] Swappable tweet source" docs/ROADMAP.md`
+
+### Converge pass 1 — 2026-09-28
+
+A fresh subagent compared `git diff origin/main...HEAD -- . ':(exclude)specs/003-tweet-ingest'`
+against SPEC.md's AC1–AC17 and AC20 (AC18/AC19 excluded from its brief — already deferred by
+the "Owner decisions" entry above, not a plan miss). No gaps of any class (`missing`,
+`partial`, `contradicts`, `unrequested`) were reported.
+
+The subagent flagged one non-AC observation for awareness: the SPEC → "Owner decisions" text
+that accepted a new dependency said "tweepy or X's official SDK — the plan picks one and
+states why", but both the plan and the code use plain `httpx` for the X API v2 adapter (and
+for twitterapi.io) instead of adopting either client library. This is not a gap against any
+AC — it is the substitution already recorded as its own "Owner decisions" entry above (dated
+2026-09-28, "keep plain `httpx`") and in the `docs/DECISIONS.md` row of step 17. No further
+action needed.
+
+No steps added — `converge_gaps = 0` for this pass. No second pass is run (this pass added no
+steps to re-check).
 
 ## Risks and traps
 
@@ -637,14 +661,34 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
   `sparse` mode (or `window` near a deadline); the `tweet` table holds the list's recent
   posts.
 
+### End-to-end verification results (2026-09-28)
+
+- `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` —
+  green, 293 passed.
+- Against the local Compose database (`docker compose up -d`, `uv run alembic upgrade head`
+  → `alembic current` confirms revision `0003 (head)`): `uv run python -m app.worker status`
+  with no `TWEET_SOURCE` ends with `Tweet ingest: disabled`; with
+  `TWEET_SOURCE=twitterapi_io` and no key, exit 1 with `error: TWITTERAPI_IO_KEY must be set
+  for TWEET_SOURCE=twitterapi_io`.
+- `uv run python -m app.tweets measure --interval-seconds 1 --duration-minutes 1 --output
+  /tmp/003check/m.jsonl` with `X_LIST_ID` set and no source credentials: all three sources
+  printed as `skipped <name>: <config error>`, exit 0, an empty summary table (`X_LIST_ID` is
+  not a credential — the command still needs a list to know what it would poll; this is a
+  clarification of the scenario wording, not a behaviour change).
+- `docker build -f backend/Dockerfile -t gaffers-presser-worker:local .` then `docker run
+  --rm gaffers-presser-worker:local python -m app.tweets --help` — exit 0, twscrape installs
+  in the image.
+
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` rows (step 17, step 18), ADR 0005,
-      the report, `docs/DEPLOYMENT.md`, `README.md`, `backend/.env.example`
-- [ ] spec status: `implemented`
+- [x] all steps ticked (1–17; step 18 deferred by owner decision — see "Owner decisions" and
+      BACKLOG #9, out of this Definition of Done's scope)
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` row (step 17); `docs/DEPLOYMENT.md`,
+      `README.md`, `backend/.env.example` (step 17); ADR 0005 and the latency report are
+      deferred with step 18 (BACKLOG #9), not part of this Definition of Done
+- [x] spec status: `implemented`
 
 ## Owner decisions
 

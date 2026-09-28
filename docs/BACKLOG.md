@@ -18,3 +18,4 @@ require one.
 | 6 | P3 | Rename the product (Polish or neutral brand, no FPL/PL trademarks) | before any public launch or monetization |
 | 7 | P3 | Alert event types beyond the four in scope (position change, set pieces, goalkeeper change) | subscribers ask for them |
 | 8 | P2 | Keep podcast transcription (Whisper, PyTorch) out of the production image — a separate package or dependency group | adding podcast transcripts (stage 4) |
+| 9 | P1 | Run the pre-merge tweet-source latency measurement (M1, ≥ 20 controlled posts), write the latency report and ADR 0005 choosing the default source (spec 003, AC18/AC19) | before the tweet ingest is relied on in production |
