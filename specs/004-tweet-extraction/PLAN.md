@@ -936,6 +936,58 @@ Full stack (`cd backend && uv run ruff check . && uv run ruff format --check . &
 pytest -q`) is green: 422 passed (plus the pre-existing BACKLOG #10 flaky
 `PytestUnraisableExceptionWarning` in the worker shutdown test).
 
+### Chunk 3 — Group 3 (Storage and the extraction service) — 2026-09-28
+
+Steps 9, 10, 11 done, each with its own test-first commit (red confirmed by temporarily
+stubbing the new module, then restoring the real implementation — `models.py` +
+migration `0004`, `store.py`, `service.py` were each written together with their test, so
+the red run was taken with the real module swapped for a stub/`NotImplementedError`
+rather than by writing the test strictly before the file existed). Decisions taken within
+the plan's latitude:
+
+- Step 9: `test_tweet_migration_adds_only_new_tables` now upgrades to `"0003"` explicitly
+  (not `"head"`, which is `0004` since this step) so it still isolates the tweet migration
+  alone; its own downgrade `-1` still lands back on `0002`.
+- Step 10: `current_extraction` joins `Extraction` with `Tweet.author_handle` /
+  `is_repost` / `is_reply` in one query (`select(Extraction, Tweet.author_handle, ...)`,
+  matching "one query joined with tweet"); its events are a second, necessary query
+  (one-to-many, not foldable into the first without duplicating extraction columns per
+  event row).
+- Step 11: `extract_post` builds `ChatModelSpec`/`Flow` once per post (`runtime.make_spec()`
+  called once, not once per attempt) and retries only `flow.run(...)`, so a scripted fake
+  model's response list is consumed across attempts as one script — rebuilding the model
+  per attempt would have no test-observable difference for a real provider but would break
+  this scripting approach. `record_latency` triggers one extra `session.get(Tweet, x_id)`
+  inside the same session used for storing, rather than adding a field to `PostInput`
+  (the post input has no `first_fetched_at`, and the plan ties latency to "set by the
+  worker loop only", i.e. an extra read the loop's call opts into).
+- `prices.toml` is committed with header comments only, no priced models: pricing pages
+  are not something this session can verify as "checked" today, and a missing entry
+  already gives a defined `cost_usd = None` (AC14/AC25 accept that); manual scenario 2
+  has the owner fill it in before the comparison run.
+
+Traps the next group will meet too:
+
+- `Shutdown` (raised only on the main thread by the SIGTERM handler) is a `BaseException`,
+  not an `Exception` — `extract_post`'s `except Exception` does not swallow it, so the
+  extraction loop (step 12) does not need special-casing there, only the worker's own
+  signal handling.
+- `ExtractionRuntime.make_spec` is a zero-arg callable the loop must supply fresh at
+  extraction-loop-start (not per post) if it wants a persistent chat-model connection, or
+  per post if it wants provider-side statelessness; step 12/13 decide which — `extract_post`
+  itself is agnostic and just calls it once per `extract_post` invocation.
+- `current_extraction` returns `None` for a post whose latest extraction is `failed`
+  (only `status == "extracted"` counts as current, per AC15) — the re-extraction CLI
+  (`--failed`) relies on `posts_for_reextract(failed=True)`, not on `current_extraction`,
+  to find those posts.
+
+Running `implement_iterations` total: 1 (unchanged — no unexpected failures this chunk;
+every red seen was the deliberate test-first stub-and-restore evidence, not a bug fix).
+
+Full stack (`cd backend && uv run ruff check . && uv run ruff format --check . && uv run
+pytest -q`) is green: 438 passed (plus the pre-existing BACKLOG #10 flaky warning). Applied
+locally: `uv run alembic upgrade head` → `0004 (head)`.
+
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
