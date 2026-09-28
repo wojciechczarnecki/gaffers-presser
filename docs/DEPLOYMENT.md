@@ -32,7 +32,8 @@ below; agents never touch production.
 7. **Tweet ingest (optional).** With no `TWEET_SOURCE` set, the worker runs exactly as
    above; `python -m app.worker status` shows `Tweet ingest: disabled`. To turn it on, set
    the worker service's variables:
-   - `TWEET_SOURCE` — one of `twscrape`, `twitterapi_io`, `x_api`.
+   - `TWEET_SOURCE` — one of `twscrape`, `twitterapi_io`, `x_api`; `twscrape` is the default
+     choice ([ADR 0005](adr/0005-default-tweet-source-twscrape.md)).
    - `X_LIST_ID` — the watched X List's numeric ID.
    - per source: `twscrape` needs `TWSCRAPE_USERNAME` and `TWSCRAPE_COOKIES` (and, if the
      image's default temp location is unsuitable, `TWSCRAPE_ACCOUNTS_DB`); `twitterapi_io`
