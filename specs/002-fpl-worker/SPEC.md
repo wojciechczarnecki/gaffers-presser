@@ -19,6 +19,9 @@ metrics:
   converge_gaps: 0
   deviations_minor: 3
   deviations_major: 0
+  final_review_blockers: 0
+  final_review_worth_fixing: 10
+  final_review_nits: 5
 ---
 
 # SPEC 002 — FPL worker (deadline-driven schedule and Railway deployment)

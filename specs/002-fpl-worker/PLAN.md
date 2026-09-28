@@ -786,4 +786,140 @@ and correctly has no code. No step added. `converge_gaps: 0`.
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-28 — /pipeline:final-review (report)
+
+Three independent perspectives (compliance, quality, tests) on `git diff origin/main...HEAD`;
+every finding below was checked in the code. Full verification green: 177 passed. The
+schedule itself behaves correctly: a scratch rebuild of the AC9 sequence by arithmetic
+matched all 292 rows. The weak points are one timing bug, one start-up path, `status`
+output and the strength of several loop tests.
+
+AC → evidence matrix:
+
+| AC | Evidence | Verdict |
+|----|----------|---------|
+| AC1 | `test_schedule.py::test_reference_cadence_*`, `test_loop.py::test_reference_sync_cadence` | met; loop test weak (F4) |
+| AC2 | `test_schedule.py::test_snapshot_slots_*`, `test_loop.py::test_deadline_snapshots_at_t30_and_t5` | met |
+| AC3 | `test_schedule.py::test_snapshot_retry_*`, `test_loop.py::test_failed_snapshot_retried_until_deadline_then_missed` | met; loop test weak (F4) |
+| AC4 | `test_schedule.py::test_results_then_league_*`, `test_loop.py::test_results_then_league_after_data_checked` | met; league sync is a no-op in the loop tests (F5) |
+| AC5 | `test_jobs.py::test_failed_job_is_logged_and_rolled_back`, `test_loop.py::test_failed_sync_retried_after_15_min` | met |
+| AC6 | `test_loop.py::test_catch_up_on_empty_database_and_restart` | met |
+| AC7 | `test_loop.py::test_restart_after_downtime` | met |
+| AC8 | `test_schedule.py::test_no_future_deadline_*`, `test_loop.py::test_no_future_deadline_daily_reference_only` | met; loop test weak (F4) |
+| AC9 | `test_loop.py::test_simulated_gameweek_sequence` | behaviour met; the test does not prove "exactly" (F4) |
+| AC10 | `test_jobs.py::test_successful_job_logs_run`, `::test_failed_job_is_logged_and_rolled_back` | met |
+| AC11 | `test_migrations.py::test_job_run_migration_keeps_collector_data` | met |
+| AC12 | `test_cli.py::test_status_on_empty_database`, `::test_status_shows_latest_runs_and_next_actions` | met; only one snapshot slot shown (F3) |
+| AC13 | `test_settings.py::test_worker_rejects_*` | met |
+| AC14 | `test_settings.py::test_normalize_database_url_*`, `::test_database_url_schemes_connect_through_{cli,alembic,worker}`, e2e item 3 | met |
+| AC15 | `test_locks.py::test_cli_job_waits_for_running_job`, `test_jobs.py::test_worker_job_waits_for_running_job`, `test_cli.py::test_second_worker_waits_for_schedule_lock`, `test_loop.py::test_heartbeat_failure_ends_run` | met; see F1 for the lock wait |
+| AC16 | `test_jobs.py::test_error_after_stop_request_raises_shutdown`, `test_loop.py::test_stop_event_ends_run_after_action`, `test_cli.py::test_sigterm_*`, e2e `docker stop` (0.156 s, exit 0) | met for SIGTERM; gap on connect (F2); SIGINT untested (F14) |
+| AC17 | `test_jobs.py::test_job_logged_at_start_and_end`, `test_loop.py::test_simulated_gameweek_logs_carry_no_private_data` | met; duration not asserted (F8) |
+| AC18 | `test_deployment.py::test_dockerfile_*`, `::test_ci_builds_image_on_pull_request`, `test_cli.py::test_worker_help`, e2e build/run/`id -u` | met |
+| AC19 | `test_deployment.py::test_railway_config` | met |
+| AC20 | `test_readme.py::test_deployment_section_is_a_runbook` | met |
+| AC21 | manual (owner, first deploy) | pending; `status` shows T-30 only until it succeeds (F3) |
+
+Findings:
+
+- **F1** `worth-fixing` `backend/app/worker/jobs.py:260` — `started_at = now_fn()` is taken
+  before `acquire_job_lock`, and that `now` is what the deadline guard of
+  `take_deadline_snapshot` checks. Scenario: the owner runs `python -m app.fpl backfill` at
+  T-10 and it holds the job lock for 20 min → the T-5 snapshot waits, fetches after the
+  deadline, passes the guard with `now = T-5` and stores post-deadline data as the
+  pre-deadline snapshot; the run's `started_at`/duration also include the wait. The CLI's
+  process-wide `Deps.now` has the same exposure behind a worker job. — Take `now` after the
+  lock is acquired (pass `now_fn` into `_dispatch`); in the CLI, re-read the time after
+  `acquire_job_lock` in `transaction()` or fail a snapshot whose lock wait crossed the deadline.
+- **F2** `worth-fixing` `backend/app/worker/cli.py:110` — `deps.engine.connect()` runs after
+  the signal handlers are installed but outside the `try`. Scenario: the database is not yet
+  reachable when Railway starts the worker → a raw `OperationalError` traceback (host and
+  user in the message) instead of `worker failed: <class>`, handlers not restored; a SIGTERM
+  during a slow connect → uncaught `Shutdown`, non-zero exit (against AC16). — Move the
+  connect inside the `try` (guard the `finally` for an unset connection); add CLI tests for
+  an unreachable database and a failing heartbeat (exit 1, `worker failed: OperationalError`).
+- **F3** `worth-fixing` `backend/app/worker/schedule.py:97-126`, `backend/app/worker/cli.py:160-165`
+  — `plan()` returns only the next snapshot slot, so `status` shows T-30 but not T-5 until
+  T-30 has succeeded. The plan's step 8 test and the AC21 manual check ("shows the T-30 and
+  T-5 snapshots") expect both; the chunk notes mention it but `## Deviations` does not. —
+  Have `status` list every remaining slot of the upcoming gameweek (the loop keeps using
+  the single next action), and assert both times in `test_status_shows_latest_runs_and_next_actions`.
+- **F4** `worth-fixing` `backend/tests/worker/test_loop.py:41-65, 101-107, 253-270, 273-313` —
+  the AC1, AC3, AC8 and AC9 loop tests only check gaps between consecutive rows within a
+  phase, which pass when a phase is empty or shifted. Scenario: changing the 48 h window to
+  47 h, or the 24 h cadence to 80 h, leaves every loop test green; AC9's "exactly the
+  expected sequence" and the plan's "complete list of rows equals a list built by plain
+  arithmetic" are not proven, and the weaker test is not recorded as a deviation. — Assert
+  exact lists: AC9 the full `(job, gameweek, started_at)` list from `start`; AC1 the hourly
+  then 15-min times; AC3 failed snapshots `[D6-30m + k·1m for k in 0..29]`; AC8
+  `[start, start+24h, start+48h]` (and seed GW1–38 as the plan says).
+- **F5** `worth-fixing` `backend/tests/worker/test_loop.py:30-38`, `backend/app/worker/jobs.py:218`
+  — every loop test except AC17 passes `league_ids=[]`, and no worker test asserts that a
+  job stored domain data. Scenario: `_dispatch` calling `sync_leagues` with `[]`, or passing
+  the wrong gameweek to the results/snapshot job, leaves all worker tests green (the log row
+  uses `action.gameweek`). — In the AC9 (or AC4) test pass `[LEAGUE_ID]` and assert standings
+  for the synthetic league under GW6, results rows for GW6 and snapshot rows for GW6, all
+  `succeeded`.
+- **F6** `worth-fixing` `backend/tests/worker/test_store.py:30-81` — the season filter on
+  gameweek runs in `load_state` is untested: the seeded prior-season row is older than the
+  current one, so removing `season = :season` keeps every worker test green. Scenario: after
+  the July reset, last season's GW7 success counts as this season's GW7 done and its results
+  and league sync never run. — Seed a 2025/26 `results_sync` success for GW7 with no 2026/27
+  row and assert `(results_sync, 7)` is in neither map.
+- **F7** `worth-fixing` `specs/002-fpl-worker/PLAN.md:143-165` — the fourth column "Red
+  before the change" of the AC → steps matrix is empty for AC1–AC20 (only AC21 is
+  `manual`). — Fill it: steps 1–3 with the red recorded in their verification lines,
+  AC1–AC17 on steps 4–8 with "none — written together (see Deviations)", AC18–AC20 with the
+  red of their static tests.
+- **F8** `worth-fixing` `backend/tests/worker/test_jobs.py:125-143` — AC17 requires the end
+  line to carry the duration; no test asserts `duration=`, nor the failure line
+  (`outcome=failed … error=FplUnavailableError`, no exception text). — Assert both, with a
+  failed-job case.
+- **F9** `worth-fixing` `backend/app/worker/jobs.py:245-246`, `backend/app/worker/loop.py:380-386`
+  — two failure branches have no test: the swallowed `job run log write failed: <class>`
+  and the `state load failed` → sleep 60 → continue path. — Add a `run_job` test with a
+  failing log write (returns, job data committed, class-only log line) and a loop test with
+  a `load_state` that fails once.
+- **F10** `worth-fixing` `backend/tests/worker/test_cli.py:127-166`, `backend/tests/worker/test_jobs.py:303-332`,
+  `backend/tests/db/test_locks.py:113-142`, `backend/app/worker/cli.py:50-60` — test isolation:
+  schedule-lock connections and job-lock sessions are released without `finally`, so a
+  failing assertion leaves a pooled connection holding the lock or a non-daemon thread
+  waiting forever (the pytest process hangs — the trap the chunk notes warn about); "after
+  1 s the thread is alive" can pass without the lock being taken; every worker-CLI test
+  without injected deps adds a root `StreamHandler` on CliRunner's closed stderr
+  (`pytest -s` prints "--- Logging error ---" 63 times). — `try/finally` with
+  `invalidate()`/unlock, daemon threads, wait on `pg_locks` for an ungranted advisory lock
+  instead of sleeping; make `_configure_logging` idempotent or restore the root logger in a
+  fixture.
+- **F11** `nit` `backend/app/worker/schedule.py:81-83` — after GW38's deadline AC8's 24 h
+  cadence applies, so GW38 `data_checked` is seen up to 24 h late and its results and league
+  sync (and a future season-final presser) are delayed by up to a day. Spec-conform. — Keep
+  the 60 min cadence while any gameweek of the season is not `finished` + `data_checked`;
+  a SPEC change, so a `BACKLOG.md` item with the trigger "Stage 3 presser".
+- **F12** `nit` `backend/app/worker/schedule.py:139-153` — a permanently failing results or
+  league sync is retried every 15 min forever (about 225 requests per league sync).
+  Spec-conform (AC5), but against the FPL-etiquette NFR. — A `BACKLOG.md` item: backoff
+  after N failures, trigger "Stage 5 failure alerting".
+- **F13** `nit` `backend/app/worker/cli.py:145-165` — `status` has no error handling: run
+  before `alembic upgrade head` or with the database down it prints a raw traceback, unlike
+  `transaction()` in `app/fpl/cli.py`. — `except SQLAlchemyError` → `fail("database error
+  (<class>)")`.
+- **F14** `nit` `backend/tests/worker/test_cli.py:169-223` — only SIGTERM is tested (AC16
+  names SIGINT too); the "idle" test is not idle (empty database, the catch-up jobs fail
+  first) and does not check that the handler is restored. — Parametrize over SIGINT; seed
+  everything done as the plan says; assert `signal.getsignal` is unchanged.
+- **F15** `nit` `backend/tests/fpl/test_models.py:32-44` — deviation 1 loosened
+  `test_table_names_match_schema` to `<=`, so an unexpected extra table is no longer caught,
+  and the tz-aware check skips `job_run` needlessly. — Assert equality with
+  `EXPECTED_TABLE_NAMES | {"job_run"}`, keep the tz check global, narrow only the season-FK test.
+
+Rejected:
+
+- League sync not gated on a successful results sync (quality) — the plan's design choice
+  "Results and league sync scheduled independently", reviewed and approved; AC5 requires a
+  failure not to block other jobs.
+- "The heartbeat makes the `state load failed` branch dead code" (quality) — the heartbeat
+  uses the dedicated lock connection; `load_state` uses a pooled one and can fail on its own
+  (a dropped pooled connection, a missing table), so the branch is reachable.
+
+Left out: 30 nit findings
