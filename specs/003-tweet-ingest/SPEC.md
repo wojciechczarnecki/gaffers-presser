@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-09-28"
   - "spec-ready — 2026-09-28"
   - "plan-draft — 2026-09-28"
   - "plan-approved — 2026-09-28"
   - "implemented — 2026-09-28"
+  - "done — 2026-09-28"
 metrics:
   started_at: 2026-09-28T12:43
   escalations: 1
@@ -24,6 +25,7 @@ metrics:
   final_review_nits: 5
   findings_accepted: 15
   findings_rejected: 5
+  finished_at: 2026-09-28T15:08
 ---
 
 # SPEC 003 — Tweet sources, ingest and latency measurement
