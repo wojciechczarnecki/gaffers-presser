@@ -435,7 +435,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       retry shorter than the interval → the interval); no last poll → `now` — files: the
       module and the test file.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_schedule.py`
-- [ ] 11. One poll: `app/tweets/ingest.py` `poll_once(engine, source, list_id, now_fn) ->
+- [x] 11. One poll: `app/tweets/ingest.py` `poll_once(engine, source, list_id, now_fn) ->
       PollRecord` — `started_at`; `last_seen_id`; `collect_new`; `fetched_at = now_fn()`
       right after the fetch returns; `store_posts` in one transaction; record `succeeded`
       with `new_posts`; `SourceRateLimitedError` → `rate_limited` with
