@@ -423,7 +423,7 @@ from `backend/`.
       `openai/o4-mini` → temperature not set; `openai` + `gpt-4.1-mini` → 0); no network.
       Files: `backend/app/extraction/providers.py`, `backend/tests/extraction/test_providers.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_providers.py`
-- [ ] 4. Prompts and the loader: `app/content/__init__.py` with `load_prompt(name)`
+- [x] 4. Prompts and the loader: `app/content/__init__.py` with `load_prompt(name)`
       (reads `prompts/<name>.md`, parses the `version: N` header, raises on a missing
       header or file); `extraction.md` (the four event types with definitions, the three
       certainty levels with the SPEC's wording cues, the relevance rule verbatim in
