@@ -576,7 +576,7 @@ from `backend/`.
       (waiting, failed posts, latest line with latency).
       Files: `backend/app/worker/cli.py`, `backend/tests/worker/test_cli.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/worker/test_cli.py -k status`
-- [ ] 15. `app/extraction/cli.py` + `__main__.py` with `reextract` (see CLI); deps injected
+- [x] 15. `app/extraction/cli.py` + `__main__.py` with `reextract` (see CLI); deps injected
       through `ctx.obj` (`ExtractionCliDeps(engine, settings, build_spec, clock)`). Tests
       (DB + fake): `test_reextract_by_x_id` (a new extraction row, the old kept, summary
       lines), `test_reextract_range`, `test_reextract_failed_only`,
