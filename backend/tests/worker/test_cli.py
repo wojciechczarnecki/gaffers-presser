@@ -17,7 +17,7 @@ from app.db.engine import make_engine
 from app.db.locks import SCHEDULE_LOCK_KEY
 from app.fpl.models import Gameweek, Season
 from app.tweets.models import TweetPoll
-from app.worker.cli import TweetIngest, WorkerDeps, _fmt, app
+from app.worker.cli import TweetIngest, WorkerDeps, app
 from app.worker.jobs import Shutdown
 from app.worker.models import JobRun
 from app.worker.schedule import Job
@@ -428,9 +428,7 @@ def test_status_shows_tweet_ingest_never_polled(cli):
     assert "  mode: sparse" in lines
 
 
-def test_status_shows_tweet_ingest_with_polls_in_window(cli, db):
-    from app.tweets.store import PollRecord, write_poll
-
+def _seed_d6(db) -> None:
     with Session(db) as session, session.begin():
         session.add(Season(label="2026/27"))
         session.flush()
@@ -445,26 +443,89 @@ def test_status_shows_tweet_ingest_with_polls_in_window(cli, db):
             )
         )
 
+
+def _tweet_poll(started_at: datetime, outcome: str, **fields):
+    from app.tweets.store import PollRecord
+
+    return PollRecord(
+        source="twitterapi_io",
+        started_at=started_at,
+        finished_at=started_at + timedelta(seconds=1),
+        outcome=outcome,
+        new_posts=fields.pop("new_posts", 0),
+        **fields,
+    )
+
+
+def _tweet_status_lines(result) -> list[str]:
+    lines = result.stdout.splitlines()
+    return lines[lines.index("Tweet ingest:") :]
+
+
+def test_status_shows_tweet_ingest_with_polls_in_window(cli, db):
+    from app.tweets.store import write_poll
+
+    _seed_d6(db)
     now = D6 - timedelta(minutes=45)
+    write_poll(db, _tweet_poll(now - timedelta(seconds=20), "succeeded", new_posts=2))
+    tweet_ingest = TweetIngest(source_name="twitterapi_io", list_id=1, make_source=lambda: None)
+    result = cli("status", clock=FixedClock(now), tweet_ingest=tweet_ingest)
+    assert result.exit_code == 0
+    assert _tweet_status_lines(result) == [
+        "Tweet ingest:",
+        "  source: twitterapi_io",
+        "  last successful poll: 2026-10-10T09:14:40Z",
+        "  next poll: due now",
+        "  mode: window",
+    ]
+
+
+def test_status_shows_last_success_before_a_later_failure(cli, db):
+    from app.tweets.store import write_poll
+
+    _seed_d6(db)
+    now = D6 - timedelta(minutes=45)
+    write_poll(db, _tweet_poll(now - timedelta(seconds=60), "succeeded", new_posts=1))
     write_poll(
         db,
-        PollRecord(
-            source="twitterapi_io",
-            started_at=now - timedelta(seconds=20),
-            finished_at=now - timedelta(seconds=19),
-            outcome="succeeded",
-            new_posts=2,
+        _tweet_poll(now - timedelta(seconds=10), "failed", error_class="SourceUnavailableError"),
+    )
+    tweet_ingest = TweetIngest(source_name="twitterapi_io", list_id=1, make_source=lambda: None)
+    result = cli("status", clock=FixedClock(now), tweet_ingest=tweet_ingest)
+    assert result.exit_code == 0
+    assert _tweet_status_lines(result) == [
+        "Tweet ingest:",
+        "  source: twitterapi_io",
+        "  last successful poll: 2026-10-10T09:14:00Z",
+        "  next poll: 2026-10-10T09:15:10Z",
+        "  mode: window",
+    ]
+
+
+def test_status_shows_rate_limited_next_poll_in_sparse_mode(cli, db):
+    from app.tweets.store import write_poll
+
+    _seed_d6(db)
+    now = D6 - timedelta(hours=3)
+    write_poll(
+        db,
+        _tweet_poll(
+            now - timedelta(minutes=1),
+            "rate_limited",
+            error_class="SourceRateLimitedError",
+            retry_after_seconds=600,
         ),
     )
     tweet_ingest = TweetIngest(source_name="twitterapi_io", list_id=1, make_source=lambda: None)
     result = cli("status", clock=FixedClock(now), tweet_ingest=tweet_ingest)
     assert result.exit_code == 0
-    lines = result.stdout.splitlines()
-    assert "Tweet ingest:" in lines
-    assert "  source: twitterapi_io" in lines
-    assert f"  last successful poll: {_fmt(now - timedelta(seconds=20))}" in lines
-    assert "  next poll: due now" in lines
-    assert "  mode: window" in lines
+    assert _tweet_status_lines(result) == [
+        "Tweet ingest:",
+        "  source: twitterapi_io",
+        "  last successful poll: never",
+        "  next poll: 2026-10-10T07:29:00Z",
+        "  mode: sparse",
+    ]
 
 
 def test_worker_help():
