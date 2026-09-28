@@ -889,6 +889,53 @@ whitespace in the test rather than reflowing the prompt).
 Full stack (`cd backend && uv run ruff check . && uv run ruff format --check . && uv run
 pytest -q`) is green: 389 passed. Docker image builds with the new dependencies importable.
 
+### Chunk 2 — Group 2 (Linking and the flow) — 2026-09-28
+
+Steps 6 and 7 were committed by the chunk before this one, which ended after step 8's
+`test_credentials_never_logged_or_stored`-style verification hit the escalation now recorded
+in `## Owner decisions` (`langfuse.langchain.CallbackHandler` needs `langchain` importable)
+— before writing this note. That chunk's iteration count for steps 6–7 is unknown.
+
+This chunk resumed with the owner decision already recorded and carried out step 8: added
+`langchain==1.4.2` (exact pin, `uv add langchain` then pinned with `==`; matches the major
+version of the already-pinned `langchain-core==1.6.5`) to `backend/pyproject.toml` and
+`backend/tests/extraction/test_dependency.py`; wrote `app/extraction/tracing.py`
+(`make_handler`, `run_config`, `flush`) and `tests/extraction/test_tracing.py`. Decisions
+taken within the plan's latitude:
+
+- `make_handler` builds the Langfuse client explicitly (`Langfuse(public_key=...,
+  secret_key=..., host=...)`, registering it under its public key) and then constructs
+  `CallbackHandler(public_key=...)`, because the installed SDK's `CallbackHandler.__init__`
+  only takes `public_key`/`trace_context` — it resolves the actual client via
+  `get_client(public_key=...)` against already-registered instances, not via constructor
+  arguments. `flush(handler)` reaches the client through the handler's private
+  `_langfuse_client` attribute — the SDK exposes no public accessor for it.
+- The evaluation run's session/tag are metadata keys `langfuse_session_id` /
+  `langfuse_tags` (read from `CallbackHandler`'s own source, not from any changelog), set
+  only when `run_config`'s `run_name` parameter is given (evaluate); the `RunnableConfig`'s
+  own `run_name` field stays the literal `"extraction"` in every call, per the plan.
+- `RecordingHandler` (`tests/extraction/fakes.py`, from step 5) gained `on_chain_start`
+  tracking and a `root_run_id()` helper, to let `test_tracing.py` prove "one trace" by
+  walking both chat-model calls' parent chains up to a shared root run id — confirmed
+  experimentally that LangGraph node calls share one root run per `flow.run()`.
+
+Traps the next group will meet too:
+
+- Only `type(exc).__name__` reaches logs from the disambiguation call's exception handler in
+  `flow.py` (already true from step 7) — the same rule applies to provider/timeout/rate-limit
+  errors the service (step 11) will catch.
+- `CallbackHandler` adds LangGraph/LangChain bookkeeping keys to `metadata`
+  (`langgraph_node`, `ls_provider`, `lc_versions`, …) alongside the ones `run_config` sets —
+  tests must check for the presence of the added keys, not assert the metadata dict's exact
+  shape.
+
+Running `implement_iterations` total: 1 (unchanged — step 8 needed no self-correction
+iteration; steps 6–7's count from the previous chunk is unknown, per the note above).
+
+Full stack (`cd backend && uv run ruff check . && uv run ruff format --check . && uv run
+pytest -q`) is green: 422 passed (plus the pre-existing BACKLOG #10 flaky
+`PytestUnraisableExceptionWarning` in the worker shutdown test).
+
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
