@@ -31,7 +31,7 @@ is **25.9 s** (20 controlled posts), within the 60 s target, so BACKLOG #2 is no
 
 - Stage 1 and later stages build on twscrape at 0 PLN; the budget stays free for the LLM.
 - The two posts twscrape missed are investigated before the ingest is relied on for alerts
-  (BACKLOG #14); if twscrape systematically drops a class of posts, the choice is revisited.
+  (BACKLOG #11); if twscrape systematically drops a class of posts, the choice is revisited.
 - twitterapi.io stays a configured fallback; it has not been measured, so switching to it
   requires a measurement on paid credits first.
 - The scraper's breakage and a banned account remain the main risk — stage 5 failure
