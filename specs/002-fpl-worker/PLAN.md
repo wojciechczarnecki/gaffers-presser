@@ -606,6 +606,10 @@ uses `gw = None` and is not filtered by season; gameweek jobs are filtered by se
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-28 — final review (report) — Which findings to fix? — Accept `blocker` and
+  `worth-fixing`, reject `nit`. Accepted: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10.
+  Rejected: F11, F12, F13, F14, F15 (and the nits left out of the report).
+
 ## Review log
 
 ### 2026-09-27 — /pipeline:plan-review
