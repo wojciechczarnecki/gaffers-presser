@@ -1142,4 +1142,153 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-28 — /pipeline:final-review (report)
+
+Three independent perspectives (SPEC/PLAN compliance, quality and maintainability, tests)
+reviewed `git diff origin/main...HEAD`; every finding below was checked in the code by the
+final reviewer. Out of scope by the owner decision: step 22, AC26, AC27 (BACKLOG #13) and the
+`reviewed: false` state of the evaluation set.
+
+#### AC → evidence
+
+| AC | Evidence | Verdict |
+|----|----------|---------|
+| AC1 | `app/extraction/config.py`, `providers.py`; `tests/extraction/test_config.py`, `test_providers.py` | ok (F2) |
+| AC2 | `app/worker/cli.py` "extraction disabled"; `tests/worker/test_cli.py::test_run_without_llm_logs_extraction_disabled_once` | ok (F3) |
+| AC3 | `app/extraction/tracing.py`; `tests/extraction/test_tracing.py` (one root run, two chat-model calls) | ok (F11) |
+| AC4 | `test_tracing.py::test_no_handler_without_keys`, `test_cli.py::test_run_without_langfuse_warns_once` | ok |
+| AC5 | `test_config.py::test_errors_never_carry_values`, `test_service.py::test_credentials_never_logged_or_stored` | ok (F3, N4) |
+| AC6 | `flow.py`, `schemas.py`; `test_flow.py::test_typed_result`, `::test_no_events_is_empty_result` | ok |
+| AC7 | `test_flow.py::test_leaked_xi_gives_starters_and_benched`, `::test_out_and_starts_gives_two_events` | ok |
+| AC8 | `app/content/prompts/extraction.md`; `tests/content/test_prompts.py`; `test_eval_set.py::test_relevance_categories` | ok |
+| AC9 | `flow.py::_render_post`; `test_flow.py::test_repost_is_extracted_with_author`, `test_store.py::test_current_extraction_exposes_post_flags` | ok |
+| AC10 | `linking.py`; `tests/extraction/test_linking.py` | ok |
+| AC11 | `flow.py` link node; `test_flow.py::test_disambiguation_*`, `::test_no_candidate_unlinked_without_call` | ok |
+| AC12 | `aliases.toml`; `test_linking.py::test_alias_links`, `::test_stale_alias_ignored_and_logged_once`, `::test_committed_aliases_parse` | ok |
+| AC13 | `linking.py::load_players`; `test_players.py::test_only_latest_season` | ok |
+| AC14 | `models.py`, `store.py`, `service.py`; `test_store.py::test_save_extraction_roundtrip`, `test_service.py` | ok (F10) |
+| AC15 | `store.py::current_extraction`; `test_store.py::test_reextraction_keeps_history_current_is_latest_extracted` | ok |
+| AC16 | `migrations/versions/0004_extraction.py`; `test_migrations.py::test_extraction_migration_adds_only_new_tables` | ok |
+| AC17 | `loop.py`, worker wiring; `test_cli.py::test_polls_continue_while_extraction_blocks` | partial — the test passes with the extractor stubbed out (F8) |
+| AC18 | `test_loop.py::test_new_post_picked_within_5_s`, `::test_oldest_first` | ok |
+| AC19 | `service.py::run_with_retries`; `test_service.py::test_retries_*`, `test_loop.py::test_failure_does_not_stop_the_loop` | partial — an error outside the flow stalls the queue (F1) |
+| AC20 | `latency_seconds`; `test_service.py::test_worker_extraction_records_latency`, `test_cli.py::test_status_shows_extraction_*` | ok |
+| AC21 | shared 5 s join deadline; `test_cli.py::test_sigterm_with_extraction_*` | partial — passes with the extractor stubbed out (F8) |
+| AC22 | `cli.py::reextract`; `test_cli.py::test_reextract_*` | ok (F2, N1) |
+| AC23 | `evals/extraction/v1/cases.jsonl` (107 real + 29 synthetic, dev 33 %); `test_cases.py`, `test_eval_set.py` | ok — 107 real cases capped by the data (accepted in converge pass 1) |
+| AC24 | `cli.py::prelabel`, `evaluate` refusal; `test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | ok |
+| AC25 | `evaluation/metrics.py`, `runner.py`; `test_metrics.py`, `test_cli.py::test_evaluate_*` | partial — errored cases bias the pass metrics (F6); evaluate needs a database (F4) |
+| AC26 | — | descoped (owner decision, BACKLOG #13) |
+| AC27 | — | descoped (owner decision, BACKLOG #13) |
+| AC28 | `.env.example`, `docs/DEPLOYMENT.md`, README, BACKLOG; `test_readme.py`, `test_env_example.py` | ok |
+
+#### Findings
+
+- **F1** `worth-fixing` `backend/app/extraction/loop.py:33-53`, `service.py:93-99,119,141` —
+  any exception outside `flow.run` (a malformed `prices.toml` when the owner fills it, a broken
+  `aliases.toml`, a DB error in `save_extraction`, `make_spec` failing) escapes `extract_post`
+  before a row is stored; the loop sleeps 30 s and `next_pending` returns the same post, so a
+  paid LLM call is repeated ~2,880 times a day and every newer post starves (AC19: "other
+  posts keep being processed"). Fix: load prices/aliases once at runtime construction so a bad
+  file fails at start; wrap the post-flow part of `extract_post` and store a `failed` row with
+  the error class in a fresh session; test with a failing `save_extraction` and a bad prices file.
+- **F2** `worth-fixing` `backend/app/extraction/config.py:57` — `resolve_llm(settings,
+  provider="anthropic", model=None)` with `LLM_PROVIDER=openai LLM_MODEL=gpt-4.1-mini` returns
+  `anthropic:gpt-4.1-mini`; `reextract --failed --provider anthropic` then stores failed rows
+  under a non-existent model and `evaluate` spends ~10 min on back-off before writing an
+  all-errored file. Fix: when `provider` is overridden, take the model only from `--model` (or
+  the provider's default), else `ConfigError("--model must be given with --provider")`; test.
+- **F3** `worth-fixing` `backend/app/worker/cli.py:102`, `backend/app/extraction/cli.py:85` —
+  `ExtractionSettings()` raises pydantic `ValidationError` on a malformed value (verified:
+  `USD_PLN_RATE=4,05 python -m app.worker status` prints a raw traceback with
+  `input_value='4,05'`); only `CollectorError` is caught, so a variable only `evaluate` uses
+  stops the whole worker (FPL jobs and tweet ingest), against AC2 and the "name the variable,
+  never the value" rule. Fix: turn the `ValidationError` into `ConfigError` naming the failing
+  field's variable only; test.
+- **F4** `worth-fixing` `backend/app/extraction/cli.py:77-81` — `_engine_from_env` catches
+  `ValidationError`, but `load_settings()` already raises `ConfigError("DATABASE_URL must be
+  set")`; `evaluate` without `DATABASE_URL` crashes with a traceback, so Deviation 2 ("evaluate
+  needs no database") does not hold and no test covers it. Fix: catch `ConfigError`; test
+  `_deps_from_settings()` with `DATABASE_URL` removed.
+- **F5** `worth-fixing` `backend/app/extraction/cli.py:281,326-327` — a custom
+  `--run-name gemini/flash-v1` (or `../x`) is used as a path unsanitised; the write fails with
+  `FileNotFoundError` after every case was paid for, and the predictions are lost. Fix: validate
+  `run_name` with the `_default_run_name` character rule before `build_spec`; test.
+- **F6** `worth-fixing` `backend/app/extraction/evaluation/metrics.py:177-179,188-201` — an
+  errored case gets `predicted=[]` and counts as a correct negative in the false-alarm
+  denominator; `passes` ignores `errored_cases`; `mean_cost` covers only successful cases and
+  tokens of failed attempts are dropped — a model that errors on noise posts scores 0 % false
+  alarms and a lower projected cost, biasing the ADR 0006 comparison of the follow-up. Fix:
+  exclude errored cases from `empty_cases` (or count them as alarms), require
+  `errored_cases == 0` in `passes`; metrics test with an errored empty case.
+- **F7** `worth-fixing` `backend/app/extraction/loop.py:33` — `make_handler` runs outside the
+  loop's `try`; a Langfuse client construction error kills the extractor thread through the
+  default excepthook (raw traceback, not the class-only log) while the worker keeps running
+  without extraction. Fix: build the handler in a guarded block, log `type(exc).__name__`,
+  continue untraced; test.
+- **F8** `worth-fixing` `backend/tests/worker/test_cli.py:378,402,446` — with
+  `app.worker.cli.start_extractor` replaced by an empty thread all 7 worker extraction tests
+  still pass (checked by the tests perspective), so AC17 and AC21 are not proven: nothing
+  asserts the fake LLM was entered, and no worker test asserts that `run` stores an extraction.
+  Fix: wait for `fake.received_messages` before counting polls / sending SIGTERM; add a `run`
+  test with a seeded tweet asserting an `extracted` row with `latency_seconds`.
+- **F9** `worth-fixing` `backend/tests/extraction/test_cli.py:67,70,538` (`_deps`,
+  `_no_db_deps`) — `ExtractionSettings()` reads `backend/.env`; once the owner puts keys there
+  (manual scenario 2) the config-error tests fail, other CLI tests build a real Langfuse handler
+  exporting to Langfuse Cloud, and `test_evaluate_config_error_names_variable` would call
+  OpenAI. The existing pattern (`tests/tweets/test_cli.py:57`) uses `_env_file=None`. Fix:
+  `ExtractionSettings(_env_file=None, ...)` and an autouse fixture clearing `LLM_*`,
+  `*_API_KEY`, `LANGFUSE_*`.
+- **F10** `worth-fixing` `backend/tests/extraction/test_service.py:89-103`,
+  `test_store.py:68` — the AC14/AC19 columns are never read back: a mutation storing
+  `attempts=1`, `error_class=None` on failure survives; there is no service-level validation
+  failure (`ExtractionOutputError`) case although the plan asks for four error kinds. Fix:
+  select the `Extraction` row and assert `attempts`, `error_class`, tokens and `cost_usd`;
+  parametrise over provider error, timeout, rate-limit-like error and malformed output.
+- **F11** `worth-fixing` `backend/tests/extraction/test_service.py`, `test_loop.py` — every
+  service and loop test passes `handler=None`; a mutation dropping the handler in
+  `extract_post` survives, so AC3 is unproven on the worker and `reextract` path. Fix: call
+  `extract_post` with a `RecordingHandler` and assert `x_id` and `prompt_version` metadata.
+- **F12** `worth-fixing` `backend/tests/extraction/test_store.py:155,175` — the
+  `DISTINCT ON` "latest extraction is failed" queries (`posts_for_reextract(failed=True)`,
+  `extraction_status().failed_posts`) are tested only with one row per post; an "any failed"
+  query would pass. Fix: add failed→extracted (excluded) and extracted→failed (included) posts
+  and a `finished_at` tie broken by `id`.
+- **F13** `worth-fixing` `specs/004-tweet-extraction/PLAN.md:362-383` — the fourth column
+  ("Red before the change") of the AC → steps matrix is empty for AC1–AC7 and AC9–AC22; chunk
+  note 3 mentions stub-and-restore reds for steps 9–11 that never reached the matrix. Fix:
+  record the red command and failure per row, or `n/a — written together with the module, not
+  seen red`.
+- **F14** `worth-fixing` `specs/004-tweet-extraction/SPEC.md:26-34,109-139,267-275` — the
+  SPEC (the contract) still lists the comparison run, ADR 0006 and the default model in Goal,
+  Scope and AC26/AC27 with no mark; the descoping lives only in PLAN and BACKLOG #13. Fix: a
+  one-line note under Scope and at AC26/AC27 pointing at the owner decision and BACKLOG #13.
+- **N1** `nit` `backend/app/extraction/cli.py:127-130` — `reextract --x-id <unknown>` prints
+  `posts processed: 0` and exits 0; a typo is indistinguishable from a no-op. Fix:
+  `fail("no post with X ID <id>")`; test.
+- **N2** `nit` `backend/app/extraction/cli.py:94-98,124-125,216-217` — `--since yesterday`
+  raises an uncaught `ValueError` traceback, and parsing happens after `build_spec`. Fix: parse
+  first, `fail("--since must be an ISO datetime")`.
+- **N3** `nit` `backend/app/extraction/evaluation/metrics.py:71`, `runner.py:67`,
+  `config.py:24`, `cli.py:35-39` — two docstrings (CONVENTIONS: no docstrings) and stale
+  comments ("Filled in by step 22", the Typer callback "only one command"). Fix: remove or
+  reword.
+- **N4** `nit` `backend/tests/extraction/test_config.py:278` — the second half of
+  `test_errors_never_carry_values` never reaches the missing-key path (`OPENAI_API_KEY` is still
+  set, it raises `LLM_MODEL must be set`); the worker reject tests carry no sentinel (plan step
+  13). Fix: `delenv` before the second call; sentinel assertions in the worker tests.
+- **N5** `nit` `backend/app/extraction/tracing.py`, `tests/worker/test_cli.py` — shutdown with
+  Langfuse enabled is untested; the SDK's `atexit` flush (5 s timeout) runs after the shared
+  5 s join deadline and could exceed the spec-002 10 s bound when Langfuse is unreachable.
+  Fix: a SIGTERM test with a handler pointed at `127.0.0.1:9`, or a check in manual scenario 4.
+
+#### Rejected
+
+- AC23 "about 150 real cases" (compliance): the database holds 107 posts; accepted in converge
+  pass 1.
+- `current_extraction` runs two statements vs AC15 "one query" (tests): the current extraction
+  is one query; the events are a necessary one-to-many read (chunk note 3).
+- "Failed post" means "latest extraction failed" rather than "no extracted row" (quality): this
+  is the binding plan definition (step 10, Worker `status`), not a defect.
+
+Left out: 20 nit findings
