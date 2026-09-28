@@ -426,7 +426,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       `before_cursor_execute` counter); `last_seen_id` empty / max; deadlines filter —
       files: `app/tweets/store.py`, the test file.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_store.py`
-- [ ] 10. Pure schedule: `app/tweets/schedule.py` (`PollRecord` dataclass, `mode`,
+- [x] 10. Pure schedule: `app/tweets/schedule.py` (`PollRecord` dataclass, `mode`,
       `interval`, `next_poll_at` as in "Polling schedule"). Tests
       `tests/tweets/test_schedule.py`: `test_interval_at_window_boundaries` (T−90 min − 1 s
       → 30 min / sparse; T−90 min → 20 s / window; deadline − 1 s → 20 s; deadline → 30 min;
