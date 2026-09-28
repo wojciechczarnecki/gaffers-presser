@@ -151,7 +151,10 @@ shown to users.
 `google` → `ChatGoogleGenerativeAI`, `openai` → `ChatOpenAI`, `anthropic` →
 `ChatAnthropic`, `openrouter` → `ChatOpenAI(base_url="https://openrouter.ai/api/v1")` with
 `structured_kwargs={"method": "function_calling"}` (not every OpenRouter model supports
-`json_schema`). Every model: `temperature=0`, the SDK's own retries off
+`json_schema`). Every model: `temperature=0` — except models that reject any temperature
+other than the default (OpenAI reasoning families: a model name, or for OpenRouter the part
+after `openai/`, starting with `gpt-5`, `o1`, `o3` or `o4`, kept in one
+`NO_TEMPERATURE_PREFIXES` tuple), which get no temperature argument at all — the SDK's own retries off
 (`max_retries=0`; the service counts attempts), a request timeout of 60 s, the key passed
 explicitly (pydantic-settings reads `.env` without exporting to `os.environ`).
 
@@ -288,9 +291,13 @@ Extraction:
   appends candidate cases with `reviewed: false`, `synthetic: false`, split by
   `x_id % 10 < 3 → dev` else `test`, expected events = the model's linked events, `tags: []`.
 - `evaluate --split dev|test --provider P --model M [--run-name NAME]
-  [--posts-per-month 1050] [--cases PATH] [--players PATH] [--output-dir DIR]`: refuses
-  (exit 1, counts the cases) when any case of the split has `reviewed: false`; requires
-  `USD_PLN_RATE`; each case's run is traced with `run_name` as Langfuse session/tag; writes
+  [--posts-per-month 1050] [--cases PATH] [--players PATH] [--output-dir DIR]`: checks in
+  this order, before any model is built — refuses (exit 1, counts the cases) when any case
+  of the split has `reviewed: false`; then requires `USD_PLN_RATE`; then resolves the LLM
+  config. Each case runs with the service's retry rule (3 attempts, back-off 2 s / 4 s); a
+  case still failing is recorded with its error class and no predicted events, counted in
+  an `errored_cases` field of the results, and the run continues (one rate-limit response
+  must not throw away a paid run); each case's run is traced with `run_name` as Langfuse session/tag; writes
   `<output-dir>/<run-name>.json` (metrics + per-case predictions) and prints a summary.
   Default `--posts-per-month 1050` = the SPEC's observed ~35 posts a day.
 
@@ -411,7 +418,9 @@ from `backend/`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_config.py tests/test_env_example.py tests/core/test_settings.py`
 - [ ] 3. `app/extraction/providers.py` (see Providers). Tests build each provider's model
       with a dummy key offline and assert the class, model name, `temperature == 0`,
-      retries off, the OpenRouter base URL and `structured_kwargs`; no network.
+      retries off, the OpenRouter base URL and `structured_kwargs`;
+      `test_reasoning_models_get_no_temperature` (`openai` + `gpt-5-nano` and `openrouter` +
+      `openai/o4-mini` → temperature not set; `openai` + `gpt-4.1-mini` → 0); no network.
       Files: `backend/app/extraction/providers.py`, `backend/tests/extraction/test_providers.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_providers.py`
 - [ ] 4. Prompts and the loader: `app/content/__init__.py` with `load_prompt(name)`
@@ -520,7 +529,8 @@ from `backend/`.
 - [ ] 11. `app/extraction/pricing.py` + `prices.toml`, and `app/extraction/service.py`:
       `extract_post(engine, runtime, post, clock, stop_event, handler, record_latency) ->
       StoredOutcome` — builds the index (`load_players`), runs the flow with the run config,
-      retries (see Worker), stores `extracted` / `failed` with tokens, cost, attempts,
+      retries (see Worker), stores `extracted` / `failed` with `started_at` / `finished_at`
+      taken from `clock.now()` (so the loop's fake-clock tests measure them), tokens, cost, attempts,
       prompt version, latency when `record_latency`. Tests (DB + `FakeChatModel`):
       `test_success_first_attempt`; `test_retries_then_success` (attempts = 2, sleeps
       [2]); `test_retries_exhausted_stores_failed` for a provider-like error, a timeout, a
@@ -611,7 +621,9 @@ from `backend/`.
       `test_evaluate_refuses_unreviewed` (exit 1, count printed, no model call);
       `test_evaluate_requires_pln_rate`; `test_evaluate_writes_results` (JSON has every
       AC25 metric, per-case predictions, run name, provider, model, prompt version);
-      `test_evaluate_only_selected_split`; `test_evaluate_traces_with_run_name`
+      `test_evaluate_only_selected_split`; `test_evaluate_case_error_is_recorded_and_run_continues`
+      (a fake raising on every attempt for one case: `errored_cases == 1`, the other cases
+      scored); `test_evaluate_traces_with_run_name`
       (`RecordingHandler` metadata carries the run name).
       Files: `backend/app/extraction/evaluation/runner.py`, `backend/app/extraction/cli.py`,
       `backend/tests/extraction/test_cli.py`.
@@ -623,8 +635,11 @@ from `backend/`.
       `uv run python -m app.extraction snapshot-players --output evals/extraction/v1/players-2026-27.json`,
       export every local post (`x_id`, handle, text, `created_at`, flags) into cases, label
       each one (expected events per the SPEC's definitions and relevance rule, `tags`),
-      add the synthetic cases, assign splits (real by the `x_id % 10` rule, synthetic
-      mostly to test so the per-type minimums hold), all `reviewed: false`. No real
+      add the synthetic cases, assign splits (real by the `x_id % 10` rule; each synthetic
+      case's split chosen so that both the test-split minimums hold and the dev share of
+      all cases lands in 25–35 % — the `x_id % 10` rule alone gives ~30 % of the real cases
+      with a spread of several points, so an all-test synthetic block could push the share
+      below 25 %), all `reviewed: false`. No real
       manager or league data enters the file (posts are public news posts).
       Files: `backend/evals/extraction/v1/cases.jsonl`,
       `backend/evals/extraction/v1/players-2026-27.json`,
@@ -683,6 +698,10 @@ from `backend/`.
   OpenRouter models without tool calling fail — `function_calling` is set, and a model that
   cannot do it simply fails the evaluation. `include_raw=True` returns errors in
   `parsing_error` instead of raising — the flow must turn that into `ExtractionOutputError`.
+- **Temperature on reasoning models.** OpenAI's cheap current models (`gpt-5-*`, `o*`)
+  reject `temperature=0` with a 400; without the `NO_TEMPERATURE_PREFIXES` exception the
+  OpenAI leg of the comparison (AC26) would fail on its first call. If the owner picks
+  another model that rejects the argument, the prefix tuple is the one place to extend.
 - **Langfuse SDK 4.x.** The handler's import path and client construction differ from
   v2-era docs; build it from the installed package, pass keys explicitly, flush on worker
   shutdown and after `evaluate`/`reextract`. Its exporter thread must not delay the 10 s
@@ -717,7 +736,10 @@ from `backend/`.
    — all green.
 2. `docker compose up -d && cd backend && uv run alembic upgrade head && uv run alembic downgrade -1 && uv run alembic upgrade head`
    — succeeds on the local database; `\dt` shows `extraction`, `extraction_event`.
-3. Worker without LLM variables:
+3. Worker without LLM variables (only when `backend/.env` sets no `LLM_PROVIDER` —
+   `env_ignore_empty=True` means an empty override cannot switch it off, and a configured
+   key would extract every local post at real cost; otherwise record "skipped — LLM
+   configured in .env"):
    `cd backend && timeout -s INT 20 uv run python -m app.worker run` — logs
    `extraction disabled` once, exits 0; `uv run python -m app.worker status` prints
    `Extraction: disabled`.
@@ -764,7 +786,62 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-28 — /pipeline:plan-review
+
+Anti-anchoring leads (SPEC read before the plan): providers behind one factory with our own
+retries; lookup-first linking; add-only migration; a polling loop in its own thread; an
+evaluation set that the implementer can only pre-label, with the model choice gated on the
+owner's run. The plan takes the same route; the differences examined were the dev/test
+split arithmetic, the evaluation runner's error handling and provider parameter quirks.
+
+Findings (severity counted before the fixes):
+
+| # | Severity | Finding | Change |
+|---|----------|---------|--------|
+| 1 | `major` | Providers set `temperature=0` on every model; OpenAI's current cheap models (`gpt-5-*`, `o*`) reject it with a 400, so the OpenAI leg of the AC26 comparison would fail on its first call. | Providers section: a `NO_TEMPERATURE_PREFIXES` exception (also for `openai/` models via OpenRouter); step 3 gains `test_reasoning_models_get_no_temperature`; a risk entry. |
+| 2 | `minor` | Step 20 put synthetic cases "mostly to test" while the composition test requires a 25–35 % dev share; with ~107 real cases split by `x_id % 10` the share can fall below 25 %, leaving a red test with no permitted fix. | Step 20: each synthetic case's split is chosen to satisfy both the test-split minimums and the dev-share window. |
+| 3 | `minor` | The `evaluate` runner did not say what happens when a case's model call fails; one rate-limit response could abort a paid comparison run. | CLI section: the service's retry rule per case, an errored case recorded with its error class and counted in `errored_cases`, the run continues; step 19 gains `test_evaluate_case_error_is_recorded_and_run_continues`. |
+| 4 | `minor` | The order of `evaluate`'s checks was open, while E2E automatic 6 expects the unreviewed refusal with no key and no `USD_PLN_RATE` set. | CLI section: reviewed check → `USD_PLN_RATE` → LLM config, all before a model is built. |
+| 5 | `minor` | AC18's test measures `started_at` on the fake clock, but the plan did not say the service takes timestamps from the injected clock. | Step 11: `started_at` / `finished_at` from `clock.now()`. |
+| 6 | `minor` | E2E automatic 3 ("worker without LLM variables") cannot blank a value set in `backend/.env` (`env_ignore_empty=True`); after the owner adds keys (manual 2) it would extract every local post at real cost. | E2E 3 runs only when `.env` sets no `LLM_PROVIDER`, otherwise recorded as skipped. |
+
+Checked and found correct (later stages need not repeat it):
+
+- **Coverage:** AC1–AC28 each have steps and a named proving test; the matrix matches the
+  steps; AC26 is the owner's manual run; AC27 is gated in Group 6 with a red-first test.
+- **Compliance:** CONVENTIONS (prompts in `app/content/` loaded by name, keyword checks
+  instead of whole-text comparison, fake model in `pytest`, evaluation outside `pytest`,
+  DB tests on the container, exact pins, credentials only as `SecretStr`, error class only
+  in logs) and DECISIONS rows 2026-09-26 (ADR 0001, LangChain interface, Langfuse, fake
+  LLM, module layout, one worker) and the five spec-004 rows of 2026-09-28 — none broken.
+  English prompts in `app/content/` are consistent with the rule (they are model
+  instructions, not user-facing Polish content).
+- **Code facts verified:** `tweet.x_id` is the BigInteger PK; `player` has the composite PK
+  (season, fpl_id) and rows are never deleted (the FK cannot break the reference sync);
+  migration `0003` is the head; `ConfigError` subclasses `CollectorError`, which
+  `_deps_from_settings` already turns into exit 1; the tweet thread's `join(timeout=5)` is
+  the spot the shared deadline replaces; the Dockerfile copies `backend/app` only, so
+  `aliases.toml`, `prices.toml` and the prompts ship and `backend/evals/` does not; the
+  cited existing tests exist; `compose.yaml` exists at the root.
+- **Minimality:** no `rapidfuzz`; `tomllib` from the standard library; the ingest's config,
+  loop, CLI and `DISTINCT ON` patterns reused; polling the table rather than coupling the
+  loops.
+- **Feasibility:** no forward dependencies between steps (schemas and fakes in Group 1
+  before the flow; `cli.py` created in step 15 before steps 16, 18, 19 extend it); the
+  migration is its own step, applied to the local database only; the SIGTERM bound is kept
+  by one shared join deadline.
+- **E2E:** automatic checks are runnable without keys or spend; the manual part is only
+  what needs the owner's keys, judgement or money.
+- **Testability:** every step has an `Automatic verification:` line with exact test paths.
+- **Groups:** six groups, each ending with finished work; Group 6 is an intended owner gate
+  (the implementer escalates when the review or result files are missing).
+- **Test-first:** the matrix has the fourth column; every step writes its test first.
+- **Owner summary:** the dependency and migration flags match the SPEC's owner decisions.
+- **Language:** English throughout, as `language: en` requires.
+
+Decision: the plan is ready — every AC is covered by a runnable proving test, the new
+dependencies and the add-only migration are accepted in SPEC → "Owner decisions", and all
+findings were fixable and fixed in the plan itself.
 
 ## Chunk notes
 
