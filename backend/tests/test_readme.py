@@ -23,6 +23,25 @@ TWEET_VARIABLES = [
     "X_API_BEARER_TOKEN",
 ]
 
+EXTRACTION_VARIABLES = [
+    "LLM_PROVIDER",
+    "LLM_MODEL",
+    "GOOGLE_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "OPENROUTER_API_KEY",
+    "LANGFUSE_PUBLIC_KEY",
+    "LANGFUSE_SECRET_KEY",
+    "LANGFUSE_HOST",
+    "USD_PLN_RATE",
+]
+
+EXTRACTION_COMMANDS = [
+    "app.extraction reextract",
+    "app.extraction prelabel",
+    "app.extraction evaluate",
+]
+
 
 def _development_section() -> str:
     text = README.read_text(encoding="utf-8")
@@ -54,6 +73,11 @@ def test_development_section_lists_commands():
     assert "app.tweets summary" in section
     for variable in TWEET_VARIABLES:
         assert variable in section, f"{variable!r} missing from the README Development section"
+    for variable in EXTRACTION_VARIABLES:
+        assert variable in section, f"{variable!r} missing from the README Development section"
+    for command in EXTRACTION_COMMANDS:
+        assert command in section, f"{command!r} missing from the README Development section"
+    assert "app.extraction snapshot-players" in section
 
 
 def test_deployment_doc_is_a_runbook():
@@ -77,3 +101,8 @@ def test_deployment_doc_is_a_runbook():
         assert term in section, f"{term!r} missing from docs/DEPLOYMENT.md"
     for variable in TWEET_VARIABLES:
         assert variable in section, f"{variable!r} missing from docs/DEPLOYMENT.md"
+    for variable in EXTRACTION_VARIABLES:
+        assert variable in section, f"{variable!r} missing from docs/DEPLOYMENT.md"
+    for command in EXTRACTION_COMMANDS:
+        assert command in section, f"{command!r} missing from docs/DEPLOYMENT.md"
+    assert "Extraction: disabled" in section

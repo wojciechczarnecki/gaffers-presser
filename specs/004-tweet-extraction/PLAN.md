@@ -386,7 +386,7 @@ every expected `fpl_id` exists in the snapshot.
 | AC25 | 17, 19 | `tests/extraction/evaluation/test_metrics.py`, `tests/extraction/test_cli.py::test_evaluate_*` | step 17 (metrics, stubbed `compute_metrics`): `uv run pytest -q tests/extraction/evaluation/test_metrics.py` → `assert (metrics.precision, metrics.recall, metrics.f1) == (1.0, 1.0, 1.0)` (15 failed, 4 passed); step 19 (stubbed `evaluate`): `uv run pytest -q tests/extraction/test_cli.py -k evaluate` → `assert 0 == 1` (`test_evaluate_refuses_unreviewed`, `test_evaluate_requires_pln_rate`, `test_evaluate_config_error_names_variable`), `FileNotFoundError` on the results file (`test_evaluate_writes_results`, `test_evaluate_only_selected_split`, `test_evaluate_case_error_is_recorded_and_run_continues`); `test_evaluate_traces_with_run_name` exercises the runner written in the same step and was not seen red |
 | AC26 | — | manual | manual — the owner's review and comparison run |
 | AC27 | 22 | `tests/extraction/test_config.py::test_default_model_matches_adr_0006` | |
-| AC28 | 2, 21 | `tests/test_env_example.py::test_every_extraction_setting_*`, `tests/test_readme.py` (extended) | |
+| AC28 | 2, 21 | `tests/test_env_example.py::test_every_extraction_setting_*`, `tests/test_readme.py` (extended) | step 21: `cd backend && uv run pytest -q tests/test_readme.py` → `AssertionError: 'LLM_PROVIDER' missing from the README Development section` and `... from docs/DEPLOYMENT.md` (2 failed) |
 
 ## Steps
 
@@ -646,7 +646,7 @@ from `backend/`.
       `backend/evals/extraction/results/.gitkeep`,
       `backend/tests/extraction/evaluation/test_eval_set.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/evaluation/test_eval_set.py`
-- [ ] 21. Documentation: `docs/DEPLOYMENT.md` (a new optional step after the tweet ingest:
+- [x] 21. Documentation: `docs/DEPLOYMENT.md` (a new optional step after the tweet ingest:
       the ten variables, placeholders only, Langfuse EU host, `status` output, credentials
       only in Railway variables), README `## Development` (running the extraction in the
       worker, `reextract`, `snapshot-players`, `prelabel`, the review flow for
