@@ -155,6 +155,32 @@ def test_no_account_error_with_local_time_past_midnight(monkeypatch):
     assert exc_info.value.retry_after == pytest.approx(20.0)
 
 
+def test_no_account_error_with_a_just_passed_time_is_now(monkeypatch):
+    class FixedDatetime:
+        @staticmethod
+        def now():
+            import datetime as real_datetime
+
+            return real_datetime.datetime(2026, 9, 28, 10, 0, 0, 400_000)
+
+        @staticmethod
+        def strptime(value, fmt):
+            import datetime as real_datetime
+
+            return real_datetime.datetime.strptime(value, fmt)
+
+    monkeypatch.setattr("app.tweets.sources.twscrape_source.datetime", FixedDatetime)
+
+    api = FakeApi([NoAccountError("locked")], pool=FakePool(next_available="10:00:00"))
+    source = _source(api)
+    try:
+        with pytest.raises(SourceRateLimitedError) as exc_info:
+            next(source.pages(1))
+    finally:
+        source.close()
+    assert exc_info.value.retry_after == 0.0
+
+
 def test_no_account_error_with_garbage_next_available_falls_back_to_none():
     api = FakeApi([NoAccountError("locked")], pool=FakePool(next_available="garbage"))
     source = _source(api)

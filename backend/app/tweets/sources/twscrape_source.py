@@ -23,6 +23,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 _QUEUE = "ListLatestTweetsTimeline"
+_PAST_TOLERANCE = timedelta(hours=12)
 
 
 def _retry_after_from_next_available(value: str | None) -> float | None:
@@ -42,6 +43,10 @@ def _retry_after_from_next_available(value: str | None) -> float | None:
         microsecond=0,
     )
     if target_dt <= now_local:
+        # twscrape truncates to whole seconds, so a lock ending within the second reads
+        # as already past; only a time far in the past means the lock ends tomorrow.
+        if now_local - target_dt <= _PAST_TOLERANCE:
+            return 0.0
         target_dt += timedelta(days=1)
     return (target_dt - now_local).total_seconds()
 

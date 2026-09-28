@@ -116,7 +116,7 @@ def test_failures_do_not_stop_polling(db):
     ]
     source = ScriptedSource(scripts)
     start = datetime(2026, 9, 28, 12, 0, 0, tzinfo=UTC)
-    end = start + timedelta(seconds=7201)
+    end = start + timedelta(seconds=5401)
     clock = FakeClock(start, end)
     stop_event = threading.Event()
     poller = TweetPoller(db, lambda: source, list_id=1, clock=clock, stop_event=stop_event)
@@ -125,11 +125,12 @@ def test_failures_do_not_stop_polling(db):
         poller.run()
 
     rows = _poll_times(db)
+    # The hour-long retry-after is capped at the sparse interval.
     assert [t for t, _outcome in rows] == [
         start,
         start + timedelta(seconds=1800),
         start + timedelta(seconds=3600),
-        start + timedelta(seconds=7200),
+        start + timedelta(seconds=5400),
     ]
     assert [outcome for _t, outcome in rows] == [
         "failed",

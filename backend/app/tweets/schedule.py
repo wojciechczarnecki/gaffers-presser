@@ -34,6 +34,7 @@ def next_poll_at(deadlines: list[datetime], last: PollRecord | None, now: dateti
         if last.started_at < window_start < candidate:
             candidate = window_start
     if last.outcome == "rate_limited" and last.retry_after_seconds is not None:
-        retry_at = last.finished_at + timedelta(seconds=last.retry_after_seconds)
+        wait = min(timedelta(seconds=last.retry_after_seconds), SPARSE_INTERVAL)
+        retry_at = last.finished_at + wait
         candidate = max(candidate, retry_at)
     return candidate

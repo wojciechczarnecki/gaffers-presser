@@ -64,6 +64,12 @@ def test_rate_limit_shorter_than_interval_keeps_interval():
     assert next_poll_at([DEADLINE], last, started) == started + timedelta(seconds=20)
 
 
+def test_rate_limit_wait_is_capped_at_the_sparse_interval():
+    started = DEADLINE - timedelta(minutes=45)
+    last = _poll(started, outcome="rate_limited", retry_after_seconds=86_400)
+    assert next_poll_at([DEADLINE], last, started) == started + timedelta(minutes=30)
+
+
 def test_no_last_poll_is_now():
     now = DEADLINE - timedelta(hours=2)
     assert next_poll_at([DEADLINE], None, now) == now
