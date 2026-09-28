@@ -395,7 +395,7 @@ from `backend/`.
 
 ### Group 1 — Dependencies, configuration, providers, prompts
 
-- [ ] 1. Add the dependencies with exact pins: `uv add` `langgraph`, `langchain-core`,
+- [x] 1. Add the dependencies with exact pins: `uv add` `langgraph`, `langchain-core`,
       `langchain-google-genai`, `langchain-openai`, `langchain-anthropic`, `langfuse`, then
       rewrite each to `==<resolved version>` in `backend/pyproject.toml` and `uv lock`.
       Test `tests/extraction/test_dependency.py` asserts each installed version equals the
