@@ -22,6 +22,8 @@ metrics:
   final_review_blockers: 1
   final_review_worth_fixing: 14
   final_review_nits: 5
+  findings_accepted: 15
+  findings_rejected: 5
 ---
 
 # SPEC 003 — Tweet sources, ingest and latency measurement

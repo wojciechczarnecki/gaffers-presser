@@ -97,7 +97,8 @@ uv run python -m app.tweets summary measurements/latency.jsonl --markdown  # per
 ```
 
 `backend/measurements/` is gitignored; a source with missing credentials is skipped with a
-message and the rest are still measured.
+message and the rest are still measured. Each record is appended to the output file as it is
+measured, so Ctrl-C stops the run early and still prints the summary of what was collected.
 
 The project is built with a spec-driven agentic workflow
 ([agentic-pipeline](https://github.com/wojciechczarnecki/agentic-pipeline)): every feature

@@ -277,26 +277,26 @@ Tweet ingest:
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 4, 5, 6 | `tests/tweets/sources/test_twitterapi_io.py::test_page_normalised`, `test_x_api.py::test_page_normalised`, `test_twscrape_source.py::test_page_normalised` | |
-| AC2 | 3, 4, 5, 6 | `tests/tweets/sources/test_paging.py`, `test_twitterapi_io.py::test_follows_cursor_until_last_seen`, `test_x_api.py::test_follows_token_until_last_seen`, `test_twscrape_source.py::test_stops_at_last_seen` | |
-| AC3 | 2, 7 | `tests/tweets/test_config.py`, `tests/tweets/sources/test_factory.py` | |
-| AC4 | 2, 13 | `tests/tweets/test_config.py::test_empty_source_disables_ingest`, `tests/worker/test_cli.py::test_run_without_tweet_source_logs_disabled_once` | |
-| AC5 | 4, 5, 6, 11 | `test_twitterapi_io.py::test_errors_never_carry_the_key`, `test_x_api.py::test_errors_never_carry_the_token`, `test_twscrape_source.py::test_errors_never_carry_the_cookies`, `tests/tweets/test_ingest.py::test_failed_poll_record_and_logs_carry_no_secret` | |
-| AC6 | 9 | `tests/tweets/test_store.py::test_same_post_stored_once_first_fetch_kept` | |
-| AC7 | 8, 9 | `tests/tweets/test_store.py::test_stored_post_fields` | |
-| AC8 | 8 | `tests/db/test_migrations.py::test_tweet_migration_adds_only_new_tables` (+ existing `test_upgrade_downgrade_upgrade`, `test_models_match_migration`) | |
-| AC9 | 10 | `tests/tweets/test_schedule.py::test_interval_at_window_boundaries` | |
-| AC10 | 12, 13 | `tests/worker/test_cli.py::test_polls_continue_while_a_deadline_snapshot_blocks` | |
-| AC11 | 10, 11, 12 | `tests/tweets/test_ingest.py::test_failed_poll_is_recorded`, `test_schedule.py::test_rate_limit_delays_next_poll`, `tests/tweets/test_loop.py::test_failures_do_not_stop_polling` | |
-| AC12 | 9, 11 | `tests/tweets/test_ingest.py::test_every_poll_leaves_a_record`, `tests/tweets/test_store.py::test_latest_success_per_source` | |
-| AC13 | 14 | `tests/worker/test_cli.py::test_status_shows_tweet_ingest` | |
-| AC14 | 12, 13 | `tests/tweets/test_loop.py::test_stop_event_ends_loop_promptly`, `tests/worker/test_cli.py::test_sigterm_with_tweet_ingest_exits_within_10_s` | |
-| AC15 | 16 | `tests/tweets/test_cli.py::test_measure_writes_one_record_per_source_and_post` | |
-| AC16 | 15 | `tests/tweets/test_measure.py::test_summary_percentiles` | |
-| AC17 | 16 | `tests/tweets/test_cli.py::test_measure_skips_source_without_credentials` | |
+| AC1 | 4, 5, 6 | `tests/tweets/sources/test_twitterapi_io.py::test_page_normalised`, `test_x_api.py::test_page_normalised`, `test_twscrape_source.py::test_page_normalised` | red confirmed at steps 4–6 before the code existed (chunk note 1; output not kept); the full-field assertions added in the final review (F11) were written against existing code |
+| AC2 | 3, 4, 5, 6 | `tests/tweets/sources/test_paging.py`, `test_twitterapi_io.py::test_follows_cursor_until_last_seen`, `test_x_api.py::test_follows_token_until_last_seen`, `test_twscrape_source.py::test_stops_at_last_seen` | red confirmed at steps 3–6 before the code existed (chunk note 1; output not kept); final review F5: `test_late_post_below_last_seen_is_kept` red before the paging fix |
+| AC3 | 2, 7 | `tests/tweets/test_config.py`, `tests/tweets/sources/test_factory.py` | red confirmed at steps 2, 7 before the code existed (chunk note 1; output not kept); final review F1: `test_empty_accounts_db_falls_back_to_a_working_default` red before the fix (`'' == '/tmp/…/twscrape-accounts.db'`) |
+| AC4 | 2, 13 | `tests/tweets/test_config.py::test_empty_source_disables_ingest`, `tests/worker/test_cli.py::test_run_without_tweet_source_logs_disabled_once` | red confirmed at step 2 before the code existed (chunk note 1; output not kept); step 13: not captured — see `## Deviations` (steps 12–17) |
+| AC5 | 4, 5, 6, 11 | `test_twitterapi_io.py::test_error_paths_never_carry_the_key`, `test_x_api.py::test_error_paths_never_carry_the_token`, `test_twscrape_source.py::test_error_paths_never_carry_the_cookies`, `test_twscrape_source.py::test_real_twscrape_pool_rate_limit_carries_no_cookie`, `tests/tweets/test_ingest.py::test_failed_poll_record_and_logs_carry_no_secret` | red confirmed at steps 4–6, 11 before the code existed (chunk note 1–2; output not kept) |
+| AC6 | 9 | `tests/tweets/test_store.py::test_same_post_stored_once_first_fetch_kept` | red confirmed at step 9 before the code existed (chunk note 2; output not kept) |
+| AC7 | 8, 9 | `tests/tweets/test_store.py::test_stored_post_fields` | red confirmed at steps 8–9 before the code existed (chunk note 2; output not kept) |
+| AC8 | 8 | `tests/db/test_migrations.py::test_tweet_migration_adds_only_new_tables` (+ existing `test_upgrade_downgrade_upgrade`, `test_models_match_migration`) | red confirmed at step 8 before the code existed (chunk note 2; output not kept) |
+| AC9 | 10 | `tests/tweets/test_schedule.py::test_interval_at_window_boundaries` | red confirmed at step 10 before the code existed (chunk note 2; output not kept) |
+| AC10 | 12, 13 | `tests/worker/test_cli.py::test_polls_continue_while_a_deadline_snapshot_blocks` | not captured — see `## Deviations` (steps 12–17) |
+| AC11 | 10, 11, 12 | `tests/tweets/test_ingest.py::test_every_poll_leaves_a_record_failed`, `test_schedule.py::test_rate_limit_delays_next_poll_beyond_interval`, `test_schedule.py::test_rate_limit_wait_is_capped_at_the_sparse_interval`, `tests/tweets/test_loop.py::test_failures_do_not_stop_polling`, `test_loop.py::test_unrecorded_poll_still_delays_the_next_one` | red confirmed at steps 10–11 before the code existed (chunk note 2; output not kept); step 12: not captured — see `## Deviations` (steps 12–17); final review F2/F3: `test_unrecorded_poll_still_delays_the_next_one`, `test_rate_limit_wait_is_capped_at_the_sparse_interval` and `test_no_account_error_with_a_just_passed_time_is_now` red before the fixes |
+| AC12 | 9, 11 | `tests/tweets/test_ingest.py::test_every_poll_leaves_a_record_success`, `…_rate_limited`, `…_failed`, `tests/tweets/test_store.py::test_latest_success_per_source` | red confirmed at steps 9, 11 before the code existed (chunk note 2; output not kept) |
+| AC13 | 14 | `tests/worker/test_cli.py::test_status_shows_tweet_ingest_disabled`, `…_never_polled`, `…_with_polls_in_window`, `test_status_shows_last_success_before_a_later_failure`, `test_status_shows_rate_limited_next_poll_in_sparse_mode` | not captured — see `## Deviations` (steps 12–17) |
+| AC14 | 12, 13 | `tests/tweets/test_loop.py::test_stop_event_ends_loop_promptly`, `tests/worker/test_cli.py::test_sigterm_with_tweet_ingest_exits_within_10_s` | not captured — see `## Deviations` (steps 12–17) |
+| AC15 | 16 | `tests/tweets/test_cli.py::test_measure_writes_one_record_per_source_and_post`, `test_measure_writes_each_record_as_it_is_recorded`, `test_measure_counts_a_failed_source_build_and_retries`, `test_measure_stops_and_keeps_records_on_ctrl_c` | not captured — see `## Deviations` (steps 12–17); final review F5/F6/F14: the four tests red before the `measure` rework (10 failures with the old `paging.py`/`cli.py`) |
+| AC16 | 15 | `tests/tweets/test_measure.py::test_summary_percentiles` | not captured — see `## Deviations` (steps 12–17) |
+| AC17 | 16 | `tests/tweets/test_cli.py::test_measure_skips_source_without_credentials` | not captured — see `## Deviations` (steps 12–17) |
 | AC18 | 18 | manual — the owner's measurement (manual scenario M1) | manual |
 | AC19 | 18 | n/a — an ADR written from the owner's measurement; checked in the final review | n/a — a document from measured data |
-| AC20 | 17 | `tests/test_readme.py::test_development_section_lists_commands`, `test_deployment_doc_is_a_runbook`, `tests/test_env_example.py` | |
+| AC20 | 17 | `tests/test_readme.py::test_development_section_lists_commands`, `test_deployment_doc_is_a_runbook`, `tests/test_env_example.py` | not captured — see `## Deviations` (steps 12–17) |
 
 ## Steps
 
@@ -1133,3 +1133,31 @@ Rejected:
   tweet `ConfigError` fail fast in `_deps_from_settings`, shared by `run` and `status`.
 
 Left out: 18 nit findings
+
+### 2026-09-28 — /pipeline:final-review (apply)
+
+Owner decision: F1–F15 accepted, F16–F20 (`nit`) rejected. Every accepted finding fixed;
+the new or changed tests were confirmed red against the unfixed code where they prove a
+code change (F1–F7), the rest tighten tests of existing behaviour.
+
+| Id | Change |
+|---|---|
+| F1 | `TweetSettings` sets `env_ignore_empty=True`, and the `TWSCRAPE_ACCOUNTS_DB` default is computed per instance; `test_factory.py::test_empty_accounts_db_falls_back_to_a_working_default` builds a real twscrape source from an empty value and reads its account back |
+| F2 | `TweetPoller` keeps the `PollRecord` returned by `poll_once` and schedules from the later of it and the stored row; `test_loop.py::test_unrecorded_poll_still_delays_the_next_one` |
+| F3 | a twscrape `next_available_at` up to 12 h in the past reads as `0`; `next_poll_at` caps a retry-after at `SPARSE_INTERVAL` (`test_failures_do_not_stop_polling` updated to the cap); new schedule and twscrape tests |
+| F4 | twitterapi.io and X API skip and log (class only) a post that fails to map; an X API `200` with `errors` and no `data` raises `SourceUnavailableError`; a non-list `tweets`/`data` stays a `SourcePayloadError` |
+| F5 | `collect_new` keeps every post on the fetched pages (`since_id` only ends paging); `measure` dedupes by a per-source set of seen IDs; `test_late_post_below_last_seen_is_kept`, `test_ingest.py::test_second_poll_pages_down_to_the_stored_max_id` |
+| F6 | `measure` retries a failed source build as a failed poll and prints its class once, appends and flushes each JSONL record as measured, and stops through an `Event` on Ctrl-C (daemon threads, short waits so the main thread handles SIGINT); three new `test_cli.py` tests |
+| F7 | twscrape fixtures re-scrubbed: IDs of ≥ 8 digits (also inside base64 node IDs) → synthetic `9999…`, image URLs and `t.co` links → `example.com`, locations empty, user creation dates and counters fixed; `tests/tweets/test_payloads.py` enforces it; payload README updated |
+| F8 | the AC → steps matrix's fourth column filled and the renamed proving tests updated |
+| F9 | `test_ingest.py` reads the single `tweet_poll` row back and asserts every field, `Tweet.first_fetched_at` and the row count |
+| F10 | replaced by `test_second_poll_pages_down_to_the_stored_max_id` (page 2 pulled only with the stored `since_id`) |
+| F11 | every field of one post per adapter asserted, including UTC `created_at` and both flags on each example |
+| F12 | the sentinel check (substring `sentinel-secret`) parametrised over every error path of each adapter, `post.raw` checked, a real twscrape pool path under `capfd`; X API ConnectError, 429 without / with a past reset, an empty page per adapter; the cookie `ConfigError` checked for the value |
+| F13 | status tests assert literal lines: a success followed by a later failure with the next poll in the future, and a rate-limited poll in sparse mode |
+| F14 | the measurement test asserts exact per-source `first_fetched_at`, `created_at` and latency for posts returned in later polls |
+| F15 | `test_loop.py` waits on events set from `make_source` and the clock's `sleep` instead of `time.sleep(0.05)` |
+
+`docs/DECISIONS.md` (spec 003 rows, not yet on `main`) amended with the retry-after cap, the
+paging rule and the skip of unmappable posts; `README.md` notes the incremental `measure`
+output and Ctrl-C. `<verify.command>` green: 340 passed.
