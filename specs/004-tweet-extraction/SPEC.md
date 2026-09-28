@@ -1,11 +1,13 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-09-28"
   - "spec-ready — 2026-09-28"
+  - "plan-draft — 2026-09-28"
 metrics:
   started_at: 2026-09-28T18:15
   escalations: 0
+  plan_steps: 22
 ---
 
 # SPEC 004 — LangGraph extraction flow, player linking and the default LLM
