@@ -1,0 +1,87 @@
+# Reviewed nicknames and short forms, checked against the local `player` table (season
+# 2026/27) and the `team` table before being committed. Adding an alias needs no code
+# change — see `app/extraction/linking.py::load_aliases`.
+#
+# A player alias whose (season, fpl_id) is not present in the season the index was built
+# for is ignored and logged once per process (linking.py). A team alias whose `short_name`
+# is not among the loaded teams is ignored silently.
+
+[[player]]
+alias = "Cold Palmer"
+season = "2026/27"
+fpl_id = 154
+
+[[player]]
+alias = "Starboy"
+season = "2026/27"
+fpl_id = 12
+
+[[player]]
+alias = "The Terminator"
+season = "2026/27"
+fpl_id = 411
+
+[[player]]
+alias = "The General"
+season = "2026/27"
+fpl_id = 15
+
+[[team]]
+alias = "Man United"
+short_name = "MUN"
+
+[[team]]
+alias = "Manchester United"
+short_name = "MUN"
+
+[[team]]
+alias = "Manchester Utd"
+short_name = "MUN"
+
+[[team]]
+alias = "Manchester City"
+short_name = "MCI"
+
+[[team]]
+alias = "Villa"
+short_name = "AVL"
+
+[[team]]
+alias = "Palace"
+short_name = "CRY"
+
+[[team]]
+alias = "Tottenham"
+short_name = "TOT"
+
+[[team]]
+alias = "Tottenham Hotspur"
+short_name = "TOT"
+
+[[team]]
+alias = "Forest"
+short_name = "NFO"
+
+[[team]]
+alias = "Nottingham Forest"
+short_name = "NFO"
+
+[[team]]
+alias = "Leeds United"
+short_name = "LEE"
+
+[[team]]
+alias = "Hull"
+short_name = "HUL"
+
+[[team]]
+alias = "Ipswich"
+short_name = "IPS"
+
+[[team]]
+alias = "Brighton and Hove Albion"
+short_name = "BHA"
+
+[[team]]
+alias = "Brighton & Hove Albion"
+short_name = "BHA"

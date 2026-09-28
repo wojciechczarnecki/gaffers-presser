@@ -453,7 +453,7 @@ from `backend/`.
 
 ### Group 2 — Linking and the flow
 
-- [ ] 6. `app/extraction/linking.py` and `aliases.toml` (see Linking). Tests on a synthetic
+- [x] 6. `app/extraction/linking.py` and `aliases.toml` (see Linking). Tests on a synthetic
       player table (invented players, including an "Ødegaard"-like accented name, two
       players sharing a surname in different teams, a web name like "B.Fernandes"):
       `test_accent_insensitive` ("Odegaard" → the "Ødegaard" player), web / first / last /
