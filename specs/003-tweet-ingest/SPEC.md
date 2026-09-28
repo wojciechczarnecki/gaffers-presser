@@ -3,6 +3,9 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-09-28"
   - "spec-ready — 2026-09-28"
+metrics:
+  started_at: 2026-09-28T12:43
+  escalations: 0
 ---
 
 # SPEC 003 — Tweet sources, ingest and latency measurement
