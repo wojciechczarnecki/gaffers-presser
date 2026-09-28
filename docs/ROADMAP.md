@@ -32,9 +32,9 @@ and each LLM step that produces data has an evaluation set with recorded results
       (out / doubt / benched / confirmed starter), certainty; Langfuse tracing; the
       extraction loop in the worker and the re-extraction CLI; evaluation tooling with the
       unreviewed set v1 (spec: [004](../specs/004-tweet-extraction/SPEC.md))
-- [ ] Extraction model comparison: review evaluation set v1, run the comparison across the
-      four providers, report, ADR 0006 and the default model (follow-up to spec 004,
-      AC26/AC27; BACKLOG #14)
+- [ ] Extraction model comparison: review evaluation set v1, compare models through
+      OpenRouter, report, ADR 0006, the default model and OpenRouter as the only provider
+      (follow-up to spec 004, AC26/AC27; BACKLOG #14)
 
 ## Stage 2 — RAG v1 and alert e-mails (portfolio MVP)
 
