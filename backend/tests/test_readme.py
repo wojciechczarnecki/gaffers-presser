@@ -1,7 +1,9 @@
 import re
 from pathlib import Path
 
-README = Path(__file__).resolve().parents[2] / "README.md"
+ROOT = Path(__file__).resolve().parents[2]
+README = ROOT / "README.md"
+DEPLOYMENT = ROOT / "docs" / "DEPLOYMENT.md"
 
 COMMANDS = [
     "reference-sync",
@@ -26,6 +28,10 @@ def _deployment_section() -> str:
     return match.group(1)
 
 
+def test_readme_deployment_section_links_the_runbook():
+    assert "docs/DEPLOYMENT.md" in _deployment_section()
+
+
 def test_development_section_lists_commands():
     section = _development_section()
     assert "docker compose up -d" in section
@@ -36,11 +42,11 @@ def test_development_section_lists_commands():
     assert "app.worker status" in section
 
 
-def test_deployment_section_is_a_runbook():
-    section = _deployment_section()
+def test_deployment_doc_is_a_runbook():
+    section = DEPLOYMENT.read_text(encoding="utf-8")
     # Built at runtime, not as a literal: tests/core/test_settings.py's
     # test_database_url_not_read_by_tests greps for that env var's name and allows it
-    # only in its own file; this check is about README wording, not about reading it.
+    # only in its own file; this check is about the runbook's wording, not about reading it.
     database_url_var = "DATABASE" + "_URL"
     for term in (
         "pgvector/pgvector:pg16",
@@ -54,4 +60,4 @@ def test_deployment_section_is_a_runbook():
         "alembic upgrade head",
         "catch-up",
     ):
-        assert term in section, f"{term!r} missing from the Deployment section"
+        assert term in section, f"{term!r} missing from docs/DEPLOYMENT.md"

@@ -20,6 +20,7 @@ Instructions for agents working in this repository.
 | `docs/DECISIONS.md` | binding design decisions — before designing something differently |
 | `docs/adr/` | the reasoning behind decisions that had real alternatives; linked from DECISIONS |
 | `docs/CONVENTIONS.md` | code style, tests, git — when writing code |
+| `docs/DEPLOYMENT.md` | the Railway deployment runbook — when changing the image, `railway.json` or environment variables |
 | `specs/` | SPEC + PLAN per feature — see the workflow below |
 
 ## Agentic workflow
