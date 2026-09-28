@@ -467,7 +467,7 @@ from `backend/`.
       Files: `backend/app/extraction/linking.py`, `backend/app/extraction/aliases.toml`,
       `backend/tests/extraction/test_linking.py`, `backend/tests/extraction/test_players.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_linking.py tests/extraction/test_players.py`
-- [ ] 7. `app/extraction/flow.py` (see Flow). Tests with `FakeChatModel` and a synthetic
+- [x] 7. `app/extraction/flow.py` (see Flow). Tests with `FakeChatModel` and a synthetic
       index: `test_typed_result`; `test_no_events_is_empty_result`;
       `test_leaked_xi_gives_starters_and_benched`; `test_out_and_starts_gives_two_events`;
       `test_repost_is_extracted_with_author` (the prompt the fake received carries the

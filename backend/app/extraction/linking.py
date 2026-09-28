@@ -154,6 +154,8 @@ class PlayerIndex:
             if key:
                 self._by_key[key].add(player)
 
+        self._team_by_fpl_id: dict[int, TeamRecord] = {team.fpl_id: team for team in teams}
+
         self._teams_by_key: dict[str, TeamRecord] = {}
         for team in teams:
             for key in (normalise(team.name), normalise(team.short_name)):
@@ -167,6 +169,9 @@ class PlayerIndex:
             key = normalise(team_alias.alias)
             if key:
                 self._teams_by_key.setdefault(key, team)
+
+    def team_for(self, team_fpl_id: int) -> TeamRecord | None:
+        return self._team_by_fpl_id.get(team_fpl_id)
 
     def resolve(self, mention: str, team: str | None) -> list[PlayerRecord]:
         candidates = self._by_key.get(normalise(mention))
