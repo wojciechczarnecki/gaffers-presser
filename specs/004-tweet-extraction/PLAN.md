@@ -785,6 +785,7 @@ Record the results in this section under "End-to-end verification results".
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
 - 2026-09-28 · implement (Group 2, step 8) · Question: `langfuse.langchain.CallbackHandler` (pinned `langfuse==4.15.6`) imports the `langchain` package at load time, which is not on the accepted dependency list. Decision: add `langchain` as an accepted dependency with an exact pin matching the major version of `langchain-core`; the tracing design of the plan stays unchanged.
+- 2026-09-28 · implement (Group 6, step 22) · Question: step 22 (model comparison report, ADR 0006, default-model config) needs owner-reviewed cases (all 136 are `reviewed: false`), filled `prices.toml` and result files per provider, none of which exist. Decision: descope step 22 into a follow-up spec; 004 finishes without the comparison report, ADR 0006 and the default-model config. The evaluation tooling and the unreviewed case set from steps 16–21 stay in 004. Record the follow-up in the roadmap/backlog.
 
 ## Review log
 
