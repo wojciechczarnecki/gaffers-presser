@@ -91,6 +91,18 @@ class RecordingHandler(BaseCallbackHandler):
     def __init__(self) -> None:
         self.chat_model_starts: list[dict[str, Any]] = []
         self.llm_ends: list[dict[str, Any]] = []
+        self._parents: dict[UUID, UUID | None] = {}
+
+    def on_chain_start(
+        self,
+        serialized: dict[str, Any],
+        inputs: Any,
+        *,
+        run_id: UUID,
+        parent_run_id: UUID | None = None,
+        **kwargs: Any,
+    ) -> None:
+        self._parents[run_id] = parent_run_id
 
     def on_chat_model_start(
         self,
@@ -103,6 +115,7 @@ class RecordingHandler(BaseCallbackHandler):
         metadata: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
+        self._parents[run_id] = parent_run_id
         self.chat_model_starts.append(
             {
                 "run_id": run_id,
@@ -111,6 +124,17 @@ class RecordingHandler(BaseCallbackHandler):
                 "messages": messages,
             }
         )
+
+    def root_run_id(self, run_id: UUID) -> UUID:
+        seen: set[UUID] = set()
+        while run_id in self._parents and self._parents[run_id] is not None:
+            parent = self._parents[run_id]
+            assert parent is not None
+            if parent in seen:
+                break
+            seen.add(parent)
+            run_id = parent
+        return run_id
 
     def on_llm_end(
         self,

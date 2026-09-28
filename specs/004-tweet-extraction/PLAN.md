@@ -479,7 +479,7 @@ from `backend/`.
       `test_invalid_output_raises` (`ExtractionOutputError`).
       Files: `backend/app/extraction/flow.py`, `backend/tests/extraction/test_flow.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_flow.py`
-- [ ] 8. `app/extraction/tracing.py`: `make_handler(tracing: TracingConfig | None)` →
+- [x] 8. `app/extraction/tracing.py`: `make_handler(tracing: TracingConfig | None)` →
       Langfuse's LangChain `CallbackHandler` (client built with the explicit keys and host,
       per the installed SDK's API) or `None`; `run_config(x_id, prompt_version, provider,
       model, handler, run_name=None) -> RunnableConfig` (callbacks, `run_name`

@@ -12,6 +12,7 @@ _PACKAGES = [
     "langchain-openai",
     "langchain-anthropic",
     "langfuse",
+    "langchain",
 ]
 
 
