@@ -655,6 +655,14 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
   instead. Keep `httpx`, or switch to `tweepy` / `xdk`? · **Decision: keep plain `httpx`**
   (one GET endpoint with a bearer token; raw JSON and `MockTransport` tests as in the FPL
   client; no extra dependencies; `xdk` is still 0.x). This supersedes the SPEC wording.
+- 2026-09-28 · implement (escalation, step 18) · The owner's M1 latency measurement
+  (`backend/measurements/latency.jsonl`) is missing, so step 18 (latency report + ADR 0005,
+  AC18/AC19) cannot run. Run M1 now, or defer? · **Decision: defer the measurement.** Step 18
+  and AC18/AC19 leave this spec: do not write the report or ADR 0005 and do not invent
+  numbers; mark step 18 as deferred in the plan, add a `docs/BACKLOG.md` entry (M1 run +
+  latency report + ADR 0005 choosing the default source, trigger: before the tweet ingest is
+  relied on in production), and keep the ROADMAP item honest about the missing measurement.
+  The implementation is complete with steps 1–17; the stage may finish as `implemented`.
 
 ## Review log
 
