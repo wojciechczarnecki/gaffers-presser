@@ -41,6 +41,7 @@ Langfuse, uv; hosted on Railway.
 | [docs/ROADMAP.md](docs/ROADMAP.md) | stages and their status |
 | [docs/DECISIONS.md](docs/DECISIONS.md) and [docs/adr/](docs/adr/) | design decisions and their reasoning |
 | [docs/CONVENTIONS.md](docs/CONVENTIONS.md) | code, tests, git |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | deployment runbook (Railway) |
 
 ## Development
 
@@ -66,12 +67,26 @@ uv run python -m app.fpl results-sync --gameweek N
 uv run python -m app.fpl backfill
 ```
 
+Running the worker locally — schedules the jobs above from the gameweek calendar instead of
+running them by hand:
+
+```bash
+uv run python -m app.worker run       # runs until stopped (Ctrl-C / SIGTERM)
+uv run python -m app.worker status    # latest run of each job and the next planned actions
+```
+
 `FPL_LEAGUE_IDS` never holds a real league ID in the repository, logs or tests — see
 `backend/.env.example`.
 
 The project is built with a spec-driven agentic workflow
 ([agentic-pipeline](https://github.com/wojciechczarnecki/agentic-pipeline)): every feature
 goes from an approved spec through a reviewed plan and implementation to a pull request.
+
+## Deployment
+
+The worker runs on Railway: the Docker image from `backend/Dockerfile`, with `railway.json`
+at the repository root. The owner deploys by merging to `main`; the step-by-step runbook
+is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## License
 

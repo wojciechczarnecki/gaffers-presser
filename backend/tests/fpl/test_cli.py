@@ -27,7 +27,7 @@ LEAGUE_1 = 987654301
 @pytest.fixture
 def cli(db):
     def invoke(*args, client, league_ids_raw="", now=NOW):
-        deps = Deps(engine=db, client=client, league_ids_raw=league_ids_raw, now=now)
+        deps = Deps(engine=db, client=client, league_ids_raw=league_ids_raw, clock=lambda: now)
         return CliRunner().invoke(app, list(args), obj=deps)
 
     return invoke

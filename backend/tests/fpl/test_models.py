@@ -29,19 +29,25 @@ TABLES_WITH_SEASON_FK_NOT_IN_PK = {"player_flag_change", "raw_payload"}
 
 
 def test_table_names_match_schema():
+    # SQLModel.metadata is process-wide, so other business modules (e.g. app.worker)
+    # may add their own tables to it; this test checks only the FPL domain's tables.
     names = set(SQLModel.metadata.tables.keys())
-    assert names == EXPECTED_TABLE_NAMES
+    assert EXPECTED_TABLE_NAMES <= names
 
 
 def test_every_datetime_column_is_timezone_aware():
-    for table in SQLModel.metadata.tables.values():
+    for name, table in SQLModel.metadata.tables.items():
+        if name not in EXPECTED_TABLE_NAMES:
+            continue
         for column in table.columns:
             if isinstance(column.type, DateTime):
                 assert column.type.timezone is True, f"{table.name}.{column.name}"
 
 
 def test_every_table_is_keyed_or_linked_by_season():
-    for table in SQLModel.metadata.tables.values():
+    for name, table in SQLModel.metadata.tables.items():
+        if name not in EXPECTED_TABLE_NAMES:
+            continue
         if table.name in TABLES_WITHOUT_SEASON_FK:
             continue
         pk_columns = {c.name for c in table.primary_key.columns}

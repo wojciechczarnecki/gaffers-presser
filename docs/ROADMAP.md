@@ -9,11 +9,16 @@ and each LLM step that produces data has an evaluation set with recorded results
 
 ## Stage 0 — FPL data collector
 
-- [ ] Collector for players, teams, fixtures, gameweeks and the configured classic leagues
-      (standings, managers, picks, transfers, chips); snapshots around each deadline;
-      post-gameweek ground truth (starts, minutes, points)
-      (specs: [001](../specs/001-fpl-collector/SPEC.md) — foundation, jobs and backfill;
-      002 — worker, schedule, deployment)
+- [x] Collector for players, teams, fixtures, gameweeks and the configured classic leagues
+      (standings, managers, picks, transfers, chips); deadline snapshots; post-gameweek
+      ground truth (starts, minutes, points) — on-demand CLI jobs and a backfill
+      (spec: [001](../specs/001-fpl-collector/SPEC.md))
+- [x] Worker running the jobs on a deadline-driven schedule, with a job run log, catch-up on
+      start, a container image and Railway configuration
+      (spec: [002](../specs/002-fpl-worker/SPEC.md))
+- [ ] Production deployment on Railway: the owner follows the runbook and confirms the
+      first deploy (spec: [002](../specs/002-fpl-worker/SPEC.md), AC21; planned for about
+      2026-10-04)
 
 ## Stage 1 — Tweet ingest and extraction
 
