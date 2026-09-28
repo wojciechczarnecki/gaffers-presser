@@ -1,5 +1,9 @@
+import os
+import signal
 import subprocess
 import sys
+import threading
+import time
 from datetime import UTC, datetime, timedelta
 
 from typer.testing import CliRunner
@@ -60,49 +64,146 @@ def _settings(**overrides) -> TweetSettings:
     return TweetSettings(**fields)
 
 
+def _measure(deps: MeasureDeps, output, *args: str):
+    return CliRunner().invoke(
+        app,
+        ["measure", "--interval-seconds", "20", "--output", str(output), *args],
+        obj=deps,
+    )
+
+
 def test_measure_writes_one_record_per_source_and_post(tmp_path):
-    post_new = post(2001, created_at=START + timedelta(seconds=5))
+    post_new = post(
+        2001, author_handle="synthetic_leaker_1", created_at=START + timedelta(seconds=5)
+    )
+    post_late = post(2000, created_at=START + timedelta(seconds=10))
     post_old = post(1000, created_at=START - timedelta(seconds=5))
-    src_a = ScriptedSource("twscrape", [[[post_old, post_new]], [[post_new]], []])
-    src_b = ScriptedSource("x_api", [[[post_new]], [], []])
+    src_a = ScriptedSource(
+        "twscrape", [[[post_old]], [[post_new, post_old]], [[post_new, post_late, post_old]]]
+    )
+    src_b = ScriptedSource("x_api", [[[]], [[]], [[post_new]]])
     sources = {"twscrape": src_a, "x_api": src_b}
 
     deps = MeasureDeps(
         settings=_settings(),
         build_source=lambda name, settings: sources[name],
-        clock_factory=lambda: SeqClock(START),
+        clock_factory=lambda stop: SeqClock(START),
     )
 
     output = tmp_path / "latency.jsonl"
-    result = CliRunner().invoke(
-        app,
-        [
-            "measure",
-            "--interval-seconds",
-            "20",
-            "--duration-minutes",
-            "1",
-            "--output",
-            str(output),
-            "--source",
-            "twscrape",
-            "--source",
-            "x_api",
-        ],
-        obj=deps,
+    result = _measure(
+        deps, output, "--duration-minutes", "1", "--source", "twscrape", "--source", "x_api"
     )
 
     assert result.exit_code == 0, result.output
     records, poll_counts = read_records(output)
-    keys = {(r.source, r.x_id) for r in records}
-    assert ("twscrape", 2001) in keys
-    assert ("x_api", 2001) in keys
-    assert ("twscrape", 1000) not in keys  # older than the measurement start
-    assert len([r for r in records if r.x_id == 2001 and r.source == "twscrape"]) == 1
+    by_key = {(r.source, r.x_id): r for r in records}
+    assert len(records) == len(by_key) == 3
+    assert ("twscrape", 1000) not in by_key  # older than the measurement start
+
+    twscrape_new = by_key[("twscrape", 2001)]
+    assert twscrape_new.author_handle == "synthetic_leaker_1"
+    assert twscrape_new.created_at == START + timedelta(seconds=5)
+    assert twscrape_new.first_fetched_at == START + timedelta(seconds=20)
+    assert twscrape_new.latency_seconds == 15.0
+
+    # A post that became visible after a newer one is still measured.
+    twscrape_late = by_key[("twscrape", 2000)]
+    assert twscrape_late.first_fetched_at == START + timedelta(seconds=40)
+    assert twscrape_late.latency_seconds == 30.0
+
+    x_api_new = by_key[("x_api", 2001)]
+    assert x_api_new.first_fetched_at == START + timedelta(seconds=40)
+    assert x_api_new.latency_seconds == 35.0
+
     assert src_a.closed and src_b.closed
     counts_by_source = {c.source: c for c in poll_counts}
-    assert counts_by_source["twscrape"].polls == 3
-    assert counts_by_source["twscrape"].failed_polls == 0
+    assert counts_by_source["twscrape"] == PollCounts("twscrape", polls=3, failed_polls=0)
+    assert counts_by_source["x_api"] == PollCounts("x_api", polls=3, failed_polls=0)
+
+
+def test_measure_writes_each_record_as_it_is_recorded(tmp_path):
+    output = tmp_path / "latency.jsonl"
+    seen_on_second_poll: list[str] = []
+
+    class PeekingSource(ScriptedSource):
+        def pages(self, list_id: int):
+            if self._i == 1:
+                seen_on_second_poll.append(output.read_text(encoding="utf-8"))
+            return super().pages(list_id)
+
+    src = PeekingSource("twscrape", [[[post(2001, created_at=START)]], [[]]])
+    deps = MeasureDeps(
+        settings=_settings(),
+        build_source=lambda name, settings: src,
+        clock_factory=lambda stop: SeqClock(START),
+    )
+
+    result = _measure(deps, output, "--duration-minutes", "0.5", "--source", "twscrape")
+
+    assert result.exit_code == 0, result.output
+    assert len(seen_on_second_poll) == 1
+    assert '"x_id": "2001"' in seen_on_second_poll[0]
+
+
+def test_measure_counts_a_failed_source_build_and_retries(tmp_path):
+    src = ScriptedSource("twscrape", [[]])
+    calls = {"n": 0}
+
+    def build(name, settings):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("boom")
+        return src
+
+    deps = MeasureDeps(
+        settings=_settings(), build_source=build, clock_factory=lambda stop: SeqClock(START)
+    )
+
+    output = tmp_path / "latency.jsonl"
+    result = _measure(deps, output, "--duration-minutes", "1", "--source", "twscrape")
+
+    assert result.exit_code == 0, result.output
+    assert "twscrape: source build failed: RuntimeError" in result.output
+    _records, poll_counts = read_records(output)
+    assert poll_counts == [PollCounts("twscrape", polls=3, failed_polls=1)]
+    assert src.closed
+
+
+def test_measure_stops_and_keeps_records_on_ctrl_c(tmp_path):
+    class InterruptingSource(ScriptedSource):
+        def pages(self, list_id: int):
+            if self._i == 1:
+                os.kill(os.getpid(), signal.SIGINT)
+            return super().pages(list_id)
+
+    class StopWaitingClock(SeqClock):
+        def __init__(self, start: datetime, stop: threading.Event) -> None:
+            super().__init__(start)
+            self._stop = stop
+
+        def sleep(self, seconds: float) -> None:
+            self._stop.wait(timeout=0.01)
+            super().sleep(seconds)
+
+    src = InterruptingSource("twscrape", [[[post(2001, created_at=START)]], [[]]])
+    deps = MeasureDeps(
+        settings=_settings(),
+        build_source=lambda name, settings: src,
+        clock_factory=lambda stop: StopWaitingClock(START, stop),
+    )
+
+    output = tmp_path / "latency.jsonl"
+    started = time.monotonic()
+    result = _measure(deps, output, "--duration-minutes", "60", "--source", "twscrape")
+
+    assert result.exit_code == 0, result.output
+    assert time.monotonic() - started < 5, result.output
+    assert "interrupted" in result.output
+    records, poll_counts = read_records(output)
+    assert [r.x_id for r in records] == [2001]
+    assert poll_counts == [PollCounts("twscrape", polls=2, failed_polls=0)]
+    assert src.closed
 
 
 def test_measure_skips_source_without_credentials(tmp_path):
@@ -115,7 +216,7 @@ def test_measure_skips_source_without_credentials(tmp_path):
             twitterapi_io_key="key",
         ),
         build_source=lambda name, settings: src,
-        clock_factory=lambda: SeqClock(START),
+        clock_factory=lambda stop: SeqClock(START),
     )
 
     output = tmp_path / "latency.jsonl"
@@ -146,7 +247,7 @@ def test_measure_counts_failed_polls_and_still_finishes(tmp_path):
     deps = MeasureDeps(
         settings=_settings(),
         build_source=lambda name, settings: src,
-        clock_factory=lambda: SeqClock(START),
+        clock_factory=lambda stop: SeqClock(START),
     )
 
     output = tmp_path / "latency.jsonl"

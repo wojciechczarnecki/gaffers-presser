@@ -80,7 +80,7 @@ def test_stops_at_last_seen():
     finally:
         source.close()
 
-    assert [p.x_id for p in result] == [2999, 3001, 3002, 3003]
+    assert [p.x_id for p in result] == [2997, 2998, 2999, 3001, 3002, 3003]
     assert api.closed is True
 
 

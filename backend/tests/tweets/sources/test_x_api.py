@@ -81,7 +81,7 @@ def test_follows_token_until_last_seen():
     finally:
         source.close()
 
-    assert [p.x_id for p in result] == [1999, 2000, 2001, 2002]
+    assert [p.x_id for p in result] == [1997, 1998, 1999, 2000, 2001, 2002]
     assert len(fake.requests) == 2
 
 

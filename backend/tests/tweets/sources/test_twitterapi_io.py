@@ -72,7 +72,7 @@ def test_follows_cursor_until_last_seen():
     finally:
         source.close()
 
-    assert [p.x_id for p in result] == [999, 1000, 1001, 1002]
+    assert [p.x_id for p in result] == [997, 998, 999, 1000, 1001, 1002]
     assert len(fake.requests) == 2
 
 

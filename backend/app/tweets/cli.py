@@ -1,10 +1,9 @@
 import threading
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Annotated, Protocol
+from typing import Annotated, Protocol, TextIO
 
 import typer
 
@@ -24,6 +23,9 @@ from app.tweets.sources import SOURCE_NAMES, build_source
 from app.tweets.sources.base import TweetSource
 from app.tweets.sources.paging import collect_new
 
+_STOP_TIMEOUT_SECONDS = 15.0
+_JOIN_POLL_SECONDS = 0.2
+
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
@@ -38,18 +40,21 @@ class Clock(Protocol):
 
 
 class SystemClock:
+    def __init__(self, stop_event: threading.Event) -> None:
+        self._stop_event = stop_event
+
     def now(self) -> datetime:
         return datetime.now(UTC)
 
     def sleep(self, seconds: float) -> None:
-        time.sleep(seconds)
+        self._stop_event.wait(seconds)
 
 
 @dataclass(frozen=True)
 class MeasureDeps:
     settings: TweetSettings
     build_source: Callable[[str, TweetSettings], TweetSource] = build_source
-    clock_factory: Callable[[], Clock] = SystemClock
+    clock_factory: Callable[[threading.Event], Clock] = SystemClock
 
 
 def get_deps(ctx: typer.Context) -> MeasureDeps:
@@ -64,6 +69,26 @@ def _list_id(settings: TweetSettings) -> int:
     return int(settings.x_list_id)
 
 
+class RecordWriter:
+    def __init__(self, stream: TextIO) -> None:
+        self._stream = stream
+        self._lock = threading.Lock()
+        self.records: list[LatencyRecord] = []
+
+    def write(self, record: LatencyRecord) -> None:
+        with self._lock:
+            self.records.append(record)
+            self._write_line(record_to_json(record))
+
+    def write_counts(self, counts: PollCounts) -> None:
+        with self._lock:
+            self._write_line(poll_counts_to_json(counts))
+
+    def _write_line(self, line: str) -> None:
+        self._stream.write(line + "\n")
+        self._stream.flush()
+
+
 def _measure_one(
     name: str,
     make_source: Callable[[], TweetSource],
@@ -72,38 +97,53 @@ def _measure_one(
     start: datetime,
     deadline: datetime,
     clock: Clock,
-    records: list[LatencyRecord],
-    records_lock: threading.Lock,
+    stop_event: threading.Event,
+    writer: RecordWriter,
 ) -> PollCounts:
-    source = make_source()
+    source: TweetSource | None = None
     since_id: int | None = None
+    seen: set[int] = set()
     polls = 0
     failed_polls = 0
+    build_error_reported = False
     try:
-        while clock.now() < deadline:
+        while clock.now() < deadline and not stop_event.is_set():
             polls += 1
             try:
+                if source is None:
+                    try:
+                        source = make_source()
+                    except Exception as exc:
+                        if not build_error_reported:
+                            build_error_reported = True
+                            typer.echo(
+                                f"{name}: source build failed: {type(exc).__name__}", err=True
+                            )
+                        raise
                 posts = collect_new(source, list_id, since_id)
                 fetched_at = clock.now()
                 for post in posts:
                     since_id = post.x_id if since_id is None else max(since_id, post.x_id)
+                    if post.x_id in seen:
+                        continue
+                    seen.add(post.x_id)
                     if post.created_at >= start:
-                        with records_lock:
-                            records.append(
-                                LatencyRecord(
-                                    source=name,
-                                    x_id=post.x_id,
-                                    author_handle=post.author_handle,
-                                    created_at=post.created_at,
-                                    first_fetched_at=fetched_at,
-                                    latency_seconds=(fetched_at - post.created_at).total_seconds(),
-                                )
+                        writer.write(
+                            LatencyRecord(
+                                source=name,
+                                x_id=post.x_id,
+                                author_handle=post.author_handle,
+                                created_at=post.created_at,
+                                first_fetched_at=fetched_at,
+                                latency_seconds=(fetched_at - post.created_at).total_seconds(),
                             )
+                        )
             except Exception:
                 failed_polls += 1
             clock.sleep(interval_seconds)
     finally:
-        source.close()
+        if source is not None:
+            source.close()
     return PollCounts(source=name, polls=polls, failed_polls=failed_polls)
 
 
@@ -139,45 +179,61 @@ def measure(
             continue
         active.append(name)
 
-    start = deps.clock_factory().now()
+    stop_event = threading.Event()
+    start = deps.clock_factory(stop_event).now()
     deadline = start + timedelta(minutes=duration_minutes)
-    records: list[LatencyRecord] = []
-    records_lock = threading.Lock()
     poll_counts: dict[str, PollCounts] = {}
     poll_counts_lock = threading.Lock()
 
-    def run_source(name: str) -> None:
-        counts = _measure_one(
-            name,
-            lambda: deps.build_source(name, deps.settings),
-            list_id,
-            interval_seconds,
-            start,
-            deadline,
-            deps.clock_factory(),
-            records,
-            records_lock,
-        )
-        with poll_counts_lock:
-            poll_counts[name] = counts
-
-    threads = [
-        threading.Thread(target=run_source, args=(name,), name=f"measure-{name}") for name in active
-    ]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-
-    lines = [record_to_json(record) for record in sorted(records, key=lambda r: (r.source, r.x_id))]
-    for name in active:
-        counts = poll_counts.get(name, PollCounts(name, polls=0, failed_polls=0))
-        lines.append(poll_counts_to_json(counts))
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    with output.open("w", encoding="utf-8") as stream:
+        writer = RecordWriter(stream)
 
-    summaries = summarise(records, [poll_counts[name] for name in active if name in poll_counts])
-    typer.echo(format_summary(summaries, markdown=False))
+        def run_source(name: str, done: threading.Event) -> None:
+            try:
+                counts = _measure_one(
+                    name,
+                    lambda: deps.build_source(name, deps.settings),
+                    list_id,
+                    interval_seconds,
+                    start,
+                    deadline,
+                    deps.clock_factory(stop_event),
+                    stop_event,
+                    writer,
+                )
+                with poll_counts_lock:
+                    poll_counts[name] = counts
+            finally:
+                done.set()
+
+        done_events = {name: threading.Event() for name in active}
+        for name in active:
+            threading.Thread(
+                target=run_source,
+                args=(name, done_events[name]),
+                name=f"measure-{name}",
+                daemon=True,
+            ).start()
+        try:
+            # Short waits let the main thread run the SIGINT handler even when the signal
+            # lands on a measuring thread.
+            for done in done_events.values():
+                while not done.wait(timeout=_JOIN_POLL_SECONDS):
+                    pass
+        except KeyboardInterrupt:
+            typer.echo("interrupted: stopping the measurement", err=True)
+            stop_event.set()
+            for done in done_events.values():
+                done.wait(timeout=_STOP_TIMEOUT_SECONDS)
+
+        with poll_counts_lock:
+            finished = [poll_counts[name] for name in active if name in poll_counts]
+        for counts in finished:
+            writer.write_counts(counts)
+        records = list(writer.records)
+
+    typer.echo(format_summary(summarise(records, finished), markdown=False))
 
 
 @app.command(help="Print a per-source summary of a measurement file written by `measure`.")
