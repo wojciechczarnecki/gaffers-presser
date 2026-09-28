@@ -555,7 +555,7 @@ from `backend/`.
       second extracted); `test_db_error_survives_iteration`; `test_stops_on_stop_event`.
       Files: `backend/app/extraction/loop.py`, `backend/tests/extraction/test_loop.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_loop.py`
-- [ ] 13. Worker integration in `app/worker/cli.py` (see Worker): `ExtractionRuntime`,
+- [x] 13. Worker integration in `app/worker/cli.py` (see Worker): `ExtractionRuntime`,
       `WorkerDeps.extraction`, `_deps_from_settings` resolving `ExtractionSettings`
       (config errors → exit 1 like the ingest), start after the lock, the shared 5 s join
       deadline, the two log lines. Tests in `tests/worker/test_cli.py`:
