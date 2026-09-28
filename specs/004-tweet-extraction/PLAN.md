@@ -437,7 +437,7 @@ from `backend/`.
       `backend/app/content/prompts/link_disambiguation.md`, `backend/tests/content/__init__.py`,
       `backend/tests/content/test_prompts.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/content/test_prompts.py`
-- [ ] 5. `app/extraction/schemas.py` (see Flow) and the test doubles in
+- [x] 5. `app/extraction/schemas.py` (see Flow) and the test doubles in
       `tests/extraction/fakes.py`: `FakeChatModel(BaseChatModel)` with a script of
       responses (a Pydantic object or dict → returned as a tool call named after the bound
       schema, with `usage_metadata`; an `Exception` → raised; a `threading.Event` → block
