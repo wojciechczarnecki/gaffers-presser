@@ -839,6 +839,47 @@ Running `implement_iterations` total: 3 (unchanged from chunk 2 — every step's
 verification in this chunk was green on its first run; see `## Deviations` for why that is
 not literal red-first evidence for steps 12–14).
 
+### Chunk 4 — Group 4 (Measurement and documentation) — 2026-09-28
+
+Carried out steps 15–17. `app/tweets/measure.py` (`LatencyRecord`, `PollCounts`,
+`SourceSummary`, `record_to_json`/`poll_counts_to_json`/`read_records`, `summarise`,
+`format_summary`, nearest-rank percentile) has no dependency on the CLI or on threading —
+`read_records` tells a latency line from a poll-count line by the presence of the `x_id`
+key, so the two record kinds can share one file and one reader without a type tag.
+
+`app/tweets/cli.py` (`measure`, `summary`) follows `app/worker/cli.py`'s injectable-deps
+shape (`MeasureDeps` in `ctx.obj`, `get_deps(ctx)` building a real one from `TweetSettings`
+only when a test has not already injected one) rather than a new pattern: `check_source` is
+called once per source in the main thread (produces the `skipped <name>: …` lines with no
+network and no source built), then one `threading.Thread` per active source builds, polls
+and closes its own source entirely on that thread via `_measure_one`, exactly as the design
+choice for the worker's poller already established for step 12 — each thread also gets its
+own `Clock` from `deps.clock_factory()`, so a test can give every source a private,
+independently-advancing fake clock without the two threads racing on shared mutable state.
+X_LIST_ID is parsed with the same rule as `resolve_ingest` (`app/tweets/config.py`), but
+inline in `cli.py` as a small `_list_id` helper instead of a new export from `config.py`,
+since the plan's file list for step 16 does not include `config.py` and `resolve_ingest`
+itself cannot be reused as-is (it also requires `TWEET_SOURCE` to be set, which `measure`
+does not use — it measures every configured source, not one selected source).
+
+Typer's `@app.command` needed the `Annotated[...] = default` option style (`app/fpl/cli.py`'s
+`GameweekOption` pattern), not `param: Type = typer.Option(...)`, to satisfy `ruff`'s `B008`
+(no function call in an argument default) and `B006` (no mutable default) — a trap for group
+5 or any later change to this CLI: a bare `typer.Option(...)` default compiles and its own
+`pytest` step passes, but `<verify.command>`'s `ruff check` catches it only on the full run,
+one step later than the test that exercises the option.
+
+Ran the full `cd backend && uv run ruff check . && uv run ruff format --check . && uv run
+pytest -q` (293 tests) green at the end of the chunk.
+
+Running `implement_iterations` total: 5 (chunk 3's 3, plus 2 in this chunk — both from step
+16: `ruff check` first flagged an unused `json` import and two `B008` argument-default
+calls, fixed by switching to `Annotated` options; a second `ruff check` then flagged a
+`B006` mutable default on the now-`Annotated` `--source` list option, fixed by defaulting to
+`None` and normalising to `[]` inside the function body. Steps 15 and 17's own automatic
+verification, and step 16's own `pytest tests/tweets/test_cli.py`, were green on the first
+run; the two extra passes were caught only by the step-closing `<verify.command>`).
+
 ## Deviations
 
 - Steps 12–14 landed in one commit (`ea9e5e9`) instead of one commit per step, and the
@@ -870,6 +911,13 @@ not literal red-first evidence for steps 12–14).
   name, bio, profile URL and post text (including the one long-form `note_tweet` post) in both
   twscrape payloads is replaced by a synthetic value; only numeric IDs, timestamps and engagement
   counts are kept from the original fixture. Minor — no scope or architecture change.
+- Steps 15–17: tests and code were written together and verified green in one run per step,
+  as in steps 12–14's deviation above, rather than confirming each proving test red before
+  the change — no red record was captured for `test_summary_percentiles`,
+  `test_measure_writes_one_record_per_source_and_post` or the extended `test_readme.py` /
+  new `test_env_example.py` assertions. Minor — `app/tweets/measure.py` and `app/tweets/cli.py`
+  are new modules in this chunk and the documentation checks assert wording just added in the
+  same step, so no pre-existing behaviour was masked; a process gap, not a masked spec gap.
 
 ## Final review
 
