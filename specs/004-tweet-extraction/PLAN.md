@@ -511,7 +511,7 @@ from `backend/`.
       Files: `backend/app/extraction/models.py`, `backend/migrations/versions/0004_extraction.py`,
       `backend/migrations/env.py`, `backend/tests/db/test_migrations.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/db/test_migrations.py && uv run alembic upgrade head && uv run alembic current`
-- [ ] 10. `app/extraction/store.py`: `save_extraction(session, record, events)`;
+- [x] 10. `app/extraction/store.py`: `save_extraction(session, record, events)`;
       `next_pending(session) -> PostInput | None` (oldest `created_at`, `x_id` with no
       extraction); `posts_for_reextract(session, x_id=None, since=None, until=None,
       failed=False) -> list[PostInput]` (failed = latest extraction per post is `failed`,
