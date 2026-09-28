@@ -28,11 +28,10 @@ and each LLM step that produces data has an evaluation set with recorded results
 - [x] Detection-latency measurement (post → first fetch ≤ 60 s p95) and the default-source
       choice — the owner's run, report and ADR 0005 (spec 003 AC18/AC19, BACKLOG #9;
       [report](reports/tweet-source-latency-2026-09.md): twscrape, p95 25.9 s)
-- [ ] LangGraph extraction flow: player linking to FPL IDs, event type
-      (out / doubt / benched / confirmed starter), certainty; Langfuse tracing; extraction
-      evaluation set (spec: [004](../specs/004-tweet-extraction/SPEC.md)) — the flow, the
-      worker integration and the evaluation tooling with the unreviewed set v1 are done;
-      the model comparison, ADR 0006 and the default model are a follow-up (BACKLOG #14)
+- [x] LangGraph extraction flow: player linking to FPL IDs, event type
+      (out / doubt / benched / confirmed starter), certainty; Langfuse tracing; the
+      extraction loop in the worker and the re-extraction CLI; evaluation tooling with the
+      unreviewed set v1 (spec: [004](../specs/004-tweet-extraction/SPEC.md))
 - [ ] Extraction model comparison: review evaluation set v1, run the comparison across the
       four providers, report, ADR 0006 and the default model (follow-up to spec 004,
       AC26/AC27; BACKLOG #14)
