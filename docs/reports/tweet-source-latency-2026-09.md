@@ -51,4 +51,4 @@ The other 7 posts twscrape saw came from real accounts on the list (p50 17.4 s, 
 
 ## Outcome
 
-twscrape becomes the default source — [ADR 0005](../adr/0005-default-tweet-source-twscrape.md).
+twscrape becomes the source we configure (`TWEET_SOURCE=twscrape`) — [ADR 0005](../adr/0005-default-tweet-source-twscrape.md).

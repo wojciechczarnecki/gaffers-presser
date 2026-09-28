@@ -24,8 +24,12 @@ as no credits were bought.
 
 ## Decision
 
-`TWEET_SOURCE=twscrape` is the default for the worker. The measured p95 detection latency
-is **25.9 s** (20 controlled posts), within the 60 s target, so BACKLOG #2 is not triggered.
+twscrape is the source we configure: `TWEET_SOURCE=twscrape` in production and in local
+runs, recommended in `backend/.env.example` and `docs/DEPLOYMENT.md`. It is a recommendation,
+not a default in code — an empty `TWEET_SOURCE` still disables the ingest (spec 003), since
+twscrape cannot run without a configured X account anyway. The measured p95 detection
+latency is **25.9 s** (20 controlled posts), within the 60 s target, so BACKLOG #2 is not
+triggered.
 
 ## Consequences
 
