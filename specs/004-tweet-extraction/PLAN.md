@@ -384,8 +384,8 @@ every expected `fpl_id` exists in the snapshot.
 | AC23 | 16, 20 | `tests/extraction/evaluation/test_cases.py`, `tests/extraction/evaluation/test_eval_set.py` | step 16 (schema + composition rules, stubbed `composition_problems`): `uv run pytest -q tests/extraction/evaluation/test_cases.py` → `assert any(keyword in problem for problem in problems), problems` (`AssertionError: []`); step 20 (the committed set, files missing): `cd backend && uv run pytest -q tests/extraction/evaluation/test_eval_set.py` → `FileNotFoundError: .../evals/extraction/v1/cases.jsonl` (4 failed; the plan names missing files as the red state) |
 | AC24 | 18, 19 | `tests/extraction/test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | step 18 (stubbed `prelabel`): `uv run pytest -q tests/extraction/test_cli.py -k prelabel` → `assert ['1'] == ['1', '3']` (`test_prelabel_skips_ids_already_in_the_set`), `assert 0 == 1` (`test_prelabel_config_error_names_variable`); step 19 (stubbed `evaluate`): `uv run pytest -q tests/extraction/test_cli.py -k evaluate` → `assert 0 == 1` (`test_evaluate_refuses_unreviewed`, `test_evaluate_requires_pln_rate`, `test_evaluate_config_error_names_variable`), `FileNotFoundError` on the results file (`test_evaluate_writes_results`, `test_evaluate_only_selected_split`, `test_evaluate_case_error_is_recorded_and_run_continues`); `test_evaluate_traces_with_run_name` exercises the runner written in the same step and was not seen red |
 | AC25 | 17, 19 | `tests/extraction/evaluation/test_metrics.py`, `tests/extraction/test_cli.py::test_evaluate_*` | step 17 (metrics, stubbed `compute_metrics`): `uv run pytest -q tests/extraction/evaluation/test_metrics.py` → `assert (metrics.precision, metrics.recall, metrics.f1) == (1.0, 1.0, 1.0)` (15 failed, 4 passed); step 19 (stubbed `evaluate`): `uv run pytest -q tests/extraction/test_cli.py -k evaluate` → `assert 0 == 1` (`test_evaluate_refuses_unreviewed`, `test_evaluate_requires_pln_rate`, `test_evaluate_config_error_names_variable`), `FileNotFoundError` on the results file (`test_evaluate_writes_results`, `test_evaluate_only_selected_split`, `test_evaluate_case_error_is_recorded_and_run_continues`); `test_evaluate_traces_with_run_name` exercises the runner written in the same step and was not seen red |
-| AC26 | — | manual | manual — the owner's review and comparison run |
-| AC27 | 22 | `tests/extraction/test_config.py::test_default_model_matches_adr_0006` | |
+| AC26 | — | manual | manual — the owner's review and comparison run (descoped to the follow-up spec, BACKLOG #13) |
+| AC27 | 22 | `tests/extraction/test_config.py::test_default_model_matches_adr_0006` | n/a — descoped to the follow-up spec by the owner decision (BACKLOG #13) |
 | AC28 | 2, 21 | `tests/test_env_example.py::test_every_extraction_setting_*`, `tests/test_readme.py` (extended) | step 21: `cd backend && uv run pytest -q tests/test_readme.py` → `AssertionError: 'LLM_PROVIDER' missing from the README Development section` and `... from docs/DEPLOYMENT.md` (2 failed) |
 
 ## Steps
@@ -662,7 +662,7 @@ from `backend/`.
 
 ### Group 6 — Comparison results, ADR 0006 and the default model (after the owner's run)
 
-- [ ] 22. Precondition: the owner has reviewed every case (`reviewed: true` for all) and
+- [~] 22. **Descoped by the owner decision of 2026-09-28 (Group 6): moved to a follow-up spec (BACKLOG #13); not carried out in 004.** Original text: Precondition: the owner has reviewed every case (`reviewed: true` for all) and
       committed or left in the working tree the result files
       `backend/evals/extraction/results/*.json` for at least one model per provider on the
       test split. If either is missing, end the chunk with `RESULT: ESCALATE` naming what
@@ -686,6 +686,18 @@ from `backend/`.
       `backend/.env.example`, `docs/DEPLOYMENT.md`, `README.md`,
       `backend/evals/extraction/results/*.json`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_config.py tests/extraction/evaluation/test_eval_set.py && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+
+### Converge pass 1 — 2026-09-28
+
+A fresh subagent compared the diff with the SPEC. Gaps and verdicts:
+
+- `partial` AC23 (136 cases vs "about 150 real"): rejected — the database holds only 107 posts (the SPEC's Context says 107); the count is capped by data, not by code, and the per-event/certainty minimums hold.
+- `partial` AC23/AC24/AC26 (all `reviewed: false`): rejected — the owner's review step, not a code defect.
+- `missing` AC26, AC27: rejected — descoped to a follow-up spec by the owner decision of 2026-09-28 (BACKLOG #13, ROADMAP).
+- `partial` AC3 (cost not passed to Langfuse), AC20 (latency null for CLI re-extraction), AC14 (duration includes setup): rejected — Langfuse computes cost from the model name; AC20 concerns worker extractions and is tested; the duration is cosmetic.
+- `unrequested` `snapshot-players`, tags, team aliases, provider compatibility special cases: rejected — each is asked for by the plan (steps 6, 16, 20, 3) and supports an AC.
+
+No real gaps, no steps added, no second pass.
 
 ## Risks and traps
 
@@ -757,6 +769,16 @@ from `backend/`.
 
 Record the results in this section under "End-to-end verification results".
 
+#### End-to-end verification results (2026-09-28)
+
+1. Full stack: ruff check and format green, `pytest -q` 518 passed.
+2. `alembic upgrade head` / `downgrade -1` / `upgrade head` succeeded; `extraction` and `extraction_event` exist.
+3. `.env` sets no `LLM_PROVIDER`: `worker run` logged `extraction disabled` once; `worker status` printed `Extraction: disabled`.
+4. `LLM_PROVIDER=openai worker status`: `error: OPENAI_API_KEY must be set for LLM_PROVIDER=openai`.
+5. `--help` for the group, `reextract`, `prelabel`, `evaluate` all exit 0.
+6. `evaluate --split test --provider openai --model x`: `error: 91 cases of the test split are not reviewed`, no model call.
+7. Skipped — no LLM key.
+
 ### Manual (performed by the owner)
 
 1. Review every case in `backend/evals/extraction/v1/cases.jsonl`: fix labels, set
@@ -773,12 +795,12 @@ Record the results in this section under "End-to-end verification results".
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated (Stage 1 item 3); `docs/DECISIONS.md` ADR 0006 row;
+- [x] all steps ticked (step 22 descoped by the owner decision)
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated (follow-up item added; Stage 1 item 3 stays open — ADR 0006 row descoped);
       `docs/BACKLOG.md` rows; `docs/DEPLOYMENT.md` and README updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 

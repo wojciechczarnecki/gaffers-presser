@@ -29,7 +29,12 @@ and each LLM step that produces data has an evaluation set with recorded results
       choice — the owner's run, report and ADR 0005 (spec 003 AC18/AC19, BACKLOG #9)
 - [ ] LangGraph extraction flow: player linking to FPL IDs, event type
       (out / doubt / benched / confirmed starter), certainty; Langfuse tracing; extraction
-      evaluation set (spec: [004](../specs/004-tweet-extraction/SPEC.md))
+      evaluation set (spec: [004](../specs/004-tweet-extraction/SPEC.md)) — the flow, the
+      worker integration and the evaluation tooling with the unreviewed set v1 are done;
+      the model comparison, ADR 0006 and the default model are a follow-up (BACKLOG #13)
+- [ ] Extraction model comparison: review evaluation set v1, run the comparison across the
+      four providers, report, ADR 0006 and the default model (follow-up to spec 004,
+      AC26/AC27; BACKLOG #13)
 
 ## Stage 2 — RAG v1 and alert e-mails (portfolio MVP)
 

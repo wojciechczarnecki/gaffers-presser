@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-09-28"
   - "spec-ready — 2026-09-28"
   - "plan-draft — 2026-09-28"
   - "plan-approved — 2026-09-28"
+  - "implemented — 2026-09-28"
 metrics:
   started_at: 2026-09-28T18:15
   escalations: 2
@@ -12,6 +13,12 @@ metrics:
   plan_review_blockers: 0
   plan_review_majors: 1
   plan_changes: 6
+  implement_steps: 21
+  implement_iterations: 5
+  implement_chunks: 6
+  converge_gaps: 0
+  deviations_minor: 3
+  deviations_major: 0
 ---
 
 # SPEC 004 — LangGraph extraction flow, player linking and the default LLM
