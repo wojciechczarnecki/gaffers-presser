@@ -1058,6 +1058,51 @@ pytest -q`) is green: 461 passed (plus the pre-existing BACKLOG #10 flaky warnin
 twice under an explicit `timeout` guard (once in the background, confirmed again in the
 foreground per the coordinator's instruction) — both exit 0, ~100 s.
 
+### Chunk 5 — Group 5 (Evaluation tooling, evaluation set v1 and documentation) — 2026-09-28
+
+Steps 16–21 done, each with its own commit. Decisions taken within the plan's latitude:
+
+- `composition_problems(cases, snapshot)` takes the snapshot's `list[PlayerRecord]` (as
+  `load_snapshot` returns them); the snapshot file is `{"season", "players", "teams"}` and
+  `load_snapshot` reads it unchanged. `EvalCase` / `ExpectedEvent` forbid unknown fields.
+- `prelabel`: `--output` is the file candidates are appended to (existing cases are kept,
+  untouched); `--eval-set` names an extra set whose IDs are skipped besides the output's own.
+  It runs untraced (no Langfuse) and uses the shared retry rule; failed posts are counted,
+  not written.
+- `evaluate` needs no database: `ExtractionCliDeps.engine` is `Engine | None`. The runner
+  (`evaluation/runner.py::run_evaluation`) times the last successful flow run only (retry
+  back-off excluded), stores per-case `attempts`, and computes cost from `prices.toml`
+  (still empty — see Chunk 3; cost, projected cost and `passes` stay `null` / false until the
+  owner fills prices, as manual scenario 2 says). A `null` projected cost never passes.
+- Metrics conventions: F1 is computed as `2·TP / (predicted + expected)` (exact at the
+  0.85 edge); an errored case scores no predicted events; certainty pairs prefer identical
+  certainties before other pairings; linking pairs first by equal `fpl_id`, then by
+  normalised-mention token containment.
+- Evaluation set v1: 136 cases = all 107 stored posts (2026-09-25 … 28, real) + 29 synthetic
+  (`syn-001` … `syn-029`), 45 of them dev (33 %). All `reviewed: false`. Labels were
+  written by the implementer (no provider key is configured locally): real posts mostly get
+  no events (the international break), the events come from injury / withdrawal posts; the
+  `confirmed_starter` / `benched` / `rumour` events come from synthetic cases only. Judgement
+  calls the owner should look at first: Ait-Nouri "sent home" (no event), Lewis Hall's
+  "injury scare" (no event), Kostoulas "not serious" (no event), Isak / Gakpo / Dorgu
+  "doubt likely" vs "out", the ten-player "injured or yellow flagged" list (all `doubt`), and
+  "Bruno" / "Joao Pedro" / "Palmer" labelled with the player the context implies.
+
+Traps the next group will meet too:
+
+- Group 6 is the owner gate: it needs `reviewed: true` for every case and result files in
+  `backend/evals/extraction/results/*.json`; neither exists yet, so the next chunk escalates
+  by design unless the owner has provided them.
+- `prices.toml` has no priced model: a comparison run without it shows `n/a` cost and a
+  failing `passes`; the owner completes it (manual scenario 2) before the runs.
+- `ruff` B008 rejects `typer.Option(...)` defaults for `Path` parameters — use
+  `Annotated[Path, typer.Option("--x")]` (done for `--output`, `--eval-set`, `--cases`, ...).
+- The worker concurrency test still emits the BACKLOG #10 unraisable warning; full stack
+  green: 518 passed.
+
+Running `implement_iterations` total: 5 (3 carried over from chunk 4, plus 2 in this
+chunk: two ruff B008 findings, in steps 16 and 18, fixed by switching to `Annotated`).
+
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
