@@ -193,3 +193,39 @@ def test_extraction_status_counts(db_session):
     assert status.latest.tweet_x_id == 2
     assert status.latest.status == "extracted"
     assert status.latest.latency_seconds == 3.0
+
+
+def _seed_history(db_session) -> None:
+    # 1: failed, then extracted -> not failed now
+    # 2: extracted, then failed -> failed now
+    # 3: failed and extracted with the same finished_at; the later id (failed) wins
+    # 4: extracted and failed with the same finished_at; the later id (extracted) wins
+    for x_id in (1, 2, 3, 4):
+        db_session.add(_tweet(x_id, NOW + timedelta(minutes=x_id)))
+    db_session.commit()
+    earlier, later = NOW, NOW + timedelta(minutes=5)
+    save_extraction(db_session, _record(1, "failed", finished_at=earlier), [])
+    save_extraction(db_session, _record(1, "extracted", finished_at=later), [])
+    save_extraction(db_session, _record(2, "extracted", finished_at=earlier), [])
+    save_extraction(db_session, _record(2, "failed", finished_at=later), [])
+    save_extraction(db_session, _record(3, "extracted", finished_at=later), [])
+    save_extraction(db_session, _record(3, "failed", finished_at=later), [])
+    save_extraction(db_session, _record(4, "failed", finished_at=later), [])
+    save_extraction(db_session, _record(4, "extracted", finished_at=later), [])
+
+
+def test_failed_selector_uses_the_latest_extraction_only(db_session):
+    _seed_history(db_session)
+
+    failed = posts_for_reextract(db_session, failed=True)
+
+    assert [p.x_id for p in failed] == [2, 3]
+
+
+def test_failed_posts_count_uses_the_latest_extraction_only(db_session):
+    _seed_history(db_session)
+
+    status = extraction_status(db_session.get_bind())
+
+    assert status.failed_posts == 2
+    assert status.waiting == 0

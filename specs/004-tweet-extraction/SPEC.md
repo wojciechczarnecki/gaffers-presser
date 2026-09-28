@@ -22,6 +22,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 14
   final_review_nits: 5
+  findings_accepted: 14
+  findings_rejected: 5
 ---
 
 # SPEC 004 — LangGraph extraction flow, player linking and the default LLM
@@ -140,6 +142,11 @@ extraction in the worker without delaying the tweet polls.
   results report under `docs/`, ADR 0006 choosing the default model, and the DECISIONS rows.
 - Documentation: new variables in `backend/.env.example`, `docs/DEPLOYMENT.md` and the
   README; a BACKLOG item to extend the evaluation set with the GW6 deadline window.
+
+> Descoped (owner decision 2026-09-28, PLAN → Owner decisions): the owner's review of the
+> pre-labelled cases, the comparison run, its report, ADR 0006 and the default-model
+> configuration (AC26, AC27) move to a follow-up spec — BACKLOG #13. Spec 004 delivers the
+> evaluation tooling and the unreviewed evaluation set only.
 
 ## Out of scope
 
@@ -267,11 +274,12 @@ Evaluation
   configuration; results are written to a file and the run is traced in Langfuse under a run
   name. The metric computation is tested in `pytest` on synthetic predictions with known
   values.
-- [ ] AC26 (manual, owner): before the merge, the owner reviews every pre-labelled case, then
+- [ ] AC26 (manual, owner) — descoped to the follow-up spec (owner decision 2026-09-28,
+  BACKLOG #13): before the merge, the owner reviews every pre-labelled case, then
   runs the evaluation on the test split for at least one cheap model from each of Google,
   OpenAI, Anthropic and OpenRouter; the prompt is tuned on the dev split only. The results
   are committed as a report under `docs/` in this PR.
-- [ ] AC27: ADR 0006 records the default model: the cheapest one that passes all
+- [ ] AC27 — descoped to the follow-up spec (owner decision 2026-09-28, BACKLOG #13): ADR 0006 records the default model: the cheapest one that passes all
   thresholds on the test split — event F1 ≥ 0.85, linking accuracy ≥ 0.95, false-alarm rate
   ≤ 5%, projected cost ≤ 5 PLN a month; DECISIONS gets the row and the configuration default
   names that model. If no model passes, the ADR says so, names the best one as the interim

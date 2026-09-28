@@ -359,28 +359,28 @@ every expected `fpl_id` exists in the snapshot.
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 2, 3 | `tests/extraction/test_config.py`, `tests/extraction/test_providers.py` | |
-| AC2 | 13 | `tests/worker/test_cli.py::test_run_without_llm_logs_extraction_disabled_once` | |
-| AC3 | 8 | `tests/extraction/test_tracing.py` | |
-| AC4 | 8, 13 | `tests/extraction/test_tracing.py::test_no_handler_without_keys`, `tests/worker/test_cli.py::test_run_without_langfuse_warns_once` | |
-| AC5 | 2, 11, 13 | `tests/extraction/test_config.py::test_errors_never_carry_values`, `tests/extraction/test_service.py::test_credentials_never_logged_or_stored`, `tests/worker/test_cli.py::test_worker_rejects_llm_provider_without_key` | |
-| AC6 | 5, 7 | `tests/extraction/test_flow.py::test_typed_result`, `::test_no_events_is_empty_result` | |
-| AC7 | 7 | `tests/extraction/test_flow.py::test_leaked_xi_gives_starters_and_benched`, `::test_out_and_starts_gives_two_events` | |
+| AC1 | 2, 3 | `tests/extraction/test_config.py`, `tests/extraction/test_providers.py` || n/a — written together with the module, not seen red |
+| AC2 | 13 | `tests/worker/test_cli.py::test_run_without_llm_logs_extraction_disabled_once` || n/a — written together with the module, not seen red |
+| AC3 | 8 | `tests/extraction/test_tracing.py` || n/a — written together with the module, not seen red; final review F11: `uv run pytest -q tests/extraction/test_service.py` with the handler dropped in `extract_post` → `test_handler_receives_post_metadata` fails (`assert 0 == 1`) |
+| AC4 | 8, 13 | `tests/extraction/test_tracing.py::test_no_handler_without_keys`, `tests/worker/test_cli.py::test_run_without_langfuse_warns_once` || n/a — written together with the module, not seen red |
+| AC5 | 2, 11, 13 | `tests/extraction/test_config.py::test_errors_never_carry_values`, `tests/extraction/test_service.py::test_credentials_never_logged_or_stored`, `tests/worker/test_cli.py::test_worker_rejects_llm_provider_without_key` || n/a — written together with the module, not seen red |
+| AC6 | 5, 7 | `tests/extraction/test_flow.py::test_typed_result`, `::test_no_events_is_empty_result` || n/a — written together with the module, not seen red |
+| AC7 | 7 | `tests/extraction/test_flow.py::test_leaked_xi_gives_starters_and_benched`, `::test_out_and_starts_gives_two_events` || n/a — written together with the module, not seen red |
 | AC8 | 4, 20 | `tests/content/test_prompts.py::test_extraction_prompt_states_relevance_rule`, `tests/extraction/evaluation/test_eval_set.py::test_relevance_categories` | step 20: `uv run pytest -q tests/extraction/evaluation/test_eval_set.py::test_relevance_categories` → `FileNotFoundError: .../evals/extraction/v1/cases.jsonl` (set missing) |
-| AC9 | 7, 10 | `tests/extraction/test_flow.py::test_repost_is_extracted_with_author`, `tests/extraction/test_store.py::test_current_extraction_exposes_post_flags` | |
-| AC10 | 6 | `tests/extraction/test_linking.py` | |
-| AC11 | 7 | `tests/extraction/test_flow.py::test_disambiguation_*` | |
-| AC12 | 6 | `tests/extraction/test_linking.py::test_alias_links`, `::test_stale_alias_ignored_and_logged_once`, `::test_committed_aliases_parse` | |
-| AC13 | 6 | `tests/extraction/test_players.py::test_only_latest_season` | |
-| AC14 | 9, 10, 11 | `tests/extraction/test_store.py::test_save_extraction_roundtrip`, `tests/extraction/test_service.py` | |
-| AC15 | 10 | `tests/extraction/test_store.py::test_reextraction_keeps_history_current_is_latest_extracted` | |
-| AC16 | 9 | `tests/db/test_migrations.py::test_extraction_migration_adds_only_new_tables` | |
-| AC17 | 12, 13 | `tests/worker/test_cli.py::test_polls_continue_while_extraction_blocks` | |
-| AC18 | 12 | `tests/extraction/test_loop.py::test_new_post_picked_within_5_s`, `::test_oldest_first` | |
-| AC19 | 11, 12 | `tests/extraction/test_service.py::test_retries_*`, `tests/extraction/test_loop.py::test_failure_does_not_stop_the_loop` | |
-| AC20 | 11, 14 | `tests/extraction/test_service.py::test_worker_extraction_records_latency`, `tests/worker/test_cli.py::test_status_shows_extraction*` | |
-| AC21 | 13 | `tests/worker/test_cli.py::test_sigterm_with_extraction_exits_within_10_s` | |
-| AC22 | 15 | `tests/extraction/test_cli.py::test_reextract_*` | |
+| AC9 | 7, 10 | `tests/extraction/test_flow.py::test_repost_is_extracted_with_author`, `tests/extraction/test_store.py::test_current_extraction_exposes_post_flags` || n/a — written together with the module, not seen red |
+| AC10 | 6 | `tests/extraction/test_linking.py` || n/a — written together with the module, not seen red |
+| AC11 | 7 | `tests/extraction/test_flow.py::test_disambiguation_*` || n/a — written together with the module, not seen red |
+| AC12 | 6 | `tests/extraction/test_linking.py::test_alias_links`, `::test_stale_alias_ignored_and_logged_once`, `::test_committed_aliases_parse` || n/a — written together with the module, not seen red |
+| AC13 | 6 | `tests/extraction/test_players.py::test_only_latest_season` || n/a — written together with the module, not seen red |
+| AC14 | 9, 10, 11 | `tests/extraction/test_store.py::test_save_extraction_roundtrip`, `tests/extraction/test_service.py` || step 9, 10, 11: red seen with the new module swapped for a stub (chunk note 3); the command and the failure were not recorded |
+| AC15 | 10 | `tests/extraction/test_store.py::test_reextraction_keeps_history_current_is_latest_extracted` || step 10: red seen with the new module swapped for a stub (chunk note 3); the command and the failure were not recorded |
+| AC16 | 9 | `tests/db/test_migrations.py::test_extraction_migration_adds_only_new_tables` || step 9: red seen with the new module swapped for a stub (chunk note 3); the command and the failure were not recorded |
+| AC17 | 12, 13 | `tests/worker/test_cli.py::test_polls_continue_while_extraction_blocks` || n/a — written together with the module, not seen red; final review F8: `uv run pytest -q tests/worker/test_cli.py -k extraction` with `start_extractor` replaced by an empty thread → 4 failed (`test_polls_continue_while_extraction_blocks`, `test_run_stores_extraction_with_latency`, both SIGTERM tests) |
+| AC18 | 12 | `tests/extraction/test_loop.py::test_new_post_picked_within_5_s`, `::test_oldest_first` || n/a — written together with the module, not seen red |
+| AC19 | 11, 12 | `tests/extraction/test_service.py::test_retries_*`, `tests/extraction/test_loop.py::test_failure_does_not_stop_the_loop` || step 11: red seen with the new module swapped for a stub (chunk note 3); the command and the failure were not recorded; step 12 (loop): n/a — written together with the module, not seen red |
+| AC20 | 11, 14 | `tests/extraction/test_service.py::test_worker_extraction_records_latency`, `tests/worker/test_cli.py::test_status_shows_extraction*` || step 11: red seen with the new module swapped for a stub (chunk note 3); the command and the failure were not recorded; step 14 (`status`): n/a — written together with the module, not seen red |
+| AC21 | 13 | `tests/worker/test_cli.py::test_sigterm_with_extraction_exits_within_10_s` || n/a — written together with the module, not seen red; final review F8: see AC17 (both SIGTERM tests fail with the extractor stubbed) |
+| AC22 | 15 | `tests/extraction/test_cli.py::test_reextract_*` || n/a — written together with the module, not seen red |
 | AC23 | 16, 20 | `tests/extraction/evaluation/test_cases.py`, `tests/extraction/evaluation/test_eval_set.py` | step 16 (schema + composition rules, stubbed `composition_problems`): `uv run pytest -q tests/extraction/evaluation/test_cases.py` → `assert any(keyword in problem for problem in problems), problems` (`AssertionError: []`); step 20 (the committed set, files missing): `cd backend && uv run pytest -q tests/extraction/evaluation/test_eval_set.py` → `FileNotFoundError: .../evals/extraction/v1/cases.jsonl` (4 failed; the plan names missing files as the red state) |
 | AC24 | 18, 19 | `tests/extraction/test_cli.py::test_prelabel_*`, `::test_evaluate_refuses_unreviewed` | step 18 (stubbed `prelabel`): `uv run pytest -q tests/extraction/test_cli.py -k prelabel` → `assert ['1'] == ['1', '3']` (`test_prelabel_skips_ids_already_in_the_set`), `assert 0 == 1` (`test_prelabel_config_error_names_variable`); step 19 (stubbed `evaluate`): `uv run pytest -q tests/extraction/test_cli.py -k evaluate` → `assert 0 == 1` (`test_evaluate_refuses_unreviewed`, `test_evaluate_requires_pln_rate`, `test_evaluate_config_error_names_variable`), `FileNotFoundError` on the results file (`test_evaluate_writes_results`, `test_evaluate_only_selected_split`, `test_evaluate_case_error_is_recorded_and_run_continues`); `test_evaluate_traces_with_run_name` exercises the runner written in the same step and was not seen red |
 | AC25 | 17, 19 | `tests/extraction/evaluation/test_metrics.py`, `tests/extraction/test_cli.py::test_evaluate_*` | step 17 (metrics, stubbed `compute_metrics`): `uv run pytest -q tests/extraction/evaluation/test_metrics.py` → `assert (metrics.precision, metrics.recall, metrics.f1) == (1.0, 1.0, 1.0)` (15 failed, 4 passed); step 19 (stubbed `evaluate`): `uv run pytest -q tests/extraction/test_cli.py -k evaluate` → `assert 0 == 1` (`test_evaluate_refuses_unreviewed`, `test_evaluate_requires_pln_rate`, `test_evaluate_config_error_names_variable`), `FileNotFoundError` on the results file (`test_evaluate_writes_results`, `test_evaluate_only_selected_split`, `test_evaluate_case_error_is_recorded_and_run_continues`); `test_evaluate_traces_with_run_name` exercises the runner written in the same step and was not seen red |
@@ -1293,3 +1293,59 @@ final reviewer. Out of scope by the owner decision: step 22, AC26, AC27 (BACKLOG
   is the binding plan definition (step 10, Worker `status`), not a defect.
 
 Left out: 20 nit findings
+
+### 2026-09-28 — /pipeline:final-review (apply)
+
+Owner decision: F1–F14 accepted, N1–N5 rejected (and the 20 left-out nits). Fixed:
+
+- **F1** — `ExtractionRuntime` carries `prices` and `aliases`, loaded once at start through
+  `service.load_reference_files()` (a broken `prices.toml` / `aliases.toml` is a
+  `ConfigError` naming the file and the error class; the worker and `reextract` exit 1 before
+  any call); `extract_post` stores a `failed` row with the error class in a fresh session for
+  any error outside the model call (player load, `make_spec`, saving). Tests:
+  `test_service.py::test_error_while_saving_stores_failed_row`,
+  `::test_error_before_the_model_call_stores_failed_row`, `::test_bad_prices_file_is_a_config_error`,
+  `test_loop.py::test_error_while_saving_stores_failed_and_moves_on`,
+  `tests/worker/test_cli.py::test_worker_rejects_unreadable_prices_file_at_start`.
+- **F2** — `resolve_llm`: a provider override different from `LLM_PROVIDER` takes the model
+  only from `--model` or the provider's default, else `ConfigError("--model must be given
+  with --provider")`. Tests: three new cases in `test_config.py`.
+- **F3** — `settings.load_extraction_settings()` turns a pydantic `ValidationError` into a
+  `ConfigError` naming the variable only; used by the worker and the extraction CLI. Tests:
+  `tests/worker/test_cli.py::test_worker_rejects_malformed_extraction_variable_naming_it_only`,
+  `tests/extraction/test_cli.py::test_malformed_variable_is_named_without_its_value`.
+- **F4** — `_engine_from_env` catches `ConfigError`. Test (in `tests/core/test_settings.py`,
+  the only test file allowed to name `DATABASE_URL`):
+  `test_extraction_cli_without_database_url_leaves_the_engine_unset`.
+- **F5** — `evaluate --run-name` must match `[A-Za-z0-9_-][A-Za-z0-9._-]*`, checked before a
+  model is built. Test: `test_cli.py::test_evaluate_rejects_unsafe_run_name_before_any_call`
+  (4 cases).
+- **F6** — an errored case is left out of the false-alarm denominator, and `passes` requires
+  `errored_cases == 0`; the DECISIONS row of the pass rule says so. Tests:
+  `test_metrics.py::test_errored_case_without_expected_events_is_not_a_correct_negative`,
+  `::test_errored_case_fails_the_thresholds`.
+- **F7** — the loop builds the Langfuse handler in a guarded block, logs the error class and
+  extracts untraced. Test: `test_loop.py::test_tracing_setup_error_extracts_untraced`.
+- **F8** — the worker tests send SIGTERM only after the fake model was entered (or an
+  extraction stored), the poller's source is created only once the extractor is blocked in
+  its call, and they assert the fake's calls and the stored rows; new
+  `test_run_stores_extraction_with_latency`. Mutation check: with `start_extractor` replaced
+  by an empty thread, 4 worker tests fail.
+- **F9** — every `ExtractionSettings` in `tests/extraction/test_cli.py` uses
+  `_env_file=None`; an autouse fixture removes `LLM_*`, `LANGFUSE_*`, `*_API_KEY` and
+  `USD_PLN_RATE` from the environment.
+- **F10** — `test_service.py::test_extracted_row_holds_attempts_tokens_and_cost` and
+  `::test_failed_row_holds_attempts_and_error_class` (provider error, timeout,
+  rate-limit-like error, malformed output → `ExtractionOutputError`) read the stored row.
+- **F11** — `test_service.py::test_handler_receives_post_metadata`; mutation check: dropping
+  the handler in `extract_post` fails it.
+- **F12** — `test_store.py::test_failed_selector_uses_the_latest_extraction_only`,
+  `::test_failed_posts_count_uses_the_latest_extraction_only` (failed→extracted,
+  extracted→failed and both `finished_at` ties broken by `id`).
+- **F13** — the fourth column of the AC → steps matrix is filled for every row.
+- **F14** — SPEC Scope and AC26/AC27 point at the owner decision and BACKLOG #13.
+
+BACKLOG: #10 now also names `test_polls_continue_while_extraction_blocks` (the same
+`PytestUnraisableExceptionWarning`, seen once locally; the test passed). Items whose trigger
+has fired: none. Verification: `cd backend && uv run ruff check . && uv run ruff format
+--check . && uv run pytest -q` → 545 passed.

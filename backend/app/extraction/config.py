@@ -54,9 +54,17 @@ def resolve_llm(
     if not api_key:
         variable = _KEY_VARIABLE_BY_PROVIDER[effective_provider]
         raise ConfigError(f"{variable} must be set for LLM_PROVIDER={effective_provider}")
-    effective_model = model if model is not None else settings.llm_model
-    if not effective_model:
+    provider_overridden = provider is not None and provider != settings.llm_provider
+    if model is not None:
+        effective_model = model
+    elif provider_overridden:
         effective_model = DEFAULT_MODEL_BY_PROVIDER.get(effective_provider, "")
+        if not effective_model:
+            raise ConfigError("--model must be given with --provider")
+    else:
+        effective_model = settings.llm_model or DEFAULT_MODEL_BY_PROVIDER.get(
+            effective_provider, ""
+        )
     if not effective_model:
         raise ConfigError("LLM_MODEL must be set")
     return LlmConfig(provider=effective_provider, model=effective_model, api_key=api_key)

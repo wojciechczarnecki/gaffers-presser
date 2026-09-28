@@ -50,6 +50,14 @@ class TweetSettings(BaseSettings):
     x_api_bearer_token: SecretStr | None = None
 
 
+def load_extraction_settings() -> ExtractionSettings:
+    try:
+        return ExtractionSettings()
+    except ValidationError as exc:
+        variables = sorted({str(error["loc"][0]).upper() for error in exc.errors() if error["loc"]})
+        raise ConfigError(f"invalid value of {', '.join(variables)}") from None
+
+
 def load_settings() -> Settings:
     try:
         settings = Settings()

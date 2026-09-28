@@ -152,6 +152,24 @@ def test_errored_case_counts_as_missed_events():
     assert metrics.recall == 0.5
 
 
+def test_errored_case_without_expected_events_is_not_a_correct_negative():
+    results = [
+        CaseResult(expected=[], predicted=[], error_class="RateLimitError"),
+        CaseResult(expected=[], predicted=[ev()]),
+    ]
+    metrics = run(results)
+    assert metrics.errored_cases == 1
+    assert metrics.false_alarm_rate == 1.0
+
+
+def test_errored_case_fails_the_thresholds():
+    ok = CaseResult(expected=[ev()], predicted=[ev()], cost_usd=0.0001)
+    assert run([ok]).passes is True
+    errored = CaseResult(expected=[], predicted=[], error_class="RateLimitError")
+    assert run([ok, errored]).passes is False
+    assert passes(0.85, 0.95, 0.05, 5.0, errored_cases=1) is False
+
+
 def test_passes_at_the_edges():
     assert passes(0.85, 0.95, 0.05, 5.0) is True
     assert passes(0.8499, 0.95, 0.05, 5.0) is False

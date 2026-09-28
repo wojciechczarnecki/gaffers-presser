@@ -1,14 +1,27 @@
 import threading
 from datetime import UTC, datetime, timedelta
 
+import pytest
+from sqlmodel import Session, select
+
+from app.core.errors import ConfigError
+from app.extraction.flow import PROMPT_VERSION
+from app.extraction.models import Extraction
+from app.extraction.pricing import Price, load_prices
 from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import ExtractedEvent, ExtractionOutput, PostInput
-from app.extraction.service import RETRY_BACKOFF_SECONDS, ExtractionRuntime, extract_post
+from app.extraction.service import (
+    RETRY_BACKOFF_SECONDS,
+    ExtractionRuntime,
+    extract_post,
+    load_reference_files,
+)
 from app.extraction.store import current_extraction
 from app.tweets.models import Tweet
-from tests.extraction.fakes import FakeChatModel
+from tests.extraction.fakes import FakeChatModel, RecordingHandler
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
+PRICES = {"fake:fake-model": Price(input_per_million=1.0, output_per_million=2.0, checked="x")}
 
 POST = PostInput(
     x_id=1,
@@ -49,11 +62,33 @@ def _seed_tweet(session, x_id: int = 1, first_fetched_at: datetime = NOW) -> Non
     session.commit()
 
 
-def _runtime(*responses) -> ExtractionRuntime:
+def _runtime(*responses, prices=None) -> ExtractionRuntime:
     fake = FakeChatModel(responses=list(responses))
     spec = ChatModelSpec(provider="fake", model="fake-model", chat_model=fake)
     return ExtractionRuntime(
-        provider="fake", model="fake-model", make_spec=lambda: spec, tracing=None
+        provider="fake",
+        model="fake-model",
+        make_spec=lambda: spec,
+        tracing=None,
+        prices=prices or {},
+        aliases=([], []),
+    )
+
+
+def _row(db_session, extraction_id: int) -> Extraction:
+    with Session(db_session.get_bind()) as session:
+        return session.exec(select(Extraction).where(Extraction.id == extraction_id)).one()
+
+
+def _extract(db_session, runtime, clock, handler=None):
+    return extract_post(
+        db_session.get_bind(),
+        runtime,
+        POST,
+        clock,
+        threading.Event(),
+        handler,
+        record_latency=False,
     )
 
 
@@ -123,16 +158,15 @@ def test_stop_between_attempts_stores_nothing(db_session):
     assert current_extraction(db_session, 1) is None
 
 
-def test_cost_null_without_price(db_session, monkeypatch):
+def test_cost_null_without_price(db_session):
     _seed_tweet(db_session)
     output = ExtractionOutput(
         events=[
             ExtractedEvent(player="Haaland", team=None, event_type="out", certainty="confirmed")
         ]
     )
-    runtime = _runtime(output)
+    runtime = _runtime(output, prices={})
     clock = RecordingClock([NOW, NOW + timedelta(seconds=1)])
-    monkeypatch.setattr("app.extraction.service.load_prices", lambda: {})
 
     outcome = extract_post(
         db_session.get_bind(), runtime, POST, clock, threading.Event(), None, record_latency=False
@@ -142,21 +176,11 @@ def test_cost_null_without_price(db_session, monkeypatch):
     assert outcome.cost_usd is None
 
 
-def test_cost_from_price_table(db_session, monkeypatch):
+def test_cost_from_price_table(db_session):
     _seed_tweet(db_session)
     output = ExtractionOutput(events=[])
-    runtime = _runtime(output)
+    runtime = _runtime(output, prices=PRICES)
     clock = RecordingClock([NOW, NOW + timedelta(seconds=1)])
-    from app.extraction.pricing import Price
-
-    monkeypatch.setattr(
-        "app.extraction.service.load_prices",
-        lambda: {
-            "fake:fake-model": Price(
-                input_per_million=1.0, output_per_million=2.0, checked="2026-09-28"
-            )
-        },
-    )
 
     outcome = extract_post(
         db_session.get_bind(), runtime, POST, clock, threading.Event(), None, record_latency=False
@@ -182,10 +206,6 @@ def test_worker_extraction_records_latency(db_session):
     current = current_extraction(db_session, 1)
     assert current is not None
     # latency is on the stored extraction row; re-read it through the engine directly.
-    from sqlmodel import Session, select
-
-    from app.extraction.models import Extraction
-
     with Session(db_session.get_bind()) as session:
         row = session.exec(select(Extraction).where(Extraction.id == current.extraction_id)).one()
         assert row.latency_seconds == 7.0
@@ -215,10 +235,115 @@ def test_credentials_never_logged_or_stored(db_session, caplog):
     assert outcome is not None
     assert outcome.status == "failed"
     assert sentinel not in caplog.text
-    from sqlmodel import Session, select
-
-    from app.extraction.models import Extraction
-
     with Session(db_session.get_bind()) as session:
         row = session.exec(select(Extraction).where(Extraction.id == outcome.extraction_id)).one()
         assert sentinel not in (row.error_class or "")
+
+
+def test_extracted_row_holds_attempts_tokens_and_cost(db_session):
+    _seed_tweet(db_session)
+    runtime = _runtime(RuntimeError("boom"), ExtractionOutput(events=[]), prices=PRICES)
+    clock = RecordingClock([NOW, NOW + timedelta(seconds=3)])
+
+    outcome = _extract(db_session, runtime, clock)
+
+    row = _row(db_session, outcome.extraction_id)
+    assert row.status == "extracted"
+    assert row.attempts == 2
+    assert row.error_class is None
+    # Tokens of the successful call only: FakeChatModel reports 10 in / 5 out per call.
+    assert (row.input_tokens, row.output_tokens) == (10, 5)
+    assert row.cost_usd == pytest.approx(10 / 1_000_000 * 1.0 + 5 / 1_000_000 * 2.0)
+    assert (row.provider, row.model, row.prompt_version) == ("fake", "fake-model", PROMPT_VERSION)
+    assert (row.started_at, row.finished_at) == (NOW, NOW + timedelta(seconds=3))
+
+
+@pytest.mark.parametrize(
+    ("error", "error_class"),
+    [
+        (RuntimeError("provider error"), "RuntimeError"),
+        (TimeoutError("timed out"), "TimeoutError"),
+        (ConnectionError("429 too many requests"), "ConnectionError"),
+        ({"events": "not-a-list"}, "ExtractionOutputError"),
+    ],
+)
+def test_failed_row_holds_attempts_and_error_class(db_session, error, error_class):
+    _seed_tweet(db_session)
+    runtime = _runtime(error, error, error)
+    clock = RecordingClock([NOW, NOW + timedelta(seconds=10)])
+
+    outcome = _extract(db_session, runtime, clock)
+
+    row = _row(db_session, outcome.extraction_id)
+    assert row.status == "failed"
+    assert row.attempts == 3
+    assert row.error_class == error_class
+    assert (row.input_tokens, row.output_tokens, row.cost_usd) == (None, None, None)
+
+
+def test_error_while_saving_stores_failed_row(db_session, monkeypatch):
+    _seed_tweet(db_session)
+    runtime = _runtime(ExtractionOutput(events=[]))
+    clock = RecordingClock([NOW, NOW + timedelta(seconds=1), NOW + timedelta(seconds=2)])
+    import app.extraction.service as service
+
+    real_save = service.save_extraction
+
+    def save_failing_once(session, record, events):
+        if record.status == "extracted":
+            raise RuntimeError("database write failed")
+        return real_save(session, record, events)
+
+    monkeypatch.setattr(service, "save_extraction", save_failing_once)
+
+    outcome = _extract(db_session, runtime, clock)
+
+    assert outcome is not None
+    assert outcome.status == "failed"
+    row = _row(db_session, outcome.extraction_id)
+    assert (row.status, row.error_class, row.attempts) == ("failed", "RuntimeError", 1)
+
+
+def test_error_before_the_model_call_stores_failed_row(db_session):
+    _seed_tweet(db_session)
+
+    def broken_spec() -> ChatModelSpec:
+        raise ValueError("cannot build the chat model")
+
+    runtime = ExtractionRuntime(
+        provider="fake",
+        model="fake-model",
+        make_spec=broken_spec,
+        tracing=None,
+        prices={},
+        aliases=([], []),
+    )
+    clock = RecordingClock([NOW, NOW + timedelta(seconds=1)])
+
+    outcome = _extract(db_session, runtime, clock)
+
+    row = _row(db_session, outcome.extraction_id)
+    assert (row.status, row.error_class, row.attempts) == ("failed", "ValueError", 0)
+
+
+def test_bad_prices_file_is_a_config_error(monkeypatch, tmp_path):
+    bad = tmp_path / "prices.toml"
+    bad.write_text("[openai:gpt\n")
+    monkeypatch.setattr("app.extraction.service.load_prices", lambda: load_prices(bad))
+
+    with pytest.raises(ConfigError, match="prices.toml or aliases.toml cannot be loaded"):
+        load_reference_files()
+
+
+def test_handler_receives_post_metadata(db_session):
+    _seed_tweet(db_session)
+    runtime = _runtime(ExtractionOutput(events=[]))
+    clock = RecordingClock([NOW, NOW + timedelta(seconds=1)])
+    handler = RecordingHandler()
+
+    _extract(db_session, runtime, clock, handler=handler)
+
+    assert len(handler.chat_model_starts) == 1
+    metadata = handler.chat_model_starts[0]["metadata"]
+    assert metadata["x_id"] == POST.x_id
+    assert metadata["prompt_version"] == PROMPT_VERSION

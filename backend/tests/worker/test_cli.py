@@ -99,12 +99,70 @@ def cli(db):
     return invoke
 
 
-def _extraction_runtime(*responses, tracing=None) -> ExtractionRuntime:
+def _extraction_runtime_and_fake(
+    *responses, tracing=None
+) -> tuple[ExtractionRuntime, FakeChatModel]:
     fake = FakeChatModel(responses=list(responses))
     spec = ChatModelSpec(provider="fake", model="fake-model", chat_model=fake)
-    return ExtractionRuntime(
-        provider="fake", model="fake-model", make_spec=lambda: spec, tracing=tracing
+    runtime = ExtractionRuntime(
+        provider="fake",
+        model="fake-model",
+        make_spec=lambda: spec,
+        tracing=tracing,
+        prices={},
+        aliases=([], []),
     )
+    return runtime, fake
+
+
+def _extraction_runtime(*responses, tracing=None) -> ExtractionRuntime:
+    return _extraction_runtime_and_fake(*responses, tracing=tracing)[0]
+
+
+def _seed_tweet(db, x_id: int = 1, first_fetched_at: datetime = NOW) -> None:
+    from app.tweets.models import Tweet
+
+    with Session(db) as session:
+        session.add(
+            Tweet(
+                x_id=x_id,
+                author_handle="reporter",
+                text="Haaland starts.",
+                created_at=first_fetched_at,
+                first_fetched_at=first_fetched_at,
+                source="fake",
+                is_repost=False,
+                is_reply=False,
+                raw={},
+            )
+        )
+        session.commit()
+
+
+def _wait_until(predicate, timeout: float = 5.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def _sigterm_when(predicate) -> threading.Thread:
+    def target() -> None:
+        _wait_until(predicate)
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    thread = threading.Thread(target=target, daemon=True)
+    thread.start()
+    return thread
+
+
+def _extractions(db):
+    from app.extraction.models import Extraction
+
+    with Session(db) as session:
+        return session.exec(select(Extraction)).all()
 
 
 def test_status_on_empty_database(cli):
@@ -378,54 +436,58 @@ def test_run_without_langfuse_warns_once(cli, db, caplog):
 def test_sigterm_with_extraction_exits_within_10_s(cli, db):
     far_future = datetime(2027, 6, 1, tzinfo=UTC)
     fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
-    extraction = _extraction_runtime(ExtractionOutput(events=[]))
+    _seed_tweet(db)
+    extraction, llm = _extraction_runtime_and_fake(ExtractionOutput(events=[]))
 
-    timer = threading.Timer(1, os.kill, args=(os.getpid(), signal.SIGTERM))
-    timer.start()
+    killer = _sigterm_when(lambda: len(_extractions(db)) >= 1)
     start = time.monotonic()
-    try:
-        result = cli(
-            "run",
-            client=fake.client(sleep=lambda _: None),
-            clock=RealClock(far_future),
-            extraction=extraction,
-        )
-    finally:
-        elapsed = time.monotonic() - start
-        timer.cancel()
+    result = cli(
+        "run",
+        client=fake.client(sleep=lambda _: None),
+        clock=RealClock(far_future),
+        extraction=extraction,
+    )
+    elapsed = time.monotonic() - start
+    killer.join(timeout=1)
 
     assert result.exit_code == 0
     assert elapsed < 10
+    assert len(llm.received_messages) == 1
     assert not any(t.name == "extractor" and t.is_alive() for t in threading.enumerate())
+
+
+def test_run_stores_extraction_with_latency(cli, db):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    _seed_tweet(db, first_fetched_at=datetime.now(UTC) - timedelta(seconds=30))
+    extraction = _extraction_runtime(ExtractionOutput(events=[]))
+
+    killer = _sigterm_when(lambda: len(_extractions(db)) >= 1)
+    result = cli(
+        "run",
+        client=fake.client(sleep=lambda _: None),
+        clock=RealClock(far_future),
+        extraction=extraction,
+    )
+    killer.join(timeout=1)
+
+    assert result.exit_code == 0
+    rows = _extractions(db)
+    assert [(row.tweet_x_id, row.status) for row in rows] == [(1, "extracted")]
+    assert rows[0].latency_seconds is not None
+    assert 30 <= rows[0].latency_seconds < 60
 
 
 def test_sigterm_with_extraction_blocked_in_a_call_exits_within_10_s(cli, db):
     # A blocked provider call cannot be interrupted: the daemon thread is abandoned after
     # the shared join deadline, but the worker itself must still exit within the bound.
-    from app.tweets.models import Tweet
-
     far_future = datetime(2027, 6, 1, tzinfo=UTC)
     fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
-    with Session(db) as session:
-        session.add(
-            Tweet(
-                x_id=1,
-                author_handle="reporter",
-                text="Haaland starts.",
-                created_at=NOW,
-                first_fetched_at=NOW,
-                source="fake",
-                is_repost=False,
-                is_reply=False,
-                raw={},
-            )
-        )
-        session.commit()
+    _seed_tweet(db)
     block = threading.Event()
-    extraction = _extraction_runtime(block)
+    extraction, llm = _extraction_runtime_and_fake(block)
 
-    timer = threading.Timer(1, os.kill, args=(os.getpid(), signal.SIGTERM))
-    timer.start()
+    killer = _sigterm_when(lambda: len(llm.received_messages) >= 1)
     start = time.monotonic()
     try:
         result = cli(
@@ -436,11 +498,13 @@ def test_sigterm_with_extraction_blocked_in_a_call_exits_within_10_s(cli, db):
         )
     finally:
         elapsed = time.monotonic() - start
-        timer.cancel()
+        killer.join(timeout=1)
         block.set()
 
     assert result.exit_code == 0
     assert elapsed < 10
+    assert len(llm.received_messages) == 1
+    assert _extractions(db) == []
 
 
 def test_polls_continue_while_extraction_blocks(db):
@@ -505,15 +569,21 @@ def test_polls_continue_while_extraction_blocks(db):
     watcher = threading.Thread(target=watch_and_release, daemon=True)
     watcher.start()
 
+    extraction_block = threading.Event()
+    extraction, llm = _extraction_runtime_and_fake(extraction_block)
     poller_source = FakeSource(pages=[[]])
+
+    def make_source_once_extraction_blocks() -> FakeSource:
+        # Every poll then happens while the extractor is inside its blocked model call.
+        assert _wait_until(lambda: len(llm.received_messages) >= 1)
+        return poller_source
+
     tweet_ingest = TweetIngest(
         source_name="fake",
         list_id=1,
-        make_source=lambda: poller_source,
+        make_source=make_source_once_extraction_blocks,
         clock=FakeClock(tweet_start, tweet_end),
     )
-    extraction_block = threading.Event()
-    extraction = _extraction_runtime(extraction_block)
     deps = WorkerDeps(
         engine=db,
         client=fake.client(sleep=lambda _: None, max_attempts=1),
@@ -536,6 +606,8 @@ def test_polls_continue_while_extraction_blocks(db):
     assert result.exit_code == 0
     assert elapsed < 10
     assert calls["n"] == 2
+    assert len(llm.received_messages) == 1
+    assert _extractions(db) == []
 
     with Session(db) as session:
         rows = session.exec(
@@ -562,6 +634,39 @@ def test_worker_rejects_unknown_llm_provider(monkeypatch, tmp_path):
 
     assert result.exit_code == 1
     assert "LLM_PROVIDER must be one of" in result.stderr
+
+
+def test_worker_rejects_malformed_extraction_variable_naming_it_only(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("USD_PLN_RATE", "4,05")
+
+    result = CliRunner().invoke(app, ["status"])
+
+    assert result.exit_code == 1
+    assert "USD_PLN_RATE" in result.stderr
+    assert "4,05" not in result.stderr
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+
+
+def test_worker_rejects_unreadable_prices_file_at_start(monkeypatch, tmp_path):
+    import tomllib
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_MODEL", "gpt-test")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-sentinel-value")
+
+    def broken_prices():
+        raise tomllib.TOMLDecodeError("Invalid value (at line 1, column 5)")
+
+    monkeypatch.setattr("app.extraction.service.load_prices", broken_prices)
+
+    result = CliRunner().invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert "prices.toml" in result.stderr
+    assert "TOMLDecodeError" in result.stderr
+    assert "sk-sentinel-value" not in result.stderr
 
 
 def test_polls_continue_while_a_deadline_snapshot_blocks(db):

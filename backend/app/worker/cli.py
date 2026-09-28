@@ -11,13 +11,18 @@ from sqlalchemy import Connection, Engine, text
 from sqlmodel import Session
 
 from app.core.errors import CollectorError
-from app.core.settings import ExtractionSettings, TweetSettings, load_settings, parse_league_ids
+from app.core.settings import (
+    TweetSettings,
+    load_extraction_settings,
+    load_settings,
+    parse_league_ids,
+)
 from app.db.engine import make_engine
 from app.db.locks import try_schedule_lock
 from app.extraction.config import resolve_llm, resolve_tracing
 from app.extraction.loop import start_extractor
 from app.extraction.providers import build_chat_model
-from app.extraction.service import ExtractionRuntime
+from app.extraction.service import ExtractionRuntime, load_reference_files
 from app.extraction.store import extraction_status
 from app.fpl.client import FplClient
 from app.tweets.config import resolve_ingest
@@ -99,8 +104,9 @@ def _deps_from_settings() -> WorkerDeps:
     try:
         tweet_settings = TweetSettings()
         ingest_config = resolve_ingest(tweet_settings)
-        extraction_settings = ExtractionSettings()
+        extraction_settings = load_extraction_settings()
         llm_config = resolve_llm(extraction_settings)
+        prices, aliases = load_reference_files() if llm_config is not None else ({}, ([], []))
         settings = load_settings()
     except CollectorError as exc:
         raise fail(str(exc)) from None
@@ -118,6 +124,8 @@ def _deps_from_settings() -> WorkerDeps:
             model=llm_config.model,
             make_spec=lambda: build_chat_model(llm_config),
             tracing=resolve_tracing(extraction_settings),
+            prices=prices,
+            aliases=aliases,
         )
     return WorkerDeps(
         engine=make_engine(settings.database_url),

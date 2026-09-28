@@ -33,7 +33,12 @@ def _runtime(*responses) -> ExtractionRuntime:
     fake = FakeChatModel(responses=list(responses))
     spec = ChatModelSpec(provider="fake", model="fake-model", chat_model=fake)
     return ExtractionRuntime(
-        provider="fake", model="fake-model", make_spec=lambda: spec, tracing=None
+        provider="fake",
+        model="fake-model",
+        make_spec=lambda: spec,
+        tracing=None,
+        prices={},
+        aliases=([], []),
     )
 
 
@@ -243,3 +248,84 @@ def test_stops_on_stop_event(db):
     thread.join(timeout=2)
 
     assert not thread.is_alive()
+
+
+class _AdvancingClock:
+    def __init__(self) -> None:
+        self._now = NOW
+        self.sleeps: list[float] = []
+
+    def now(self) -> datetime:
+        return self._now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self._now += timedelta(seconds=seconds)
+
+
+def _run_until_rows(db, loop: ExtractionLoop, stop_event: threading.Event, count: int):
+    rows: list[Extraction] = []
+
+    def _fetch() -> bool:
+        nonlocal rows
+        with Session(db) as session:
+            rows = session.exec(select(Extraction).order_by(Extraction.id)).all()
+        return len(rows) >= count
+
+    thread = threading.Thread(target=loop.run, daemon=True)
+    thread.start()
+    _wait_for(_fetch)
+    stop_event.set()
+    thread.join(timeout=2)
+    return rows
+
+
+def test_error_while_saving_stores_failed_and_moves_on(db, monkeypatch):
+    stop_event = threading.Event()
+    with Session(db) as session:
+        session.add(_tweet_row(x_id=1, created_at=NOW))
+        session.add(_tweet_row(x_id=2, created_at=NOW + timedelta(minutes=1)))
+        session.commit()
+
+    import app.extraction.service as service
+
+    real_save = service.save_extraction
+
+    def save_failing_for_first_post(session, record, events):
+        if record.tweet_x_id == 1 and record.status == "extracted":
+            raise RuntimeError("database write failed")
+        return real_save(session, record, events)
+
+    monkeypatch.setattr(service, "save_extraction", save_failing_for_first_post)
+    runtime = _runtime(ExtractionOutput(events=[]), ExtractionOutput(events=[]))
+    clock = _AdvancingClock()
+    loop = ExtractionLoop(db, runtime, clock, stop_event)
+
+    rows = _run_until_rows(db, loop, stop_event, 2)
+
+    assert [(row.tweet_x_id, row.status, row.error_class) for row in rows] == [
+        (1, "failed", "RuntimeError"),
+        (2, "extracted", None),
+    ]
+    assert 30.0 not in clock.sleeps
+
+
+def test_tracing_setup_error_extracts_untraced(db, monkeypatch, caplog):
+    stop_event = threading.Event()
+    with Session(db) as session:
+        session.add(_tweet_row(x_id=1, created_at=NOW))
+        session.commit()
+
+    def broken_handler(tracing):
+        raise ValueError("langfuse client cannot start with secret sk-lf-sentinel")
+
+    monkeypatch.setattr("app.extraction.loop.make_handler", broken_handler)
+    runtime = _runtime(ExtractionOutput(events=[]))
+    loop = ExtractionLoop(db, runtime, _AdvancingClock(), stop_event)
+
+    with caplog.at_level("ERROR"):
+        rows = _run_until_rows(db, loop, stop_event, 1)
+
+    assert [(row.tweet_x_id, row.status) for row in rows] == [(1, "extracted")]
+    assert "ValueError" in caplog.text
+    assert "sk-lf-sentinel" not in caplog.text

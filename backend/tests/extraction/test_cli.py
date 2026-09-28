@@ -1,4 +1,6 @@
 import json
+import os
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
@@ -23,6 +25,15 @@ from tests.conftest import BACKEND_DIR
 from tests.extraction.fakes import FakeChatModel, RecordingHandler
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
+EXTRACTION_VARIABLE = re.compile(r"(LLM_.*|LANGFUSE_.*|.*_API_KEY|USD_PLN_RATE)")
+
+
+@pytest.fixture(autouse=True)
+def _no_extraction_variables(monkeypatch):
+    # Keys the owner keeps in the environment must never reach a provider or Langfuse here.
+    for name in list(os.environ):
+        if EXTRACTION_VARIABLE.fullmatch(name):
+            monkeypatch.delenv(name)
 
 
 class FixedClock:
@@ -67,7 +78,7 @@ def _build_spec(*responses, provider: str = "fake", model: str = "fake-model"):
 def _deps(db, build_spec, settings=None, clock=None) -> ExtractionCliDeps:
     return ExtractionCliDeps(
         engine=db,
-        settings=settings or ExtractionSettings(),
+        settings=settings or ExtractionSettings(_env_file=None),
         build_spec=build_spec,
         clock=clock or FixedClock(NOW),
     )
@@ -254,7 +265,7 @@ def test_reextract_requires_one_selector(db):
 
 def test_reextract_config_error_names_variable(db, monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = ExtractionSettings(llm_provider="", llm_model="")
+    settings = ExtractionSettings(_env_file=None, llm_provider="", llm_model="")
     build_spec = build_spec_from_settings(settings)
     result = CliRunner().invoke(
         app,
@@ -450,7 +461,7 @@ def test_prelabel_limit_and_range(db, tmp_path):
 
 def test_prelabel_config_error_names_variable(db, tmp_path, monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = ExtractionSettings(llm_provider="", llm_model="")
+    settings = ExtractionSettings(_env_file=None, llm_provider="", llm_model="")
     output = tmp_path / "cases.jsonl"
     result = CliRunner().invoke(
         app,
@@ -535,7 +546,7 @@ class _Files:
 def _no_db_deps(build_spec, settings=None) -> ExtractionCliDeps:
     return ExtractionCliDeps(
         engine=None,
-        settings=settings or ExtractionSettings(usd_pln_rate=4.0),
+        settings=settings or ExtractionSettings(_env_file=None, usd_pln_rate=4.0),
         build_spec=build_spec,
         clock=FixedClock(NOW),
     )
@@ -551,7 +562,7 @@ def test_evaluate_refuses_unreviewed(tmp_path):
         [_eval_case("1", "test", reviewed=False), _eval_case("2", "test", reviewed=False)],
     )
     # Neither USD_PLN_RATE nor a key is set: the reviewed check comes first.
-    deps = _no_db_deps(_forbidden_build_spec, ExtractionSettings(usd_pln_rate=None))
+    deps = _no_db_deps(_forbidden_build_spec, ExtractionSettings(_env_file=None, usd_pln_rate=None))
 
     result = CliRunner().invoke(app, files.args(), obj=deps)
 
@@ -562,7 +573,7 @@ def test_evaluate_refuses_unreviewed(tmp_path):
 
 def test_evaluate_requires_pln_rate(tmp_path):
     files = _Files(tmp_path, [_eval_case("1", "test")])
-    deps = _no_db_deps(_forbidden_build_spec, ExtractionSettings(usd_pln_rate=None))
+    deps = _no_db_deps(_forbidden_build_spec, ExtractionSettings(_env_file=None, usd_pln_rate=None))
 
     result = CliRunner().invoke(app, files.args(), obj=deps)
 
@@ -573,7 +584,7 @@ def test_evaluate_requires_pln_rate(tmp_path):
 def test_evaluate_config_error_names_variable(tmp_path, monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     files = _Files(tmp_path, [_eval_case("1", "test")])
-    settings = ExtractionSettings(llm_provider="", llm_model="", usd_pln_rate=4.0)
+    settings = ExtractionSettings(_env_file=None, llm_provider="", llm_model="", usd_pln_rate=4.0)
     deps = _no_db_deps(build_spec_from_settings(settings), settings)
 
     args = files.args()
@@ -701,3 +712,27 @@ def test_evaluate_traces_with_run_name():
     for start in handler.chat_model_starts:
         assert start["metadata"]["langfuse_session_id"] == "eval-run-7"
         assert start["metadata"]["x_id"] == "1"
+
+
+@pytest.mark.parametrize("run_name", ["gemini/flash-v1", "../x", ".hidden", "a b"])
+def test_evaluate_rejects_unsafe_run_name_before_any_call(tmp_path, run_name):
+    files = _Files(tmp_path, [_eval_case("1", "test")])
+
+    result = CliRunner().invoke(
+        app, files.args("--run-name", run_name), obj=_no_db_deps(_forbidden_build_spec)
+    )
+
+    assert result.exit_code == 1
+    assert "--run-name" in result.stderr
+    assert not files.results.exists()
+
+
+def test_malformed_variable_is_named_without_its_value(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("USD_PLN_RATE", "4,05")
+
+    result = CliRunner().invoke(app, ["evaluate", "--split", "test"])
+
+    assert result.exit_code == 1
+    assert "USD_PLN_RATE" in result.stderr
+    assert "4,05" not in result.stderr

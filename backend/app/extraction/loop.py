@@ -30,7 +30,13 @@ class ExtractionLoop:
         self._stop_event = stop_event
 
     def run(self) -> None:
-        handler = make_handler(self._runtime.tracing)
+        try:
+            handler = make_handler(self._runtime.tracing)
+        except Exception as exc:
+            logger.error(
+                "langfuse tracing unavailable, extracting untraced: %s", type(exc).__name__
+            )
+            handler = None
         try:
             while not self._stop_event.is_set():
                 try:

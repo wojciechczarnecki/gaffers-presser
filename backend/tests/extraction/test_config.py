@@ -2,7 +2,12 @@ import pytest
 
 from app.core.errors import ConfigError
 from app.core.settings import ExtractionSettings
-from app.extraction.config import PROVIDERS, resolve_llm, resolve_tracing
+from app.extraction.config import (
+    DEFAULT_MODEL_BY_PROVIDER,
+    PROVIDERS,
+    resolve_llm,
+    resolve_tracing,
+)
 
 SENTINEL = "sentinel-secret-value"
 
@@ -73,6 +78,39 @@ def test_overrides_take_precedence_over_settings(monkeypatch):
     config = resolve_llm(settings, provider="anthropic", model="override-model")
     assert config.provider == "anthropic"
     assert config.model == "override-model"
+
+
+def test_other_provider_without_model_does_not_borrow_the_settings_model(monkeypatch):
+    settings = _settings(
+        monkeypatch,
+        LLM_PROVIDER="openai",
+        LLM_MODEL="gpt-4.1-mini",
+        OPENAI_API_KEY=SENTINEL,
+        ANTHROPIC_API_KEY=SENTINEL,
+    )
+    with pytest.raises(ConfigError, match="--model must be given with --provider"):
+        resolve_llm(settings, provider="anthropic")
+
+
+def test_other_provider_without_model_takes_the_provider_default(monkeypatch):
+    monkeypatch.setitem(DEFAULT_MODEL_BY_PROVIDER, "anthropic", "anthropic-default")
+    settings = _settings(
+        monkeypatch,
+        LLM_PROVIDER="openai",
+        LLM_MODEL="gpt-4.1-mini",
+        OPENAI_API_KEY=SENTINEL,
+        ANTHROPIC_API_KEY=SENTINEL,
+    )
+    config = resolve_llm(settings, provider="anthropic")
+    assert (config.provider, config.model) == ("anthropic", "anthropic-default")
+
+
+def test_same_provider_override_keeps_the_settings_model(monkeypatch):
+    settings = _settings(
+        monkeypatch, LLM_PROVIDER="openai", LLM_MODEL="gpt-4.1-mini", OPENAI_API_KEY=SENTINEL
+    )
+    config = resolve_llm(settings, provider="openai")
+    assert config.model == "gpt-4.1-mini"
 
 
 def test_errors_never_carry_values(monkeypatch):

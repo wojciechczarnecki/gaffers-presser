@@ -8,12 +8,11 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.errors import CollectorError, ConfigError
-from app.core.settings import ExtractionSettings, load_settings
+from app.core.settings import ExtractionSettings, load_extraction_settings, load_settings
 from app.db.engine import make_engine
 from app.extraction.config import resolve_llm, resolve_tracing
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
@@ -21,7 +20,12 @@ from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.flow import PROMPT_VERSION, build_flow
 from app.extraction.linking import PlayerIndex, load_aliases, load_players, load_snapshot
 from app.extraction.providers import ChatModelSpec, build_chat_model
-from app.extraction.service import ExtractionRuntime, extract_post, run_with_retries
+from app.extraction.service import (
+    ExtractionRuntime,
+    extract_post,
+    load_reference_files,
+    run_with_retries,
+)
 from app.extraction.store import posts_for_reextract
 from app.extraction.tracing import flush, make_handler, run_config
 from app.tweets.loop import Clock
@@ -77,12 +81,15 @@ def get_deps(ctx: typer.Context) -> ExtractionCliDeps:
 def _engine_from_env() -> Engine | None:
     try:
         return make_engine(load_settings().database_url)
-    except ValidationError:
+    except ConfigError:
         return None  # `evaluate` needs no database; the other commands say so through db_engine
 
 
 def _deps_from_settings() -> ExtractionCliDeps:
-    settings = ExtractionSettings()
+    try:
+        settings = load_extraction_settings()
+    except ConfigError as exc:
+        raise fail(str(exc)) from None
     return ExtractionCliDeps(
         engine=_engine_from_env(),
         settings=settings,
@@ -118,6 +125,7 @@ def reextract(
 
     try:
         spec = deps.build_spec(provider, model)
+        prices, aliases = load_reference_files()
     except CollectorError as exc:
         raise fail(str(exc)) from None
 
@@ -132,7 +140,12 @@ def reextract(
     tracing = resolve_tracing(deps.settings)
     handler = make_handler(tracing)
     runtime = ExtractionRuntime(
-        provider=spec.provider, model=spec.model, make_spec=lambda: spec, tracing=tracing
+        provider=spec.provider,
+        model=spec.model,
+        make_spec=lambda: spec,
+        tracing=tracing,
+        prices=prices,
+        aliases=aliases,
     )
     stop_event = threading.Event()
 
@@ -270,6 +283,7 @@ EVALS_DIR = Path(__file__).resolve().parents[2] / "evals" / "extraction"
 DEFAULT_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
 DEFAULT_PLAYERS_PATH = EVALS_DIR / "v1" / "players-2026-27.json"
 DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
+RUN_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9._-]*")
 
 
 @app.command(help="Evaluate a provider and model on a split of the evaluation set.")
@@ -296,6 +310,8 @@ def evaluate(
     usd_pln_rate = deps.settings.usd_pln_rate
     if usd_pln_rate is None:
         raise fail("USD_PLN_RATE must be set")
+    if run_name is not None and not RUN_NAME_PATTERN.fullmatch(run_name):
+        raise fail("--run-name may hold only letters, digits, '.', '_' and '-'")
 
     try:
         spec = deps.build_spec(provider, model)

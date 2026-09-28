@@ -2,16 +2,24 @@ import logging
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.runnables import RunnableConfig
 from sqlalchemy import Engine
 from sqlmodel import Session
 
+from app.core.errors import ConfigError
 from app.extraction.config import TracingConfig
 from app.extraction.flow import PROMPT_VERSION, Flow, build_flow
-from app.extraction.linking import PlayerIndex, load_aliases, load_players
-from app.extraction.pricing import compute_cost, load_prices
+from app.extraction.linking import (
+    PlayerAlias,
+    PlayerIndex,
+    TeamAlias,
+    load_aliases,
+    load_players,
+)
+from app.extraction.pricing import Price, compute_cost, load_prices
 from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import FlowResult, PostInput
 from app.extraction.store import ExtractionRecord, save_extraction
@@ -24,6 +32,8 @@ logger = logging.getLogger(__name__)
 MAX_ATTEMPTS = 3
 RETRY_BACKOFF_SECONDS: tuple[float, ...] = (2.0, 4.0)
 
+Aliases = tuple[list[PlayerAlias], list[TeamAlias]]
+
 
 @dataclass(frozen=True)
 class ExtractionRuntime:
@@ -31,6 +41,8 @@ class ExtractionRuntime:
     model: str
     make_spec: Callable[[], ChatModelSpec]
     tracing: TracingConfig | None
+    prices: dict[str, Price]
+    aliases: Aliases
     clock: Clock | None = None
 
 
@@ -79,6 +91,15 @@ def run_with_retries(
     return RetryOutcome(None, attempts, last_exc)
 
 
+def load_reference_files() -> tuple[dict[str, Price], Aliases]:
+    try:
+        return load_prices(), load_aliases()
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise ConfigError(
+            f"prices.toml or aliases.toml cannot be loaded: {type(exc).__name__}"
+        ) from None
+
+
 def extract_post(
     engine: Engine,
     runtime: ExtractionRuntime,
@@ -89,64 +110,102 @@ def extract_post(
     record_latency: bool,
 ) -> StoredOutcome | None:
     started_at = clock.now()
+    attempts = 0
+    try:
+        with Session(engine) as session:
+            players, teams = load_players(session)
+        player_aliases, team_aliases = runtime.aliases
+        index = PlayerIndex(players, teams, player_aliases, team_aliases)
+        flow = build_flow(runtime.make_spec(), index)
+        config = run_config(post.x_id, PROMPT_VERSION, runtime.provider, runtime.model, handler)
 
-    with Session(engine) as session:
-        players, teams = load_players(session)
-    player_aliases, team_aliases = load_aliases()
-    index = PlayerIndex(players, teams, player_aliases, team_aliases)
+        retry = run_with_retries(flow, post, config, clock, stop_event)
+        if retry.stopped:
+            return None
+        attempts = retry.attempts
+        finished_at = clock.now()
+        if retry.result is not None:
+            return _store_extracted(
+                engine,
+                runtime,
+                post,
+                retry.result,
+                started_at,
+                finished_at,
+                attempts,
+                record_latency,
+            )
+        error = retry.error
+    except Exception as exc:
+        logger.error("extraction of a post failed outside the model call: %s", type(exc).__name__)
+        error = exc
+        finished_at = clock.now()
 
-    spec = runtime.make_spec()
-    flow = build_flow(spec, index)
-    config = run_config(post.x_id, PROMPT_VERSION, runtime.provider, runtime.model, handler)
+    error_class = type(error).__name__ if error is not None else "UnknownError"
+    return _store_failed(
+        engine, runtime, post, error_class, started_at, finished_at, attempts, record_latency
+    )
 
-    retry = run_with_retries(flow, post, config, clock, stop_event)
-    if retry.stopped:
+
+def _latency(session: Session, x_id: int, finished_at: datetime) -> float | None:
+    tweet = session.get(Tweet, x_id)
+    if tweet is None:
         return None
-    attempts = retry.attempts
-    last_exc = retry.error
-    result = retry.result
+    return (finished_at - tweet.first_fetched_at).total_seconds()
 
-    finished_at = clock.now()
 
+def _store_extracted(
+    engine: Engine,
+    runtime: ExtractionRuntime,
+    post: PostInput,
+    result: FlowResult,
+    started_at: datetime,
+    finished_at: datetime,
+    attempts: int,
+    record_latency: bool,
+) -> StoredOutcome:
+    cost_usd = compute_cost(
+        runtime.provider,
+        runtime.model,
+        result.usage.input_tokens,
+        result.usage.output_tokens,
+        runtime.prices,
+    )
     with Session(engine) as session:
-        latency_seconds = None
-        if record_latency:
-            tweet = session.get(Tweet, post.x_id)
-            if tweet is not None:
-                latency_seconds = (finished_at - tweet.first_fetched_at).total_seconds()
+        record = ExtractionRecord(
+            tweet_x_id=post.x_id,
+            status="extracted",
+            provider=runtime.provider,
+            model=runtime.model,
+            prompt_version=PROMPT_VERSION,
+            started_at=started_at,
+            finished_at=finished_at,
+            attempts=attempts,
+            input_tokens=result.usage.input_tokens,
+            output_tokens=result.usage.output_tokens,
+            cost_usd=cost_usd,
+            latency_seconds=_latency(session, post.x_id, finished_at) if record_latency else None,
+        )
+        extraction_id = save_extraction(session, record, result.events)
+    return StoredOutcome(
+        extraction_id=extraction_id,
+        status="extracted",
+        events=len(result.events),
+        cost_usd=cost_usd,
+    )
 
-        if result is not None:
-            prices = load_prices()
-            cost_usd = compute_cost(
-                runtime.provider,
-                runtime.model,
-                result.usage.input_tokens,
-                result.usage.output_tokens,
-                prices,
-            )
-            record = ExtractionRecord(
-                tweet_x_id=post.x_id,
-                status="extracted",
-                provider=runtime.provider,
-                model=runtime.model,
-                prompt_version=PROMPT_VERSION,
-                started_at=started_at,
-                finished_at=finished_at,
-                attempts=attempts,
-                input_tokens=result.usage.input_tokens,
-                output_tokens=result.usage.output_tokens,
-                cost_usd=cost_usd,
-                latency_seconds=latency_seconds,
-            )
-            extraction_id = save_extraction(session, record, result.events)
-            return StoredOutcome(
-                extraction_id=extraction_id,
-                status="extracted",
-                events=len(result.events),
-                cost_usd=cost_usd,
-            )
 
-        error_class = type(last_exc).__name__ if last_exc is not None else "UnknownError"
+def _store_failed(
+    engine: Engine,
+    runtime: ExtractionRuntime,
+    post: PostInput,
+    error_class: str,
+    started_at: datetime,
+    finished_at: datetime,
+    attempts: int,
+    record_latency: bool,
+) -> StoredOutcome:
+    with Session(engine) as session:
         record = ExtractionRecord(
             tweet_x_id=post.x_id,
             status="failed",
@@ -157,7 +216,7 @@ def extract_post(
             finished_at=finished_at,
             attempts=attempts,
             error_class=error_class,
-            latency_seconds=latency_seconds,
+            latency_seconds=_latency(session, post.x_id, finished_at) if record_latency else None,
         )
         extraction_id = save_extraction(session, record, [])
-        return StoredOutcome(extraction_id=extraction_id, status="failed", events=0, cost_usd=None)
+    return StoredOutcome(extraction_id=extraction_id, status="failed", events=0, cost_usd=None)

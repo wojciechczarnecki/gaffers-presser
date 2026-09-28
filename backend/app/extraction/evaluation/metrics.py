@@ -48,10 +48,15 @@ class Metrics:
 
 
 def passes(
-    f1: float, linking_accuracy: float, false_alarm_rate: float, monthly_cost_pln: float | None
+    f1: float,
+    linking_accuracy: float,
+    false_alarm_rate: float,
+    monthly_cost_pln: float | None,
+    errored_cases: int = 0,
 ) -> bool:
     return (
-        f1 >= MIN_F1
+        errored_cases == 0
+        and f1 >= MIN_F1
         and linking_accuracy >= MIN_LINKING_ACCURACY
         and false_alarm_rate <= MAX_FALSE_ALARM_RATE
         and monthly_cost_pln is not None
@@ -174,7 +179,7 @@ def compute_metrics(
             linking_paired += 1
             linking_correct += exp.fpl_id == pred.fpl_id
 
-        if not result.expected:
+        if not result.expected and result.error_class is None:
             empty_cases += 1
             false_alarms += bool(result.predicted)
 
@@ -187,10 +192,11 @@ def compute_metrics(
     latencies = [r.latency_seconds for r in results if r.latency_seconds is not None]
     mean_cost = _mean([r.cost_usd for r in results if r.cost_usd is not None])
     projected = mean_cost * posts_per_month * usd_pln_rate if mean_cost is not None else None
+    errored_cases = sum(1 for r in results if r.error_class is not None)
 
     return Metrics(
         cases=len(results),
-        errored_cases=sum(1 for r in results if r.error_class is not None),
+        errored_cases=errored_cases,
         precision=precision,
         recall=recall,
         f1=f1,
@@ -207,5 +213,5 @@ def compute_metrics(
         projected_monthly_cost_pln=projected,
         posts_per_month=posts_per_month,
         usd_pln_rate=usd_pln_rate,
-        passes=passes(f1, linking_accuracy, false_alarm_rate, projected),
+        passes=passes(f1, linking_accuracy, false_alarm_rate, projected, errored_cases),
     )
