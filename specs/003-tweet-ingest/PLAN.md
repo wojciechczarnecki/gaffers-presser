@@ -360,7 +360,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       step 4, `test_errors_never_carry_the_token` (bearer only in the `Authorization`
       header) — files: `app/tweets/sources/x_api.py`, payloads, test file.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/sources/test_x_api.py`
-- [ ] 6. twscrape adapter. Payloads: take `tests/mocked-data/raw_list_timeline.json` from
+- [x] 6. twscrape adapter. Payloads: take `tests/mocked-data/raw_list_timeline.json` from
       the twscrape 0.20.1 sdist (MIT; the sdist URL is in
       `https://pypi.org/pypi/twscrape/0.20.1/json` — fetch it with `curl` into the
       scratchpad), trim it to ~5 tweet entries plus the bottom cursor, replace every handle,
@@ -715,7 +715,14 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+- Step 6 payloads: the trimmed twscrape sdist fixture (`tests/mocked-data/raw_list_timeline.json`,
+  MIT) has no reply tweet among its entries (no `in_reply_to_status_id_str`), so
+  `twscrape-page-1.json.gz`'s reply example (`x_id=3002`) is a duplicate of a real entry with
+  `in_reply_to_status_id_str`/`in_reply_to_screen_name`/`in_reply_to_user_id_str` added
+  manually, keeping the rest of the entry's real (redacted) structure. Every handle, display
+  name, bio, profile URL and post text (including the one long-form `note_tweet` post) in both
+  twscrape payloads is replaced by a synthetic value; only numeric IDs, timestamps and engagement
+  counts are kept from the original fixture. Minor — no scope or architecture change.
 
 ## Final review
 
