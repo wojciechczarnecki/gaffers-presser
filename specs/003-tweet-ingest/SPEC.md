@@ -26,6 +26,10 @@ metrics:
   findings_accepted: 15
   findings_rejected: 5
   finished_at: 2026-09-28T15:08
+  cost_plan_cents: 190
+  cost_plan_review_cents: 63
+  cost_implement_cents: 1288
+  cost_final_review_cents: 815
 ---
 
 # SPEC 003 — Tweet sources, ingest and latency measurement
