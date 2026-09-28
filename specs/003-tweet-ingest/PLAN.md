@@ -311,7 +311,7 @@ run from `backend/`. Every step also ends with `<verify.command>` green before i
       asserting `importlib.metadata.version("twscrape") == "0.20.1"` — files:
       `backend/pyproject.toml`, `backend/uv.lock`, the test files.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/sources/test_dependency.py && uv lock --check`
-- [ ] 2. Settings and configuration: `TweetSettings` in `app/core/settings.py`; new
+- [x] 2. Settings and configuration: `TweetSettings` in `app/core/settings.py`; new
       `app/tweets/__init__.py` (empty until step 8), `app/tweets/config.py` with
       `SOURCE_REQUIREMENTS`, `check_source`, `resolve_ingest`, `IngestConfig` as in
       "Configuration". Tests (`tests/tweets/test_config.py`, settings built with
