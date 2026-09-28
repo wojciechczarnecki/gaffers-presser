@@ -18,6 +18,7 @@ from app.extraction.config import resolve_llm, resolve_tracing
 from app.extraction.loop import start_extractor
 from app.extraction.providers import build_chat_model
 from app.extraction.service import ExtractionRuntime
+from app.extraction.store import extraction_status
 from app.fpl.client import FplClient
 from app.tweets.config import resolve_ingest
 from app.tweets.loop import Clock as TweetClock
@@ -261,6 +262,29 @@ def status(ctx: typer.Context) -> None:
         next_str = "due now" if next_at <= now else _fmt(next_at)
         typer.echo(f"  next poll: {next_str}")
         typer.echo(f"  mode: {mode(deadlines, now)}")
+
+    if deps.extraction is None:
+        typer.echo("Extraction: disabled")
+    else:
+        extraction_state = extraction_status(deps.engine)
+        typer.echo("Extraction:")
+        typer.echo(f"  model: {deps.extraction.provider}:{deps.extraction.model}")
+        typer.echo(f"  posts waiting: {extraction_state.waiting}")
+        typer.echo(f"  failed posts: {extraction_state.failed_posts}")
+        if extraction_state.latest is None:
+            typer.echo("  latest extraction: never")
+        else:
+            latest_extraction = extraction_state.latest
+            latency_str = (
+                "-"
+                if latest_extraction.latency_seconds is None
+                else str(latest_extraction.latency_seconds)
+            )
+            typer.echo(
+                f"  latest extraction: {_fmt(latest_extraction.finished_at)}"
+                f" x_id={latest_extraction.tweet_x_id} status={latest_extraction.status}"
+                f" latency={latency_str}"
+            )
 
 
 def main() -> None:

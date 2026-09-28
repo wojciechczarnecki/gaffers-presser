@@ -709,7 +709,9 @@ def _tweet_poll(started_at: datetime, outcome: str, **fields):
 
 def _tweet_status_lines(result) -> list[str]:
     lines = result.stdout.splitlines()
-    return lines[lines.index("Tweet ingest:") :]
+    start = lines.index("Tweet ingest:")
+    end = lines.index("Extraction: disabled", start)
+    return lines[start:end]
 
 
 def test_status_shows_tweet_ingest_with_polls_in_window(cli, db):
@@ -776,6 +778,84 @@ def test_status_shows_rate_limited_next_poll_in_sparse_mode(cli, db):
         "  next poll: 2026-10-10T07:29:00Z",
         "  mode: sparse",
     ]
+
+
+def test_status_shows_extraction_disabled(cli):
+    result = cli("status")
+    assert result.exit_code == 0
+    assert "Extraction: disabled" in result.stdout
+
+
+def test_status_shows_extraction_never(cli, db):
+    extraction = _extraction_runtime()
+    result = cli("status", extraction=extraction)
+    assert result.exit_code == 0
+    lines = result.stdout.splitlines()
+    assert "Extraction:" in lines
+    assert "  model: fake:fake-model" in lines
+    assert "  posts waiting: 0" in lines
+    assert "  failed posts: 0" in lines
+    assert "  latest extraction: never" in lines
+
+
+def test_status_shows_extraction_counts_and_latest(cli, db):
+    from app.extraction.store import ExtractionRecord, save_extraction
+    from app.tweets.models import Tweet
+
+    with Session(db) as session:
+        session.add(
+            Tweet(
+                x_id=1,
+                author_handle="reporter",
+                text="Haaland starts.",
+                created_at=NOW,
+                first_fetched_at=NOW,
+                source="fake",
+                is_repost=False,
+                is_reply=False,
+                raw={},
+            )
+        )
+        session.add(
+            Tweet(
+                x_id=2,
+                author_handle="reporter",
+                text="Saka doubtful.",
+                created_at=NOW,
+                first_fetched_at=NOW,
+                source="fake",
+                is_repost=False,
+                is_reply=False,
+                raw={},
+            )
+        )
+        session.commit()
+        save_extraction(
+            session,
+            ExtractionRecord(
+                tweet_x_id=1,
+                status="failed",
+                provider="fake",
+                model="fake-model",
+                prompt_version="v1",
+                started_at=NOW,
+                finished_at=NOW + timedelta(seconds=3),
+                attempts=3,
+                error_class="RuntimeError",
+                latency_seconds=3.0,
+            ),
+            [],
+        )
+
+    extraction = _extraction_runtime()
+    result = cli("status", extraction=extraction)
+    assert result.exit_code == 0
+    lines = result.stdout.splitlines()
+    assert "Extraction:" in lines
+    assert "  model: fake:fake-model" in lines
+    assert "  posts waiting: 1" in lines  # x_id=2 has no extraction yet
+    assert "  failed posts: 1" in lines
+    assert "  latest extraction: 2026-09-26T00:00:03Z x_id=1 status=failed latency=3.0" in lines
 
 
 def test_worker_help():

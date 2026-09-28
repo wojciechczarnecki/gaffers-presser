@@ -571,7 +571,7 @@ from `backend/`.
       blocked in a call: exit 0, elapsed < 10 s).
       Files: `backend/app/worker/cli.py`, `backend/tests/worker/test_cli.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/worker/test_cli.py tests/extraction`
-- [ ] 14. `status` output (see Worker). Tests: `test_status_shows_extraction_disabled`,
+- [x] 14. `status` output (see Worker). Tests: `test_status_shows_extraction_disabled`,
       `test_status_shows_extraction_never`, `test_status_shows_extraction_counts_and_latest`
       (waiting, failed posts, latest line with latency).
       Files: `backend/app/worker/cli.py`, `backend/tests/worker/test_cli.py`.
