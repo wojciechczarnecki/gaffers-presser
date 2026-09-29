@@ -821,6 +821,8 @@ Rules for every step in this group:
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-29 — implement (step 3) — Question: the auto-mode permission classifier blocked adding `langchain-openrouter==0.2.9` with `uv lock` / `uv sync --extra dev` ("Untrusted Code Integration"); how to unblock? Decision: the owner explicitly approves, in this session, installing `langchain-openrouter==0.2.9` and removing the three provider packages as in step 3, including running `uv lock` and `uv sync --extra dev` in `backend/`.
+
 ## Review log
 
 ### 2026-09-29 — /pipeline:plan-review
