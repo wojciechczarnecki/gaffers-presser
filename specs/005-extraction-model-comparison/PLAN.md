@@ -181,7 +181,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
 |----|-------|--------------|-----------------------|
 | AC1 | 12 | `tests/extraction/evaluation/test_eval_set.py::test_composition`, `::test_every_case_reviewed` | n/a — gate on data that already holds (136/136 reviewed, composition green); run as a check before the first paid run, a failure escalates |
 | AC2 | 1, 2, 12 | `tests/extraction/evaluation/test_compare.py`, `tests/extraction/test_cli.py::test_compare_labels_*` |  `uv run pytest -q tests/extraction/evaluation/test_compare.py` (stub) → `KeyError: 'dev'`; `uv run pytest -q tests/extraction/test_cli.py -k compare_labels` → `assert 2 == 0` (No such command) |
-| AC3 | 3, 5, 8 | `tests/extraction/test_dependency.py::test_removed_llm_packages_absent`, `::test_no_module_imports_removed_packages`, `tests/extraction/test_providers.py::test_builds_chat_openrouter` | |
+| AC3 | 3, 5, 8 | `tests/extraction/test_dependency.py::test_removed_llm_packages_absent`, `::test_no_module_imports_removed_packages`, `tests/extraction/test_providers.py::test_builds_chat_openrouter` | `uv run pytest -q tests/extraction/test_dependency.py` → `AssertionError: assert 'langchain-google-genai' not in 'sqlmodel==0…'` |
 | AC4 | 5 | `tests/extraction/test_config.py::test_disabled_without_key_even_with_model`, `tests/worker/test_cli.py::test_deps_disable_extraction_without_key_even_with_model` | |
 | AC5 | 5, 16 | `tests/extraction/test_config.py::test_default_model_when_llm_model_empty`, `::test_llm_model_overrides_default`, `::test_llm_provider_variable_ignored`, `tests/extraction/test_cli.py::test_provider_option_removed`, `::test_*_without_key_names_openrouter_variable` | |
 | AC6 | 5, 6 | `tests/extraction/test_providers.py::test_fallback_sent_as_models_list`, `tests/extraction/test_openrouter_payload.py::test_fallback_answer_recorded` | step 5 (request side; the tests were written together with the code, so red was shown by removing the behaviour): `uv run pytest -q tests/extraction/test_providers.py` with the `models` list removed → `KeyError: 'models'` |
@@ -476,7 +476,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
         - `app.extraction compare-labels` is added to the Development section check.
       Automatic verification: `cd backend && uv run pytest -q tests/test_readme.py tests/test_env_example.py tests/test_deployment.py`
 
-- [ ] 8. **Remove the three provider packages (AC3, second half).**
+- [x] 8. **Remove the three provider packages (AC3, second half).**
       - Delete `langchain-google-genai`, `langchain-openai` and `langchain-anthropic` from
         `backend/pyproject.toml`, then run `uv lock` and `uv sync --extra dev`.
       - Tests first in `tests/extraction/test_dependency.py`:
