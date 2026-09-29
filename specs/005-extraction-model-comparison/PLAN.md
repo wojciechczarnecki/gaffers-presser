@@ -739,6 +739,17 @@ Rules for every step in this group:
         (#12) is done, or a new cheap model appears on OpenRouter".
       Automatic verification: `cd /home/czarny/Projects/gaffers-presser && grep -n "\[x\] Extraction model comparison" docs/ROADMAP.md && ! grep -nE "^\| (13|14) \|" docs/BACKLOG.md && grep -nE "^\| 12 \|" docs/BACKLOG.md && grep -n "OpenRouter" docs/PROJECT.md && cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
 
+### Converge pass 1 — 2026-09-29
+
+A fresh subagent compared the diff with the SPEC (AC1–AC21) and reported two findings; both rejected.
+
+| finding | verdict |
+|---|---|
+| `[partial] AC6 tracing.py:23-35` — the trace metadata carries the configured model, and the answering model in the trace is not evidenced | Rejected. The Langfuse generation's model comes from the callback's `llm_output["model_name"]`, which is the answering model; `test_openrouter_payload.py:165` asserts it (`end["llm_output"]["model_name"] == "b/fallback-model"`). The metadata key `model` is the configured model by design (Approach §5) and the stored row records the answering one (`test_service.py`). |
+| `[unrequested] cli.py spend command` | Rejected. Plan step 10 asks for it (AC13 helper), so it is covered by a plan step. |
+
+Steps added: none. No second pass is needed.
+
 ## Risks and traps
 
 - **`route` is not in the SDK.** Setting `ChatOpenRouter(route=...)` passes `route=` to
@@ -776,6 +787,8 @@ Rules for every step in this group:
 
 ### Automatic (performed by /pipeline:implement)
 
+Result (2026-09-29): checks 1–7 done. (1) full `verify.command` green (631 passed). (2) `--help` lists `compare-labels`, `spend`, `evaluate`; `evaluate --help` has no `--provider`. (3) from a scratch directory with `.env` without the key and `LLM_MODEL=x`, `status` prints `Extraction: disabled`. (4) with the key, `status` prints `model: openrouter:openai/gpt-6-luna` and `fallback: google/gemini-3.1-flash-lite`. (5) live `reextract`: `posts processed: 1`, `failures: 0`, cost $0.0001, row `openrouter | openai/gpt-6-luna | extracted`; the x_id for the Langfuse check is in the Run log. (6) `spend`: 0.7076 USD (prices.toml), 0.6349 USD reported, within 1.50, stated in the report. (7) `git status --porcelain backend/evals/extraction/results/dev` empty, `git ls-files` lists only the six test runs and `.gitkeep`.
+
 1. `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`:
    all green.
 2. `uv run python -m app.extraction --help` lists `compare-labels`, `spend` and `evaluate`
@@ -810,12 +823,12 @@ Rules for every step in this group:
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, ADR 0006, `docs/PROJECT.md`,
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, ADR 0006, `docs/PROJECT.md`,
       `docs/DEPLOYMENT.md`, `docs/BACKLOG.md`, README and `backend/.env.example` updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -907,6 +920,7 @@ _(filled in during Group 2: credits readings and spend per step)_
 | 2026-09-29 | 12 | 0.0000 | 5 / 3.3045 | starting reading; remaining 1.6955, ceiling for this spec 1.50 |
 | 2026-09-29 | 13 | 0.1335 | 5 / 3.4403 | dev baseline p2, six models (+ one failed qwen run at 0 cost and a few probe calls); usage since start 0.1358 |
 | 2026-09-29 | 14 | 0.4215 | not read | dev p3 and p4 rounds (six models each); mean dev F1 0.786 (p2) → 0.818 (p3) → 0.824 (p4), no model's false-alarm rate worsened; stopped after two kept iterations to avoid tuning to 45 cases |
+| 2026-09-29 | E2E 5 | 0.7076 | 5 / 3.9530 | one live `reextract --x-id 2104665908933489005` (local database): processed 1, failures 0, cost $0.0001, stored `openrouter` / `openai/gpt-6-luna`; the credits endpoint had not yet moved (cost about 0.0001). Trace for the owner to check in Langfuse: x_id 2104665908933489005 |
 | 2026-09-29 | 16 | 0.7076 | 5 / 3.9530 | live pair check (gemini as fallback of luna) and probe calls write no run file; usage since start 0.6485 |
 | 2026-09-29 | 15 | 0.7076 | 5 / 3.9515 | test runs p4, six models, no errored case, no repeat needed; usage since start 0.6470 |
 
