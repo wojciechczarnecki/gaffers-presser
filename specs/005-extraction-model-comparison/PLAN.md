@@ -878,6 +878,17 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   Other five models: no errors, no change. The report notes that qwen runs by `json_schema`, the
   others by `function_calling`.
 
+- **D3 (open, step 16, escalated):** the selection over the committed test runs is default
+  `openai/gpt-6-luna` (the only model passing all thresholds; F1 0.904, false alarms 0.045, 0.49 PLN
+  a month) and fallback `qwen/qwen3.8-flash` (best other within 5 PLN: 4 of 5 thresholds, F1 0.914).
+  The live pair check (one dev case sent to the fallback with the pair's shared parameters) fails
+  for the rule's fallback: qwen has no endpoint accepting the forced `tool_choice` of the primary's
+  `function_calling` under `require_parameters` (`NotFoundResponseError`). Also checked:
+  `z-ai/glm-5.3-flash` fails (mandatory reasoning cannot take the primary's `effort: none`),
+  luna itself fails on `json_schema`; `google/gemini-3.1-flash-lite`, `deepseek/deepseek-v4-flash` and
+  `anthropic/claude-haiku-4.5` answer. Waiting for the owner's decision; defaults in `config.py`
+  are not set yet.
+
 ### Run log
 
 _(filled in during Group 2: credits readings and spend per step)_
