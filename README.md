@@ -136,16 +136,20 @@ uv run python -m app.extraction snapshot-players --output evals/extraction/v1/pl
 uv run python -m app.extraction prelabel --output evals/extraction/v1/cases.jsonl \
   --model google/gemini-3.1-flash-lite       # appends candidates for posts not in the set yet
 uv run python -m app.extraction review --split test   # interactive; --id <case id> for one case
+uv run python -m app.extraction spend             # total cost of every run file, dev included
 uv run python -m app.extraction compare-labels     # reviewed labels against the pre-labels (git rev dc02d98)
 uv run python -m app.extraction evaluate --split dev --model google/gemini-3.1-flash-lite
 uv run python -m app.extraction evaluate --split test --model openai/gpt-6-luna \
   --run-name gpt-6-luna-test-1               # needs USD_PLN_RATE; tune the prompt on dev only
 ```
 
-`evaluate` writes `backend/evals/extraction/results/<run-name>.json` (precision, recall, F1,
-linking accuracy, false-alarm rate, certainty confusion table, latency, tokens, cost and the
-projected monthly cost in PLN) and traces the run in Langfuse under the run name. Prices for
-the cost figures come from `backend/app/extraction/prices.toml`.
+`evaluate` writes `backend/evals/extraction/results/<run-name>.json` for the test split and
+`backend/evals/extraction/results/dev/<run-name>.json` (gitignored) for dev runs. A file holds
+precision, recall, F1, linking accuracy, false-alarm rate, the certainty confusion table, latency,
+tokens (with reasoning tokens), cost, the serving hosts and the projected monthly cost in PLN, and
+the run is traced in Langfuse under the run name. Prices for the cost figures come from
+`backend/app/extraction/prices.toml`; `uv run python -m app.extraction spend` sums the cost of
+every run file under `results/`, dev runs included.
 
 The project is built with a spec-driven agentic workflow
 ([agentic-pipeline](https://github.com/wojciechczarnecki/agentic-pipeline)): every feature

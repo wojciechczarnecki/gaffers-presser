@@ -317,7 +317,7 @@ def evaluate(
     posts_per_month: float = typer.Option(1050.0, "--posts-per-month"),
     cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
     players_path: Annotated[Path, typer.Option("--players")] = DEFAULT_PLAYERS_PATH,
-    output_dir: Annotated[Path, typer.Option("--output-dir")] = DEFAULT_RESULTS_DIR,
+    output_dir: Annotated[Path | None, typer.Option("--output-dir")] = None,
 ) -> None:
     deps = get_deps(ctx)
 
@@ -359,6 +359,7 @@ def evaluate(
     finally:
         flush(handler)
 
+    output_dir = output_dir or default_output_dir(split)
     output_dir.mkdir(parents=True, exist_ok=True)
     result_path = output_dir / f"{name}.json"
     result_path.write_text(json.dumps(report.to_json_dict(), ensure_ascii=False, indent=1) + "\n")
@@ -382,6 +383,39 @@ def evaluate(
         typer.echo(f"{label}: {'yes' if m.thresholds_passed[name] else 'no'}")
     typer.echo(f"passes thresholds: {'yes' if m.passes else 'no'}")
     typer.echo(f"results: {result_path}")
+
+
+def default_output_dir(split: str) -> Path:
+    # Dev runs are working iterations: results/dev/ is gitignored.
+    return DEFAULT_RESULTS_DIR / "dev" if split == "dev" else DEFAULT_RESULTS_DIR
+
+
+def _run_total(data: dict, metrics_key: str, case_key: str) -> float:
+    total = data.get("metrics", {}).get(metrics_key)
+    if total is not None:
+        return total
+    return sum(c.get(case_key) or 0.0 for c in data.get("case_results", []))
+
+
+@app.command(help="Sum the cost of every evaluation run file under the results directory.")
+def spend(
+    results_dir: Annotated[Path, typer.Option("--results-dir")] = DEFAULT_RESULTS_DIR,
+) -> None:
+    # Needs no database and no LLM key, so it never builds ExtractionCliDeps.
+    total = 0.0
+    total_reported = 0.0
+    for path in sorted(results_dir.rglob("*.json")):
+        data = json.loads(path.read_text())
+        cost = _run_total(data, "total_cost_usd", "cost_usd")
+        reported = _run_total(data, "total_reported_cost_usd", "reported_cost_usd")
+        total += cost
+        total_reported += reported
+        typer.echo(
+            f"{data.get('run_name', path.stem)}  {data.get('split')}  {data.get('model')}  "
+            f"{data.get('cases')} cases  {cost:.4f} USD  {reported:.4f} USD reported"
+        )
+    typer.echo(f"total cost: {total:.4f} USD (prices.toml)")
+    typer.echo(f"total reported cost: {total_reported:.4f} USD (OpenRouter)")
 
 
 def _fmt(value: float | None, digits: int = 2) -> str:

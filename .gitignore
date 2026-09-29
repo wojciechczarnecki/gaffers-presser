@@ -43,3 +43,6 @@ Thumbs.db
 
 # Claude Code (local settings)
 .claude/settings.local.json
+
+# Extraction evaluation: dev-split runs are working iterations
+backend/evals/extraction/results/dev/

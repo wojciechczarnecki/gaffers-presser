@@ -521,7 +521,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
           sets `reasoning_tokens=3`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/evaluation tests/extraction/test_cli.py -k "evaluate or metrics"`
 
-- [ ] 10. **Dev runs ignored by git; `spend` command (AC13, AC14).**
+- [x] 10. **Dev runs ignored by git; `spend` command (AC13, AC14).**
       - `evaluate`'s `--output-dir` defaults to `None`, and `default_output_dir(split)`
         returns `DEFAULT_RESULTS_DIR / "dev"` for dev and `DEFAULT_RESULTS_DIR` for test.
         `.gitignore` gains `backend/evals/extraction/results/dev/`.

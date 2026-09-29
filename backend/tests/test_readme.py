@@ -38,6 +38,7 @@ EXTRACTION_COMMANDS = [
     "app.extraction prelabel",
     "app.extraction evaluate",
     "app.extraction compare-labels",
+    "app.extraction spend",
 ]
 
 REMOVED_VARIABLES = ["LLM_PROVIDER", "GOOGLE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"]

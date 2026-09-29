@@ -10,7 +10,13 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from app.core.settings import ExtractionSettings
-from app.extraction.cli import ExtractionCliDeps, app, build_spec_from_settings
+from app.extraction.cli import (
+    DEFAULT_RESULTS_DIR,
+    ExtractionCliDeps,
+    app,
+    build_spec_from_settings,
+    default_output_dir,
+)
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
 from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.linking import PlayerIndex, PlayerRecord, load_snapshot
@@ -889,3 +895,79 @@ def test_compare_labels_unknown_revision_fails(tmp_path):
 
     assert result.exit_code == 1
     assert "cannot read cases.jsonl at revision nope" in result.stderr
+
+
+def test_dev_runs_default_to_the_ignored_directory():
+    assert default_output_dir("dev") == DEFAULT_RESULTS_DIR / "dev"
+    assert default_output_dir("test") == DEFAULT_RESULTS_DIR
+
+    def ignored(path: str) -> int:
+        return subprocess.run(
+            ["git", "check-ignore", "-q", path],
+            cwd=str(BACKEND_DIR.parent),
+            capture_output=True,
+        ).returncode
+
+    assert ignored("backend/evals/extraction/results/dev/x.json") == 0
+    assert ignored("backend/evals/extraction/results/x.json") == 1
+
+
+def test_evaluate_dev_writes_into_the_dev_directory(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.extraction.cli.DEFAULT_RESULTS_DIR", tmp_path / "results")
+    files = _Files(tmp_path, [_eval_case("1", "dev")])
+    build_spec, _ = _build_spec(_haaland_out(), model="m")
+    args = files.args("--run-name", "d1", split="dev")
+    del args[args.index("--output-dir") : args.index("--output-dir") + 2]
+
+    result = CliRunner().invoke(app, args, obj=_no_db_deps(build_spec))
+
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "results" / "dev" / "d1.json").exists()
+
+
+def _run_file(directory, name, cost, reported=None, with_totals=True, split="test"):
+    directory.mkdir(parents=True, exist_ok=True)
+    metrics = {"cases": 2}
+    if with_totals:
+        metrics["total_cost_usd"] = cost
+        metrics["total_reported_cost_usd"] = reported or 0.0
+    (directory / f"{name}.json").write_text(
+        json.dumps(
+            {
+                "run_name": name,
+                "split": split,
+                "model": "a/m",
+                "cases": 2,
+                "metrics": metrics,
+                "case_results": [
+                    {"id": "1", "cost_usd": cost / 2, "reported_cost_usd": (reported or 0) / 2},
+                    {"id": "2", "cost_usd": cost / 2, "reported_cost_usd": (reported or 0) / 2},
+                ],
+            }
+        )
+    )
+
+
+def test_spend_sums_run_files_recursively(tmp_path):
+    _run_file(tmp_path / "results", "test-run", 0.25, reported=0.3)
+    _run_file(tmp_path / "results" / "dev", "dev-run", 0.5, reported=0.6, with_totals=False)
+
+    result = CliRunner().invoke(
+        app, ["spend", "--results-dir", str(tmp_path / "results")], obj=_no_db_deps(None)
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "test-run" in result.stdout
+    assert "dev-run" in result.stdout
+    assert "total cost: 0.7500 USD (prices.toml)" in result.stdout
+    assert "total reported cost: 0.9000 USD (OpenRouter)" in result.stdout
+
+
+def test_spend_empty_directory(tmp_path):
+    result = CliRunner().invoke(
+        app, ["spend", "--results-dir", str(tmp_path / "none")], obj=_no_db_deps(None)
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "total cost: 0.0000 USD (prices.toml)" in result.stdout
+    assert "total reported cost: 0.0000 USD (OpenRouter)" in result.stdout
