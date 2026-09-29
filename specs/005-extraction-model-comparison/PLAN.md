@@ -194,7 +194,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
 | AC13 | 10, 12–15, 17 | `tests/extraction/test_cli.py::test_spend_sums_run_files_recursively` | |
 | AC14 | 10, 15 | `tests/extraction/test_cli.py::test_dev_runs_default_to_the_ignored_directory`, `tests/extraction/evaluation/test_results_files.py::test_one_test_run_per_candidate_with_one_prompt` | |
 | AC15 | 6, 9 | `tests/extraction/test_openrouter_payload.py::test_fallback_answer_recorded` (host), `tests/extraction/test_cli.py::test_evaluate_writes_results` (host per case and host counts) | |
-| AC16 | 9, 17 | `tests/extraction/evaluation/test_metrics.py::test_thresholds_passed_per_threshold`, `tests/extraction/evaluation/test_results_files.py::test_report_names_every_test_run` | step 9: `uv run pytest -q tests/extraction/evaluation/test_metrics.py` (app changes stashed) → `ImportError: cannot import name 'threshold_flags'` (import error, not an assertion: the symbol did not exist; the test was written before the code) |
+| AC16 | 9, 17 | `tests/extraction/evaluation/test_metrics.py::test_thresholds_passed_per_threshold`, `tests/extraction/evaluation/test_results_files.py::test_report_names_every_test_run` | step 17: `uv run pytest -q tests/extraction/evaluation/test_results_files.py -k report_names` (report without run names) → `AssertionError: assert 'test-p4-claude-haiku-4.5' in '# Extraction model comparison…'`;  step 9: `uv run pytest -q tests/extraction/evaluation/test_metrics.py` (app changes stashed) → `ImportError: cannot import name 'threshold_flags'` (import error, not an assertion: the symbol did not exist; the test was written before the code) |
 | AC17 | 11, 16 | `tests/extraction/evaluation/test_selection.py::test_cheapest_passing_*`, `::test_single_passing_*`, `::test_fallback_skips_models_incompatible_with_the_default`, `tests/extraction/evaluation/test_results_files.py::test_config_defaults_match_selection` | step 16: `uv run pytest -q tests/extraction/evaluation/test_selection.py -k incompatible` (filter not applied) → `AssertionError: assert Selection(...) == Selection(...)` (`fallback: 'best-but-incompatible' != 'usable'`); `uv run pytest -q tests/extraction/evaluation/test_results_files.py -k defaults_match` (empty defaults) → `AssertionError: assert ('', None) == ('openai/gpt-...1-flash-lite')` |
 | AC18 | 11, 16, 18 | `tests/extraction/evaluation/test_selection.py::test_no_passing_*`, `::test_interim_pair_respects_compatibility` | step 16: as AC17 (the same filter) |
 | AC19 | 16 | `tests/extraction/evaluation/test_results_files.py::test_adr_0006_names_the_defaults` | step 16: `uv run pytest -q tests/extraction/evaluation/test_results_files.py -k adr_0006` (no ADR yet) → `FileNotFoundError` (not an assertion; the ADR file did not exist, the test reads it and then asserts the defaults in its text) |
@@ -697,7 +697,7 @@ Rules for every step in this group:
         - `test_config.py::test_default_model_is_a_catalogue_model`.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/evaluation/test_results_files.py tests/extraction/test_config.py`
 
-- [ ] 17. **Report `docs/reports/extraction-eval-v1.md` (AC11, AC13, AC16).** Generate the
+- [x] 17. **Report `docs/reports/extraction-eval-v1.md` (AC11, AC13, AC16).** Generate the
       tables with a scratch script over the run files, local dev files included (not
       committed). Numbers are never typed by hand. Sections:
       - the set's composition (136 cases; per split: cases, empty cases, events, by type and
@@ -907,6 +907,7 @@ _(filled in during Group 2: credits readings and spend per step)_
 | 2026-09-29 | 12 | 0.0000 | 5 / 3.3045 | starting reading; remaining 1.6955, ceiling for this spec 1.50 |
 | 2026-09-29 | 13 | 0.1335 | 5 / 3.4403 | dev baseline p2, six models (+ one failed qwen run at 0 cost and a few probe calls); usage since start 0.1358 |
 | 2026-09-29 | 14 | 0.4215 | not read | dev p3 and p4 rounds (six models each); mean dev F1 0.786 (p2) → 0.818 (p3) → 0.824 (p4), no model's false-alarm rate worsened; stopped after two kept iterations to avoid tuning to 45 cases |
+| 2026-09-29 | 16 | 0.7076 | 5 / 3.9530 | live pair check (gemini as fallback of luna) and probe calls write no run file; usage since start 0.6485 |
 | 2026-09-29 | 15 | 0.7076 | 5 / 3.9515 | test runs p4, six models, no errored case, no repeat needed; usage since start 0.6470 |
 
 ## Final review

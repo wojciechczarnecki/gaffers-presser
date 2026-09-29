@@ -59,3 +59,12 @@ def test_adr_0006_names_the_defaults():
     assert f"`{config.DEFAULT_FALLBACK_MODEL}`" in text
     if _selection().interim:
         assert "interim" in text
+
+
+def test_report_names_every_test_run():
+    report = (ADR_0006.parents[1] / "reports" / "extraction-eval-v1.md").read_text()
+    names = [run["run_name"] for run in _test_runs()]
+    assert names
+    for name in names:
+        assert name in report, name
+    assert "total spend" in report
