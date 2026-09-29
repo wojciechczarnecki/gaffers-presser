@@ -12,6 +12,7 @@ import typer
 from sqlalchemy import Engine
 from sqlmodel import Session
 
+from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError, ConfigError
 from app.core.settings import ExtractionSettings, load_extraction_settings, load_settings
 from app.db.engine import make_engine
@@ -52,8 +53,6 @@ from app.extraction.service import (
 )
 from app.extraction.store import posts_for_reextract
 from app.extraction.tracing import flush, make_handler, run_config
-from app.tweets.loop import Clock
-from app.worker.loop import SystemClock
 
 app = typer.Typer(add_completion=False, no_args_is_help=True, help="The extraction toolkit.")
 

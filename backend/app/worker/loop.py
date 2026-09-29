@@ -1,12 +1,10 @@
 import logging
 import threading
-import time
-from datetime import UTC, datetime
-from typing import Protocol
 
 from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.clock import Clock
 from app.fpl.client import FplClient
 from app.worker.jobs import Shutdown, run_job
 from app.worker.schedule import Job, PlannedAction, due_actions, missed_snapshot, plan
@@ -15,20 +13,6 @@ from app.worker.store import load_state
 logger = logging.getLogger(__name__)
 
 MAX_SLEEP_SECONDS = 3600.0
-
-
-class Clock(Protocol):
-    def now(self) -> datetime: ...
-
-    def sleep(self, seconds: float) -> None: ...
-
-
-class SystemClock:
-    def now(self) -> datetime:
-        return datetime.now(UTC)
-
-    def sleep(self, seconds: float) -> None:
-        time.sleep(seconds)
 
 
 class Worker:

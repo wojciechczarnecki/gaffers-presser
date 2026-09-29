@@ -7,6 +7,7 @@ from typing import Any
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.runnables import RunnableConfig
 
+from app.core.clock import Clock
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent
 from app.extraction.evaluation.metrics import CaseResult, Metrics, compute_metrics
 from app.extraction.flow import PROMPT_VERSION, Flow, build_flow
@@ -17,7 +18,6 @@ from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import FlowResult, PostInput
 from app.extraction.service import run_with_retries
 from app.extraction.tracing import run_config
-from app.tweets.loop import Clock
 
 
 @dataclass(frozen=True)

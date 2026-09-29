@@ -1,12 +1,11 @@
 import logging
 import threading
 from collections.abc import Callable
-from datetime import UTC, datetime
-from typing import Protocol
 
 from sqlalchemy import Engine
 from sqlmodel import Session
 
+from app.core.clock import Clock, StopAwareClock
 from app.tweets.ingest import poll_once
 from app.tweets.schedule import MAX_SLEEP, next_poll_at
 from app.tweets.sources.base import TweetSource
@@ -14,23 +13,6 @@ from app.tweets.store import PollRecord, latest_poll, upcoming_deadlines
 from app.worker.jobs import Shutdown
 
 logger = logging.getLogger(__name__)
-
-
-class Clock(Protocol):
-    def now(self) -> datetime: ...
-
-    def sleep(self, seconds: float) -> None: ...
-
-
-class StopAwareClock:
-    def __init__(self, stop_event: threading.Event) -> None:
-        self._stop_event = stop_event
-
-    def now(self) -> datetime:
-        return datetime.now(UTC)
-
-    def sleep(self, seconds: float) -> None:
-        self._stop_event.wait(seconds)
 
 
 def _later(stored: PollRecord | None, remembered: PollRecord | None) -> PollRecord | None:

@@ -271,7 +271,7 @@ makes the product change. Run all commands from the repository root. `V` =
 
 ### Group 1 — Shared AI-provider layer (refactor, no behaviour change)
 
-- [ ] 1. **Clock to `app/core/clock.py` (AC1).** Move `Clock` (Protocol) and `StopAwareClock`
+- [x] 1. **Clock to `app/core/clock.py` (AC1).** Move `Clock` (Protocol) and `StopAwareClock`
       from `app/tweets/loop.py`, and `SystemClock` from `app/worker/loop.py`, into
       `app/core/clock.py`. The old modules import them from there, so internal names keep
       working.

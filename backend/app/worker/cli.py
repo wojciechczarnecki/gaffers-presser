@@ -10,6 +10,7 @@ import typer
 from sqlalchemy import Connection, Engine, text
 from sqlmodel import Session
 
+from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError
 from app.core.settings import (
     TweetSettings,
@@ -26,14 +27,13 @@ from app.extraction.service import ExtractionRuntime, load_reference_files
 from app.extraction.store import extraction_status
 from app.fpl.client import FplClient
 from app.tweets.config import resolve_ingest
-from app.tweets.loop import Clock as TweetClock
 from app.tweets.loop import start_poller
 from app.tweets.schedule import mode, next_poll_at
 from app.tweets.sources import build_source
 from app.tweets.sources.base import TweetSource
 from app.tweets.store import latest_poll, latest_success_by_source, upcoming_deadlines
 from app.worker.jobs import Shutdown
-from app.worker.loop import Clock, SystemClock, Worker
+from app.worker.loop import Worker
 from app.worker.schedule import Job, outlook
 from app.worker.store import latest_runs_by_job, load_state
 
@@ -48,7 +48,7 @@ class TweetIngest:
     source_name: str
     list_id: int
     make_source: Callable[[], TweetSource]
-    clock: TweetClock | None = None
+    clock: Clock | None = None
 
 
 @dataclass(frozen=True)
