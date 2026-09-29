@@ -352,7 +352,7 @@ makes the product change. Run all commands from the repository root. `V` =
 
 ### Group 2 — Index: schema, embedder, indexing loop, worker, CLI
 
-- [ ] 4. **Dependencies and the retrieval package (AC1 boundary, owner-accepted pins).**
+- [x] 4. **Dependencies and the retrieval package (AC1 boundary, owner-accepted pins).**
       - Add `pgvector==0.5.0` and `openrouter==0.11.46` to
         `backend/pyproject.toml` `dependencies`, then run `cd backend && uv lock && uv sync --extra dev`.
       - Create `app/retrieval/__init__.py`.
