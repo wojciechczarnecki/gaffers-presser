@@ -644,7 +644,7 @@ makes the product change. Run all commands from the repository root. `V` =
       - `test_k_changes_scores`.
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_fusion.py`
-- [ ] 14. **Search legs and modes (AC11–AC15).** `search(...)` in `app/retrieval/search.py`.
+- [x] 14. **Search legs and modes (AC11–AC15).** `search(...)` in `app/retrieval/search.py`.
       - Full-text leg (SQL `text()`): the OR-prefix tsquery from Design choices;
         `WHERE search_vector @@ q` plus the filters; order by
         `ts_rank_cd(search_vector, q) DESC, created_at DESC, x_id DESC`; `LIMIT :depth`.
