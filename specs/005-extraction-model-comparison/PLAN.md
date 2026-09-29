@@ -187,7 +187,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
 | AC6 | 5, 6 | `tests/extraction/test_providers.py::test_fallback_sent_as_models_list`, `tests/extraction/test_openrouter_payload.py::test_fallback_answer_recorded` | step 5 (request side; the tests were written together with the code, so red was shown by removing the behaviour): `uv run pytest -q tests/extraction/test_providers.py` with the `models` list removed → `KeyError: 'models'` |
 | AC7 | 4, 5, 6, 9 | `tests/extraction/test_model_settings.py`, `tests/extraction/test_providers.py::test_reasoning_effort_from_catalogue`, `tests/extraction/test_flow.py::test_reasoning_tokens_summed`, `tests/extraction/test_cli.py::test_evaluate_shows_reasoning_tokens` | step 4 (catalogue): `uv run pytest -q tests/extraction/test_model_settings.py` (stub loader returning `{}`) → `assert {'anthropic/c...lm-5.3-flash'} <= set()`; step 5: with `reasoning` removed from the client, `test_reasoning_effort_from_catalogue` → `KeyError: 'reasoning'`; later steps' records are added as they run |
 | AC8 | 5, 6 | `tests/extraction/test_providers.py::test_timeout_and_no_client_retries`, `tests/extraction/test_openrouter_payload.py::test_usage_and_callback_through_chat_openrouter`; existing extraction, service, worker and tracing suites | |
-| AC9 | 6 | `tests/extraction/test_service.py::test_stored_provider_is_openrouter_and_model_is_answering_id` | |
+| AC9 | 6 | `tests/extraction/test_service.py::test_stored_provider_is_openrouter_and_model_is_answering_id` | `uv run pytest -q tests/extraction/test_service.py -k answering` (app changes stashed) → `assert ('openrouter', 'a/primary') == ('openrouter', 'b/fallback')` |
 | AC10 | 4 | `tests/extraction/test_pricing.py::test_every_candidate_priced_with_checked_date`, `::test_cost_keyed_by_openrouter_id` | `uv run pytest -q tests/extraction/test_pricing.py` (empty prices.toml, old signature) → `KeyError: 'openai/gpt-6-luna'`; `TypeError: compute_cost() missing 1 required positional argument: 'prices'` |
 | AC11 | 14, 17 | n/a (run procedure) — the dev iteration table in the report, checked in step 17 | n/a — procedure, no product code |
 | AC12 | 15 | `tests/extraction/evaluation/test_results_files.py::test_one_test_run_per_candidate_with_one_prompt` | |
@@ -405,7 +405,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
           green (the full doc rewrite is step 7).
       Automatic verification: `cd backend && uv run pytest -q tests/extraction tests/worker tests/test_env_example.py && uv run ruff check . && uv run ruff format --check .`
 
-- [ ] 6. **Answering model, host, reasoning tokens and reported cost through the flow and
+- [x] 6. **Answering model, host, reasoning tokens and reported cost through the flow and
       service (AC6 response side, AC7 usage, AC8, AC9, AC15 capture).**
       - `schemas.py`:
         - `Usage` gains `reasoning_tokens: int | None` and `reported_cost_usd: float | None`,

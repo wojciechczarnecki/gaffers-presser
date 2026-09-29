@@ -347,3 +347,38 @@ def test_handler_receives_post_metadata(db_session):
     metadata = handler.chat_model_starts[0]["metadata"]
     assert metadata["x_id"] == POST.x_id
     assert metadata["prompt_version"] == PROMPT_VERSION
+
+
+def test_stored_provider_is_openrouter_and_model_is_answering_id(db_session):
+    _seed_tweet(db_session)
+    fake = FakeChatModel(responses=[ExtractionOutput(events=[])], response_model="b/fallback")
+    spec = ChatModelSpec(provider="openrouter", model="a/primary", chat_model=fake)
+    runtime = ExtractionRuntime(
+        provider="openrouter",
+        model="a/primary",
+        make_spec=lambda: spec,
+        tracing=None,
+        prices={
+            "a/primary": Price(input_per_million=1.0, output_per_million=1.0, checked="x"),
+            "b/fallback": Price(input_per_million=3.0, output_per_million=7.0, checked="x"),
+        },
+        aliases=([], []),
+        fallback_model="b/fallback",
+    )
+    clock = RecordingClock([NOW, NOW + timedelta(seconds=1)])
+
+    outcome = _extract(db_session, runtime, clock)
+
+    row = _row(db_session, outcome.extraction_id)
+    assert (row.provider, row.model) == ("openrouter", "b/fallback")
+    assert outcome.cost_usd == (10 / 1_000_000 * 3.0) + (5 / 1_000_000 * 7.0)
+
+
+def test_failed_row_keeps_the_configured_model(db_session):
+    _seed_tweet(db_session)
+    runtime = _runtime(RuntimeError("x"), RuntimeError("x"), RuntimeError("x"))
+    clock = RecordingClock([NOW, NOW + timedelta(seconds=1)])
+
+    outcome = _extract(db_session, runtime, clock)
+
+    assert _row(db_session, outcome.extraction_id).model == "fake-model"
