@@ -26,6 +26,7 @@ from app.retrieval.embedder import Embedder, build_embedder
 from app.retrieval.evaluation.dataset import (
     DEFAULT_CORPUS_PATH,
     DEFAULT_QUERIES_PATH,
+    DEFAULT_RESULTS_DIR,
     CorpusPost,
     Judgement,
     Query,
@@ -42,6 +43,13 @@ from app.retrieval.evaluation.queries import (
     build_queries,
     current_events,
     make_query_writer,
+)
+from app.retrieval.evaluation.runner import (
+    EvaluationError,
+    default_run_name,
+    format_table,
+    run_evaluation,
+    write_result,
 )
 from app.retrieval.indexing import IndexingRuntime, index_missing
 from app.retrieval.search import Mode, SearchError, SearchFilters, search
@@ -393,6 +401,66 @@ def prelabel_command(
     typer.echo(f"relevant: {summary.relevant}")
     typer.echo(f"label failures: {summary.failures}")
     typer.echo(f"total cost: {_cost(summary.cost_usd)}")
+
+
+@app.command(name="evaluate", help="Report recall@5, recall@10 and MRR per search mode.")
+def evaluate_command(
+    ctx: typer.Context,
+    split: Annotated[str, typer.Option("--split", help="dev or test.")],
+    include_unreviewed: Annotated[bool, typer.Option("--include-unreviewed")] = False,
+    embedding_model: Annotated[
+        str | None, typer.Option("--embedding-model", help="Embedding model ID.")
+    ] = None,
+    k: Annotated[int, typer.Option("--k", min=0)] = 60,
+    depth: Annotated[int, typer.Option("--depth", min=1)] = 50,
+    limit: Annotated[int, typer.Option("--limit", min=1)] = 10,
+    run_name: Annotated[str | None, typer.Option("--run-name")] = None,
+    queries: Annotated[Path, typer.Option("--queries")] = DEFAULT_QUERIES_PATH,
+    corpus: Annotated[Path, typer.Option("--corpus")] = DEFAULT_CORPUS_PATH,
+    output_dir: Annotated[Path | None, typer.Option("--output-dir")] = None,
+) -> None:
+    if split not in ("dev", "test"):
+        raise fail("--split must be dev or test")
+    deps = get_deps(ctx)
+    try:
+        embedder = deps.make_embedder(embedding_model)
+        prices = deps.prices if deps.prices is not None else load_prices()
+        posts = load_corpus(corpus)
+        query_set = load_queries(queries)
+    except CollectorError as exc:
+        raise fail(str(exc)) from None
+    except (OSError, ValueError) as exc:
+        raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
+    name = run_name or default_run_name(split, embedder.model)
+    # Dev runs are working iterations: results/dev/ is gitignored.
+    directory = output_dir or (
+        DEFAULT_RESULTS_DIR / "dev" if split == "dev" else DEFAULT_RESULTS_DIR
+    )
+    tracer = deps.make_tracer()
+    try:
+        result = run_evaluation(
+            db_engine(deps),
+            posts,
+            query_set,
+            embedder,
+            tracer,
+            prices,
+            deps.clock,
+            split=split,
+            include_unreviewed=include_unreviewed,
+            k=k,
+            depth=depth,
+            limit=limit,
+            run_name=name,
+        )
+    except EvaluationError as exc:
+        raise fail(str(exc)) from None
+    finally:
+        tracer.flush()
+    typer.echo(format_table(result.aggregate))
+    path = directory / f"{name}.json"
+    write_result(path, result.data)
+    typer.echo(f"result written to {path}")
 
 
 REVIEW_ACTIONS = "[a]ccept  [f]lip  [s]kip  [+] add post  [n]ext query  [q]uit"

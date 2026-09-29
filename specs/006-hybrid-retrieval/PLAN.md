@@ -854,7 +854,7 @@ makes the product change. Run all commands from the repository root. `V` =
       - `test_review_nothing_to_review`.
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_cli.py -k review`
-- [ ] 22. **Runner `evaluate` (AC23).** `app/retrieval/evaluation/runner.py` and the command
+- [x] 22. **Runner `evaluate` (AC23).** `app/retrieval/evaluation/runner.py` and the command
       `evaluate --split dev|test [--include-unreviewed] [--embedding-model] [--k 60] [--depth 50] [--limit 10] [--run-name] [--queries] [--corpus] [--output-dir]`.
       1. Load the corpus into the eval schema and index it.
       2. Embed every query once (cached in the runner), with `with_retries`.
