@@ -1,0 +1,2205 @@
+{
+ "run_name": "test-p4-deepseek-v4-flash",
+ "provider": "openrouter",
+ "model": "deepseek/deepseek-v4-flash",
+ "prompt_version": "extraction@4+link_disambiguation@1",
+ "split": "test",
+ "structured_method": "function_calling",
+ "reasoning_effort": "none",
+ "temperature": true,
+ "cases": 91,
+ "errored_cases": 0,
+ "metrics": {
+  "cases": 91,
+  "errored_cases": 0,
+  "precision": 0.7592592592592593,
+  "recall": 0.82,
+  "f1": 0.7884615384615384,
+  "linking_accuracy": 1.0,
+  "linking_paired": 42,
+  "false_alarm_rate": 0.10606060606060606,
+  "certainty_accuracy": 0.6829268292682927,
+  "certainty_confusion": {
+   "confirmed": {
+    "confirmed": 16,
+    "likely": 3,
+    "rumour": 0
+   },
+   "likely": {
+    "confirmed": 0,
+    "likely": 6,
+    "rumour": 10
+   },
+   "rumour": {
+    "confirmed": 0,
+    "likely": 0,
+    "rumour": 6
+   }
+  },
+  "latency_p50_seconds": 2.6596454629907385,
+  "latency_p95_seconds": 5.486503980006091,
+  "mean_input_tokens": 1349.4725274725274,
+  "mean_output_tokens": 62.0989010989011,
+  "mean_cost_usd": 0.00020631384615384617,
+  "projected_monthly_cost_pln": 0.8340237230769232,
+  "posts_per_month": 1050.0,
+  "usd_pln_rate": 3.85,
+  "passes": false,
+  "mean_reasoning_tokens": 0.0,
+  "mean_reported_cost_usd": 9.131116483516484e-05,
+  "total_cost_usd": 0.018774560000000003,
+  "total_reported_cost_usd": 0.008309316,
+  "hosts": {
+   "OpenInference": 91
+  },
+  "answered_models": {
+   "deepseek/deepseek-v4-flash": 91
+  },
+  "thresholds_passed": {
+   "f1": false,
+   "linking_accuracy": true,
+   "false_alarm_rate": false,
+   "monthly_cost": true,
+   "no_errored_cases": true
+  }
+ },
+ "case_results": [
+  {
+   "id": "2103436877860593885",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.91927322500851,
+   "input_tokens": 1309,
+   "output_tokens": 76,
+   "cost_usd": 0.00020454000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00010809,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687056-wQ1gBZNgqQ5NTzg9b1AJ",
+   "expected": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2103809666761531519",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.7793657639995217,
+   "input_tokens": 1288,
+   "output_tokens": 90,
+   "cost_usd": 0.00020552000000000005,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00012538,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687060-5gfySNK7a9p4xqG8NAde",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Hemp",
+     "fpl_id": null,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2103820653937709564",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.5646891739743296,
+   "input_tokens": 1335,
+   "output_tokens": 45,
+   "cost_usd": 0.00019950000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.96e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687063-gftPOZNHjXoLe8ADgtcw",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103821706699612219",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.841130968008656,
+   "input_tokens": 1297,
+   "output_tokens": 45,
+   "cost_usd": 0.00019418000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9738e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687066-EnWxa3DOx6GxD0g13Feq",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103848750057660918",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.276790236996021,
+   "input_tokens": 1301,
+   "output_tokens": 45,
+   "cost_usd": 0.00019474000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.926e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687070-XEulb7Xl0MGSOnKvRegT",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103849740454539308",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.7593999550153967,
+   "input_tokens": 1689,
+   "output_tokens": 45,
+   "cost_usd": 0.00024906,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.3916e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687072-0XsacgFkJocBHaRbQg2D",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103850171758997676",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.466609352006344,
+   "input_tokens": 1479,
+   "output_tokens": 45,
+   "cost_usd": 0.00021966000000000005,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.1394e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687075-cRABYGRzHQEYhxW9uo83",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103851583297712216",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.7561752879992127,
+   "input_tokens": 1334,
+   "output_tokens": 72,
+   "cost_usd": 0.00020692,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000103872,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687077-imz4OXyRYXc392QUyuWv",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Rayan Ait-Nouri",
+     "fpl_id": 392,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2103854250623201316",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.77273250601138,
+   "input_tokens": 1353,
+   "output_tokens": 45,
+   "cost_usd": 0.00020202000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.986e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687080-mtYFc1USm6t1zoOYWsmC",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103859019479953476",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.147285365004791,
+   "input_tokens": 1536,
+   "output_tokens": 45,
+   "cost_usd": 0.00022764000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.1886e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687083-rxCfPPjRheMC8D22aSkM",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103859072168800725",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.6939362499979325,
+   "input_tokens": 1417,
+   "output_tokens": 45,
+   "cost_usd": 0.00021098000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.093e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687085-sOa3dUcCjuTGxiGbXI2K",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103881423497408975",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.4284968079882674,
+   "input_tokens": 1322,
+   "output_tokens": 45,
+   "cost_usd": 0.00019768000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9522e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687088-WXstcSCAaDIjzRmEal7g",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103893055723982873",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.1703544250049163,
+   "input_tokens": 1342,
+   "output_tokens": 73,
+   "cost_usd": 0.00020832,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00010491,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687090-UAfYnP25IK3UCX3p96gZ",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Kylian Mbappé",
+     "fpl_id": null,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2103903694412710319",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.607363384013297,
+   "input_tokens": 1329,
+   "output_tokens": 45,
+   "cost_usd": 0.00019866000000000005,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.954e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687093-4uLcTc5DRLzLb5083U2A",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103911402478125345",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.5204170400102157,
+   "input_tokens": 1338,
+   "output_tokens": 45,
+   "cost_usd": 0.00019992000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.971e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687096-TrcpZDHQH51Aylx0Rp6H",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103916008239161523",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.6545910330023617,
+   "input_tokens": 1347,
+   "output_tokens": 45,
+   "cost_usd": 0.00020118000000000005,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.972e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687098-a8r9lfRAGtcGnnUIHPwO",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103923861641105679",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.664926738012582,
+   "input_tokens": 1377,
+   "output_tokens": 45,
+   "cost_usd": 0.00020538000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.002e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687101-6gv4iRqpud0TTxLLMp9v",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103939538213032046",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.3554230770096183,
+   "input_tokens": 1295,
+   "output_tokens": 45,
+   "cost_usd": 0.00019390000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9276e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687104-mmiz6bKWAvNKdLDpbcFS",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103955750015905855",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.5521559890185017,
+   "input_tokens": 1338,
+   "output_tokens": 45,
+   "cost_usd": 0.00019992000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.963e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687106-c1CWYgkFnWUwcBlEPgO4",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103958805142978873",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.5675010890117846,
+   "input_tokens": 1297,
+   "output_tokens": 45,
+   "cost_usd": 0.00019418000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.922e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687109-rAXytiM5kBhFGvgxv8fV",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104101438649729388",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.6009421580238268,
+   "input_tokens": 1299,
+   "output_tokens": 45,
+   "cost_usd": 0.00019446000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.924e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687111-TlQTGrO2etGIoycMtHCv",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104113395599335907",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.1028210259974003,
+   "input_tokens": 1343,
+   "output_tokens": 45,
+   "cost_usd": 0.00020062000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.968e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687114-o9VTDr6v4OdWmtzAzBOb",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104118871305105417",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.1531794969923794,
+   "input_tokens": 1353,
+   "output_tokens": 69,
+   "cost_usd": 0.00020874,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00010013,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687116-32wiMkFci9qjZLrdQ8Jv",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Alexander Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104124182170566816",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.4067870789731387,
+   "input_tokens": 1389,
+   "output_tokens": 76,
+   "cost_usd": 0.00021574000000000005,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000109362,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687119-BFFDpPAWsI1YHmZGzPvV",
+   "expected": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "2104125409809879545",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.2776559529884253,
+   "input_tokens": 1383,
+   "output_tokens": 75,
+   "cost_usd": 0.00021462,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00010791,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687122-KXo4uEGsuVnZEKs0glXb",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Lewis Hall",
+     "fpl_id": 449,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104128254106050686",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.4213512889982667,
+   "input_tokens": 1304,
+   "output_tokens": 45,
+   "cost_usd": 0.00019516000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9446e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687126-MTyBJVTpEEw0mLGpulEd",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104135413397082285",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.521232911007246,
+   "input_tokens": 1335,
+   "output_tokens": 45,
+   "cost_usd": 0.00019950000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9786e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687128-9b0zcXpJAxuKxsaag9nU",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104136860088103347",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.5818269070005044,
+   "input_tokens": 1304,
+   "output_tokens": 45,
+   "cost_usd": 0.00019516000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.929e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687131-h1QYICf21U2gUsvIzlsY",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104142752036581744",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.405277744983323,
+   "input_tokens": 1296,
+   "output_tokens": 45,
+   "cost_usd": 0.00019404000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9468e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687133-C1Ti27jaM5NI8BTXMcIN",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104148975821443236",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.1565744780236855,
+   "input_tokens": 1307,
+   "output_tokens": 45,
+   "cost_usd": 0.00019558000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9346e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687136-JX6dGpsKozNaC4XUE0AJ",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104158837540622748",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 14.432030130003113,
+   "input_tokens": 2433,
+   "output_tokens": 374,
+   "cost_usd": 0.00044534,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000492,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687138-xsBWcNDfP74Rrvw2A4w1",
+   "expected": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Brobbey",
+     "fpl_id": 552,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Ballard",
+     "fpl_id": 532,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Joao Pedro",
+     "fpl_id": 165,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Pedro Porro",
+     "fpl_id": 499,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Brobbey",
+     "fpl_id": 552,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Ballard",
+     "fpl_id": 532,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Joao Pedro",
+     "fpl_id": 165,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Pedro Porro",
+     "fpl_id": 499,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "2104169958418547163",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.1769874220190104,
+   "input_tokens": 1357,
+   "output_tokens": 45,
+   "cost_usd": 0.00020258,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.982e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687152-OeCNbjmYFulgTPI04Uh4",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104173076380303608",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.3597189860010985,
+   "input_tokens": 1337,
+   "output_tokens": 69,
+   "cost_usd": 0.00020650000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 9.9832e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687154-TA0pKakzL1jvwa2mDAbW",
+   "expected": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Alexander Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104175133694804334",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 4.029169929010095,
+   "input_tokens": 1439,
+   "output_tokens": 105,
+   "cost_usd": 0.00023086000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00014564,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687158-JjOS0UZzVUqL3UWORdEo",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "out",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104177542324273565",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.547393929999089,
+   "input_tokens": 1358,
+   "output_tokens": 45,
+   "cost_usd": 0.00020272000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.983e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687162-fZPpPYb7dMIbYEQ4LeX9",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104184615342674076",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.432365587010281,
+   "input_tokens": 1314,
+   "output_tokens": 45,
+   "cost_usd": 0.00019656000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9862e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687164-JgwlwhgXEwKmBX3lPDp5",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104208281241547236",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.0717114740109537,
+   "input_tokens": 1396,
+   "output_tokens": 45,
+   "cost_usd": 0.00020804000000000005,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.0432e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687167-awy4FyzN3bwPOLY6TqdB",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104208927735046198",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.7780914940231014,
+   "input_tokens": 1314,
+   "output_tokens": 45,
+   "cost_usd": 0.00019656000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.939e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687170-AVHvh776YM8gv1zKwCz2",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104209061050782103",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.2571139330102596,
+   "input_tokens": 1353,
+   "output_tokens": 45,
+   "cost_usd": 0.00020202000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.978e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687174-NpIG9hax5DJSnnfXMEri",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104238743922069518",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.3606622379738837,
+   "input_tokens": 1354,
+   "output_tokens": 45,
+   "cost_usd": 0.00020216000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.0086e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687176-btnEAlgRBIXD5E37RNqF",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104242478950019357",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.068462602997897,
+   "input_tokens": 1309,
+   "output_tokens": 45,
+   "cost_usd": 0.00019586000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9914e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687178-axzhcKONYdYxBsmGTIyb",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104264937493422556",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.6425381529843435,
+   "input_tokens": 1340,
+   "output_tokens": 45,
+   "cost_usd": 0.00020020000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9864e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687180-BgnvhhwDBbINYru4IxiJ",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104267360009920983",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.967657626984874,
+   "input_tokens": 1308,
+   "output_tokens": 45,
+   "cost_usd": 0.00019572,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.933e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687183-gFraLLLP6MP79qJUNrck",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104269606542082554",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.248096807015827,
+   "input_tokens": 1313,
+   "output_tokens": 45,
+   "cost_usd": 0.00019642000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.972e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687186-8lv4wkRrdOXH4i0z4tM5",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104270786454577468",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.4369887769862544,
+   "input_tokens": 1292,
+   "output_tokens": 45,
+   "cost_usd": 0.00019348000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.917e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687188-zLQ9ZelgPaDOx3roKU70",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104273037319454995",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.477400411007693,
+   "input_tokens": 1308,
+   "output_tokens": 45,
+   "cost_usd": 0.00019572,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.933e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687191-AfBOWnN70R4f4IHIwje6",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104293882557026758",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.3835824569978286,
+   "input_tokens": 1352,
+   "output_tokens": 45,
+   "cost_usd": 0.00020188,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9878e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687193-1kAnJJaj2RSm1L23xQAK",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104299798362738869",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.127381105994573,
+   "input_tokens": 1306,
+   "output_tokens": 45,
+   "cost_usd": 0.00019544000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9648e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687195-JxIc5hBZgobnFIRJjdBc",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104301949453537423",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.9512886809825432,
+   "input_tokens": 1286,
+   "output_tokens": 45,
+   "cost_usd": 0.00019264000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.934e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687198-nQO0iUDCQHvfcAZHBP5c",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104345349183746388",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.6596454629907385,
+   "input_tokens": 1307,
+   "output_tokens": 45,
+   "cost_usd": 0.00019558000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.945e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687200-n1fzYncwqTOlQuhRVOEo",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104452956900766117",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.43284949901863,
+   "input_tokens": 1359,
+   "output_tokens": 45,
+   "cost_usd": 0.00020286000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9974e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687202-CtyZUr8J1ppw2x4mE3DT",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104458586688762067",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.324086505017476,
+   "input_tokens": 1362,
+   "output_tokens": 45,
+   "cost_usd": 0.00020328000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.0224e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687206-Qp01Z0divh2XLPyFiURR",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104469147253948835",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.3234056280052755,
+   "input_tokens": 1326,
+   "output_tokens": 45,
+   "cost_usd": 0.00019824000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.0172e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687208-uJMGg8Lxhh8xvKjZLle4",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104489898455478454",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.0537371709942818,
+   "input_tokens": 1309,
+   "output_tokens": 45,
+   "cost_usd": 0.00019586000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9574e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687210-rFxWbP8GnhUrbTvDhBKl",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104492012888326553",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.0416850759938825,
+   "input_tokens": 1334,
+   "output_tokens": 45,
+   "cost_usd": 0.00019936000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9616e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687212-Rg1PfHm5ite0HabseSaS",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104496383990358219",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.372468362998916,
+   "input_tokens": 1283,
+   "output_tokens": 45,
+   "cost_usd": 0.00019222000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9284e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687214-JdHkrYzupxx1VvbCubCZ",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104500381380452505",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.850041550002061,
+   "input_tokens": 1322,
+   "output_tokens": 45,
+   "cost_usd": 0.00019768000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9574e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687217-DfFjY8U5qLb3LMQy0XJF",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104505435390935125",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.3954813509772066,
+   "input_tokens": 1307,
+   "output_tokens": 45,
+   "cost_usd": 0.00019558000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9764e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687220-uDO3XIa3NC8KjwBPsOkE",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104509469715763577",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.524606777005829,
+   "input_tokens": 1329,
+   "output_tokens": 45,
+   "cost_usd": 0.00019866000000000005,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9884e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687222-MCldtEFDI0bcgxp6MP4Q",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104511766172467564",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.1682006409973837,
+   "input_tokens": 1314,
+   "output_tokens": 45,
+   "cost_usd": 0.00019656000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9836e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687225-f7fnh3BGP6b6zpoLzETw",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104516939213095099",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.5089410500077065,
+   "input_tokens": 1349,
+   "output_tokens": 74,
+   "cost_usd": 0.00020958,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00010642,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687228-dGP1GelflmYLI8XBHxvf",
+   "expected": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Alexander Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104519520841027654",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.3965855409915093,
+   "input_tokens": 1350,
+   "output_tokens": 79,
+   "cost_usd": 0.00021112000000000005,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000112384,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687231-5pEwZpVgRCMs4L16ZksQ",
+   "expected": [
+    {
+     "mention": "Dango Ouattara",
+     "fpl_id": 95,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Dango Ouattara",
+     "fpl_id": 95,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104522447735099746",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.725429454992991,
+   "input_tokens": 1294,
+   "output_tokens": 45,
+   "cost_usd": 0.00019376000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.919e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687235-x4rHhA3XOyhHcNHHjBJe",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104522789382238687",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.3386347650084645,
+   "input_tokens": 1337,
+   "output_tokens": 45,
+   "cost_usd": 0.00019978000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.0128e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687237-ojhfpxvLgW3iKuwCLxyt",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104523734438588623",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 4.386415624991059,
+   "input_tokens": 1330,
+   "output_tokens": 76,
+   "cost_usd": 0.00020748000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000108352,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687240-heNal9PxL6F0h9nwqOms",
+   "expected": [
+    {
+     "mention": "Dorgu",
+     "fpl_id": 415,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Patrick Dorgu",
+     "fpl_id": 415,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104528798175695288",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.467345976998331,
+   "input_tokens": 1369,
+   "output_tokens": 45,
+   "cost_usd": 0.00020426000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.994e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687244-tEKpx99QvR9VaLHiNdkX",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104535940823978027",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.5087245359900407,
+   "input_tokens": 1353,
+   "output_tokens": 45,
+   "cost_usd": 0.00020202000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.0402e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687247-nt5ZY4uO9bwgTlqfVV7N",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104540141801066807",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.4241472120047547,
+   "input_tokens": 1346,
+   "output_tokens": 45,
+   "cost_usd": 0.00020104,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.987e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687249-7A5AzTiWAZezOwo3hzIX",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104567601145741767",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.282523909001611,
+   "input_tokens": 1317,
+   "output_tokens": 45,
+   "cost_usd": 0.00019698000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9894e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687251-kRApW9MwnAuNHBwWLwE5",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-001",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 4.52125859100488,
+   "input_tokens": 1321,
+   "output_tokens": 106,
+   "cost_usd": 0.00021462,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000145946,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687255-RcFSMWg9UK3TNnIleEVg",
+   "expected": [
+    {
+     "mention": "Raya",
+     "fpl_id": 1,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gabriel",
+     "fpl_id": 4,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Ødegaard",
+     "fpl_id": 15,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Martinelli",
+     "fpl_id": 18,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Eze",
+     "fpl_id": 14,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Eze",
+     "fpl_id": 14,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-002",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 6.068683219025843,
+   "input_tokens": 1309,
+   "output_tokens": 163,
+   "cost_usd": 0.00022890000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000217206,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687259-C3D4Uw12s0O748JcISnS",
+   "expected": [
+    {
+     "mention": "Mbeumo",
+     "fpl_id": 427,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Cunha",
+     "fpl_id": 428,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "B.Fernandes",
+     "fpl_id": 426,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Mainoo",
+     "fpl_id": 432,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Mbeumo",
+     "fpl_id": 427,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Cunha",
+     "fpl_id": 428,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "B.Fernandes",
+     "fpl_id": 426,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Mainoo",
+     "fpl_id": 432,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-003",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 5.18233057501493,
+   "input_tokens": 1304,
+   "output_tokens": 132,
+   "cost_usd": 0.00021952,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00017804,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687265-rwYA89gvgL3kLJLZPso1",
+   "expected": [
+    {
+     "mention": "Haaland",
+     "fpl_id": 411,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "benched",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Haaland",
+     "fpl_id": 411,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "benched",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-005",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.3424212720128708,
+   "input_tokens": 1296,
+   "output_tokens": 69,
+   "cost_usd": 0.00020076000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 9.921e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687271-2Ljed8IOPRQHEfMVYzrt",
+   "expected": [
+    {
+     "mention": "Cole Palmer",
+     "fpl_id": 154,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Cole Palmer",
+     "fpl_id": 154,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-006",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.8616810139792506,
+   "input_tokens": 1300,
+   "output_tokens": 69,
+   "cost_usd": 0.00020132,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 9.9276e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687274-61hriyZqCe22tUONNDDd",
+   "expected": [
+    {
+     "mention": "Caicedo",
+     "fpl_id": 159,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Caicedo",
+     "fpl_id": 159,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-007",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.0197681360004935,
+   "input_tokens": 1295,
+   "output_tokens": 70,
+   "cost_usd": 0.0002009,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000100604,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687277-1e8zHtdXNqVNKMaSgKp1",
+   "expected": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-009",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.259119088994339,
+   "input_tokens": 1297,
+   "output_tokens": 68,
+   "cost_usd": 0.00020062000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 9.8098e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687280-jdt7J9Izj7ajWUtWEErX",
+   "expected": [
+    {
+     "mention": "Gvardiol",
+     "fpl_id": 391,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Gvardiol",
+     "fpl_id": 391,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-010",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.2069411280099303,
+   "input_tokens": 1289,
+   "output_tokens": 74,
+   "cost_usd": 0.00020118000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00010539,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687283-r8O6iXWjxoUgZWMm2Hbm",
+   "expected": [
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-011",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 5.486503980006091,
+   "input_tokens": 1307,
+   "output_tokens": 100,
+   "cost_usd": 0.00021098000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00013807,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687286-eUZIHTX97aJgI9hXx7Yw",
+   "expected": [
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "out",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "out",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-013",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.7022953429841436,
+   "input_tokens": 1294,
+   "output_tokens": 77,
+   "cost_usd": 0.00020272,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000109552,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687292-kxNSWRXoUXZVbMdHS0sb",
+   "expected": [
+    {
+     "mention": "Starboy",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Starboy",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-014",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.5886727700126357,
+   "input_tokens": 1297,
+   "output_tokens": 75,
+   "cost_usd": 0.00020258,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000106978,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687295-QJ52yrHXFAAgjqhS8rWT",
+   "expected": [
+    {
+     "mention": "The Terminator",
+     "fpl_id": 411,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "The Terminator",
+     "fpl_id": 411,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-015",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.372902842995245,
+   "input_tokens": 1291,
+   "output_tokens": 74,
+   "cost_usd": 0.00020146000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00010577,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687299-TACqLLtlPSYdADyzED91",
+   "expected": [
+    {
+     "mention": "Cold Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Cold Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-017",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.381507471000077,
+   "input_tokens": 1295,
+   "output_tokens": 78,
+   "cost_usd": 0.00020314,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000110734,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687302-mbv9Y5GGJVwOW2P1yvC9",
+   "expected": [
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-018",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.2688635630183853,
+   "input_tokens": 1295,
+   "output_tokens": 68,
+   "cost_usd": 0.00020034000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 9.8182e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687306-Q1btjVOKEVXEC03Uuuzk",
+   "expected": [
+    {
+     "mention": "Guéhi",
+     "fpl_id": 388,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Guéhi",
+     "fpl_id": 388,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-019",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 6.858751653984655,
+   "input_tokens": 1781,
+   "output_tokens": 118,
+   "cost_usd": 0.00028238000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000165712,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687309-tYkbBslrpJfYhHULAciB",
+   "expected": [
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-022",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.3777904429880437,
+   "input_tokens": 1299,
+   "output_tokens": 45,
+   "cost_usd": 0.00019446000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9394e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687316-6jGEWhlqDyXa1bKNu2w6",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-023",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.0263849120237865,
+   "input_tokens": 1318,
+   "output_tokens": 45,
+   "cost_usd": 0.00019712,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.943e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687318-E9S9XenBPTxpZSmmyVI2",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-024",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.4223126109864097,
+   "input_tokens": 1307,
+   "output_tokens": 45,
+   "cost_usd": 0.00019558000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.932e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687320-DXn0DUgxD15ZdUTVwlvc",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-025",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 6.172223770990968,
+   "input_tokens": 1311,
+   "output_tokens": 141,
+   "cost_usd": 0.00022302000000000004,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00018936,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687323-emjW1zCxXAVlnKgOkWya",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Mbeumo",
+     "fpl_id": 427,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Cunha",
+     "fpl_id": 428,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Šeško",
+     "fpl_id": 439,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Mainoo",
+     "fpl_id": 432,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-027",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.1378388770099264,
+   "input_tokens": 1303,
+   "output_tokens": 69,
+   "cost_usd": 0.00020174,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 9.993e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687329-dJAY8rNcxpLmIQvjnMnU",
+   "expected": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-028",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.983009712974308,
+   "input_tokens": 1296,
+   "output_tokens": 68,
+   "cost_usd": 0.00020048000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 9.796e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687332-ljUnso0yX2loHF75lFNW",
+   "expected": [
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-029",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.319641273992602,
+   "input_tokens": 1295,
+   "output_tokens": 69,
+   "cost_usd": 0.00020062000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 9.9224e-05,
+   "host": "OpenInference",
+   "answered_model": "deepseek/deepseek-v4-flash",
+   "generation_id": "gen-1790687336-SaQWLWk22zH73QkSb3nS",
+   "expected": [
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ]
+  }
+ ]
+}

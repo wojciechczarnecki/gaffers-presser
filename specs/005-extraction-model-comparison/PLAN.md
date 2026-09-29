@@ -190,7 +190,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
 | AC9 | 6 | `tests/extraction/test_service.py::test_stored_provider_is_openrouter_and_model_is_answering_id` | `uv run pytest -q tests/extraction/test_service.py -k answering` (app changes stashed) → `assert ('openrouter', 'a/primary') == ('openrouter', 'b/fallback')` |
 | AC10 | 4 | `tests/extraction/test_pricing.py::test_every_candidate_priced_with_checked_date`, `::test_cost_keyed_by_openrouter_id` | `uv run pytest -q tests/extraction/test_pricing.py` (empty prices.toml, old signature) → `KeyError: 'openai/gpt-6-luna'`; `TypeError: compute_cost() missing 1 required positional argument: 'prices'` |
 | AC11 | 14, 17 | n/a (run procedure) — the dev iteration table in the report, checked in step 17 | n/a — procedure, no product code |
-| AC12 | 15 | `tests/extraction/evaluation/test_results_files.py::test_one_test_run_per_candidate_with_one_prompt` | |
+| AC12 | 15 | `tests/extraction/evaluation/test_results_files.py::test_one_test_run_per_candidate_with_one_prompt` | `uv run pytest -q tests/extraction/evaluation/test_results_files.py` (no files yet) → `AssertionError: no committed test-split run files` |
 | AC13 | 10, 12–15, 17 | `tests/extraction/test_cli.py::test_spend_sums_run_files_recursively` | |
 | AC14 | 10, 15 | `tests/extraction/test_cli.py::test_dev_runs_default_to_the_ignored_directory`, `tests/extraction/evaluation/test_results_files.py::test_one_test_run_per_candidate_with_one_prompt` | |
 | AC15 | 6, 9 | `tests/extraction/test_openrouter_payload.py::test_fallback_answer_recorded` (host), `tests/extraction/test_cli.py::test_evaluate_writes_results` (host per case and host counts) | |
@@ -623,7 +623,7 @@ Rules for every step in this group:
         baseline`.
       Automatic verification: `cd backend && ls evals/extraction/results/dev/dev-p2-*.json | wc -l` (= 6) `&& uv run python -m app.extraction spend && git status --porcelain evals/` (no dev file listed)
 
-- [ ] 14. **Prompt tuning on dev (AC11).** Iterate on
+- [x] 14. **Prompt tuning on dev (AC11).** Iterate on
       `backend/app/content/prompts/extraction.md` (and `link_disambiguation.md` only if
       linking errors call for it), from the dev errors of step 13 across models: missed
       events, false alarms, wrong type or certainty.
@@ -640,7 +640,7 @@ Rules for every step in this group:
         cost) in the scratchpad for the report.
       Automatic verification: `cd backend && uv run pytest -q tests/content/test_prompts.py tests/extraction && uv run python -m app.extraction spend`
 
-- [ ] 15. **Frozen prompt; one test run per candidate (AC12, AC14, AC15).**
+- [x] 15. **Frozen prompt; one test run per candidate (AC12, AC14, AC15).**
       - Freeze the prompt at the best dev version. The runs record its `PROMPT_VERSION`, and
         the prompt file is not edited again in this spec.
       - Tests first, red with no files: `backend/tests/extraction/evaluation/test_results_files.py`
@@ -886,6 +886,8 @@ _(filled in during Group 2: credits readings and spend per step)_
 |------|------|----------------------|------------------------------|------|
 | 2026-09-29 | 12 | 0.0000 | 5 / 3.3045 | starting reading; remaining 1.6955, ceiling for this spec 1.50 |
 | 2026-09-29 | 13 | 0.1335 | 5 / 3.4403 | dev baseline p2, six models (+ one failed qwen run at 0 cost and a few probe calls); usage since start 0.1358 |
+| 2026-09-29 | 14 | 0.4215 | not read | dev p3 and p4 rounds (six models each); mean dev F1 0.786 (p2) → 0.818 (p3) → 0.824 (p4), no model's false-alarm rate worsened; stopped after two kept iterations to avoid tuning to 45 cases |
+| 2026-09-29 | 15 | 0.7076 | 5 / 3.9515 | test runs p4, six models, no errored case, no repeat needed; usage since start 0.6470 |
 
 ## Final review
 

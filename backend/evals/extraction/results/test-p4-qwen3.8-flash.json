@@ -1,0 +1,2208 @@
+{
+ "run_name": "test-p4-qwen3.8-flash",
+ "provider": "openrouter",
+ "model": "qwen/qwen3.8-flash",
+ "prompt_version": "extraction@4+link_disambiguation@1",
+ "split": "test",
+ "structured_method": "json_schema",
+ "reasoning_effort": "none",
+ "temperature": true,
+ "cases": 91,
+ "errored_cases": 0,
+ "metrics": {
+  "cases": 91,
+  "errored_cases": 0,
+  "precision": 0.8727272727272727,
+  "recall": 0.96,
+  "f1": 0.9142857142857143,
+  "linking_accuracy": 1.0,
+  "linking_paired": 50,
+  "false_alarm_rate": 0.06060606060606061,
+  "certainty_accuracy": 0.75,
+  "certainty_confusion": {
+   "confirmed": {
+    "confirmed": 25,
+    "likely": 2,
+    "rumour": 0
+   },
+   "likely": {
+    "confirmed": 10,
+    "likely": 6,
+    "rumour": 0
+   },
+   "rumour": {
+    "confirmed": 0,
+    "likely": 0,
+    "rumour": 5
+   }
+  },
+  "latency_p50_seconds": 1.3777979200240225,
+  "latency_p95_seconds": 5.599693536001723,
+  "mean_input_tokens": 1218.3516483516485,
+  "mean_output_tokens": 34.362637362637365,
+  "mean_cost_usd": 0.0001989031868131868,
+  "projected_monthly_cost_pln": 0.8040661326923076,
+  "posts_per_month": 1050.0,
+  "usd_pln_rate": 3.85,
+  "passes": false,
+  "mean_reasoning_tokens": 0.0,
+  "mean_reported_cost_usd": 6.131021978021979e-05,
+  "total_cost_usd": 0.01810019,
+  "total_reported_cost_usd": 0.00557923,
+  "hosts": {
+   "Alibaba": 91
+  },
+  "answered_models": {
+   "qwen/qwen3.8-flash": 91
+  },
+  "thresholds_passed": {
+   "f1": true,
+   "linking_accuracy": true,
+   "false_alarm_rate": false,
+   "monthly_cost": true,
+   "no_errored_cases": true
+  }
+ },
+ "case_results": [
+  {
+   "id": "2103436877860593885",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.8474212030123454,
+   "input_tokens": 1176,
+   "output_tokens": 55,
+   "cost_usd": 0.00020224999999999998,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.5034e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687366-gVeydIiL79p9K2Qh5b4h",
+   "expected": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2103809666761531519",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.5539882659795694,
+   "input_tokens": 1157,
+   "output_tokens": 80,
+   "cost_usd": 0.00021114999999999998,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.3934e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687369-HZekF5HTT6lMPxNGAEPc",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Hemp",
+     "fpl_id": null,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2103820653937709564",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.230177144985646,
+   "input_tokens": 1210,
+   "output_tokens": 9,
+   "cost_usd": 0.00018573,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.8514e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687371-0LHwac0UYLATTv8KvFtR",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103821706699612219",
+   "attempts": 2,
+   "error_class": null,
+   "latency_seconds": 1.4236429399752524,
+   "input_tokens": 1168,
+   "output_tokens": 5,
+   "cost_usd": 0.00017755,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.0334e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687380-npXOLZsaRANmsjHbncqo",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103848750057660918",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1294185790175106,
+   "input_tokens": 1174,
+   "output_tokens": 5,
+   "cost_usd": 0.00017844999999999997,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.1234e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687382-hJfV59Kra2amrIYw5BdU",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103849740454539308",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3249134469951969,
+   "input_tokens": 1567,
+   "output_tokens": 9,
+   "cost_usd": 0.00023928,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000102064,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687383-vH3CYMf9sFlWpuACwLcG",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103850171758997676",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1291352389962412,
+   "input_tokens": 1359,
+   "output_tokens": 9,
+   "cost_usd": 0.00020808,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.0864e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687384-5neuU76UHG4GhdwPBd2i",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103851583297712216",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3377916010213085,
+   "input_tokens": 1202,
+   "output_tokens": 9,
+   "cost_usd": 0.00018453,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.7314e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687385-yYEEFRkE0jfb4u6tXw2Q",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103854250623201316",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.4963520890159998,
+   "input_tokens": 1225,
+   "output_tokens": 9,
+   "cost_usd": 0.00018798,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.0764e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687386-g907ZGgR3hL3NGlBqvLO",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103859019479953476",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2214196370041464,
+   "input_tokens": 1425,
+   "output_tokens": 9,
+   "cost_usd": 0.00021798,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 8.0764e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687388-RLVdQyl3oQfQG86RKsH3",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103859072168800725",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2682150150067173,
+   "input_tokens": 1292,
+   "output_tokens": 9,
+   "cost_usd": 0.00019803,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.0814e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687389-9QsmmxIE3VJs7MGjw0RE",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103881423497408975",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3506127689906862,
+   "input_tokens": 1194,
+   "output_tokens": 5,
+   "cost_usd": 0.00018145,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.4234e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687390-lCmRTWxNxIjPtzr9GWKc",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103893055723982873",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.303823847003514,
+   "input_tokens": 1219,
+   "output_tokens": 9,
+   "cost_usd": 0.00018708,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.9864e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687392-lyLg7d2oKR5Q5cJCSHPN",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103903694412710319",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 5.599693536001723,
+   "input_tokens": 1201,
+   "output_tokens": 9,
+   "cost_usd": 0.00018438,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.7164e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687393-E1dxH2iijoKp08LPrYfA",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103911402478125345",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.119474690000061,
+   "input_tokens": 1204,
+   "output_tokens": 9,
+   "cost_usd": 0.00018483,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.7614e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687399-8ppk4jzbkonJXdHOsJ6K",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103916008239161523",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.6685212899756152,
+   "input_tokens": 1216,
+   "output_tokens": 5,
+   "cost_usd": 0.00018475000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.7534e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687400-b6i2DDNyEUyc8QdGmp3B",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103923861641105679",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.301482056005625,
+   "input_tokens": 1254,
+   "output_tokens": 5,
+   "cost_usd": 0.00019045,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.3234e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687402-Nvgwgx5PU37nqbzP8Vif",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103939538213032046",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.227351502981037,
+   "input_tokens": 1165,
+   "output_tokens": 9,
+   "cost_usd": 0.00017898,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.1764e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687403-gkcth4B3u7h2zymt6217",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103955750015905855",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.146912550990237,
+   "input_tokens": 1212,
+   "output_tokens": 9,
+   "cost_usd": 0.00018603,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.8814e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687404-0FVTcwKlRIMlScvKVpxD",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103958805142978873",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.8279674009827431,
+   "input_tokens": 1167,
+   "output_tokens": 9,
+   "cost_usd": 0.00017928,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.2064e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687405-7mZNHjCl0ozMAVx18Nqr",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104101438649729388",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.332724945008522,
+   "input_tokens": 1169,
+   "output_tokens": 9,
+   "cost_usd": 0.00017957999999999998,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.2364e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687407-MJzpj5ME9VlcCdnZpkH3",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104113395599335907",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.134515061014099,
+   "input_tokens": 1219,
+   "output_tokens": 9,
+   "cost_usd": 0.00018708,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.9864e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687408-pk1RtrtHYhexapd59Oyf",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104118871305105417",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.7765916570206173,
+   "input_tokens": 1225,
+   "output_tokens": 35,
+   "cost_usd": 0.0002002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.2984e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687409-mWxMl8FocHntYLS6IYnx",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Alexander Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104124182170566816",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.319020128023112,
+   "input_tokens": 1263,
+   "output_tokens": 56,
+   "cost_usd": 0.00021577,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.8554e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687411-8nplX9FF0cGSjW04j83D",
+   "expected": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "2104125409809879545",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.7766233069996815,
+   "input_tokens": 1251,
+   "output_tokens": 54,
+   "cost_usd": 0.00021302999999999998,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.5814e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687414-0cEzoh7we01j0j9cycCA",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Lewis Hall",
+     "fpl_id": 449,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104128254106050686",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.8240849209832959,
+   "input_tokens": 1174,
+   "output_tokens": 9,
+   "cost_usd": 0.00018032999999999998,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.3114e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687415-QKmlhDOSlZdGrk7P0wHU",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104135413397082285",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2655614649993367,
+   "input_tokens": 1205,
+   "output_tokens": 9,
+   "cost_usd": 0.00018497999999999998,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.7764e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687417-uXFYzwTqklsZf1WNK8HG",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104136860088103347",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0880322169978172,
+   "input_tokens": 1176,
+   "output_tokens": 9,
+   "cost_usd": 0.00018062999999999998,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.3414e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687418-sFgFbKHXSUPEWMxXYCIO",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104142752036581744",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2807135599723551,
+   "input_tokens": 1166,
+   "output_tokens": 9,
+   "cost_usd": 0.00017913,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.1914e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687420-RsEBf8U4l7CyUd3mAW85",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104148975821443236",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2045709270169027,
+   "input_tokens": 1175,
+   "output_tokens": 9,
+   "cost_usd": 0.00018048,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.3264e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687421-T11Yo5DsHThBqTXddOo5",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104158837540622748",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 12.332089617993915,
+   "input_tokens": 1941,
+   "output_tokens": 397,
+   "cost_usd": 0.00047774,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00030622,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687422-zk2PYD7PALogeTGIgqKt",
+   "expected": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Brobbey",
+     "fpl_id": 552,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Ballard",
+     "fpl_id": 532,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Joao Pedro",
+     "fpl_id": 165,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Pedro Porro",
+     "fpl_id": 499,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Brobbey",
+     "fpl_id": 552,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Ballard",
+     "fpl_id": 532,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Joao Pedro",
+     "fpl_id": 165,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Pedro Porro",
+     "fpl_id": 499,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104169958418547163",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2360422759957146,
+   "input_tokens": 1222,
+   "output_tokens": 9,
+   "cost_usd": 0.00018753,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.0314e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687434-WIWY3CxR9LD7xVgDajr8",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104173076380303608",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.653975997993257,
+   "input_tokens": 1208,
+   "output_tokens": 55,
+   "cost_usd": 0.00020705000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.9834e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687436-YcW1OmaEu0jxJf6IrWer",
+   "expected": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Alexander Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104175133694804334",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.79249439999694,
+   "input_tokens": 1309,
+   "output_tokens": 56,
+   "cost_usd": 0.00022267,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 8.5454e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687437-jHUdtEFbMuFxWHG7NWNB",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104177542324273565",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 4.560992950020591,
+   "input_tokens": 1229,
+   "output_tokens": 9,
+   "cost_usd": 0.00018858000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.1364e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687439-3O3ufrCJtR8Q6Zw2wLA1",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104184615342674076",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 5.212442474003183,
+   "input_tokens": 1185,
+   "output_tokens": 9,
+   "cost_usd": 0.00018198000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.4764e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687444-RfSnzDFN1NDO1SCJV32o",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104208281241547236",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.6312115319888107,
+   "input_tokens": 1261,
+   "output_tokens": 9,
+   "cost_usd": 0.00019338,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.6164e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687449-jycDPmcXVLPdCElxM6co",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104208927735046198",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0983517080021556,
+   "input_tokens": 1184,
+   "output_tokens": 9,
+   "cost_usd": 0.00018182999999999999,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.4614e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687450-TQbap0n2K2Q0Vc7vkye5",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104209061050782103",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1334812739805784,
+   "input_tokens": 1225,
+   "output_tokens": 9,
+   "cost_usd": 0.00018798,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.0764e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687452-JMsev6q7o8L6x2AXlSAs",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104238743922069518",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2139261340198573,
+   "input_tokens": 1229,
+   "output_tokens": 5,
+   "cost_usd": 0.0001867,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.9484e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687453-s7rXzNwButWJBdHljIGL",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104242478950019357",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1615818079735618,
+   "input_tokens": 1178,
+   "output_tokens": 9,
+   "cost_usd": 0.00018093,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.3714e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687454-DDVSvotiEkwHFfkQ8bZ8",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104264937493422556",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1455350659962278,
+   "input_tokens": 1207,
+   "output_tokens": 5,
+   "cost_usd": 0.00018339999999999999,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.6184e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687455-FvT8nX9sQECWpxlug3fG",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104267360009920983",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.26131732299109,
+   "input_tokens": 1179,
+   "output_tokens": 5,
+   "cost_usd": 0.0001792,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.1984e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687456-ELiwj91IO5SNgE2E1TpL",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104269606542082554",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1054133259749506,
+   "input_tokens": 1183,
+   "output_tokens": 9,
+   "cost_usd": 0.00018168,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.4464e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687457-8d1MbqzUbfQbTpGwd4FW",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104270786454577468",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.4417189630039502,
+   "input_tokens": 1162,
+   "output_tokens": 9,
+   "cost_usd": 0.00017853,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.1314e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687459-1tEpaIoiEGVf2LEbnyYC",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104273037319454995",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3294865310017485,
+   "input_tokens": 1182,
+   "output_tokens": 9,
+   "cost_usd": 0.00018153,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.4314e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687460-rmMKyl1n98kFnxhNIOv8",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104293882557026758",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.767363488994306,
+   "input_tokens": 1216,
+   "output_tokens": 9,
+   "cost_usd": 0.00018663000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.9414e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687461-J3aFaotVIY5TWadlwpCa",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104299798362738869",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1795705640106462,
+   "input_tokens": 1178,
+   "output_tokens": 5,
+   "cost_usd": 0.00017905,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.1834e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687463-Qu0mWcWvOFLblNCanyLl",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104301949453537423",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2155504070105962,
+   "input_tokens": 1156,
+   "output_tokens": 9,
+   "cost_usd": 0.00017763,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.0414e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687464-G17He6VCdOqxwYcEeQ0N",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104345349183746388",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3554983039794024,
+   "input_tokens": 1178,
+   "output_tokens": 9,
+   "cost_usd": 0.00018093,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.3714e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687465-bXaxKmDW5yZGx7mvmFDb",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104452956900766117",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 6.196766613982618,
+   "input_tokens": 1230,
+   "output_tokens": 9,
+   "cost_usd": 0.00018873,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.1514e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687467-8TXP6FMxTPoLJZgKpyQ4",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104458586688762067",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.177808336011367,
+   "input_tokens": 1244,
+   "output_tokens": 9,
+   "cost_usd": 0.00019083000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.3614e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687473-wgdrVhk5pyHlrjEWvuYF",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104469147253948835",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1822244609938934,
+   "input_tokens": 1197,
+   "output_tokens": 9,
+   "cost_usd": 0.00018377999999999998,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.6564e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687474-pSSbVQzDeM7VeKsEO6cw",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104489898455478454",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.927360897010658,
+   "input_tokens": 1178,
+   "output_tokens": 9,
+   "cost_usd": 0.00018093,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.3714e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687475-tyELfl3dNyGH1gAvU8Ly",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104492012888326553",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.154093279998051,
+   "input_tokens": 1206,
+   "output_tokens": 9,
+   "cost_usd": 0.00018513,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.7914e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687477-2KS1RpWMrI5ItvUR0CcY",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104496383990358219",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2521310420124792,
+   "input_tokens": 1152,
+   "output_tokens": 9,
+   "cost_usd": 0.00017703,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 3.9814e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687478-QuRpWyuqYIEpATTfulGD",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104500381380452505",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.415269557008287,
+   "input_tokens": 1195,
+   "output_tokens": 9,
+   "cost_usd": 0.00018348000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.6264e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687480-fxiKeD2ZY2hjfZDT0yl0",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104505435390935125",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.5180562629830092,
+   "input_tokens": 1178,
+   "output_tokens": 9,
+   "cost_usd": 0.00018093,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.3714e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687481-Aujq9yL8u9CWch014XcR",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104509469715763577",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3777979200240225,
+   "input_tokens": 1196,
+   "output_tokens": 9,
+   "cost_usd": 0.00018363,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.6414e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687483-Fz7oMfkcC4W9JON80z9M",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104511766172467564",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1064012999995612,
+   "input_tokens": 1187,
+   "output_tokens": 9,
+   "cost_usd": 0.00018228,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.5064e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687484-tNHXGH1eTDo7wDLCr5sZ",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104516939213095099",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.7284263140172698,
+   "input_tokens": 1219,
+   "output_tokens": 57,
+   "cost_usd": 0.00020964,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.2424e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687485-uZmLcGEjes2cUnvbIgvq",
+   "expected": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Alexander Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104519520841027654",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.9592340899980627,
+   "input_tokens": 1223,
+   "output_tokens": 61,
+   "cost_usd": 0.00021212,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.4904e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687487-VlZnltJHhWWlcD37JrA4",
+   "expected": [
+    {
+     "mention": "Dango Ouattara",
+     "fpl_id": 95,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Dango Ouattara",
+     "fpl_id": 95,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104522447735099746",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0955719650082756,
+   "input_tokens": 1166,
+   "output_tokens": 9,
+   "cost_usd": 0.00017913,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.1914e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687489-afgedzpL4arHD5bLRbRf",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104522789382238687",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2226593070081435,
+   "input_tokens": 1209,
+   "output_tokens": 9,
+   "cost_usd": 0.00018558,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.8364e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687490-HjdWwPeLJTlgm1Mbmwcc",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104523734438588623",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.3900004790048115,
+   "input_tokens": 1199,
+   "output_tokens": 55,
+   "cost_usd": 0.00020569999999999999,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.8484e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687491-Nb4lNmPsHYEdXLCtMjXm",
+   "expected": [
+    {
+     "mention": "Dorgu",
+     "fpl_id": 415,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Patrick Dorgu",
+     "fpl_id": 415,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104528798175695288",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2551876989891753,
+   "input_tokens": 1240,
+   "output_tokens": 9,
+   "cost_usd": 0.00019023,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.3014e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687494-qsOaDle04I33EI04qWlv",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104535940823978027",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0750737380003557,
+   "input_tokens": 1222,
+   "output_tokens": 5,
+   "cost_usd": 0.00018564999999999999,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.8434e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687495-IH47nODJdx7wYTubUTD5",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104540141801066807",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.5493019109999295,
+   "input_tokens": 1223,
+   "output_tokens": 9,
+   "cost_usd": 0.00018768,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.0464e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687496-PwbmhX49N0xOGrm9VWCB",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104567601145741767",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1160698879975826,
+   "input_tokens": 1188,
+   "output_tokens": 9,
+   "cost_usd": 0.00018243,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.5214e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687497-HSrCSia4Y8ZeTiGzVFOY",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-001",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 6.500045815977501,
+   "input_tokens": 1537,
+   "output_tokens": 466,
+   "cost_usd": 0.00044956999999999994,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000312354,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687499-GdFlrn5VHoDNYiPIwnCL",
+   "expected": [
+    {
+     "mention": "Raya",
+     "fpl_id": 1,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gabriel",
+     "fpl_id": 4,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Ødegaard",
+     "fpl_id": 15,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Martinelli",
+     "fpl_id": 18,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Eze",
+     "fpl_id": 14,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Raya",
+     "fpl_id": 1,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gabriel",
+     "fpl_id": 4,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Ødegaard",
+     "fpl_id": 15,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Martinelli",
+     "fpl_id": 18,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Eze",
+     "fpl_id": 14,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-002",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.3135455120063853,
+   "input_tokens": 1178,
+   "output_tokens": 239,
+   "cost_usd": 0.00028903,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000151814,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687505-qTjwitn5lhMVxj1KPRth",
+   "expected": [
+    {
+     "mention": "Mbeumo",
+     "fpl_id": 427,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Cunha",
+     "fpl_id": 428,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "B.Fernandes",
+     "fpl_id": 426,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Mainoo",
+     "fpl_id": 432,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Mbeumo",
+     "fpl_id": 427,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Cunha",
+     "fpl_id": 428,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "B.Fernandes",
+     "fpl_id": 426,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Mainoo",
+     "fpl_id": 432,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-003",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.5902232289954554,
+   "input_tokens": 1174,
+   "output_tokens": 140,
+   "cost_usd": 0.00024189999999999997,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000104684,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687508-9dOmYqHKeJz5LTjX5Yjb",
+   "expected": [
+    {
+     "mention": "Haaland",
+     "fpl_id": 411,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "benched",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Haaland",
+     "fpl_id": 411,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "benched",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-005",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.644933468021918,
+   "input_tokens": 1166,
+   "output_tokens": 47,
+   "cost_usd": 0.00019699,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.9774e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687511-3wMO1H7jGGGARmItMEOv",
+   "expected": [
+    {
+     "mention": "Cole Palmer",
+     "fpl_id": 154,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Cole Palmer",
+     "fpl_id": 154,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-006",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.673452453018399,
+   "input_tokens": 1172,
+   "output_tokens": 55,
+   "cost_usd": 0.00020165000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.4434e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687513-la5XKyQoEd5Y00bytDkx",
+   "expected": [
+    {
+     "mention": "Caicedo",
+     "fpl_id": 159,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Caicedo",
+     "fpl_id": 159,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-007",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.6181686049967539,
+   "input_tokens": 1165,
+   "output_tokens": 49,
+   "cost_usd": 0.00019778,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.0564e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687514-CIyR2oalk2SJVqboOQ5c",
+   "expected": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-009",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.61597235899535,
+   "input_tokens": 1167,
+   "output_tokens": 46,
+   "cost_usd": 0.00019667,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.9454e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687516-oezZCqyHNJb9sDqrGtWA",
+   "expected": [
+    {
+     "mention": "Gvardiol",
+     "fpl_id": 391,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Gvardiol",
+     "fpl_id": 391,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-010",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.6382312490022741,
+   "input_tokens": 1159,
+   "output_tokens": 54,
+   "cost_usd": 0.00019923,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.2014e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687518-T3T8kvcszeXwItBKXyQ7",
+   "expected": [
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-011",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.1514584100223146,
+   "input_tokens": 1175,
+   "output_tokens": 80,
+   "cost_usd": 0.00021385,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 7.6634e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687519-0yoSdkXBajoSxu71PnEz",
+   "expected": [
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "out",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "out",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-013",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.888352426001802,
+   "input_tokens": 1163,
+   "output_tokens": 56,
+   "cost_usd": 0.00020077,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.3554e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687521-eQTA1DQw63GFLBjZdlvn",
+   "expected": [
+    {
+     "mention": "Starboy",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Starboy",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-014",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.867786057991907,
+   "input_tokens": 1166,
+   "output_tokens": 55,
+   "cost_usd": 0.00020075,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.3534e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687523-1DR7ruszVrZIkbXykno9",
+   "expected": [
+    {
+     "mention": "The Terminator",
+     "fpl_id": 411,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "The Terminator",
+     "fpl_id": 411,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-015",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.095378714002436,
+   "input_tokens": 1161,
+   "output_tokens": 53,
+   "cost_usd": 0.00019905999999999998,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.1844e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687525-UVE4MLJqErs8mJgKgtcT",
+   "expected": [
+    {
+     "mention": "Cold Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Cold Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-017",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.7699265380215365,
+   "input_tokens": 1165,
+   "output_tokens": 58,
+   "cost_usd": 0.00020201,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.4794e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687527-RQurAd5mmkbxXLmcHJJs",
+   "expected": [
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-018",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.7331656269961968,
+   "input_tokens": 1164,
+   "output_tokens": 53,
+   "cost_usd": 0.00019951000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.2294e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687529-bLvNypZgL5cEmjCZeROj",
+   "expected": [
+    {
+     "mention": "Guéhi",
+     "fpl_id": 388,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Guéhi",
+     "fpl_id": 388,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-019",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 6.812511908996385,
+   "input_tokens": 1473,
+   "output_tokens": 55,
+   "cost_usd": 0.0002468,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000109584,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687531-TUiike9RdIZ3jKo1Pneh",
+   "expected": [
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-022",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2245419689861592,
+   "input_tokens": 1169,
+   "output_tokens": 9,
+   "cost_usd": 0.00017957999999999998,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.2364e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687537-v6uG3KINf51miqgFZYWc",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-023",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2447681419725996,
+   "input_tokens": 1186,
+   "output_tokens": 9,
+   "cost_usd": 0.00018213,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.4914e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687539-cNpHMAUk5kLxUx39s5yg",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-024",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2910011960193515,
+   "input_tokens": 1177,
+   "output_tokens": 9,
+   "cost_usd": 0.00018078000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.3564e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687540-9bGcKMQAZKJWG0zaQFK8",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-025",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1253207930130884,
+   "input_tokens": 1178,
+   "output_tokens": 9,
+   "cost_usd": 0.00018093,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 4.3714e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687541-HkCK16qGRUIMPkF6aC29",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-027",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.6334155279910192,
+   "input_tokens": 1170,
+   "output_tokens": 47,
+   "cost_usd": 0.00019759,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.0374e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687542-hNmbeSEleBIBUW9wQI3S",
+   "expected": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-028",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.760605713003315,
+   "input_tokens": 1166,
+   "output_tokens": 48,
+   "cost_usd": 0.00019746,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 6.0244e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687544-lt4juOTeHlNZyTaOYboh",
+   "expected": [
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-029",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.8787123909860384,
+   "input_tokens": 1165,
+   "output_tokens": 47,
+   "cost_usd": 0.00019684,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 5.9624e-05,
+   "host": "Alibaba",
+   "answered_model": "qwen/qwen3.8-flash",
+   "generation_id": "gen-1790687546-KMhAbJj1vRmbvoepnAUW",
+   "expected": [
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ]
+  }
+ ]
+}
