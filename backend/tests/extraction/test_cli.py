@@ -14,6 +14,7 @@ from app.extraction.cli import ExtractionCliDeps, app, build_spec_from_settings
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
 from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.linking import PlayerIndex, PlayerRecord, load_snapshot
+from app.extraction.model_settings import ModelSettings
 from app.extraction.models import Extraction
 from app.extraction.pricing import Price
 from app.extraction.providers import ChatModelSpec
@@ -62,14 +63,19 @@ def _tweet(x_id: int, created_at: datetime = NOW) -> Tweet:
     )
 
 
-def _build_spec(*responses, provider: str = "fake", model: str = "fake-model"):
-    fake = FakeChatModel(responses=list(responses))
+def _build_spec(*responses, provider: str = "fake", model: str = "fake-model", **fake_fields):
+    fake = FakeChatModel(responses=list(responses), **fake_fields)
     spec = ChatModelSpec(provider=provider, model=model, chat_model=fake)
     fallback_asked: list[bool] = []
+    row = ModelSettings(
+        reasoning_effort="none", temperature=True, structured_method="function_calling", checked="x"
+    )
 
     def build_spec(cli_model, *, fallback):
         fallback_asked.append(fallback)
-        return ChatModelSpec(provider=provider, model=cli_model or model, chat_model=fake)
+        return ChatModelSpec(
+            provider=provider, model=cli_model or model, chat_model=fake, settings=row
+        )
 
     build_spec.fallback_asked = fallback_asked
     return build_spec, spec
@@ -610,13 +616,34 @@ def test_evaluate_without_key_names_openrouter_variable(tmp_path, monkeypatch):
     assert SENTINEL not in result.stderr
 
 
+def test_evaluate_shows_reasoning_tokens(tmp_path):
+    files = _Files(tmp_path, [_eval_case("1", "test")])
+    build_spec, _ = _build_spec(_haaland_out(), model="m", reasoning_tokens=3, host="Fireworks")
+
+    result = CliRunner().invoke(app, files.args("--run-name", "run-r"), obj=_no_db_deps(build_spec))
+
+    assert result.exit_code == 0, result.output
+    assert "mean reasoning tokens: 3.00" in result.stdout
+    assert "serving hosts: Fireworks 1" in result.stdout
+    assert "f1 >= 0.85: yes" in result.stdout
+    assert "no errored case: yes" in result.stdout
+
+
 def test_evaluate_writes_results(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "app.extraction.evaluation.runner.load_prices",
         lambda: {"m": Price(input_per_million=1.0, output_per_million=2.0, checked="x")},
     )
     files = _Files(tmp_path, [_eval_case("1", "test"), _eval_case("2", "test", events=False)])
-    build_spec, _ = _build_spec(_haaland_out(), _haaland_out(), model="m")
+    build_spec, _ = _build_spec(
+        _haaland_out(),
+        _haaland_out(),
+        model="m",
+        response_model="m",
+        host="Fireworks",
+        reasoning_tokens=3,
+        reported_cost=0.00005,
+    )
 
     result = CliRunner().invoke(
         app,
@@ -627,6 +654,18 @@ def test_evaluate_writes_results(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     data = json.loads((files.results / "run-1.json").read_text())
     assert build_spec.fallback_asked == [False]
+    assert data["reasoning_effort"] == "none"
+    assert data["temperature"] is True
+    assert data["structured_method"] == "function_calling"
+    assert data["metrics"]["hosts"] == {"Fireworks": 2}
+    assert data["metrics"]["thresholds_passed"]["f1"] is False  # 2 * 1 / (2 + 1) = 0.667
+    assert data["metrics"]["thresholds_passed"]["linking_accuracy"] is True
+    assert data["metrics"]["total_cost_usd"] == pytest.approx(4e-5)
+    by_case = {c["id"]: c for c in data["case_results"]}
+    assert by_case["1"]["host"] == "Fireworks"
+    assert by_case["1"]["answered_model"] == "m"
+    assert by_case["1"]["reasoning_tokens"] == 3
+    assert by_case["1"]["reported_cost_usd"] == 0.00005
     assert (data["run_name"], data["provider"], data["model"]) == ("run-1", "fake", "m")
     assert data["prompt_version"].startswith("extraction@")
     assert data["split"] == "test"

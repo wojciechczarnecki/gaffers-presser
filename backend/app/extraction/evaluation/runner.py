@@ -11,6 +11,7 @@ from app.extraction.evaluation.cases import EvalCase, ExpectedEvent
 from app.extraction.evaluation.metrics import CaseResult, Metrics, compute_metrics
 from app.extraction.flow import PROMPT_VERSION, Flow, build_flow
 from app.extraction.linking import PlayerIndex
+from app.extraction.model_settings import ModelSettings
 from app.extraction.pricing import compute_cost, load_prices
 from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import FlowResult, PostInput
@@ -35,14 +36,19 @@ class EvaluationReport:
     split: str
     metrics: Metrics
     outcomes: list[CaseOutcome]
+    settings: ModelSettings | None = None
 
     def to_json_dict(self) -> dict[str, Any]:
+        settings = self.settings
         return {
             "run_name": self.run_name,
             "provider": self.provider,
             "model": self.model,
             "prompt_version": self.prompt_version,
             "split": self.split,
+            "structured_method": settings.structured_method if settings else None,
+            "reasoning_effort": settings.reasoning_effort if settings else None,
+            "temperature": settings.temperature if settings else None,
             "cases": self.metrics.cases,
             "errored_cases": self.metrics.errored_cases,
             "metrics": asdict(self.metrics),
@@ -55,6 +61,10 @@ class EvaluationReport:
                     "input_tokens": outcome.result.input_tokens,
                     "output_tokens": outcome.result.output_tokens,
                     "cost_usd": outcome.result.cost_usd,
+                    "reasoning_tokens": outcome.result.reasoning_tokens,
+                    "reported_cost_usd": outcome.result.reported_cost_usd,
+                    "host": outcome.result.host,
+                    "answered_model": outcome.result.answered_model,
                     "expected": [e.model_dump() for e in outcome.result.expected],
                     "predicted": [e.model_dump() for e in outcome.result.predicted],
                 }
@@ -116,6 +126,7 @@ def run_evaluation(
             result = CaseResult(expected=expected, predicted=[], error_class=error_class)
         else:
             usage = retry.result.usage
+            answered_model = retry.result.answered_model or spec.model
             result = CaseResult(
                 expected=expected,
                 predicted=[
@@ -130,7 +141,13 @@ def run_evaluation(
                 latency_seconds=flow.last_seconds,
                 input_tokens=usage.input_tokens,
                 output_tokens=usage.output_tokens,
-                cost_usd=compute_cost(spec.model, usage.input_tokens, usage.output_tokens, prices),
+                cost_usd=compute_cost(
+                    answered_model, usage.input_tokens, usage.output_tokens, prices
+                ),
+                reasoning_tokens=usage.reasoning_tokens,
+                reported_cost_usd=usage.reported_cost_usd,
+                host=retry.result.host,
+                answered_model=retry.result.answered_model,
             )
         outcomes.append(CaseOutcome(case.id, result, retry.attempts))
 
@@ -147,4 +164,5 @@ def run_evaluation(
         split=split,
         metrics=metrics,
         outcomes=outcomes,
+        settings=spec.settings,
     )

@@ -298,6 +298,13 @@ EVALS_DIR = Path(__file__).resolve().parents[2] / "evals" / "extraction"
 DEFAULT_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
 DEFAULT_PLAYERS_PATH = EVALS_DIR / "v1" / "players-2026-27.json"
 DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
+THRESHOLD_LABELS = {
+    "f1": "f1 >= 0.85",
+    "linking_accuracy": "linking accuracy >= 0.95",
+    "false_alarm_rate": "false alarm rate <= 0.05",
+    "monthly_cost": "monthly cost <= 5 PLN",
+    "no_errored_cases": "no errored case",
+}
 RUN_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9._-]*")
 
 
@@ -365,8 +372,14 @@ def evaluate(
     typer.echo(f"certainty accuracy: {m.certainty_accuracy:.3f}")
     typer.echo(f"latency p50/p95: {_fmt(m.latency_p50_seconds)} / {_fmt(m.latency_p95_seconds)} s")
     typer.echo(f"mean tokens in/out: {_fmt(m.mean_input_tokens)} / {_fmt(m.mean_output_tokens)}")
+    typer.echo(f"mean reasoning tokens: {_fmt(m.mean_reasoning_tokens)}")
     typer.echo(f"mean cost per post: {_fmt(m.mean_cost_usd, 6)} USD")
+    typer.echo(f"mean reported cost per post: {_fmt(m.mean_reported_cost_usd, 6)} USD")
+    hosts = ", ".join(f"{host} {count}" for host, count in sorted(m.hosts.items())) or "n/a"
+    typer.echo(f"serving hosts: {hosts}")
     typer.echo(f"projected monthly cost: {_fmt(m.projected_monthly_cost_pln, 2)} PLN")
+    for name, label in THRESHOLD_LABELS.items():
+        typer.echo(f"{label}: {'yes' if m.thresholds_passed[name] else 'no'}")
     typer.echo(f"passes thresholds: {'yes' if m.passes else 'no'}")
     typer.echo(f"results: {result_path}")
 

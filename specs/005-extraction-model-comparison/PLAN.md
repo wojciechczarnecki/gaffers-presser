@@ -194,7 +194,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
 | AC13 | 10, 12–15, 17 | `tests/extraction/test_cli.py::test_spend_sums_run_files_recursively` | |
 | AC14 | 10, 15 | `tests/extraction/test_cli.py::test_dev_runs_default_to_the_ignored_directory`, `tests/extraction/evaluation/test_results_files.py::test_one_test_run_per_candidate_with_one_prompt` | |
 | AC15 | 6, 9 | `tests/extraction/test_openrouter_payload.py::test_fallback_answer_recorded` (host), `tests/extraction/test_cli.py::test_evaluate_writes_results` (host per case and host counts) | |
-| AC16 | 9, 17 | `tests/extraction/evaluation/test_metrics.py::test_thresholds_passed_per_threshold`, `tests/extraction/evaluation/test_results_files.py::test_report_names_every_test_run` | |
+| AC16 | 9, 17 | `tests/extraction/evaluation/test_metrics.py::test_thresholds_passed_per_threshold`, `tests/extraction/evaluation/test_results_files.py::test_report_names_every_test_run` | step 9: `uv run pytest -q tests/extraction/evaluation/test_metrics.py` (app changes stashed) → `ImportError: cannot import name 'threshold_flags'` (import error, not an assertion: the symbol did not exist; the test was written before the code) |
 | AC17 | 11, 16 | `tests/extraction/evaluation/test_selection.py::test_cheapest_passing_*`, `::test_single_passing_*`, `tests/extraction/evaluation/test_results_files.py::test_config_defaults_match_selection` | |
 | AC18 | 11, 16, 18 | `tests/extraction/evaluation/test_selection.py::test_no_passing_*` | |
 | AC19 | 16 | `tests/extraction/evaluation/test_results_files.py::test_adr_0006_names_the_defaults` | |
@@ -490,7 +490,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
         They are red until the removal.
       Automatic verification: `cd backend && uv lock --check && uv run pytest -q tests/extraction/test_dependency.py && ! grep -rnE "^\s*(from|import)\s+langchain_(openai|google_genai|anthropic)" app tests`
 
-- [ ] 9. **Evaluation run fields: reasoning, host, answering model, reported cost,
+- [x] 9. **Evaluation run fields: reasoning, host, answering model, reported cost,
       per-threshold pass (AC7 display, AC15, AC16).**
       - `evaluation/metrics.py`:
         - `CaseResult` gains `reasoning_tokens`, `reported_cost_usd`, `host` and

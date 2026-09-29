@@ -1,5 +1,6 @@
 import math
-from collections.abc import Sequence
+from collections import Counter
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 
 from app.extraction.evaluation.cases import ExpectedEvent
@@ -22,6 +23,10 @@ class CaseResult:
     output_tokens: int | None = None
     cost_usd: float | None = None
     error_class: str | None = None
+    reasoning_tokens: int | None = None
+    reported_cost_usd: float | None = None
+    host: str | None = None
+    answered_model: str | None = None
 
 
 @dataclass(frozen=True)
@@ -45,6 +50,29 @@ class Metrics:
     posts_per_month: float = 0.0
     usd_pln_rate: float = 0.0
     passes: bool = False
+    mean_reasoning_tokens: float | None = None
+    mean_reported_cost_usd: float | None = None
+    total_cost_usd: float = 0.0
+    total_reported_cost_usd: float = 0.0
+    hosts: dict[str, int] = field(default_factory=dict)
+    answered_models: dict[str, int] = field(default_factory=dict)
+    thresholds_passed: dict[str, bool] = field(default_factory=dict)
+
+
+def threshold_flags(
+    f1: float,
+    linking_accuracy: float,
+    false_alarm_rate: float,
+    monthly_cost_pln: float | None,
+    errored_cases: int = 0,
+) -> dict[str, bool]:
+    return {
+        "f1": f1 >= MIN_F1,
+        "linking_accuracy": linking_accuracy >= MIN_LINKING_ACCURACY,
+        "false_alarm_rate": false_alarm_rate <= MAX_FALSE_ALARM_RATE,
+        "monthly_cost": monthly_cost_pln is not None and monthly_cost_pln <= MAX_MONTHLY_COST_PLN,
+        "no_errored_cases": errored_cases == 0,
+    }
 
 
 def passes(
@@ -54,14 +82,8 @@ def passes(
     monthly_cost_pln: float | None,
     errored_cases: int = 0,
 ) -> bool:
-    return (
-        errored_cases == 0
-        and f1 >= MIN_F1
-        and linking_accuracy >= MIN_LINKING_ACCURACY
-        and false_alarm_rate <= MAX_FALSE_ALARM_RATE
-        and monthly_cost_pln is not None
-        and monthly_cost_pln <= MAX_MONTHLY_COST_PLN
-    )
+    flags = threshold_flags(f1, linking_accuracy, false_alarm_rate, monthly_cost_pln, errored_cases)
+    return all(flags.values())
 
 
 def _key(event: ExpectedEvent) -> tuple[str, int | str]:
@@ -150,6 +172,10 @@ def _mean(values: list[float]) -> float | None:
     return sum(values) / len(values) if values else None
 
 
+def _counts(values: Iterable[str | None]) -> dict[str, int]:
+    return dict(Counter(value for value in values if value is not None))
+
+
 def compute_metrics(
     results: Sequence[CaseResult], posts_per_month: float, usd_pln_rate: float
 ) -> Metrics:
@@ -193,6 +219,9 @@ def compute_metrics(
     mean_cost = _mean([r.cost_usd for r in results if r.cost_usd is not None])
     projected = mean_cost * posts_per_month * usd_pln_rate if mean_cost is not None else None
     errored_cases = sum(1 for r in results if r.error_class is not None)
+    flags = threshold_flags(f1, linking_accuracy, false_alarm_rate, projected, errored_cases)
+    costs = [r.cost_usd for r in results if r.cost_usd is not None]
+    reported_costs = [r.reported_cost_usd for r in results if r.reported_cost_usd is not None]
 
     return Metrics(
         cases=len(results),
@@ -213,5 +242,14 @@ def compute_metrics(
         projected_monthly_cost_pln=projected,
         posts_per_month=posts_per_month,
         usd_pln_rate=usd_pln_rate,
-        passes=passes(f1, linking_accuracy, false_alarm_rate, projected, errored_cases),
+        passes=all(flags.values()),
+        mean_reasoning_tokens=_mean(
+            [r.reasoning_tokens for r in results if r.reasoning_tokens is not None]
+        ),
+        mean_reported_cost_usd=_mean(reported_costs),
+        total_cost_usd=sum(costs),
+        total_reported_cost_usd=sum(reported_costs),
+        hosts=_counts(r.host for r in results),
+        answered_models=_counts(r.answered_model for r in results),
+        thresholds_passed=flags,
     )

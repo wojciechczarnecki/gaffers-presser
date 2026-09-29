@@ -5,6 +5,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_openrouter import ChatOpenRouter
 
 from app.extraction.config import PROVIDER, LlmConfig
+from app.extraction.model_settings import ModelSettings
 
 _REQUEST_TIMEOUT_MILLISECONDS = 60_000
 
@@ -15,6 +16,7 @@ class ChatModelSpec:
     model: str
     chat_model: BaseChatModel
     structured_kwargs: dict[str, Any] = field(default_factory=dict)
+    settings: ModelSettings | None = None
 
 
 def build_chat_model(config: LlmConfig) -> ChatModelSpec:
@@ -41,4 +43,5 @@ def build_chat_model(config: LlmConfig) -> ChatModelSpec:
         model=config.model,
         chat_model=ChatOpenRouter(**kwargs),
         structured_kwargs={"method": config.settings.structured_method},
+        settings=config.settings,
     )
