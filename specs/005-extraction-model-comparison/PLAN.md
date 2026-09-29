@@ -198,7 +198,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
 | AC17 | 11, 16 | `tests/extraction/evaluation/test_selection.py::test_cheapest_passing_*`, `::test_single_passing_*`, `tests/extraction/evaluation/test_results_files.py::test_config_defaults_match_selection` | |
 | AC18 | 11, 16, 18 | `tests/extraction/evaluation/test_selection.py::test_no_passing_*` | |
 | AC19 | 16 | `tests/extraction/evaluation/test_results_files.py::test_adr_0006_names_the_defaults` | |
-| AC20 | 7, 18 | `tests/test_env_example.py`, `tests/test_readme.py::test_removed_llm_variables_absent_from_docs` | |
+| AC20 | 7, 18 | `tests/test_env_example.py`, `tests/test_readme.py::test_removed_llm_variables_absent_from_docs` | `uv run pytest -q tests/test_readme.py` → `AssertionError: 'LLM_PROVIDER' still in README.md` |
 | AC21 | 18 | n/a — document edits, verified by the grep in step 18 | n/a — no test can express a roadmap tick |
 | AC22 | — | manual | manual |
 
@@ -450,7 +450,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
             `failed` row.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_flow.py tests/extraction/test_service.py tests/extraction/test_openrouter_payload.py tests/extraction/test_tracing.py tests/extraction/test_loop.py tests/worker/test_cli.py`
 
-- [ ] 7. **Documentation of the OpenRouter-only variables (AC20).**
+- [x] 7. **Documentation of the OpenRouter-only variables (AC20).**
       - `backend/.env.example`: replace the extraction block with `OPENROUTER_API_KEY=` (the
         switch: empty disables extraction), `LLM_MODEL=` (optional; empty = the default from
         ADR 0006), `LLM_FALLBACK_MODEL=` (optional), the Langfuse keys and `USD_PLN_RATE=`.
