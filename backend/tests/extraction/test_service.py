@@ -21,7 +21,7 @@ from app.tweets.models import Tweet
 from tests.extraction.fakes import FakeChatModel, RecordingHandler
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
-PRICES = {"fake:fake-model": Price(input_per_million=1.0, output_per_million=2.0, checked="x")}
+PRICES = {"fake-model": Price(input_per_million=1.0, output_per_million=2.0, checked="x")}
 
 POST = PostInput(
     x_id=1,

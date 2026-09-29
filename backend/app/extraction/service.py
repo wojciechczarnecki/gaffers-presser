@@ -165,7 +165,6 @@ def _store_extracted(
     record_latency: bool,
 ) -> StoredOutcome:
     cost_usd = compute_cost(
-        runtime.provider,
         runtime.model,
         result.usage.input_tokens,
         result.usage.output_tokens,

@@ -598,7 +598,7 @@ def test_evaluate_config_error_names_variable(tmp_path, monkeypatch):
 def test_evaluate_writes_results(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "app.extraction.evaluation.runner.load_prices",
-        lambda: {"fake:m": Price(input_per_million=1.0, output_per_million=2.0, checked="x")},
+        lambda: {"m": Price(input_per_million=1.0, output_per_million=2.0, checked="x")},
     )
     files = _Files(tmp_path, [_eval_case("1", "test"), _eval_case("2", "test", events=False)])
     build_spec, _ = _build_spec(_haaland_out(), _haaland_out(), model="m")

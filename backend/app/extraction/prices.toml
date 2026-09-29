@@ -1,10 +1,33 @@
-# USD per 1M tokens, keyed by "provider:model". Each entry must carry the date its price
-# was last checked against the provider's own pricing page. The implementer adds entries
-# only for prices it can verify directly; the owner completes this file with the models
-# used in the comparison run (SPEC 004, manual scenario 2) before running `evaluate`.
-#
-# Example:
-# ["openai:gpt-4.1-mini"]
-# input_per_million = 0.40
-# output_per_million = 1.60
-# checked = "2026-09-28"
+# USD per 1M tokens, keyed by OpenRouter model ID. Prices come from OpenRouter's model list
+# (https://openrouter.ai/api/v1/models, `pricing.prompt` / `pricing.completion` x 1e6); each
+# entry carries the date it was checked. A model missing here gets no cost.
+
+["google/gemini-3.1-flash-lite"]
+input_per_million = 0.25
+output_per_million = 1.50
+checked = "2026-09-29"
+
+["openai/gpt-6-luna"]
+input_per_million = 0.10
+output_per_million = 0.50
+checked = "2026-09-29"
+
+["anthropic/claude-haiku-4.5"]
+input_per_million = 1.00
+output_per_million = 5.00
+checked = "2026-09-29"
+
+["deepseek/deepseek-v4-flash"]
+input_per_million = 0.14
+output_per_million = 0.28
+checked = "2026-09-29"
+
+["qwen/qwen3.8-flash"]
+input_per_million = 0.15
+output_per_million = 0.47
+checked = "2026-09-29"
+
+["z-ai/glm-5.3-flash"]
+input_per_million = 0.15
+output_per_million = 0.50
+checked = "2026-09-29"

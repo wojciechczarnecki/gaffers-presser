@@ -130,9 +130,7 @@ def run_evaluation(
                 latency_seconds=flow.last_seconds,
                 input_tokens=usage.input_tokens,
                 output_tokens=usage.output_tokens,
-                cost_usd=compute_cost(
-                    spec.provider, spec.model, usage.input_tokens, usage.output_tokens, prices
-                ),
+                cost_usd=compute_cost(spec.model, usage.input_tokens, usage.output_tokens, prices),
             )
         outcomes.append(CaseOutcome(case.id, result, retry.attempts))
 
