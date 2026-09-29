@@ -367,7 +367,7 @@ makes the product change. Run all commands from the repository root. `V` =
           `from app.extraction…` appears).
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_dependency.py tests/test_module_boundaries.py tests/extraction/test_dependency.py`
-- [ ] 5. **Migration 0005 and models (AC4, AC5)**, a separate step.
+- [x] 5. **Migration 0005 and models (AC4, AC5)**, a separate step.
       - `app/tweets/models.py`: add
         `search_vector: str | None = Field(default=None, sa_column=Column(TSVECTOR(), Computed("to_tsvector('english_unaccent'::regconfig, text)", persisted=True), nullable=True))`
         and `Index("ix_tweet_search_vector", "search_vector", postgresql_using="gin")`.

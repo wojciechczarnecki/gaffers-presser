@@ -6,6 +6,7 @@ from sqlmodel import SQLModel
 
 import app.extraction.models  # noqa: F401
 import app.fpl.models  # noqa: F401
+import app.retrieval.models  # noqa: F401
 import app.tweets.models  # noqa: F401
 import app.worker.models  # noqa: F401
 from app.core.settings import load_settings, normalize_database_url
