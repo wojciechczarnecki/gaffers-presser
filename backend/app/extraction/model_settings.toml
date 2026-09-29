@@ -33,6 +33,8 @@ checked = "2026-09-29"
 reasoning_effort = "none"
 temperature = true
 checked = "2026-09-29"
+# no endpoint accepts a forced tool_choice under require_parameters (dev baseline, 2026-09-29)
+structured_method = "json_schema"
 
 ["z-ai/glm-5.3-flash"]
 reasoning_effort = "low"

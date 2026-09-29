@@ -607,7 +607,7 @@ Rules for every step in this group:
         section also keeps each step's spend.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/evaluation/test_eval_set.py && uv run python -m app.extraction compare-labels && uv run python -m app.extraction spend`
 
-- [ ] 13. **Dev baseline: all six candidates on prompt v2 (AC7, AC11, AC15).** For each
+- [x] 13. **Dev baseline: all six candidates on prompt v2 (AC7, AC11, AC15).** For each
       model in `CANDIDATES`, run `cd backend && uv run python -m app.extraction evaluate
       --split dev --model <id> --run-name dev-p2-<slug>`.
       - If a run has errored cases, read their `error_class`, the Langfuse trace or a
@@ -870,6 +870,13 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   `generation_id`, and the run files gain `generation_id` per case. Tested with an httpx mock
   transport. No new dependency (httpx is already a dependency); no scope, architecture or
   schema change.
+- **D2 (minor, step 13):** dev baseline: `qwen/qwen3.8-flash` returned `NotFoundResponseError` on all
+  45 cases ("No endpoints found that support the provided 'tool_choice' value": with
+  `require_parameters` no Qwen endpoint accepts a forced tool choice; tools alone and no
+  `require_parameters` both work). Fixed as the plan foresees, in that model's catalogue row:
+  `structured_method = "json_schema"` (verified on one live call). Second attempt: 0 errored cases.
+  Other five models: no errors, no change. The report notes that qwen runs by `json_schema`, the
+  others by `function_calling`.
 
 ### Run log
 
@@ -878,6 +885,7 @@ _(filled in during Group 2: credits readings and spend per step)_
 | when | step | run-file total (USD) | credits: total / usage (USD) | note |
 |------|------|----------------------|------------------------------|------|
 | 2026-09-29 | 12 | 0.0000 | 5 / 3.3045 | starting reading; remaining 1.6955, ceiling for this spec 1.50 |
+| 2026-09-29 | 13 | 0.1335 | 5 / 3.4403 | dev baseline p2, six models (+ one failed qwen run at 0 cost and a few probe calls); usage since start 0.1358 |
 
 ## Final review
 
