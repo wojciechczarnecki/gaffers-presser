@@ -28,9 +28,11 @@ from app.retrieval.evaluation.dataset import (
     DEFAULT_QUERIES_PATH,
     export_corpus,
     load_corpus,
+    load_queries,
     write_corpus,
     write_queries,
 )
+from app.retrieval.evaluation.labelling import prelabel
 from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL, StructuredCaller, build_label_model
 from app.retrieval.evaluation.queries import (
     QueryCounts,
@@ -343,6 +345,51 @@ def build_queries_command(
             typer.echo(f"  {origin} {language}: {count}")
     typer.echo(f"skipped posts: {result.skipped_posts}")
     typer.echo(f"total cost: {_cost(caller.cost_usd)}")
+
+
+@app.command(name="prelabel", help="Pool candidates for every query and pre-label them.")
+def prelabel_command(
+    ctx: typer.Context,
+    queries: Annotated[Path, typer.Option("--queries")] = DEFAULT_QUERIES_PATH,
+    corpus: Annotated[Path, typer.Option("--corpus")] = DEFAULT_CORPUS_PATH,
+    model: Annotated[str | None, typer.Option("--model", help="Chat model ID.")] = None,
+    embedding_model: Annotated[
+        str | None, typer.Option("--embedding-model", help="Embedding model ID.")
+    ] = None,
+) -> None:
+    deps = get_deps(ctx)
+    chat_model_id = model or DEFAULT_LABEL_MODEL
+    chat_model = _chat_model(deps, chat_model_id)
+    try:
+        embedder = deps.make_embedder(embedding_model)
+        prices = deps.prices if deps.prices is not None else load_prices()
+        posts = load_corpus(corpus)
+        query_set = load_queries(queries)
+    except CollectorError as exc:
+        raise fail(str(exc)) from None
+    except (OSError, ValueError) as exc:
+        raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
+    caller = StructuredCaller(chat_model, chat_model_id, prices, deps.clock)
+    tracer = deps.make_tracer()
+    try:
+        summary = prelabel(
+            db_engine(deps),
+            posts,
+            query_set,
+            queries,
+            embedder,
+            caller,
+            prices,
+            tracer,
+            deps.clock,
+        )
+    finally:
+        tracer.flush()
+    typer.echo(f"queries labelled: {summary.queries_labelled}")
+    typer.echo(f"candidates: {summary.candidates}")
+    typer.echo(f"relevant: {summary.relevant}")
+    typer.echo(f"label failures: {summary.failures}")
+    typer.echo(f"total cost: {_cost(summary.cost_usd)}")
 
 
 def main() -> None:

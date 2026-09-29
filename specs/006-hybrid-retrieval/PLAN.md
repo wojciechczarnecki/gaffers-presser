@@ -806,7 +806,7 @@ makes the product change. Run all commands from the repository root. `V` =
         `en` and a `pl` template with `{player}`.
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_queries.py tests/retrieval/evaluation/test_templates.py tests/content/test_prompts.py`
-- [ ] 20. **Pooling and pre-labels `prelabel` (AC21).** `app/retrieval/evaluation/labelling.py`:
+- [x] 20. **Pooling and pre-labels `prelabel` (AC21).** `app/retrieval/evaluation/labelling.py`:
       - `pool(eval_engine, query, embedder, tracer) -> list[int]`: the union, in first-seen
         order, of the top 10 of `fulltext`, `vector` and `hybrid` (default k and depth),
         plus `source_x_id` for `post` queries.
