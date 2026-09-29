@@ -16,6 +16,15 @@ from app.core.settings import ExtractionSettings, load_extraction_settings, load
 from app.db.engine import make_engine
 from app.extraction.config import resolve_llm, resolve_tracing
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
+from app.extraction.evaluation.review import (
+    PlayerDirectory,
+    case_to_json,
+    editor_command,
+    parse_edited,
+    render_case,
+    render_player,
+    run_editor,
+)
 from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.flow import PROMPT_VERSION, build_flow
 from app.extraction.linking import PlayerIndex, load_aliases, load_players, load_snapshot
@@ -364,6 +373,123 @@ def _fmt(value: float | None, digits: int = 2) -> str:
 def _default_run_name(split: str, spec: ChatModelSpec, now: datetime) -> str:
     raw = f"{split}-{spec.provider}-{spec.model}-{now:%Y%m%dT%H%M}"
     return re.sub(r"[^A-Za-z0-9._-]+", "-", raw)
+
+
+REVIEW_ACTIONS = "[a]ccept  [e]dit  [f]ind player  [s]kip  [q]uit"
+
+
+@app.command(help="Review evaluation cases one by one: accept, edit or skip them.")
+def review(
+    cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
+    players_path: Annotated[Path, typer.Option("--players")] = DEFAULT_PLAYERS_PATH,
+    split: str | None = typer.Option(None, "--split"),
+    case_id: str | None = typer.Option(None, "--id", help="One case, even a reviewed one."),
+) -> None:
+    # Needs no database and no LLM key, so it never builds ExtractionCliDeps.
+    if split not in (None, "dev", "test"):
+        raise fail("--split must be dev or test")
+    cases = load_cases(cases_path)
+    players, teams = load_snapshot(players_path)
+    directory = PlayerDirectory(players, teams, *load_aliases())
+
+    if case_id is not None:
+        positions = [i for i, case in enumerate(cases) if case.id == case_id]
+    else:
+        positions = [i for i, case in enumerate(cases) if not case.reviewed]
+    if split is not None:
+        positions = [i for i in positions if cases[i].split == split]
+    if case_id is not None and not positions:
+        raise fail(f"no case with id {case_id}" + (f" in the {split} split" if split else ""))
+    if not positions:
+        typer.echo("nothing to review")
+        return
+
+    counts = {"accepted": 0, "edited": 0, "skipped": 0}
+    interrupted = False
+    try:
+        _review_cases(cases, positions, cases_path, directory, counts)
+    except (typer.Abort, KeyboardInterrupt):
+        interrupted = True  # every accepted or edited case is already on disk
+
+    reviewed = sum(1 for case in cases if case.reviewed)
+    typer.echo("── summary " + "─" * 61)
+    typer.echo(
+        f"accepted: {counts['accepted']}  edited: {counts['edited']}  skipped: {counts['skipped']}"
+    )
+    typer.echo(f"reviewed: {reviewed}/{len(cases)}")
+    if interrupted:
+        raise typer.Exit(130)
+
+
+def _review_cases(
+    cases: list[EvalCase],
+    positions: list[int],
+    cases_path: Path,
+    directory: PlayerDirectory,
+    counts: dict[str, int],
+) -> None:
+    """Walks the selected cases; `cases` is saved whole after every change, in file order."""
+    for done, i in enumerate(positions):
+        show = True
+        while True:
+            if show:
+                reviewed = sum(1 for case in cases if case.reviewed)
+                progress = (
+                    f"{reviewed}/{len(cases)} reviewed, {len(positions) - done} left in this run"
+                )
+                typer.echo(render_case(cases[i], directory, progress))
+            show = False
+            action = typer.prompt(REVIEW_ACTIONS).strip().lower()
+            if action == "a":
+                cases[i] = cases[i].model_copy(update={"reviewed": True})
+                write_cases(cases_path, cases)
+                counts["accepted"] += 1
+                break
+            if action == "e":
+                edited = _edit_case(cases[i])
+                if edited is not None and edited != cases[i]:
+                    cases[i] = edited
+                    write_cases(cases_path, cases)
+                    counts["edited"] += 1
+                    typer.echo("saved")
+                show = True
+            elif action == "f":
+                _find_player(directory)
+            elif action == "s":
+                counts["skipped"] += 1
+                break
+            elif action == "q":
+                return
+            else:
+                typer.echo(f"unknown action {action!r}")
+
+
+def _edit_case(case: EvalCase) -> EvalCase | None:
+    try:
+        command = editor_command()
+    except ConfigError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        return None
+    text = case_to_json(case)
+    while True:
+        try:
+            text = run_editor(command, text)
+            return parse_edited(text, case.id)
+        except (ValueError, OSError) as exc:
+            typer.echo(f"not saved: {exc}")
+            if typer.prompt("[r]etry edit  [c]ancel", default="r").strip().lower() != "r":
+                typer.echo("edit cancelled, nothing saved")
+                return None
+
+
+def _find_player(directory: PlayerDirectory) -> None:
+    query = typer.prompt("player name")
+    club = typer.prompt("club (optional)", default="", show_default=False)
+    found = directory.find(query, club.strip() or None)
+    if not found:
+        typer.echo("no players found")
+    for player in found:
+        typer.echo(render_player(player, directory))
 
 
 def main() -> None:

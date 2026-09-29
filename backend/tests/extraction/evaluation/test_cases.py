@@ -141,6 +141,21 @@ def test_jsonl_roundtrip(tmp_path):
     assert load_cases(path) == cases
 
 
+def test_write_is_atomic(tmp_path, monkeypatch):
+    path = tmp_path / "cases.jsonl"
+    write_cases(path, [_case("1")])
+    before = path.read_text()
+
+    def interrupted(src, dst):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("app.extraction.evaluation.cases.os.replace", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        write_cases(path, [_case("1", reviewed=True), _case("2")])
+    assert path.read_text() == before
+    assert list(tmp_path.iterdir()) == [path]  # no temporary file left behind
+
+
 def _mutations():
     def fewer_real(cases):
         return [c for c in cases if not (not c.synthetic and c.split == "test")][:60] + [
