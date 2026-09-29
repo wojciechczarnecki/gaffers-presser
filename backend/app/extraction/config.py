@@ -3,10 +3,20 @@ from dataclasses import dataclass
 from pydantic import SecretStr
 
 from app.core.errors import ConfigError
-from app.core.settings import ExtractionSettings
 from app.extraction.model_settings import ModelSettings, load_model_settings, pair_compatible
+from app.llm.settings import LlmSettings, load_llm_settings
 
 PROVIDER = "openrouter"
+
+
+class ExtractionSettings(LlmSettings):
+    llm_model: str = ""
+    llm_fallback_model: str = ""
+
+
+def load_extraction_settings() -> ExtractionSettings:
+    return load_llm_settings(ExtractionSettings)
+
 
 # Chosen in ADR 0006 from the test-split runs (selection rule of SPEC 005, AC17/AC18).
 DEFAULT_MODEL = "openai/gpt-6-luna"
@@ -20,13 +30,6 @@ class LlmConfig:
     api_key: SecretStr
     settings: ModelSettings
     fallback_settings: ModelSettings | None
-
-
-@dataclass(frozen=True)
-class TracingConfig:
-    public_key: SecretStr
-    secret_key: SecretStr
-    host: str
 
 
 def _catalogue_row(catalogue: dict[str, ModelSettings], model: str, variable: str) -> ModelSettings:
@@ -84,13 +87,3 @@ def resolve_llm(
         settings=primary_row,
         fallback_settings=fallback_row,
     )
-
-
-def resolve_tracing(settings: ExtractionSettings) -> TracingConfig | None:
-    if settings.langfuse_public_key and settings.langfuse_secret_key:
-        return TracingConfig(
-            public_key=settings.langfuse_public_key,
-            secret_key=settings.langfuse_secret_key,
-            host=settings.langfuse_host,
-        )
-    return None

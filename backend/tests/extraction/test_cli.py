@@ -10,7 +10,6 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from app.core.errors import ConfigError
-from app.core.settings import ExtractionSettings
 from app.extraction.cli import (
     DEFAULT_RESULTS_DIR,
     ExtractionCliDeps,
@@ -19,6 +18,7 @@ from app.extraction.cli import (
     default_output_dir,
     host_lookup_from_settings,
 )
+from app.extraction.config import ExtractionSettings
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
 from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.generation import HostLookup

@@ -11,7 +11,6 @@ from sqlmodel import Session
 
 from app.core.clock import Clock
 from app.core.errors import ConfigError
-from app.extraction.config import TracingConfig
 from app.extraction.flow import PROMPT_VERSION, Flow, build_flow
 from app.extraction.linking import (
     PlayerAlias,
@@ -25,6 +24,7 @@ from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import FlowResult, PostInput
 from app.extraction.store import ExtractionRecord, save_extraction
 from app.extraction.tracing import run_config
+from app.llm.tracing import TracingConfig
 from app.tweets.models import Tweet
 
 logger = logging.getLogger(__name__)

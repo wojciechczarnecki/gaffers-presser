@@ -14,18 +14,18 @@ from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError
 from app.core.settings import (
     TweetSettings,
-    load_extraction_settings,
     load_settings,
     parse_league_ids,
 )
 from app.db.engine import make_engine
 from app.db.locks import try_schedule_lock
-from app.extraction.config import PROVIDER, resolve_llm, resolve_tracing
+from app.extraction.config import PROVIDER, load_extraction_settings, resolve_llm
 from app.extraction.loop import start_extractor
 from app.extraction.providers import build_chat_model
 from app.extraction.service import ExtractionRuntime, load_reference_files
 from app.extraction.store import extraction_status
 from app.fpl.client import FplClient
+from app.llm.tracing import resolve_tracing
 from app.tweets.config import resolve_ingest
 from app.tweets.loop import start_poller
 from app.tweets.schedule import mode, next_poll_at

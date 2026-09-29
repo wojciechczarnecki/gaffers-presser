@@ -1,10 +1,10 @@
 import pytest
 
 from app.core.errors import ConfigError
-from app.core.settings import ExtractionSettings
 from app.extraction import config as config_module
-from app.extraction.config import resolve_llm, resolve_tracing
+from app.extraction.config import ExtractionSettings, resolve_llm
 from app.extraction.model_settings import ModelSettings
+from app.llm.tracing import resolve_tracing
 
 SENTINEL = "sentinel-secret-value"
 

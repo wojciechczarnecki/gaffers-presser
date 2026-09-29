@@ -290,7 +290,7 @@ makes the product change. Run all commands from the repository root. `V` =
         now only imports `app.core.clock`; step 2 extends it.
 
       Automatic verification: `cd backend && uv run pytest -q tests/test_module_boundaries.py tests/tweets tests/worker tests/extraction`
-- [ ] 2. **Settings and tracing to `app/llm/` (AC1, AC2).**
+- [x] 2. **Settings and tracing to `app/llm/` (AC1, AC2).**
       - Create `app/llm/__init__.py` and `app/llm/settings.py`: `LlmSettings(BaseSettings)`
         with `openrouter_api_key`, `langfuse_public_key`, `langfuse_secret_key`,
         `langfuse_host` and `usd_pln_rate`. Keep the same defaults and the

@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from app.core.settings import ExtractionSettings, TweetSettings
+from app.core.settings import TweetSettings
+from app.extraction.config import ExtractionSettings
 
 ROOT = Path(__file__).resolve().parents[2]
 ENV_EXAMPLE = ROOT / "backend" / ".env.example"

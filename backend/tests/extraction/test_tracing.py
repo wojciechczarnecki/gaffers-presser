@@ -2,12 +2,12 @@ from datetime import UTC, datetime
 
 from pydantic import SecretStr
 
-from app.extraction.config import TracingConfig
 from app.extraction.flow import build_flow
 from app.extraction.linking import PlayerIndex, PlayerRecord, TeamRecord
 from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import Disambiguation, ExtractedEvent, ExtractionOutput, PostInput
-from app.extraction.tracing import flush, make_handler, run_config
+from app.extraction.tracing import run_config
+from app.llm.tracing import TracingConfig, flush, make_handler
 from tests.extraction.fakes import FakeChatModel, RecordingHandler
 
 SEASON = "2026/27"
