@@ -238,7 +238,7 @@ Evaluation JSONL (one object per line):
 | AC2 | 1, 2, 3 | n/a — kept behaviour: the existing suite passes after steps 1–3 with import-path changes only. The one exception is the catalogue-equality assertion in `tests/extraction/test_model_settings.py`, which narrows to chat rows (step 3, see Risks) | n/a |
 | AC3 | 3 | `tests/llm/test_pricing.py::test_input_only_row_loads_and_costs_input_alone`, `::test_unknown_model_costs_none`, `::test_chat_rows_keep_their_cost` | |
 | AC4 | 5 | `tests/db/test_migrations.py::test_retrieval_migration_keeps_data_and_downgrades`, `::test_upgrade_downgrade_upgrade`, `::test_models_match_migration` | |
-| AC5 | 5 | `tests/retrieval/test_store.py::test_post_findable_by_fulltext_in_the_storing_transaction` | |
+| AC5 | 5, 15 | `tests/retrieval/test_store.py::test_post_findable_by_fulltext_in_the_storing_transaction`; `tests/retrieval/test_cli.py::test_fulltext_search_needs_no_key` | |
 | AC6 | 11 | `tests/worker/test_cli.py::test_run_without_key_logs_retrieval_indexing_disabled_once`, `::test_run_with_indexing_logs_model_and_embeds_new_post` | |
 | AC7 | 9, 10 | `tests/retrieval/test_indexing.py::test_embed_post_stores_model_dimensions_tokens_cost_latency`, `::test_oldest_first`; `tests/retrieval/test_loop.py::test_new_post_embedded_without_restart` | |
 | AC8 | 9, 10, 11 | `tests/retrieval/test_indexing.py::test_three_attempts_then_failed_with_error_class`, `::test_failed_post_not_retried_before_10_minutes`; `tests/retrieval/test_loop.py::test_failure_does_not_stop_the_loop`; `tests/worker/test_cli.py::test_failing_embedder_does_not_stop_polls_or_extraction` | |
@@ -251,7 +251,7 @@ Evaluation JSONL (one object per line):
 | AC15 | 14 | `tests/retrieval/test_search.py::test_hybrid_degrades_to_fulltext_when_embedding_fails`, `::test_vector_fails_clearly_when_embedding_fails` | |
 | AC16 | 15 | `tests/retrieval/test_cli.py::test_search_prints_ranked_results_with_ranks`, `::test_search_time_filters_in_warsaw_compared_in_utc` | |
 | AC17 | 12 | `tests/retrieval/test_cli.py::test_status_prints_counts_latest_and_cost` | |
-| AC18 | 8, 12, 15 | `tests/retrieval/test_tracing.py::test_langfuse_tracer_records_embedding_generation_offline`, `::test_no_tracing_logs_once`; `tests/retrieval/test_indexing.py::test_embedding_call_traced_with_model_tokens_cost`; `tests/retrieval/test_cli.py::test_search_traced_with_query_mode_and_ids`, `::test_index_without_langfuse_logs_once` | |
+| AC18 | 8, 12, 15, 22 | `tests/retrieval/test_tracing.py::test_langfuse_tracer_records_embedding_generation_offline`, `::test_no_tracing_logs_once`; `tests/retrieval/test_indexing.py::test_embedding_call_traced_with_model_tokens_cost`; `tests/retrieval/test_cli.py::test_search_traced_with_query_mode_and_ids`, `::test_index_without_langfuse_logs_once`; `tests/retrieval/evaluation/test_runner.py::test_runner_traces_searches_and_embeddings` | |
 | AC19 | 16, 17 | `tests/retrieval/evaluation/test_dataset.py::test_export_corpus_writes_public_fields_only`; `tests/retrieval/evaluation/test_schema.py::test_eval_schema_never_touches_public_tweet` | |
 | AC20 | 19 | `tests/retrieval/evaluation/test_queries.py::test_builder_writes_counts_by_language_and_origin`, `::test_event_queries_templated_from_current_events`, `::test_split_is_stratified_and_deterministic` | |
 | AC21 | 20 | `tests/retrieval/evaluation/test_labelling.py::test_pools_top10_of_each_mode_and_prelabels_unreviewed`, `::test_prelabel_resumes_and_skips_labelled_queries` | |
@@ -279,6 +279,8 @@ makes the product change. Run all commands from the repository root. `V` =
         `extraction/evaluation/runner.py`, `worker/cli.py`.
       - Update the tests that import them (`tests/tweets/test_loop.py` and others the grep
         finds), changing the import path only.
+      - `app/worker/loop.py` also defines its own duplicate `Clock` Protocol: drop it and
+        import `Clock` from `app.core.clock` there too, so one Protocol remains.
       - Leave `app/tweets/cli.py`'s private measurement clock untouched (SPEC: nothing
         broader).
       - First write `tests/test_module_boundaries.py` (AST scan of `app/extraction/**/*.py`):
@@ -346,7 +348,7 @@ makes the product change. Run all commands from the repository root. `V` =
           of 1M in + 1M out equals the hand sum, e.g. `openai/gpt-6-luna` → 0.60);
         - `test_embedding_default_is_priced`.
 
-      Automatic verification: `cd backend && uv run pytest -q tests/llm tests/extraction tests/worker/test_cli.py -k "prices or deps or model" && cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+      Automatic verification: `cd backend && uv run pytest -q tests/llm tests/extraction && uv run pytest -q tests/worker/test_cli.py -k "prices or deps or model" && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
 
 ### Group 2 — Index: schema, embedder, indexing loop, worker, CLI
 
@@ -472,6 +474,10 @@ makes the product change. Run all commands from the repository root. `V` =
             `EMBEDDING_MODEL` and not the key sentinel);
           - `test_model_option_overrides`;
           - `test_no_key_disables`.
+
+          Every settings object in these tests is built with `_env_file=None` (or after
+          `monkeypatch.chdir(tmp_path)`), because `backend/.env` may hold a real key (see
+          Risks).
         - `tests/test_env_example.py`: add `_RETRIEVAL_FIELD_TO_VARIABLE` (inherited fields
           plus `embedding_model → EMBEDDING_MODEL`), then
           `test_every_retrieval_setting_field_has_its_variable_covered` and
@@ -584,6 +590,12 @@ makes the product change. Run all commands from the repository root. `V` =
           plus a key → exit 1, stderr names `EMBEDDING_MODEL`, no key sentinel);
         - `test_deps_enable_indexing_with_key`.
 
+        The two tests that go through `_deps_from_settings` follow
+        `test_deps_enable_extraction_with_key`: `monkeypatch.chdir(tmp_path)` and `Settings`
+        patched with `_env_file=None`, so `backend/.env` is never read. The indexing
+        runtime they build must not call `make_embedder` (the real embedder may be
+        constructed, never used).
+
       Automatic verification: `cd backend && uv run pytest -q tests/worker/test_cli.py`
 - [ ] 12. **CLI `index` and `status` (AC10, AC17, AC18).**
       - `app/retrieval/cli.py` (a typer app, `prog_name="python -m app.retrieval"`) and
@@ -608,9 +620,13 @@ makes the product change. Run all commands from the repository root. `V` =
         - `test_status_prints_counts_latest_and_cost`;
         - `test_index_without_langfuse_logs_once` (3 posts, one "retrieval tracing
           disabled" warning);
-        - `test_index_without_key_fails_naming_the_variable`.
+        - `test_index_without_key_fails_naming_the_variable` (`monkeypatch.chdir(tmp_path)`
+          and no `OPENROUTER_API_KEY` in the environment, so `backend/.env` is not read).
 
-      Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_cli.py -k "index or status" && cd backend && uv run python -m app.retrieval --help && cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+        Every other CLI test injects `RetrievalCliDeps` through `ctx.obj` with a
+        `FakeEmbedder`; no test lets `get_deps` build deps from `backend/.env`.
+
+      Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_cli.py -k "index or status" && uv run python -m app.retrieval --help && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
 
 ### Group 3 — Search
 
@@ -677,15 +693,21 @@ makes the product change. Run all commands from the repository root. `V` =
         then the text indented. A header names the mode, the model and the window in
         Warsaw time; a failed vector leg adds `vector leg failed — full-text only`.
       - `SearchError` → `fail(message)`, exit 1.
+      - `--mode fulltext` needs no `OPENROUTER_API_KEY` and never builds an embedder (AC5).
+        `vector` and `hybrid` without the key →
+        `fail("OPENROUTER_API_KEY is not set; use --mode fulltext or set the key")`, exit 1.
       - Tests first, in `tests/retrieval/test_cli.py`:
         - `test_search_prints_ranked_results_with_ranks`;
         - `test_search_time_filters_in_warsaw_compared_in_utc`: a post at 22:30 UTC on
           2026-09-30 is 00:30 Warsaw on 2026-10-01, so `--since 2026-10-01` keeps it and
           `--until 2026-10-01` drops it; the output shows `2026-10-01 00:30`;
         - `test_search_traced_with_query_mode_and_ids` (`RecordingTracer`);
-        - `test_vector_search_without_embeddings_fails_with_hint`.
+        - `test_vector_search_without_embeddings_fails_with_hint`;
+        - `test_fulltext_search_needs_no_key` (deps with no key and a `make_embedder` that
+          raises if called: fulltext succeeds; `--mode hybrid` exits 1 naming
+          `OPENROUTER_API_KEY`).
 
-      Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_cli.py -k search && cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+      Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_cli.py -k search && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
 
 ### Group 4 — Evaluation tooling, set v1 and documents
 
@@ -847,6 +869,12 @@ makes the product change. Run all commands from the repository root. `V` =
          `queries` (per query: id, language, origin, the relevant ids, and per mode the
          retrieved ids and the rank of each relevant id or `null`).
 
+      Tracing (AC18): the runner takes the tracer from `RetrievalCliDeps.make_tracer`, passes
+      it to `index_missing` and to every `search(...)` call (so each evaluation search is
+      traced with the query, the mode and the ids per leg), embeds the queries through
+      `traced_embed`, and flushes the tracer at the end of the run. `prelabel` (step 20) does
+      the same through `pool(...)`.
+
       The default output dir is `evals/retrieval/results/`, and `dev` runs go to
       `results/dev/`. Add `backend/evals/retrieval/results/dev/` to `.gitignore` and
       `backend/evals/retrieval/results/.gitkeep`.
@@ -856,7 +884,10 @@ makes the product change. Run all commands from the repository root. `V` =
       - `test_runner_reports_metrics_per_mode_and_slice`;
       - `test_only_reviewed_labels_unless_flag`;
       - `test_result_file_fields`;
-      - `test_vector_leg_failure_stops_without_file`.
+      - `test_vector_leg_failure_stops_without_file`;
+      - `test_runner_traces_searches_and_embeddings` (`RecordingTracer`: one `search` record
+        per query × mode with the query text, the mode and the ids per leg, and one
+        `embedding` record per query embedding).
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_runner.py && cd .. && git check-ignore -q backend/evals/retrieval/results/dev/x.json`
 - [ ] 23. **Documents (AC26, AC27).**
@@ -910,7 +941,7 @@ makes the product change. Run all commands from the repository root. `V` =
         (the result goes to the ignored `results/dev/`).
       - Tick Stage 2 item 1 in `docs/ROADMAP.md`.
 
-      Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_eval_set.py && git status --porcelain evals/retrieval/results/ && cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+      Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_eval_set.py && test -z "$(git status --porcelain evals/retrieval/results/)" && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
 
 ## Risks and traps
 
@@ -947,6 +978,12 @@ makes the product change. Run all commands from the repository root. `V` =
   are real calls from the development machine, like spec 005's dev runs, with a hard cap of
   $1. The corpus holds public posts only (DECISIONS row 47 accepts that for the extraction
   set); `raw` and `source` are not exported.
+- **`backend/.env` holds a real key.** Settings read `.env` from the current directory, and
+  step 24 requires `OPENROUTER_API_KEY` in `backend/.env`. A test that builds settings from
+  the environment while running in `backend/` would construct the real embedder and could
+  call OpenRouter (AC28). Every test that loads settings uses `_env_file=None` or
+  `monkeypatch.chdir(tmp_path)`, as the existing worker and extraction tests do; all other
+  tests inject deps with `FakeEmbedder` / `FakeChatModel`.
 - **Worker log noise.** Extraction already warns "langfuse tracing disabled". Retrieval uses
   its own text "retrieval tracing disabled", so `test_run_without_langfuse_warns_once` keeps
   counting 1.
@@ -1009,7 +1046,69 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+**2026-09-30 — /pipeline:plan-review**
+
+Anti-anchoring leads (from the SPEC alone): `unaccent` is not immutable, so a generated
+column needs a wrapper or a text-search configuration; an untyped `vector` column for
+several models; the stemmer may not join `injured`/`injury`; the evaluation needs isolation
+from the live `tweet`; tests must stay offline although a real key exists locally. The plan
+handles the first four (probed); the last one was a gap (F3).
+
+Findings (severity counted before the fixes):
+
+| id | severity | finding | change |
+|----|----------|---------|--------|
+| F1 | `major` | The automatic verification of steps 3, 12, 15 and 24 chains `cd backend` twice in one shell, so the second `cd` fails and the step can never go green; step 3's `-k "prices or deps or model"` also applied to `tests/llm` and deselected its proving tests (`test_input_only_row_loads_and_costs_input_alone`, `test_chat_rows_keep_their_cost`) | one `cd backend` per command; the `-k` filter applies to `tests/worker/test_cli.py` only |
+| F2 | `major` | AC18 requires every evaluation search to be traced; step 22 (runner) passed no tracer and had no test, so the matrix covered only CLI searches | step 22 passes the tracer to `index_missing`, every `search`, and `traced_embed` for queries; new `test_runner_traces_searches_and_embeddings`; matrix AC18 → steps 8, 12, 15, 22 |
+| F3 | `major` | `backend/.env` holds a real `OPENROUTER_API_KEY` (step 24 needs it) and settings read `.env` from the working directory; tests that build settings from the environment (steps 7, 11, 12) would construct the real embedder and could reach OpenRouter, breaking AC28 | new Risks entry; steps 7, 11 and 12 require `_env_file=None` / `monkeypatch.chdir(tmp_path)` as the existing worker tests do, and deps injection elsewhere |
+| F4 | `minor` | Step 24's `git status --porcelain evals/retrieval/results/` only prints, so it can never fail | `test -z "$(git status --porcelain …)"` |
+| F5 | `minor` | The `search` CLI's behaviour without a key was undefined, though AC5 says full-text needs no embedding call and E2E step 5 runs it that way | step 15: `fulltext` never builds an embedder; `vector`/`hybrid` without the key fail naming `OPENROUTER_API_KEY`; new `test_fulltext_search_needs_no_key`, added to the AC5 row |
+| F6 | `minor` | `app/worker/loop.py` has its own duplicate `Clock` Protocol, which step 1 did not mention | step 1 drops it and imports `Clock` from `app.core.clock` |
+
+Checked and found correct (later stages need not repeat it):
+
+- **Coverage:** every AC 1–28 has steps and named proving tests; the matrix matches the
+  steps; the fourth column is present (empty, or `n/a` for AC2 and AC28 with a reason).
+- **Code facts verified:** the moved names and their importers (`Clock`/`StopAwareClock`
+  in `app/tweets/loop.py`, `SystemClock` in `app/worker/loop.py`, `TracingConfig` and
+  `resolve_tracing` in `app/extraction/config.py`, `ExtractionSettings` in
+  `app/core/settings.py`); the patched path `app.extraction.service.load_prices` and
+  `app.extraction.loop.make_handler` stay valid if those modules keep the names in their
+  namespace; `store_posts` executes in the caller's session without committing (AC5 test
+  is sound); the test DB is built by `alembic upgrade head`, so the text-search
+  configuration exists for every DB test; `table_contents` iterates the metadata, which
+  is why pre-0005 snapshots must exclude `search_vector` and `post_embedding`, as planned;
+  `extraction_event`/`player` columns match `current_events`; `DEFAULT_MODEL` exists in
+  `app/extraction/config.py`; numpy is not installed, so `pgvector` returns lists.
+- **Compliance:** Polish templates and prompts in `app/content/`; fakes only in tests;
+  testcontainers for DB tests; exact pins; business-module layout; UTC storage with Warsaw
+  rendering; no key or handle in logs; DECISIONS rows 14, 23, 25, 28, 47 and 51–55 are
+  kept, and the edits of rows 52 and 55 are planned in step 23 (AC27).
+- **Interpretations accepted without escalation:** (1) AC19's "isolated database" is met by
+  the dropped-and-recreated `retrieval_eval` schema: results do not depend on any live
+  contents and the live `tweet` is never read or written; a throwaway container would put a
+  dev-only dependency in `app/`. (2) AC2's "only import-path changes" cannot hold literally
+  for `test_model_settings_and_prices_have_the_same_models`, because AC3/AC9 put the
+  embedding model into the same catalogue; narrowing it to chat rows keeps its intent and
+  is disclosed in the Owner summary. (3) AC28's "only network calls are the owner's manual
+  CLI runs" is read as a rule for the test suite; step 24's paid runs are required by AC25,
+  are capped at $1, and escalate when the key is missing.
+- **Minimality:** the refactor is limited to what the SPEC names; retries and JSONL writes
+  are re-implemented rather than shared, as the SPEC's decision requires.
+- **Feasibility:** no forward dependencies (step 6's `build_embedder` signature is finalised
+  in step 7, as stated); the migration and its downgrade are accounted for; extension
+  privileges, time zones, SDK retries and thread shutdown are in Risks.
+- **E2E:** the automatic part runs on the development database and CLI; the manual part
+  holds only what needs the owner's Langfuse account and the label review. No UI scope.
+- **Groups:** four groups, each ending at a complete, green state; `implement.chunked` is
+  false.
+- **Owner summary:** the dependency (`pgvector==0.5.0`, `openrouter==0.11.46`) and the
+  migration flags match the plan and are accepted in SPEC → Owner decisions.
+- **Language:** English throughout, as `language: en`.
+
+Decision: the plan is ready — every AC has steps and proving tests, all findings were fixed
+in the plan, and the new dependencies and the migration are accepted in the SPEC's Owner
+decisions.
 
 ## Chunk notes
 
