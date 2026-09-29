@@ -260,7 +260,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
         Also update `test_help`, which lists the commands, if it enumerates them.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/evaluation && uv run pytest -q tests/extraction/test_cli.py -k "compare_labels or help" && uv run python -m app.extraction compare-labels | head -30`
 
-- [ ] 3. **Pin `langchain-openrouter` (AC3, first half).** In `backend/pyproject.toml` add
+- [x] 3. **Pin `langchain-openrouter` (AC3, first half).** In `backend/pyproject.toml` add
       `"langchain-openrouter==0.2.9"` after `langchain`, then run `uv lock` and `uv sync
       --extra dev`. The old three packages stay for now: `providers.py` still imports them
       until step 5. Test first: add `"langchain-openrouter"` to `_PACKAGES` in
