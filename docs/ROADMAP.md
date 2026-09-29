@@ -40,7 +40,7 @@ and each LLM step that produces data has an evaluation set with recorded results
 
 ## Stage 2 — RAG v1 and alert e-mails (portfolio MVP)
 
-- [ ] Hybrid retrieval on PostgreSQL (full-text + pgvector, rank fusion)
+- [x] Hybrid retrieval on PostgreSQL (full-text + pgvector, rank fusion)
       (spec: [006](../specs/006-hybrid-retrieval/SPEC.md))
 - [ ] Corroboration of leaks across independent accounts: retrieval plus SQL over the linked
       players; an LLM step, if the spec adds one, gets its own evaluation set (spec: TBD)

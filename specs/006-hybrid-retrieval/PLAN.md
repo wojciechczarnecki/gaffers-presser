@@ -914,7 +914,7 @@ makes the product change. Run all commands from the repository root. `V` =
           mention "rerank" and "HNSW".
 
       Automatic verification: `cd backend && uv run pytest -q tests/test_readme.py tests/test_docs.py tests/test_env_example.py`
-- [ ] 24. **Generate and commit set v1 (AC25).**
+- [x] 24. **Generate and commit set v1 (AC25).**
       - Test first: `tests/retrieval/evaluation/test_eval_set.py::test_set_v1_committed_and_consistent`
         checks:
         - both files exist;
