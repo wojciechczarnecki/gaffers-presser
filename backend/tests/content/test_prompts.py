@@ -50,3 +50,10 @@ def test_extraction_prompt_states_relevance_rule(keyword):
     prompt = load_prompt("extraction")
     normalised = " ".join(prompt.text.lower().split())
     assert keyword in normalised
+
+
+@pytest.mark.parametrize("name", ["retrieval_query", "retrieval_relevance"])
+def test_retrieval_prompts_load_with_a_version(name):
+    prompt = load_prompt(name)
+    assert prompt.version >= 1
+    assert prompt.text.strip()

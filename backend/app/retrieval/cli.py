@@ -23,7 +23,21 @@ from app.retrieval.config import (
     resolve_embedding,
 )
 from app.retrieval.embedder import Embedder, build_embedder
-from app.retrieval.evaluation.dataset import DEFAULT_CORPUS_PATH, export_corpus, write_corpus
+from app.retrieval.evaluation.dataset import (
+    DEFAULT_CORPUS_PATH,
+    DEFAULT_QUERIES_PATH,
+    export_corpus,
+    load_corpus,
+    write_corpus,
+    write_queries,
+)
+from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL, StructuredCaller, build_label_model
+from app.retrieval.evaluation.queries import (
+    QueryCounts,
+    build_queries,
+    current_events,
+    make_query_writer,
+)
 from app.retrieval.indexing import IndexingRuntime, index_missing
 from app.retrieval.search import Mode, SearchError, SearchFilters, search
 from app.retrieval.store import embedding_status
@@ -87,6 +101,15 @@ def embedder_from_settings(settings: RetrievalSettings) -> Callable[[str | None]
     return make
 
 
+def chat_model_from_settings(settings: RetrievalSettings) -> Callable[[str], BaseChatModel]:
+    def make(model: str) -> BaseChatModel:
+        if settings.openrouter_api_key is None:
+            raise ConfigError("OPENROUTER_API_KEY is not set")
+        return build_label_model(settings.openrouter_api_key, model)
+
+    return make
+
+
 def _deps_from_settings() -> RetrievalCliDeps:
     try:
         settings = load_retrieval_settings()
@@ -99,6 +122,7 @@ def _deps_from_settings() -> RetrievalCliDeps:
         make_embedder=embedder_from_settings(settings),
         clock=SystemClock(),
         make_tracer=lambda: make_tracer(tracing),
+        make_chat_model=chat_model_from_settings(settings),
     )
 
 
@@ -267,6 +291,58 @@ def export_corpus_command(
     output.parent.mkdir(parents=True, exist_ok=True)
     write_corpus(output, posts)
     typer.echo(f"exported {len(posts)} posts to {output}")
+
+
+def _chat_model(deps: RetrievalCliDeps, model: str) -> BaseChatModel:
+    if deps.make_chat_model is None:
+        raise fail("OPENROUTER_API_KEY is not set")
+    try:
+        return deps.make_chat_model(model)
+    except CollectorError as exc:
+        raise fail(str(exc)) from None
+
+
+@app.command(name="build-queries", help="Build the evaluation queries from the corpus.")
+def build_queries_command(
+    ctx: typer.Context,
+    corpus: Annotated[Path, typer.Option("--corpus")] = DEFAULT_CORPUS_PATH,
+    output: Annotated[Path, typer.Option("--output")] = DEFAULT_QUERIES_PATH,
+    event_en: Annotated[int, typer.Option("--event-en", min=0)] = QueryCounts.event_en,
+    event_pl: Annotated[int, typer.Option("--event-pl", min=0)] = QueryCounts.event_pl,
+    post_en: Annotated[int, typer.Option("--post-en", min=0)] = QueryCounts.post_en,
+    post_pl: Annotated[int, typer.Option("--post-pl", min=0)] = QueryCounts.post_pl,
+    seed: Annotated[int, typer.Option("--seed")] = 6,
+    model: Annotated[str | None, typer.Option("--model", help="Chat model ID.")] = None,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite an existing file.")] = False,
+) -> None:
+    deps = get_deps(ctx)
+    if output.exists() and not force:
+        raise fail(f"{output} already exists; pass --force to overwrite it")
+    chat_model_id = model or DEFAULT_LABEL_MODEL
+    chat_model = _chat_model(deps, chat_model_id)
+    try:
+        prices = deps.prices if deps.prices is not None else load_prices()
+        posts = load_corpus(corpus)
+    except (CollectorError, OSError, ValueError) as exc:
+        raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
+    events = current_events(db_engine(deps), [post.x_id for post in posts])
+    caller = StructuredCaller(chat_model, chat_model_id, prices, deps.clock)
+    result = build_queries(
+        posts,
+        events,
+        make_query_writer(caller),
+        QueryCounts(event_en, event_pl, post_en, post_pl),
+        seed,
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    write_queries(output, result.queries)
+    typer.echo(f"queries: {len(result.queries)} written to {output}")
+    for origin in ("event", "post"):
+        for language in ("en", "pl"):
+            count = sum(1 for q in result.queries if (q.origin, q.language) == (origin, language))
+            typer.echo(f"  {origin} {language}: {count}")
+    typer.echo(f"skipped posts: {result.skipped_posts}")
+    typer.echo(f"total cost: {_cost(caller.cost_usd)}")
 
 
 def main() -> None:

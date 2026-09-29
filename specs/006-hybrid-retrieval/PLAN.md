@@ -762,7 +762,7 @@ makes the product change. Run all commands from the repository root. `V` =
       - `test_aggregate_slices_and_excludes_empty`.
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_metrics.py`
-- [ ] 19. **Query-set builder `build-queries` (AC20).**
+- [x] 19. **Query-set builder `build-queries` (AC20).**
       - `app/retrieval/evaluation/llm.py`:
         - `DEFAULT_LABEL_MODEL = "openai/gpt-6-luna"`;
         - `build_label_model(api_key, model)` → `ChatOpenRouter(model, api_key, timeout=60_000, max_retries=0, reasoning={"effort": "none"})`
