@@ -1,13 +1,17 @@
 ---
-status: plan-draft
+status: plan-approved
 stage_history:
   - "spec-draft — 2026-09-29"
   - "spec-ready — 2026-09-29"
   - "plan-draft — 2026-09-29"
+  - "plan-approved — 2026-09-29"
 metrics:
   started_at: 2026-09-29T12:47
   escalations: 0
   plan_steps: 18
+  plan_review_blockers: 0
+  plan_review_majors: 2
+  plan_changes: 6
 ---
 
 # SPEC 005 — Extraction model comparison and OpenRouter as the only LLM provider

@@ -183,7 +183,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
 | AC2 | 1, 2, 12 | `tests/extraction/evaluation/test_compare.py`, `tests/extraction/test_cli.py::test_compare_labels_*` | |
 | AC3 | 3, 5, 8 | `tests/extraction/test_dependency.py::test_removed_llm_packages_absent`, `::test_no_module_imports_removed_packages`, `tests/extraction/test_providers.py::test_builds_chat_openrouter` | |
 | AC4 | 5 | `tests/extraction/test_config.py::test_disabled_without_key_even_with_model`, `tests/worker/test_cli.py::test_deps_disable_extraction_without_key_even_with_model` | |
-| AC5 | 5, 16 | `tests/extraction/test_config.py::test_default_model_when_llm_model_empty`, `::test_llm_model_overrides_default`, `tests/extraction/test_cli.py::test_provider_option_removed`, `::test_*_without_key_names_openrouter_variable` | |
+| AC5 | 5, 16 | `tests/extraction/test_config.py::test_default_model_when_llm_model_empty`, `::test_llm_model_overrides_default`, `::test_llm_provider_variable_ignored`, `tests/extraction/test_cli.py::test_provider_option_removed`, `::test_*_without_key_names_openrouter_variable` | |
 | AC6 | 5, 6 | `tests/extraction/test_providers.py::test_fallback_sent_as_models_list`, `tests/extraction/test_openrouter_payload.py::test_fallback_answer_recorded` | |
 | AC7 | 4, 5, 6, 9 | `tests/extraction/test_model_settings.py`, `tests/extraction/test_providers.py::test_reasoning_effort_from_catalogue`, `tests/extraction/test_flow.py::test_reasoning_tokens_summed`, `tests/extraction/test_cli.py::test_evaluate_shows_reasoning_tokens` | |
 | AC8 | 5, 6 | `tests/extraction/test_providers.py::test_timeout_and_no_client_retries`, `tests/extraction/test_openrouter_payload.py::test_usage_and_callback_through_chat_openrouter`; existing extraction, service, worker and tracing suites | |
@@ -258,7 +258,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
         - `test_compare_labels_unknown_revision_fails`: exit 1 and a message.
 
         Also update `test_help`, which lists the commands, if it enumerates them.
-      Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_cli.py -k "compare_labels or help" tests/extraction/evaluation && uv run python -m app.extraction compare-labels | head -30`
+      Automatic verification: `cd backend && uv run pytest -q tests/extraction/evaluation && uv run pytest -q tests/extraction/test_cli.py -k "compare_labels or help" && uv run python -m app.extraction compare-labels | head -30`
 
 - [ ] 3. **Pin `langchain-openrouter` (AC3, first half).** In `backend/pyproject.toml` add
       `"langchain-openrouter==0.2.9"` after `langchain`, then run `uv lock` and `uv sync
@@ -357,6 +357,9 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
           - `test_unknown_model_names_the_variable_not_the_key`;
           - `test_fallback_from_variable_then_default_and_dropped_when_equal`;
           - `test_no_fallback_when_use_fallback_false`;
+          - `test_llm_provider_variable_ignored` (AC5: `LLM_PROVIDER=google` in the
+            environment changes nothing in `resolve_llm`, and `ExtractionSettings` has no
+            `llm_provider` field);
           - `test_errors_never_carry_key_values`;
           - the two tracing tests are kept.
         - `tests/extraction/test_providers.py`, rewritten:
@@ -430,7 +433,10 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
         - New `tests/extraction/test_openrouter_payload.py`, a real `ChatOpenRouter` whose
           `client` is replaced by a fake SDK object (`client.chat.send(**params)` returns a
           dict loaded from `tests/extraction/payloads/openrouter_fallback_tool_call.json`).
-          The payload is synthetic, in OpenRouter's documented response shape: `model` = the
+          `client.chat.send` must return what the pinned SDK returns: if `ChatOpenRouter`'s
+          result parsing reads attributes rather than dict keys, the fake validates the JSON
+          into the SDK's response model first. Check this in the installed source before
+          writing the fake. The payload is synthetic, in OpenRouter's documented response shape: `model` = the
           fallback ID, `provider` = `"DeepInfra"`, a `tool_calls` entry named
           `ExtractionOutput`, and `usage` with `prompt_tokens`, `completion_tokens`,
           `completion_tokens_details.reasoning_tokens` and `cost`.
@@ -478,9 +484,11 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
         - add `test_removed_llm_packages_absent`: they are not in `pyproject.toml`
           dependencies and no `name = "<pkg>"` entry is in `uv.lock`;
         - add `test_no_module_imports_removed_packages`: scan `backend/app/**/*.py` and
-          `backend/tests/**/*.py` for `import langchain_openai|langchain_google_genai|langchain_anthropic`.
+          `backend/tests/**/*.py` line by line with a regex anchored to import statements,
+          `^\s*(from|import)\s+langchain_(openai|google_genai|anthropic)\b`, so the test's own
+          list of module names does not match itself.
         They are red until the removal.
-      Automatic verification: `cd backend && uv lock --check && uv run pytest -q tests/extraction/test_dependency.py && ! grep -rnE "langchain_(openai|google_genai|anthropic)" app tests`
+      Automatic verification: `cd backend && uv lock --check && uv run pytest -q tests/extraction/test_dependency.py && ! grep -rnE "^\s*(from|import)\s+langchain_(openai|google_genai|anthropic)" app tests`
 
 - [ ] 9. **Evaluation run fields: reasoning, host, answering model, reported cost,
       per-threshold pass (AC7 display, AC15, AC16).**
@@ -772,9 +780,12 @@ Rules for every step in this group:
    all green.
 2. `uv run python -m app.extraction --help` lists `compare-labels`, `spend` and `evaluate`
    without `--provider` (`evaluate --help` has no `--provider`).
-3. The worker, disabled path: with `OPENROUTER_API_KEY` removed from the environment
-   (`env -u OPENROUTER_API_KEY LLM_MODEL=x uv run python -m app.worker status` against the
-   local compose database), the output contains `Extraction: disabled`.
+3. The worker, disabled path. `env -u` is not enough: the settings read `backend/.env`
+   relative to the working directory, and `env_ignore_empty=True` ignores an empty
+   `OPENROUTER_API_KEY=`. Run from a scratch directory holding a copy of `backend/.env`
+   without the key and with `LLM_MODEL=x`:
+   `d=$(mktemp -d) && grep -v '^OPENROUTER_API_KEY=' backend/.env > "$d/.env" && echo LLM_MODEL=x >> "$d/.env" && (cd "$d" && PYTHONPATH=<repo>/backend uv run --project <repo>/backend python -m app.worker status)`
+   against the local compose database. The output contains `Extraction: disabled`.
 4. The worker, enabled path: with the key from `backend/.env`,
    `uv run python -m app.worker status` shows
    `model: openrouter:<DEFAULT_MODEL>` and `fallback: <DEFAULT_FALLBACK_MODEL>`.
@@ -782,7 +793,8 @@ Rules for every step in this group:
    --x-id <an existing post>` gives `posts processed: 1`, `failures: 0` and a cost. The
    stored row has `provider = openrouter` and `model` = an OpenRouter ID (psql query). Its
    Langfuse trace exists: check the trace in the Langfuse UI is manual, so record the x_id
-   for the owner.
+   for the owner. This call is billed but writes no run file, so take a credits reading after
+   it and add it to the Run log.
 6. `uv run python -m app.extraction spend`: the total ≤ 1.50 USD, recorded in the report.
 7. `git status --porcelain backend/evals/extraction/results/dev` is empty (ignored), and
    `git ls-files backend/evals/extraction/results` lists only test runs.
@@ -811,7 +823,31 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-29 — /pipeline:plan-review
+
+Findings (severity counted before the fixes):
+
+| id | severity | finding | change |
+|----|----------|---------|--------|
+| R1 | `major` | E2E automatic check 3 cannot pass: `env -u OPENROUTER_API_KEY` leaves the key in place, because `ExtractionSettings` reads `backend/.env` relative to the working directory and `env_ignore_empty=True` ignores an empty override, so `status` would show extraction enabled. | Check 3 now runs `status` from a scratch directory with a copy of `.env` without the key, `LLM_MODEL=x` and `PYTHONPATH` pointing at `backend/`. |
+| R2 | `major` | Step 8's verification `! grep -rnE "langchain_(openai\|google_genai\|anthropic)" app tests` matches the module names that the new `test_no_module_imports_removed_packages` must itself contain, so it can never be green. | The test and the grep both match only import statements (`^\s*(from\|import)\s+langchain_…`). |
+| R3 | `minor` | Step 2's verification put `tests/extraction/evaluation` under the same `-k "compare_labels or help"` filter, which deselects the step-1 tests. | Split into two `pytest` calls. |
+| R4 | `minor` | AC5's "`LLM_PROVIDER` is no longer read" had no proving test. | Added `test_llm_provider_variable_ignored` to step 5 and to the AC5 matrix row. |
+| R5 | `minor` | Step 6's fake SDK client assumed `chat.send` returns a dict; `ChatOpenRouter` may parse the SDK's response model by attribute. | The step now says to check the installed source and return the SDK's response type when needed. |
+| R6 | `minor` | E2E check 5's live `reextract` is billed but writes no run file, so it escapes `spend`. | A credits reading after it goes to the Run log. |
+
+Checked and found correct (later stages need not repeat this):
+
+- **Coverage:** every AC1–AC22 has steps and a proving test or a justified `n/a`/`manual`; the matrix matches the step list; the fourth column is present.
+- **Compliance:** CONVENTIONS (exact pins, fake LLM in `pytest`, evaluation outside `pytest`, prompts in `backend/app/content/` with a version, no credentials in output — the credits snippet never prints the key) and DECISIONS rows on the LangChain interface, the thresholds (unchanged; `passes` stays a conjunction), dev-only prompt work, the 2026-09-29 relabel rule and Langfuse Cloud EU are respected. The DECISIONS rows and ADR 0006 are planned in step 16.
+- **Owner decisions:** the new dependency `langchain-openrouter` and the removal of the three packages are accepted in the SPEC; no data migration (`extraction.model` / `provider` reuse existing columns). The transitive `pydantic` 2.13.5 → 2.12.5 is a minor downgrade, not a major bump; step 3 escalates on any major bump.
+- **Feasibility:** no forward dependencies (config defaults are empty until step 16 and the suite stays green without them; `thresholds_passed` reaches the run files through `asdict(metrics)`); `linking.normalise`, `DEFAULT_RESULTS_DIR`, `_add_optional`, `MAX_MONTHLY_COST_PLN`, `tests/test_deployment.py` and the ROADMAP/BACKLOG line formats that step 18 greps all exist as assumed; `backend/.env` holds no `LLM_MODEL`, so E2E check 4 sees `DEFAULT_MODEL`.
+- **Budget:** a dev round of six models costs roughly 0.1 USD (Haiku 4.5 dominates at about 0.07 on 45 cases) and a test round roughly 0.2–0.3 USD, so baseline + 4 iterations + test runs fit under 1.50 USD; the `spent > 0.80` stop and the `estimate × 2` guard keep the reserve; the fallback pair's shared-parameter risk is caught by step 16's live pair check with an escalation.
+- **Groups:** three groups with clean boundaries (code / paid runs / decision and documents); `implement.chunked` is false.
+- **Language:** the plan is in English (`language: en`).
+- **Owner summary:** consistent with the plan, including the dependency and no-migration flags.
+
+Decision: the plan is ready — both majors were fixable in the plan and are fixed, no blocker remains, and the only new dependency is accepted in the SPEC's Owner decisions.
 
 ## Chunk notes
 
