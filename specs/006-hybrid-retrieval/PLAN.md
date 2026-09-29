@@ -549,7 +549,7 @@ makes the product change. Run all commands from the repository root. `V` =
         - `test_embedding_call_traced_with_model_tokens_cost` (`RecordingTracer`).
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_indexing.py`
-- [ ] 10. **Indexing loop (AC7, AC8).** `app/retrieval/loop.py::IndexingLoop` and
+- [x] 10. **Indexing loop (AC7, AC8).** `app/retrieval/loop.py::IndexingLoop` and
       `start_indexer(engine, runtime, stop_event, clock=None) -> Thread` (name `"indexer"`,
       daemon), a mirror of `ExtractionLoop`:
       - one `make_tracer(runtime.tracing)` at start and `flush` in `finally`;

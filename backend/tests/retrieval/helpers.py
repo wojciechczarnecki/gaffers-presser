@@ -61,3 +61,18 @@ def runtime(embedder: Embedder, model: str = MODEL, clock=None) -> IndexingRunti
         tracing=None,
         clock=clock,
     )
+
+
+class FastClock:
+    def __init__(self, stop_event, start: datetime = NOW) -> None:
+        self._stop_event = stop_event
+        self.current = start
+        self.sleeps: list[float] = []
+
+    def now(self) -> datetime:
+        return self.current
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.current += timedelta(seconds=seconds)
+        self._stop_event.wait(0.01)
