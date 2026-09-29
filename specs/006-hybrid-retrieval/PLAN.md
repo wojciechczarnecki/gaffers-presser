@@ -509,7 +509,7 @@ makes the product change. Run all commands from the repository root. `V` =
           null tracer does not log again).
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_tracing.py tests/extraction/test_tracing.py`
-- [ ] 9. **Store and indexing service (AC7, AC8, AC18).**
+- [x] 9. **Store and indexing service (AC7, AC8, AC18).**
       - `app/retrieval/store.py`:
         - `PostToEmbed(x_id, text, first_fetched_at)`;
         - `next_unembedded(session, model, now, retry_after=timedelta(minutes=10))`: the
