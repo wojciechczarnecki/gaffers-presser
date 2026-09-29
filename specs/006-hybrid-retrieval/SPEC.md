@@ -18,6 +18,9 @@ metrics:
   converge_gaps: 0
   deviations_minor: 9
   deviations_major: 0
+  final_review_blockers: 0
+  final_review_worth_fixing: 11
+  final_review_nits: 5
 ---
 
 # SPEC 006 — Hybrid retrieval over posts

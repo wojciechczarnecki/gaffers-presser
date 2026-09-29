@@ -1191,4 +1191,70 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+**2026-09-30 — /pipeline:final-review (report)**
+
+Three independent perspectives (compliance, quality, tests). Each finding below was checked
+against the code on `aabbca6`. The full suite is green: 800 passed. `ruff check` and
+`ruff format --check` are clean.
+
+**AC → evidence**
+
+| AC | Evidence | Verdict |
+|----|----------|---------|
+| AC1 | `tests/test_module_boundaries.py` (3 AST scans); `app/core/clock.py`, `app/llm/` | delivered |
+| AC2 | extraction/tweet/worker suites green; import-path-only diffs, plus the disclosed chat-row narrowing in `test_model_settings.py` | delivered |
+| AC3 | `tests/llm/test_pricing.py` (input-only, unknown → `None`, chat rows unchanged, default priced) | delivered |
+| AC4 | `tests/db/test_migrations.py::test_retrieval_migration_keeps_data_and_downgrades` | partial: the downgrade fails once `retrieval_eval` exists (F1) |
+| AC5 | `tests/retrieval/test_store.py::test_post_findable_by_fulltext_in_the_storing_transaction`; `test_cli.py::test_fulltext_search_needs_no_key` | delivered |
+| AC6 | `tests/worker/test_cli.py` (`…indexing_disabled_once`, `…logs_model_and_embeds_new_post`, `test_deps_*_indexing_*`) | delivered |
+| AC7 | `test_indexing.py::test_embed_post_stores_model_dimensions_tokens_cost_latency`, `::test_oldest_first`; `test_loop.py::test_new_post_embedded_without_restart` | delivered |
+| AC8 | `test_indexing.py` (3 attempts, 10-minute window at exactly 9 and 10 minutes); `test_loop.py::test_failure_does_not_stop_the_loop`; worker `test_failing_embedder_does_not_stop_polls_or_extraction` | delivered (F3) |
+| AC9 | `test_config.py`; worker `test_worker_rejects_unpriced_embedding_model_at_start` | delivered (F6) |
+| AC10 | `test_cli.py::test_index_*` (counts, second run, `--model` leaves the other model untouched, failed counts) | delivered |
+| AC11 | `test_search.py::test_fulltext_injured_finds_injury`, `::test_fulltext_odegaard_finds_accented` | delivered (F2) |
+| AC12 | `test_search.py::test_vector_orders_by_cosine_within_model`, `::test_vector_without_embeddings_errors_clearly` | delivered (F10) |
+| AC13 | `test_fusion.py::test_fuse_matches_hand_computed_rrf`, `::test_single_leg_post_still_appears`; `test_search.py::test_k_and_depth_overridable` | delivered |
+| AC14 | `test_search.py::test_filters_limit_window_reposts_replies`, `::test_filters_apply_to_the_vector_leg_too`, `::test_result_fields_and_ranks` | delivered |
+| AC15 | `test_search.py::test_hybrid_degrades_to_fulltext_when_embedding_fails`, `::test_vector_fails_clearly_when_embedding_fails` | delivered (F10) |
+| AC16 | `test_cli.py::test_search_prints_ranked_results_with_ranks`, `::test_search_time_filters_in_warsaw_compared_in_utc` | delivered |
+| AC17 | `test_cli.py::test_status_prints_counts_latest_and_cost`, `::test_status_on_empty_database` | delivered (F11) |
+| AC18 | `test_tracing.py`; `test_indexing.py::test_embedding_call_traced_with_model_tokens_cost`; `test_cli.py::test_search_traced_with_query_mode_and_ids`; `test_runner.py::test_runner_traces_searches_and_embeddings` | partial: failed embedding calls are not traced (F4, F11) |
+| AC19 | `test_dataset.py::test_export_corpus_writes_public_fields_only`; `test_schema.py::test_eval_schema_never_touches_public_tweet`; `test_labelling.py::test_prelabel_never_touches_public_tweet` | delivered (a `retrieval_eval` schema, as the plan review accepted) |
+| AC20 | `test_queries.py` (counts, templated events, stratified split, shortfall) | delivered |
+| AC21 | `test_labelling.py::test_pools_top10_of_each_mode_and_prelabels_unreviewed`, `::test_prelabel_resumes_and_skips_labelled_queries` | delivered (F5) |
+| AC22 | `test_cli.py::test_review_*` (accept/flip/skip/add, save before an interrupt, unknown id, no deps) | delivered |
+| AC23 | `test_runner.py` (per mode and slice, reviewed-only unless the flag, result file fields, CLI table) | delivered |
+| AC24 | `test_metrics.py` (none in the top k, first relevant at rank 3, several relevant) | delivered |
+| AC25 | `test_eval_set.py::test_set_v1_committed_and_consistent`; `evals/retrieval/v1`: 210 posts, 40 queries (10 pl), 671 judgements | delivered (F7) |
+| AC26 | `tests/test_env_example.py` (retrieval placeholders); `tests/test_readme.py::test_deployment_documents_embedding_model` | delivered |
+| AC27 | `tests/test_docs.py::test_backlog_has_reranking_and_ann_entries`; DECISIONS rows 52 and 55 match what was built | delivered (F8: the README path is stale) |
+| AC28 | `tests/retrieval/test_no_network.py`; fakes everywhere; settings tests use `_env_file=None` or `chdir(tmp_path)` | delivered |
+
+**Findings**
+
+| id | severity | where | scenario | fix |
+|----|----------|-------|----------|-----|
+| F1 | `worth-fixing` | `backend/migrations/versions/0005_retrieval.py:71-78` | `prelabel` or `evaluate` has run (the dev DB after step 24), then `alembic downgrade -1` → `DependentObjectsStillExist`, because `retrieval_eval.tweet.search_vector` depends on `english_unaccent`. The failure was reproduced on a fresh container. | Start `downgrade()` with `DROP SCHEMA IF EXISTS retrieval_eval CASCADE`, and load an eval corpus before the downgrade in `test_retrieval_migration_keeps_data_and_downgrades`. |
+| F2 | `worth-fixing` | `backend/app/retrieval/search.py:77-79` | Every lexeme becomes an OR-ed prefix term, one-letter ones included. `O'Neil` → `'o':*` matches "Ødegaard", "Salah outstanding"; `7.5m` → `'m':*` matches "Mbappé". One short token pulls in much of the corpus and adds noise to the full-text leg and RRF. | Add `:*` only to lexemes of ≥ 3 characters and match shorter ones exactly. Add a test with a short-token query. |
+| F3 | `worth-fixing` | `backend/app/retrieval/store.py` (`next_unembedded`, `_upsert`) | A post that always fails (e.g. a deterministic 4xx) is retried every 10 minutes forever. Because `next_unembedded` orders oldest first, old failed posts go ahead of fresh ones: each costs up to 3 × 30 s timeouts plus 6 s of back-off before a fresh pre-deadline leak is embedded. `attempts` is overwritten on every upsert, so the repeat count is lost. | Pick never-attempted posts before retries. Make `attempts` cumulative (`post_embedding.attempts + excluded.attempts`) and stop retrying after a cap (e.g. 5 passes); `status` shows those posts as failed. |
+| F4 | `worth-fixing` | `backend/app/retrieval/indexing.py:87-106`, `search.py:220` | `tracer.embedding` runs inside the retried lambda. A Langfuse error after a successful, paid embedding counts as a failed attempt, re-embeds, and can end as `failed`. A `tracer.search` error escapes the CLI as a traceback. A failed embedding call leaves no observation, although AC18 says "every embedding call". | Keep only `embedder.embed` inside the retry. Trace outside it in `try/except` with a class-name log, and trace failed calls with the error class. Add a test with a raising tracer and one with a failing embedder. |
+| F5 | `worth-fixing` | `backend/app/retrieval/evaluation/labelling.py:108, 118-122` | A label call that fails after its attempts is dropped. The query still gets non-empty `judgements`, so a resumed `prelabel` skips it, and that candidate is never labelled. The corpus-indexing failure raises a bare `RuntimeError`, which the CLI shows as a traceback (the runner uses `EvaluationError` + `fail()`). | Leave a query with any label failure without judgements (or re-pool only the missing candidates) so a re-run completes it. Raise `EvaluationError` and catch it in `prelabel_command`. |
+| F6 | `worth-fixing` | `backend/app/retrieval/config.py:57-58` | `EMBEDDING_MODEL=openai/gpt-6-luna` passes the start-up check because chat models also have price rows. The worker then fails every post, three calls each, every 10 minutes. | Accept only rows with `output_per_million is None` (embedding rows), with the same `<VAR> …` message. Add a test. |
+| F7 | `worth-fixing` | `backend/tests/retrieval/evaluation/test_eval_set.py:31` | `assert judgement.reviewed is False`: once the owner commits the review that AC25 plans after the PR, `pytest` on `main` goes red. | Assert only that `labelled_by` is a model id or `owner`, and drop the `reviewed is False` check. |
+| F8 | `worth-fixing` | `README.md:152` | Still points to `backend/app/extraction/prices.toml`, which moved to `backend/app/llm/prices.toml` in step 3. | Correct the path. |
+| F9 | `worth-fixing` | `specs/006-hybrid-retrieval/PLAN.md` → "AC → steps matrix" | 15 rows (AC5, AC9, AC10, AC16–AC27) have an empty "Red before the change" cell with no `manual`/`n/a` mark. The Deviations entry explains why but does not mark the rows. | Mark each cell `n/a — written with the code; first run was an ImportError (see Deviations)`. |
+| F10 | `worth-fixing` | `backend/tests/retrieval/test_search.py:233-244` | Two mutations survive the suite: dropping `status = 'embedded'` from `_VECTOR_SQL`/`_has_embeddings` (failed rows with a NULL vector would take vector-leg slots, and a model with only failed rows would pass the check), and tracing `failed_legs=()` always. `test_search_traced_with_ids_per_leg_and_failed_legs` checks only the success path. | Add a test with one embedded and one failed post (only the embedded one returned; only failed rows → `NoEmbeddingsError`), and a traced hybrid search with a failing embedder (`failed_legs == ("vector",)`). |
+| F11 | `worth-fixing` | `backend/tests/retrieval/test_tracing.py:9`, `test_cli.py:99`, `test_embedder.py`, `evaluation/test_runner.py:181` | Assertions too weak to prove the AC. The Langfuse tracer test checks only `isinstance`, and dropping `usage_details`/`cost_details` passes (AC18). `status` always printing `latency=-` passes (AC17). Dropping the non-list embedding check passes. `test_vector_leg_failure_stops_without_file` actually fails at corpus indexing and checks only the exit code. | Use a fake Langfuse client that records `start_observation` kwargs and assert model, usage and cost. Seed `latency_seconds` and assert the exact `latest embedding` line. Add a payload with `"embedding": "AAAA"` → `ValueError`. Rename the runner test and assert its message. |
+| F12 | `nit` | `backend/app/retrieval/search.py:177-196` | The query embedding (an HTTP call with a 30 s timeout) runs inside an open session after the full-text SELECT, holding a pooled connection idle in a transaction. | Embed the query before opening the session. |
+| F13 | `nit` | `backend/app/retrieval/loop.py:54`, `docs/DEPLOYMENT.md:85-87` | After the first deploy the loop backfills every old post with `record_latency=True`, so `status` shows a latency of days. The runbook says the backfill is a shell step, but the loop does it on its own. | Record latency only for posts first fetched after the loop started, and correct the runbook. |
+| F14 | `nit` | `backend/tests/worker/test_cli.py` | No test covers an embedder that blocks inside `embed()` at SIGTERM, although extraction has `test_sigterm_with_extraction_blocked_in_a_call_exits_within_10_s`. | Add the analogous test. |
+| F15 | `nit` | `backend/evals/retrieval/v1/corpus.jsonl` | The frozen corpus holds 20 posts from the project's own `@GafferPresser` test account ("hello everyone", "three" …), noise in the evaluation set. | Filter that account in `export-corpus` and re-export before item 5 grows the set. |
+| F16 | `nit` | `backend/app/retrieval/cli.py:499` | A docstring in `_review_queries` breaks CONVENTIONS ("No docstrings"). | Remove it, or turn it into a comment. |
+
+**Rejected**
+
+- `search.py:181`, "hybrid should degrade to full-text when the model has no embeddings":
+  PLAN step 14 makes `NoEmbeddingsError` apply to hybrid too, and the converge pass already
+  rejected this. DECISIONS row 52 covers a failed *call*, not a missing index.
+
+Left out: 33 nit findings.
