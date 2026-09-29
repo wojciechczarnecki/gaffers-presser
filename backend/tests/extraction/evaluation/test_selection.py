@@ -76,6 +76,45 @@ def test_best_orders_by_thresholds_then_f1():
     assert (selection.default, selection.fallback) == ("one-fail-higher-f1", "one-fail-low-f1")
 
 
+def test_fallback_skips_models_incompatible_with_the_default():
+    runs = [
+        run("winner", cost=2.0),
+        run("best-but-incompatible", f1=0.95, cost=1.0, failed=("false_alarm_rate",)),
+        run("usable", f1=0.8, cost=1.5, failed=("f1", "false_alarm_rate")),
+    ]
+
+    def compatible(primary, fallback):
+        return fallback != "best-but-incompatible"
+
+    assert select_models(runs, compatible) == Selection("winner", "usable", False, ())
+    assert select_models(runs).fallback == "best-but-incompatible"
+
+
+def test_second_passing_incompatible_falls_back_to_best_compatible_other():
+    runs = [
+        run("cheap", cost=0.5),
+        run("mid", cost=1.0),
+        run("other", f1=0.8, cost=2.0, failed=("f1",)),
+    ]
+    selection = select_models(runs, lambda primary, fallback: fallback != "mid")
+    assert selection == Selection("cheap", "other", False, ())
+
+
+def test_interim_pair_respects_compatibility():
+    runs = [
+        run("a", f1=0.8, cost=1.0, failed=("f1",)),
+        run("b", f1=0.79, cost=0.5, failed=("f1",)),
+        run("c", f1=0.7, cost=0.5, failed=("f1", "false_alarm_rate")),
+    ]
+    selection = select_models(runs, lambda primary, fallback: fallback != "b")
+    assert (selection.default, selection.fallback, selection.interim) == ("a", "c", True)
+
+
+def test_no_compatible_fallback_gives_none():
+    runs = [run("winner", cost=2.0), run("close", f1=0.8, cost=1.0, failed=("f1",))]
+    assert select_models(runs, lambda primary, fallback: False).fallback is None
+
+
 def test_none_within_budget_raises():
     with pytest.raises(ValueError, match="5"):
         select_models([run("dear", cost=9.0), run("unknown", cost=None)])

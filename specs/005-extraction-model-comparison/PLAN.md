@@ -195,9 +195,9 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
 | AC14 | 10, 15 | `tests/extraction/test_cli.py::test_dev_runs_default_to_the_ignored_directory`, `tests/extraction/evaluation/test_results_files.py::test_one_test_run_per_candidate_with_one_prompt` | |
 | AC15 | 6, 9 | `tests/extraction/test_openrouter_payload.py::test_fallback_answer_recorded` (host), `tests/extraction/test_cli.py::test_evaluate_writes_results` (host per case and host counts) | |
 | AC16 | 9, 17 | `tests/extraction/evaluation/test_metrics.py::test_thresholds_passed_per_threshold`, `tests/extraction/evaluation/test_results_files.py::test_report_names_every_test_run` | step 9: `uv run pytest -q tests/extraction/evaluation/test_metrics.py` (app changes stashed) → `ImportError: cannot import name 'threshold_flags'` (import error, not an assertion: the symbol did not exist; the test was written before the code) |
-| AC17 | 11, 16 | `tests/extraction/evaluation/test_selection.py::test_cheapest_passing_*`, `::test_single_passing_*`, `tests/extraction/evaluation/test_results_files.py::test_config_defaults_match_selection` | |
-| AC18 | 11, 16, 18 | `tests/extraction/evaluation/test_selection.py::test_no_passing_*` | |
-| AC19 | 16 | `tests/extraction/evaluation/test_results_files.py::test_adr_0006_names_the_defaults` | |
+| AC17 | 11, 16 | `tests/extraction/evaluation/test_selection.py::test_cheapest_passing_*`, `::test_single_passing_*`, `::test_fallback_skips_models_incompatible_with_the_default`, `tests/extraction/evaluation/test_results_files.py::test_config_defaults_match_selection` | step 16: `uv run pytest -q tests/extraction/evaluation/test_selection.py -k incompatible` (filter not applied) → `AssertionError: assert Selection(...) == Selection(...)` (`fallback: 'best-but-incompatible' != 'usable'`); `uv run pytest -q tests/extraction/evaluation/test_results_files.py -k defaults_match` (empty defaults) → `AssertionError: assert ('', None) == ('openai/gpt-...1-flash-lite')` |
+| AC18 | 11, 16, 18 | `tests/extraction/evaluation/test_selection.py::test_no_passing_*`, `::test_interim_pair_respects_compatibility` | step 16: as AC17 (the same filter) |
+| AC19 | 16 | `tests/extraction/evaluation/test_results_files.py::test_adr_0006_names_the_defaults` | step 16: `uv run pytest -q tests/extraction/evaluation/test_results_files.py -k adr_0006` (no ADR yet) → `FileNotFoundError` (not an assertion; the ADR file did not exist, the test reads it and then asserts the defaults in its text) |
 | AC20 | 7, 18 | `tests/test_env_example.py`, `tests/test_readme.py::test_removed_llm_variables_absent_from_docs` | `uv run pytest -q tests/test_readme.py` → `AssertionError: 'LLM_PROVIDER' still in README.md` |
 | AC21 | 18 | n/a — document edits, verified by the grep in step 18 | n/a — no test can express a roadmap tick |
 | AC22 | — | manual | manual |
@@ -658,7 +658,7 @@ Rules for every step in this group:
 
 ### Group 3 — Decision and documents
 
-- [ ] 16. **Defaults, ADR 0006 and DECISIONS (AC5, AC17, AC18, AC19).**
+- [x] 16. **Defaults, ADR 0006 and DECISIONS (AC5, AC17, AC18, AC19).**
       - Compute the selection:
         `uv run python -c "from app.extraction.evaluation.selection import *; from app.extraction.cli import DEFAULT_RESULTS_DIR as d; print(select_models(summaries_from_results(d)))"`.
         A `ValueError` (no candidate within 5 PLN) → `RESULT: ESCALATE`.
@@ -880,7 +880,7 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   Other five models: no errors, no change. The report notes that qwen runs by `json_schema`, the
   others by `function_calling`.
 
-- **D3 (open, step 16, escalated):** the selection over the committed test runs is default
+- **D3 (resolved by the owner, step 16):** the selection over the committed test runs is default
   `openai/gpt-6-luna` (the only model passing all thresholds; F1 0.904, false alarms 0.045, 0.49 PLN
   a month) and fallback `qwen/qwen3.8-flash` (best other within 5 PLN: 4 of 5 thresholds, F1 0.914).
   The live pair check (one dev case sent to the fallback with the pair's shared parameters) fails
@@ -890,6 +890,13 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   luna itself fails on `json_schema`; `google/gemini-3.1-flash-lite`, `deepseek/deepseek-v4-flash` and
   `anthropic/claude-haiku-4.5` answer. Waiting for the owner's decision; defaults in `config.py`
   are not set yet.
+  Resolution (owner decision 2026-09-29): default `openai/gpt-6-luna`, fallback
+  `google/gemini-3.1-flash-lite`. `select_models` gained a `compatible(default, fallback)` filter
+  and `model_settings.pair_compatible` implements it (same structured-output method and same
+  reasoning effort, which matches the live findings: qwen uses `json_schema`, glm reasons at
+  `low`); AC17/AC18 in the SPEC carry a matching sentence. `test_config.py` got an autouse
+  fixture that blanks the configured defaults for its fake-catalogue tests (the real defaults
+  are checked by `test_default_models_are_catalogue_models`).
 
 ### Run log
 

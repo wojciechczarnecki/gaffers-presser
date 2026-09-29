@@ -14,6 +14,16 @@ ROW = ModelSettings(
 CATALOGUE = {"a/primary": ROW, "b/other": ROW, "c/fallback": ROW}
 
 
+REAL_DEFAULTS = (config_module.DEFAULT_MODEL, config_module.DEFAULT_FALLBACK_MODEL)
+
+
+@pytest.fixture(autouse=True)
+def _no_configured_defaults(monkeypatch):
+    # These tests use a fake catalogue; the real defaults are checked in the last test.
+    monkeypatch.setattr(config_module, "DEFAULT_MODEL", "")
+    monkeypatch.setattr(config_module, "DEFAULT_FALLBACK_MODEL", "")
+
+
 def _settings(monkeypatch, **env: str) -> ExtractionSettings:
     for key, value in env.items():
         monkeypatch.setenv(key, value)
@@ -153,3 +163,13 @@ def test_resolve_tracing_with_both_keys(monkeypatch):
 def test_resolve_tracing_with_one_or_no_keys(monkeypatch, env):
     settings = _settings(monkeypatch, **env)
     assert resolve_tracing(settings) is None
+
+
+def test_default_models_are_catalogue_models():
+    from app.extraction.model_settings import load_model_settings, pair_compatible
+
+    catalogue = load_model_settings()
+    default, fallback = REAL_DEFAULTS
+    assert default in catalogue
+    assert fallback in catalogue
+    assert pair_compatible(default, fallback, catalogue)

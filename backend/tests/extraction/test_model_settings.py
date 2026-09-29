@@ -1,6 +1,6 @@
 import pytest
 
-from app.extraction.model_settings import DEFAULT_PATH, load_model_settings
+from app.extraction.model_settings import DEFAULT_PATH, load_model_settings, pair_compatible
 from app.extraction.pricing import load_prices
 from tests.extraction.candidates import CANDIDATES
 
@@ -56,3 +56,14 @@ def test_structured_method_override_is_read(tmp_path):
 def test_model_settings_and_prices_have_the_same_models():
     assert DEFAULT_PATH.exists()
     assert set(load_model_settings()) == set(load_prices())
+
+
+def test_pair_compatible_needs_same_structured_method_and_reasoning_effort():
+    catalogue = load_model_settings()
+    luna = "openai/gpt-6-luna"
+    assert pair_compatible(luna, "google/gemini-3.1-flash-lite", catalogue)
+    assert pair_compatible(luna, "deepseek/deepseek-v4-flash", catalogue)
+    assert pair_compatible(luna, "anthropic/claude-haiku-4.5", catalogue)
+    # qwen answers by json_schema, glm reasons at "low": neither can take luna's request
+    assert not pair_compatible(luna, "qwen/qwen3.8-flash", catalogue)
+    assert not pair_compatible(luna, "z-ai/glm-5.3-flash", catalogue)

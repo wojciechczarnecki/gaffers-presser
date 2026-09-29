@@ -1,5 +1,5 @@
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -32,24 +32,42 @@ def _best_first(runs: Sequence[RunSummary]) -> list[RunSummary]:
     return sorted(runs, key=lambda r: (-sum(r.thresholds_passed.values()), -r.f1))
 
 
-def select_models(runs: Sequence[RunSummary]) -> Selection:
-    passing = [r for r in runs if r.passes]
-    if len(passing) >= 2:
-        cheapest = sorted(passing, key=lambda r: (r.monthly_cost_pln, -r.f1))
-        return Selection(cheapest[0].model, cheapest[1].model, False, ())
+def _first_compatible(
+    default: str,
+    candidates: Sequence[RunSummary],
+    compatible: Callable[[str, str], bool] | None,
+) -> str | None:
+    for run in candidates:
+        if run.model != default and (compatible is None or compatible(default, run.model)):
+            return run.model
+    return None
 
+
+def select_models(
+    runs: Sequence[RunSummary],
+    compatible: Callable[[str, str], bool] | None = None,
+) -> Selection:
+    """Pick the default and the fallback (AC17/AC18).
+
+    `compatible(default, fallback)` says whether the fallback can answer the default's request
+    through OpenRouter's shared-parameter `models` list; incompatible models are skipped.
+    """
+    passing = [r for r in runs if r.passes]
     affordable = _best_first([r for r in runs if _within_budget(r)])
-    if len(passing) == 1:
-        winner = passing[0]
-        others = [r for r in affordable if r.model != winner.model]
-        return Selection(winner.model, others[0].model if others else None, False, ())
+    if passing:
+        cheapest = sorted(passing, key=lambda r: (r.monthly_cost_pln, -r.f1))
+        default = cheapest[0].model
+        fallback = _first_compatible(default, cheapest[1:], compatible)
+        if fallback is None:
+            fallback = _first_compatible(default, affordable, compatible)
+        return Selection(default, fallback, False, ())
 
     if not affordable:
         raise ValueError(f"no candidate projects to at most {MAX_MONTHLY_COST_PLN:g} PLN a month")
-    default = affordable[0]
-    missed = tuple(name for name, ok in default.thresholds_passed.items() if not ok)
-    fallback = affordable[1].model if len(affordable) > 1 else None
-    return Selection(default.model, fallback, True, missed)
+    default_run = affordable[0]
+    missed = tuple(name for name, ok in default_run.thresholds_passed.items() if not ok)
+    fallback = _first_compatible(default_run.model, affordable[1:], compatible)
+    return Selection(default_run.model, fallback, True, missed)
 
 
 def summaries_from_results(results_dir: Path) -> list[RunSummary]:

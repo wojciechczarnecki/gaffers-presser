@@ -1,8 +1,19 @@
 import json
 from collections import Counter
+from pathlib import Path
 
+from app.extraction import config
 from app.extraction.cli import DEFAULT_RESULTS_DIR
+from app.extraction.evaluation.selection import select_models, summaries_from_results
+from app.extraction.model_settings import load_model_settings, pair_compatible
 from tests.extraction.candidates import CANDIDATES
+
+ADR_0006 = (
+    Path(__file__).resolve().parents[4]
+    / "docs"
+    / "adr"
+    / "0006-default-extraction-model-openrouter.md"
+)
 
 
 def _test_runs() -> list[dict]:
@@ -25,3 +36,26 @@ def test_one_test_run_per_candidate_with_one_prompt():
         assert len(plain) == 1, model
         assert len(reruns) <= 1, model
     assert Counter(run["reasoning_effort"] for run in runs).keys() <= {"none", "low"}
+
+
+def _selection():
+    return select_models(
+        summaries_from_results(DEFAULT_RESULTS_DIR),
+        lambda primary, fallback: pair_compatible(primary, fallback, load_model_settings()),
+    )
+
+
+def test_config_defaults_match_selection():
+    selection = _selection()
+    assert (config.DEFAULT_MODEL, config.DEFAULT_FALLBACK_MODEL or None) == (
+        selection.default,
+        selection.fallback,
+    )
+
+
+def test_adr_0006_names_the_defaults():
+    text = ADR_0006.read_text()
+    assert f"`{config.DEFAULT_MODEL}`" in text
+    assert f"`{config.DEFAULT_FALLBACK_MODEL}`" in text
+    if _selection().interim:
+        assert "interim" in text

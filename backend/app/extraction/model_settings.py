@@ -33,3 +33,18 @@ def load_model_settings(path: Path = DEFAULT_PATH) -> dict[str, ModelSettings]:
             checked=entry["checked"],
         )
     return settings
+
+
+def pair_compatible(primary: str, fallback: str, catalogue: dict[str, ModelSettings]) -> bool:
+    """Whether the fallback can answer the primary's request through the `models` list.
+
+    The request carries the primary's structured-output method and reasoning effort, so the
+    fallback must use the same ones (checked live for the candidates on 2026-09-29).
+    """
+    first, second = catalogue.get(primary), catalogue.get(fallback)
+    if first is None or second is None:
+        return False
+    return (
+        first.structured_method == second.structured_method
+        and first.reasoning_effort == second.reasoning_effort
+    )

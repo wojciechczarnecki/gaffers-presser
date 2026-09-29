@@ -210,12 +210,14 @@ Decision and documents
   by projected monthly cost is the default, and the second cheapest passing candidate is the
   fallback. If only one passes, it is the default and the fallback is the best other
   candidate within 5 PLN a month. "Best" means it passes the most thresholds, then has the
-  higher F1.
+  higher F1. A fallback must be able to answer the default's request through OpenRouter's
+  shared-parameter `models` list (same structured-output method and reasoning effort); a
+  candidate that cannot is skipped (owner decision, 2026-09-29).
 - [ ] AC18: If no candidate passes, the best candidate within 5 PLN a month becomes the
   interim default, and the next best becomes the fallback. "Best" means it passes the most
   thresholds, then has the higher F1. The report and ADR 0006 say the default is interim
   and name the thresholds it misses. BACKLOG gets a P1 item to revisit the default. No
-  threshold is changed.
+  threshold is changed. The fallback is chosen with the same compatibility rule as in AC17.
 - [ ] AC19: ADR 0006 records the default and fallback model, OpenRouter as the only provider
   through `langchain-openrouter`, the configuration shape (key as the switch) and the
   accepted risk of an OpenRouter outage. DECISIONS gets the matching rows. The configuration

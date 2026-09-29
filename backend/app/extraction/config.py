@@ -8,9 +8,9 @@ from app.extraction.model_settings import ModelSettings, load_model_settings
 
 PROVIDER = "openrouter"
 
-# Set from ADR 0006 once the comparison has run.
-DEFAULT_MODEL = ""
-DEFAULT_FALLBACK_MODEL = ""
+# Chosen in ADR 0006 from the test-split runs (selection rule of SPEC 005, AC17/AC18).
+DEFAULT_MODEL = "openai/gpt-6-luna"
+DEFAULT_FALLBACK_MODEL = "google/gemini-3.1-flash-lite"
 
 
 @dataclass(frozen=True)
