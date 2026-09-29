@@ -57,8 +57,12 @@ def write_cases(path: Path, cases: Sequence[EvalCase]) -> None:
     path = Path(path)
     lines = [case.model_dump_json() for case in cases]
     tmp = path.with_name(f".{path.name}.tmp")
-    tmp.write_text("\n".join(lines) + ("\n" if lines else ""))
-    os.replace(tmp, path)
+    try:
+        tmp.write_text("\n".join(lines) + ("\n" if lines else ""))
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 MIN_REAL = 100

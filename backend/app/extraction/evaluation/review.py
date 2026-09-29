@@ -115,7 +115,10 @@ def _yes_no(value: bool) -> str:
 def editor_command() -> list[str]:
     editor = os.environ.get("EDITOR", "").strip()
     if editor:
-        return shlex.split(editor)
+        try:
+            return shlex.split(editor)
+        except ValueError as exc:
+            raise ConfigError(f"EDITOR cannot be parsed: {exc}") from None
     for fallback in EDITOR_FALLBACKS:
         if shutil.which(fallback):
             return [fallback]

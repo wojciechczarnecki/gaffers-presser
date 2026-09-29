@@ -272,3 +272,14 @@ def test_edit_changing_the_id_saves_nothing(tmp_path, editor):
     assert result.exit_code == 0, result.output
     assert files.cases.read_bytes() == before
     assert "the case id must stay '1'" in result.output
+
+
+def test_unparsable_editor_is_reported_and_the_run_continues(tmp_path, monkeypatch):
+    monkeypatch.setenv("EDITOR", "code --wait '")
+    files = Files(tmp_path, [_case("1")])
+    before = files.cases.read_bytes()
+    result = files.run("e", "a")
+    assert result.exit_code == 0, result.output
+    assert "error: EDITOR cannot be parsed" in result.output
+    assert files.cases.read_bytes() != before
+    assert files.loaded()[0].reviewed is True
