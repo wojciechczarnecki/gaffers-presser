@@ -542,7 +542,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
         - `tests/test_readme.py`: add `app.extraction spend` to the commands checked.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_cli.py -k "spend or dev_runs" tests/test_readme.py && cd .. && git check-ignore -q backend/evals/extraction/results/dev/x.json`
 
-- [ ] 11. **Selection rule (AC17, AC18).** New `backend/app/extraction/evaluation/selection.py`:
+- [x] 11. **Selection rule (AC17, AC18).** New `backend/app/extraction/evaluation/selection.py`:
 
       ```python
       @dataclass(frozen=True)
