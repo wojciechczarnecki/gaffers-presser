@@ -121,12 +121,20 @@ uv run python -m app.extraction reextract --failed --provider openai --model <mo
 The evaluation set lives in `backend/evals/extraction/v1/` (`cases.jsonl` plus a snapshot of
 the players it refers to). Its labels start as a model's candidates with `"reviewed": false`;
 review each case (fix the expected events, set `"reviewed": true`) before evaluating —
-`evaluate` refuses unreviewed cases. The commands, none of them run by `pytest`:
+`evaluate` refuses unreviewed cases. `review` walks the unreviewed cases in file order (no
+database or LLM key needed): it shows the post and its expected events with each `fpl_id`
+resolved to the player and club from the snapshot, then takes one key — `a` accepts
+(`reviewed: true`), `e` edits the case as JSON in `$EDITOR` (validated before it is saved),
+`f` finds a player's `fpl_id` by name and optional club, `s` skips, `q` quits. Every change is
+saved at once, so a rerun resumes at the first unreviewed case; `--split dev|test` narrows the
+run and `--id <case id>` reopens one case, reviewed or not. The commands, none of them run by
+`pytest`:
 
 ```bash
 uv run python -m app.extraction snapshot-players --output evals/extraction/v1/players-2026-27.json
 uv run python -m app.extraction prelabel --output evals/extraction/v1/cases.jsonl \
   --provider openai --model <model>          # appends candidates for posts not in the set yet
+uv run python -m app.extraction review --split test   # interactive; --id <case id> for one case
 uv run python -m app.extraction evaluate --split dev --provider openai --model <model>
 uv run python -m app.extraction evaluate --split test --provider google --model <model> \
   --run-name gemini-test-1                   # needs USD_PLN_RATE; tune the prompt on dev only

@@ -27,7 +27,7 @@
   "gitHooksDir": "scripts/git-hooks",
   "language": "en",
   "implement": {
-    "chunked": true
+    "chunked": false
   },
   "models": {
     "implement": "sonnet"
