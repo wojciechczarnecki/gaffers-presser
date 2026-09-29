@@ -29,10 +29,12 @@ from tests.conftest import BACKEND_DIR, held_advisory_lock
 from tests.extraction.fakes import FakeChatModel
 from tests.fpl.fakes import FakeFpl
 from tests.fpl.payloads import load
+from tests.retrieval.fakes import AlwaysFailingEmbedder, FakeEmbedder
+from tests.retrieval.helpers import runtime as indexing_runtime
 from tests.tweets.fakes import FakeSource
 from tests.worker.sim import FakeClock
 
-EXTRACTION_VARIABLE = re.compile(r"(LLM_.*|LANGFUSE_.*|.*_API_KEY|USD_PLN_RATE)")
+EXTRACTION_VARIABLE = re.compile(r"(LLM_.*|LANGFUSE_.*|.*_API_KEY|USD_PLN_RATE|EMBEDDING_MODEL)")
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 D6 = datetime(2026, 10, 10, 10, 0, tzinfo=UTC)
 
@@ -93,7 +95,13 @@ class ReleasingClock:
 @pytest.fixture
 def cli(db):
     def invoke(
-        *args, client=None, league_ids_raw="1", clock=None, tweet_ingest=None, extraction=None
+        *args,
+        client=None,
+        league_ids_raw="1",
+        clock=None,
+        tweet_ingest=None,
+        extraction=None,
+        indexing=None,
     ):
         deps = WorkerDeps(
             engine=db,
@@ -102,6 +110,7 @@ def cli(db):
             clock=clock or FixedClock(NOW),
             tweet_ingest=tweet_ingest,
             extraction=extraction,
+            indexing=indexing,
         )
         return CliRunner().invoke(app, list(args), obj=deps)
 
@@ -623,6 +632,170 @@ def test_polls_continue_while_extraction_blocks(db):
             select(TweetPoll).where(TweetPoll.outcome == "succeeded").order_by(TweetPoll.started_at)
         ).all()
     assert len(rows) == 9
+
+
+def _embeddings(db):
+    from app.retrieval.models import PostEmbedding
+
+    with Session(db) as session:
+        return session.exec(select(PostEmbedding)).all()
+
+
+class QuickClock:
+    def __init__(self) -> None:
+        self._offset = timedelta(0)
+
+    def now(self) -> datetime:
+        return datetime.now(UTC) + self._offset
+
+    def sleep(self, seconds: float) -> None:
+        self._offset += timedelta(seconds=seconds)
+        time.sleep(0.01)
+
+
+def test_run_without_key_logs_retrieval_indexing_disabled_once(cli, db, caplog):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+
+    timer = threading.Timer(1, os.kill, args=(os.getpid(), signal.SIGTERM))
+    timer.start()
+    try:
+        with caplog.at_level(logging.INFO):
+            result = cli(
+                "run", client=fake.client(sleep=lambda _: None), clock=RealClock(far_future)
+            )
+    finally:
+        timer.cancel()
+
+    assert result.exit_code == 0
+    assert caplog.text.count("retrieval indexing disabled") == 1
+    assert _embeddings(db) == []
+
+
+def test_run_with_indexing_logs_model_and_embeds_new_post(cli, db, caplog):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    _seed_tweet(db, first_fetched_at=datetime.now(UTC) - timedelta(seconds=30))
+    indexing = indexing_runtime(FakeEmbedder())
+
+    killer = _sigterm_when(lambda: len(_embeddings(db)) >= 1)
+    with caplog.at_level(logging.INFO):
+        result = cli(
+            "run",
+            client=fake.client(sleep=lambda _: None),
+            clock=RealClock(far_future),
+            indexing=indexing,
+        )
+    killer.join(timeout=1)
+
+    assert result.exit_code == 0
+    assert "retrieval indexing started: model=fake/embed" in caplog.text
+    assert "retrieval indexing disabled" not in caplog.text
+    rows = _embeddings(db)
+    assert [(row.tweet_x_id, row.status, row.model) for row in rows] == [
+        (1, "embedded", "fake/embed")
+    ]
+    assert not any(t.name == "indexer" and t.is_alive() for t in threading.enumerate())
+
+
+def test_failing_embedder_does_not_stop_polls_or_extraction(db):
+    with Session(db) as session, session.begin():
+        session.add(Season(label="2026/27"))
+        session.flush()
+        session.add(
+            Gameweek(
+                season="2026/27",
+                fpl_id=6,
+                name="GW6",
+                deadline_at=D6,
+                finished=False,
+                data_checked=False,
+            )
+        )
+    _seed_tweet(db, first_fetched_at=D6 - timedelta(days=1))
+
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    extraction, llm = _extraction_runtime_and_fake(ExtractionOutput(events=[]))
+    embedder = AlwaysFailingEmbedder()
+    indexing = indexing_runtime(embedder, clock=QuickClock())
+    tweet_ingest = TweetIngest(
+        source_name="fake",
+        list_id=1,
+        make_source=lambda: FakeSource(pages=[[]]),
+        clock=FakeClock(D6 - timedelta(minutes=5), D6 - timedelta(minutes=2)),
+    )
+
+    def done() -> bool:
+        with Session(db) as session:
+            polls = len(session.exec(select(TweetPoll)).all())
+        failed = [row for row in _embeddings(db) if row.status == "failed"]
+        return polls >= 2 and len(_extractions(db)) >= 1 and len(failed) >= 1
+
+    killer = _sigterm_when(done)
+    deps = WorkerDeps(
+        engine=db,
+        client=fake.client(sleep=lambda _: None),
+        league_ids_raw="1",
+        clock=RealClock(D6 - timedelta(minutes=5)),
+        tweet_ingest=tweet_ingest,
+        extraction=extraction,
+        indexing=indexing,
+    )
+    result = CliRunner().invoke(app, ["run"], obj=deps)
+    killer.join(timeout=1)
+
+    assert result.exit_code == 0
+    with Session(db) as session:
+        assert len(session.exec(select(TweetPoll)).all()) >= 2
+    assert [row.status for row in _extractions(db)] == ["extracted"]
+    assert {row.status for row in _embeddings(db)} == {"failed"}
+    assert _embeddings(db)[0].error_class == "RuntimeError"
+
+
+def test_worker_rejects_unpriced_embedding_model_at_start(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-sentinel-value")
+    monkeypatch.setenv("EMBEDDING_MODEL", "x/unknown")
+
+    result = CliRunner().invoke(app, ["run"])
+
+    assert result.exit_code == 1
+    assert "EMBEDDING_MODEL" in result.stderr
+    assert "sk-sentinel-value" not in result.stderr
+
+
+def test_deps_enable_indexing_with_key(monkeypatch, tmp_path):
+    from app.core.settings import Settings
+    from app.worker import cli as worker_cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-sentinel-value")
+    monkeypatch.setattr(
+        worker_cli,
+        "load_settings",
+        lambda: Settings(_env_file=None, database_url="postgresql+psycopg://u@localhost/x"),
+    )
+
+    indexing = worker_cli._deps_from_settings().indexing
+
+    assert indexing is not None
+    assert indexing.model == "openai/text-embedding-3-small"
+    assert indexing.model in indexing.prices
+    assert indexing.tracing is None
+
+
+def test_deps_disable_indexing_without_key(monkeypatch, tmp_path):
+    from app.core.settings import Settings
+    from app.worker import cli as worker_cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        worker_cli,
+        "load_settings",
+        lambda: Settings(_env_file=None, database_url="postgresql+psycopg://u@localhost/x"),
+    )
+
+    assert worker_cli._deps_from_settings().indexing is None
 
 
 def test_worker_rejects_unknown_model_at_start(monkeypatch, tmp_path):

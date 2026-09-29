@@ -8,6 +8,8 @@ from openrouter.operations import CreateEmbeddingsResponseBody
 from openrouter.utils import BackoffStrategy, RetryConfig
 from pydantic import SecretStr
 
+from app.retrieval.config import EmbeddingConfig
+
 _REQUEST_TIMEOUT_MILLISECONDS = 30_000
 _NO_RETRIES = RetryConfig("none", BackoffStrategy(0, 0, 1.0, 0), False)
 
@@ -57,5 +59,5 @@ class OpenRouterEmbedder:
         return EmbeddingResult(vectors=vectors, input_tokens=tokens)
 
 
-def build_embedder(api_key: SecretStr, model: str) -> Embedder:
-    return OpenRouterEmbedder(api_key, model)
+def build_embedder(config: EmbeddingConfig) -> Embedder:
+    return OpenRouterEmbedder(config.api_key, config.model)

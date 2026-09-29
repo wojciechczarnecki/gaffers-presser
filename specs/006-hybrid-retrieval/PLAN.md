@@ -566,7 +566,7 @@ makes the product change. Run all commands from the repository root. `V` =
       - `test_stops_on_stop_event`.
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_loop.py`
-- [ ] 11. **Worker wiring (AC6, AC8, AC9).** `app/worker/cli.py`:
+- [x] 11. **Worker wiring (AC6, AC8, AC9).** `app/worker/cli.py`:
       - `WorkerDeps.indexing: IndexingRuntime | None = None`.
       - `_deps_from_settings` calls `load_retrieval_settings()` and `resolve_embedding()`.
         A `ConfigError` → `fail()` with exit 1. On success it builds

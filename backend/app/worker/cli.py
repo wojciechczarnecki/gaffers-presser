@@ -26,6 +26,10 @@ from app.extraction.service import ExtractionRuntime, load_reference_files
 from app.extraction.store import extraction_status
 from app.fpl.client import FplClient
 from app.llm.tracing import resolve_tracing
+from app.retrieval.config import load_retrieval_settings, resolve_embedding
+from app.retrieval.embedder import build_embedder
+from app.retrieval.indexing import IndexingRuntime
+from app.retrieval.loop import start_indexer
 from app.tweets.config import resolve_ingest
 from app.tweets.loop import start_poller
 from app.tweets.schedule import mode, next_poll_at
@@ -59,6 +63,7 @@ class WorkerDeps:
     clock: Clock
     tweet_ingest: TweetIngest | None = None
     extraction: ExtractionRuntime | None = None
+    indexing: IndexingRuntime | None = None
 
 
 app = typer.Typer(
@@ -107,6 +112,8 @@ def _deps_from_settings() -> WorkerDeps:
         extraction_settings = load_extraction_settings()
         llm_config = resolve_llm(extraction_settings)
         prices, aliases = load_reference_files() if llm_config is not None else ({}, ([], []))
+        retrieval_settings = load_retrieval_settings()
+        embedding_config = resolve_embedding(retrieval_settings)
         settings = load_settings()
     except CollectorError as exc:
         raise fail(str(exc)) from None
@@ -128,6 +135,14 @@ def _deps_from_settings() -> WorkerDeps:
             prices=prices,
             aliases=aliases,
         )
+    indexing = None
+    if embedding_config is not None:
+        indexing = IndexingRuntime(
+            model=embedding_config.model,
+            make_embedder=lambda: build_embedder(embedding_config),
+            prices=embedding_config.prices,
+            tracing=resolve_tracing(retrieval_settings),
+        )
     return WorkerDeps(
         engine=make_engine(settings.database_url),
         client=FplClient(),
@@ -135,6 +150,7 @@ def _deps_from_settings() -> WorkerDeps:
         clock=SystemClock(),
         tweet_ingest=tweet_ingest,
         extraction=extraction,
+        indexing=indexing,
     )
 
 
@@ -168,6 +184,7 @@ def run(ctx: typer.Context) -> None:
     lock_connection: Connection | None = None
     tweet_thread: threading.Thread | None = None
     extraction_thread: threading.Thread | None = None
+    indexing_thread: threading.Thread | None = None
     try:
         lock_connection = deps.engine.connect().execution_options(isolation_level="AUTOCOMMIT")
         logged_waiting = False
@@ -199,6 +216,14 @@ def run(ctx: typer.Context) -> None:
                 deps.engine, deps.extraction, stop_event, clock=deps.extraction.clock
             )
 
+        if deps.indexing is None:
+            logger.info("retrieval indexing disabled")
+        else:
+            indexing_thread = start_indexer(
+                deps.engine, deps.indexing, stop_event, clock=deps.indexing.clock
+            )
+            logger.info("retrieval indexing started: model=%s", deps.indexing.model)
+
         def heartbeat() -> None:
             lock_connection.execute(text("SELECT 1"))
 
@@ -217,13 +242,13 @@ def run(ctx: typer.Context) -> None:
         logger.error("worker failed: %s", type(exc).__name__)
         raise typer.Exit(1) from None
     finally:
-        if tweet_thread is not None or extraction_thread is not None:
+        threads = [tweet_thread, extraction_thread, indexing_thread]
+        if any(thread is not None for thread in threads):
             stop_event.set()
             deadline = time.monotonic() + 5
-            if tweet_thread is not None:
-                tweet_thread.join(timeout=max(0.0, deadline - time.monotonic()))
-            if extraction_thread is not None:
-                extraction_thread.join(timeout=max(0.0, deadline - time.monotonic()))
+            for thread in threads:
+                if thread is not None:
+                    thread.join(timeout=max(0.0, deadline - time.monotonic()))
         signal.signal(signal.SIGTERM, previous_sigterm)
         signal.signal(signal.SIGINT, previous_sigint)
         if lock_connection is not None:
