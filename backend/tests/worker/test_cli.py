@@ -653,6 +653,30 @@ def test_deps_disable_extraction_without_key_even_with_model(monkeypatch, tmp_pa
     assert worker_cli._deps_from_settings().extraction is None
 
 
+def test_deps_enable_extraction_with_key(monkeypatch, tmp_path):
+    from app.core.settings import Settings
+    from app.worker import cli as worker_cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-sentinel-value")
+    monkeypatch.setenv("LLM_MODEL", "openai/gpt-6-luna")
+    monkeypatch.setenv("LLM_FALLBACK_MODEL", "google/gemini-3.1-flash-lite")
+    monkeypatch.setattr(
+        worker_cli,
+        "load_settings",
+        lambda: Settings(_env_file=None, database_url="postgresql+psycopg://u@localhost/x"),
+    )
+
+    extraction = worker_cli._deps_from_settings().extraction
+
+    assert extraction is not None
+    assert (extraction.provider, extraction.model) == ("openrouter", "openai/gpt-6-luna")
+    assert extraction.fallback_model == "google/gemini-3.1-flash-lite"
+    assert "openai/gpt-6-luna" in extraction.prices
+    params = extraction.make_spec().chat_model._default_params
+    assert params["models"] == ["openai/gpt-6-luna", "google/gemini-3.1-flash-lite"]
+
+
 def test_worker_rejects_malformed_extraction_variable_naming_it_only(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("USD_PLN_RATE", "4,05")
@@ -918,6 +942,22 @@ def test_status_shows_extraction_never(cli, db):
     assert "  posts waiting: 0" in lines
     assert "  failed posts: 0" in lines
     assert "  latest extraction: never" in lines
+
+
+def test_status_shows_the_fallback_model(cli, db):
+    extraction = _extraction_runtime()
+    extraction = ExtractionRuntime(
+        provider=extraction.provider,
+        model=extraction.model,
+        make_spec=extraction.make_spec,
+        tracing=None,
+        prices={},
+        aliases=([], []),
+        fallback_model="b/f",
+    )
+    result = cli("status", extraction=extraction)
+    assert result.exit_code == 0
+    assert "  fallback: b/f" in result.stdout.splitlines()
 
 
 def test_status_shows_extraction_counts_and_latest(cli, db):

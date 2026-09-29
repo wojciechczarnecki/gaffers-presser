@@ -9,6 +9,7 @@ import pytest
 from sqlmodel import Session, select
 from typer.testing import CliRunner
 
+from app.core.errors import ConfigError
 from app.core.settings import ExtractionSettings
 from app.extraction.cli import (
     DEFAULT_RESULTS_DIR,
@@ -16,9 +17,11 @@ from app.extraction.cli import (
     app,
     build_spec_from_settings,
     default_output_dir,
+    host_lookup_from_settings,
 )
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
 from app.extraction.evaluation.runner import run_evaluation
+from app.extraction.generation import HostLookup
 from app.extraction.linking import PlayerIndex, PlayerRecord, load_snapshot
 from app.extraction.model_settings import ModelSettings
 from app.extraction.models import Extraction
@@ -1028,3 +1031,40 @@ def test_spend_empty_directory(tmp_path):
     assert result.exit_code == 0, result.output
     assert "total cost: 0.0000 USD (prices.toml)" in result.stdout
     assert "total reported cost: 0.0000 USD (OpenRouter)" in result.stdout
+
+
+LUNA, GEMINI = "openai/gpt-6-luna", "google/gemini-3.1-flash-lite"
+
+
+def _keyed_settings() -> ExtractionSettings:
+    return ExtractionSettings(
+        _env_file=None, openrouter_api_key="sk-test", llm_model=LUNA, llm_fallback_model=GEMINI
+    )
+
+
+def test_build_spec_from_settings_sends_the_fallback_only_when_asked():
+    build_spec = build_spec_from_settings(_keyed_settings())
+
+    single = build_spec(None, fallback=False)
+    assert single.model == LUNA
+    assert "models" not in single.chat_model._default_params
+
+    pair = build_spec(None, fallback=True)
+    assert pair.chat_model._default_params["models"] == [LUNA, GEMINI]
+
+    override = build_spec(GEMINI, fallback=False)
+    assert override.model == GEMINI
+    assert "models" not in override.chat_model._default_params
+
+
+def test_build_spec_from_settings_without_key_raises():
+    build_spec = build_spec_from_settings(ExtractionSettings(_env_file=None))
+    with pytest.raises(ConfigError, match="OPENROUTER_API_KEY"):
+        build_spec(None, fallback=False)
+
+
+def test_host_lookup_from_settings_needs_the_key():
+    assert host_lookup_from_settings(ExtractionSettings(_env_file=None)) is None
+    lookup = host_lookup_from_settings(_keyed_settings())
+    assert isinstance(lookup, HostLookup)
+    lookup.close()
