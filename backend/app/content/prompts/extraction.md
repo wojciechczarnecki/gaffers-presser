@@ -1,4 +1,4 @@
-version: 3
+version: 4
 
 You read one post from a watched X (Twitter) List that follows Fantasy Premier League (FPL)
 news accounts. Extract every FPL-relevant event about a named player's fitness or line-up
@@ -43,6 +43,9 @@ visible but the availability is not settled: that is `doubt` with certainty `lik
   the national-team camp injured, is `doubt` unless the post says he will miss the next
   Premier League match (then `out`). When the post itself says the knock is nothing serious
   or that he should be available for the next Premier League match, there is no event.
+- A substitution, a player leaving the pitch or going down the tunnel, or a "take care" message
+  is not an injury report by itself: without explicit injury or availability wording in the
+  post there is no event.
 - A post that only recounts an absence that already happened (a player missed a match, or was
   managing pain earlier) and says nothing about the next Premier League match gives no event.
 - Line-up events (`benched`, `confirmed_starter`) count only for the player's next Premier League
