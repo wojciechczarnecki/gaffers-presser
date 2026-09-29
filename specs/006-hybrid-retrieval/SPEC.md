@@ -51,9 +51,9 @@ reviewed evaluation set v1.
 ## Read context
 
 - `docs/ROADMAP.md` — read in full. This is Stage 2, item 1 ("Hybrid retrieval on
-  PostgreSQL"). It also takes the tooling half of item 4 ("Retrieval evaluation set and a
-  results report"): the runner and set v1 are built here, while the reviewed comparison,
-  the report and the default-model ADR stay in item 4. The Stage 2 DoD requires tracing and
+  PostgreSQL"). It also takes the tooling half of item 5 ("Retrieval evaluation report"):
+  the runner and set v1 are built here, while the reviewed comparison,
+  the report and the default-model ADR stay in item 5. The Stage 2 DoD requires tracing and
   an evaluation set for LLM steps. Only one stage is worked on at a time, and Stage 1 is done.
 - `docs/PROJECT.md` — read in full. FR-2.1 (index posts for hybrid retrieval) and FR-2.4
   (evaluation set for retrieval); the NFRs on budget ≤ 20 PLN/month, observability,
@@ -130,13 +130,13 @@ reviewed evaluation set v1.
 
 - Corroboration of leaks (FR-2.2) — its own spec (Stage 2, item 2). It decides how to combine
   retrieval with SQL linking.
-- Alerts and e-mail (FR-2.3) — Stage 2, item 3.
+- The e-mail adapter and alerts (FR-2.3) — Stage 2, items 3 and 4.
 - The reviewed comparison of modes and embedding models, the results report, the README
-  section and the default-model ADR. These are Stage 2, item 4, after the GW6 deadline
+  section and the default-model ADR. These are Stage 2, item 5, after the GW6 deadline
   window (BACKLOG #12) has grown the set.
 - Tuning RRF `k` and candidate depth beyond the defaults. The runner accepts them as
-  parameters, and the tuning is item 4's work on the dev split.
-- Reranking with a cross-encoder or an LLM → BACKLOG, P2, trigger: the item 4 report shows
+  parameters, and the tuning is item 5's work on the dev split.
+- Reranking with a cross-encoder or an LLM → BACKLOG, P2, trigger: the item 5 report shows
   hybrid precision in the top 5 below what alerts need.
 - An approximate-nearest-neighbour index (HNSW/IVFFlat) → BACKLOG, P3, trigger: vector search
   over the stored posts exceeds 200 ms p95. Exact search is enough at a few thousand posts a
@@ -265,14 +265,14 @@ reviewed evaluation set v1.
 |----------|-----------------------|-----------|
 | Index every stored post, reposts and replies included; flags are search filters | only posts with extracted events; everything but reposts | the posts extraction did not link are exactly what retrieval adds over SQL; cost is negligible |
 | Embeddings through OpenRouter with the `openrouter` SDK pinned as a direct dependency, behind an own `Embedder` interface | the OpenAI API directly; `langchain-openai` with a `base_url`; local models | one provider and one key (ADR 0006); the SDK is already installed; local models are rejected for memory (DECISIONS) |
-| Default embedding model `openai/text-embedding-3-small`; the model comparison belongs to roadmap item 4 | `qwen/qwen3-embedding-8b`; `google/gemini-embedding-001` | a multilingual, widely known baseline at $0.02 per million tokens; 1536 dimensions fit pgvector comfortably |
+| Default embedding model `openai/text-embedding-3-small`; the model comparison belongs to roadmap item 5 | `qwen/qwen3-embedding-8b`; `google/gemini-embedding-001` | a multilingual, widely known baseline at $0.02 per million tokens; 1536 dimensions fit pgvector comfortably |
 | Embeddings keyed by (post, model), several models side by side | one vector column per post | model comparison and re-indexing without losing the current index |
 | Exact vector search, no ANN index | HNSW / IVFFlat now | a few thousand posts a season; exact results keep the evaluation clean |
 | RRF with default `k = 60` and depth 50 per mode | weighted score fusion; a learned combination | RRF needs no calibration between `ts_rank` and cosine scales (ADR 0002) |
 | Indexing in its own loop in the worker, plus a CLI | CLI only; a step in the extraction loop | fresh posts are indexed within seconds before a deadline; an embedding outage never blocks extraction (same reasoning as the extraction loop decision) |
 | A shared `app/llm/` layer (provider settings, tracing, prices), with the clock moved to `app/core`; no shared evaluation framework | retrieval importing from `app.extraction`; a broad refactor including retries, loop base classes and evaluation | retrieval is the second consumer, and a third consumer (alerts, presser) is coming; the two evaluations differ in metrics, so a common framework would be premature |
 | Evaluation set v1: a mix of event-templated and LLM-written queries (~40, ~10 Polish), pooled from the three modes, binary relevance pre-labelled by a model, reviewed by the owner; a frozen corpus snapshot | the owner writing every query; event-templated queries only; graded relevance with nDCG | realistic corroboration queries plus variety; the Polish slice checks cross-lingual retrieval before Stage 4; binary labels make review fast and consistent |
-| Tooling and set v1 here; the reviewed comparison and the report in roadmap item 4 | no evaluation now; everything in one spec | the set stays small until the GW6 window (BACKLOG #12); the parameters are measured, not guessed |
+| Tooling and set v1 here; the reviewed comparison and the report in roadmap item 5 | no evaluation now; everything in one spec | the set stays small until the GW6 window (BACKLOG #12); the parameters are measured, not guessed |
 | Embedding calls and searches traced in Langfuse | embeddings only; no tracing | cost visibility and per-mode ranking for every query, and it is visible in the portfolio |
 
 ## Owner decisions
@@ -283,7 +283,7 @@ reviewed evaluation set v1.
 - Data migration: `CREATE EXTENSION vector`, `CREATE EXTENSION unaccent`, the full-text
   representation of `tweet` and the embeddings store — accepted. Production gets it through
   the Railway pre-deploy after the owner merges.
-- Evaluation scope: tooling and set v1 here; the report stays in roadmap item 4.
+- Evaluation scope: tooling and set v1 here; the report stays in roadmap item 5.
 - Refactor: `app/llm/` plus the clock in `app/core`, and nothing broader.
 - Indexing: a loop in the worker plus a CLI.
 - Evaluation: English queries with a Polish slice; binary relevance; a mix of queries with
