@@ -13,6 +13,7 @@ _PACKAGES = [
     "langchain-anthropic",
     "langfuse",
     "langchain",
+    "langchain-openrouter",
 ]
 
 
