@@ -3,6 +3,9 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-09-29"
   - "spec-ready — 2026-09-29"
+metrics:
+  started_at: 2026-09-29T12:47
+  escalations: 0
 ---
 
 # SPEC 005 — Extraction model comparison and OpenRouter as the only LLM provider
