@@ -1038,3 +1038,17 @@ Three independent perspectives (compliance, quality, tests) reviewed `origin/mai
 
 Left out: 22 nit findings
 
+### 2026-09-29 — apply
+
+Owner decision: F1–F6 accepted, F7–F11 and the 22 left-out nits rejected. `verify.command`
+green after the fixes (653 passed).
+
+| id | change | commit |
+|----|--------|--------|
+| F1 | `providers.py` sets the SDK client's `retry_config` to strategy `none` after building `ChatOpenRouter`; the attribute test became `test_timeout_is_sixty_seconds` plus the behavioural `test_sdk_client_sends_exactly_one_request` (MockTransport, HTTP 503 and connection error → exactly 1 request; red without the fix: `assert 2 == 1`) | `f679a08` |
+| F2 | `resolve_llm` checks `pair_compatible`: an incompatible `LLM_FALLBACK_MODEL` → `ConfigError` naming the variable; an incompatible default fallback under another `LLM_MODEL` / `--model` is dropped. Tests `test_incompatible_explicit_fallback_raises_naming_the_variable`, `test_incompatible_default_fallback_is_dropped`; DEPLOYMENT §8 and ADR 0006 describe the enforcement | `1baa873` |
+| F3 | the fake SDK returns `ChatResult.model_validate(payload)`; the payload gained `system_fingerprint`; the flow test asserts `host is None` and the generation id; the `provider` read in `_answer_from_raw` stays with a comment (a client keeping the field skips the lookup) | `369c9af` |
+| F4 | `generation.py`: `HostLookup` with a wait budget shared by all lookups of a run (60 s), a 200 without a usable record (non-JSON, non-dict body or `data`, no `provider_name`) → None, `close()` for its own client, called by `evaluate` after the run. Tests for non-JSON/odd bodies, `ConnectTimeout`, `ConnectError`, the wait cap, closing, and `test_evaluate_closes_the_host_lookup` | `d017052` |
+| F5 | `test_build_spec_from_settings_sends_the_fallback_only_when_asked`, `test_build_spec_from_settings_without_key_raises`, `test_host_lookup_from_settings_needs_the_key`, the worker's `test_deps_enable_extraction_with_key` and `test_status_shows_the_fallback_model` | `df66613` |
+| F6 | the AC → steps matrix has a red record for AC4, AC5, AC6 (response side), AC7 (steps 6 and 9), AC8, AC13, AC14 and AC15, each shown at this stage by removing the behaviour; the AC8 and AC15 proving tests updated; step 16 names `test_default_models_are_catalogue_models` | `4000087` |
+
