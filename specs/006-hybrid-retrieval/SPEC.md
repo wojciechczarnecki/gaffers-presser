@@ -3,6 +3,9 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-09-29"
   - "spec-ready — 2026-09-29"
+metrics:
+  started_at: 2026-09-29T23:48
+  escalations: 0
 ---
 
 # SPEC 006 — Hybrid retrieval over posts
