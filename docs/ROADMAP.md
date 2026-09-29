@@ -35,6 +35,7 @@ and each LLM step that produces data has an evaluation set with recorded results
 - [ ] Extraction model comparison: review evaluation set v1, compare models through
       OpenRouter, report, ADR 0006, the default model and OpenRouter as the only provider
       (follow-up to spec 004, AC26/AC27; BACKLOG #14)
+      (spec: [005](../specs/005-extraction-model-comparison/SPEC.md))
 
 ## Stage 2 — RAG v1 and alert e-mails (portfolio MVP)
 
