@@ -2,6 +2,7 @@ import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
@@ -22,6 +23,7 @@ from app.retrieval.config import (
     resolve_embedding,
 )
 from app.retrieval.embedder import Embedder, build_embedder
+from app.retrieval.evaluation.dataset import DEFAULT_CORPUS_PATH, export_corpus, write_corpus
 from app.retrieval.indexing import IndexingRuntime, index_missing
 from app.retrieval.search import Mode, SearchError, SearchFilters, search
 from app.retrieval.store import embedding_status
@@ -250,6 +252,21 @@ def search_command(
             f"  {_warsaw(result.created_at)}  {result.x_id}"
         )
         typer.echo(f"    {' '.join(result.text.split())}")
+
+
+@app.command(name="export-corpus", help="Export every stored post (public fields only).")
+def export_corpus_command(
+    ctx: typer.Context,
+    output: Annotated[Path, typer.Option("--output")] = DEFAULT_CORPUS_PATH,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite an existing file.")] = False,
+) -> None:
+    deps = get_deps(ctx)
+    if output.exists() and not force:
+        raise fail(f"{output} already exists; pass --force to overwrite it")
+    posts = export_corpus(db_engine(deps))
+    output.parent.mkdir(parents=True, exist_ok=True)
+    write_corpus(output, posts)
+    typer.echo(f"exported {len(posts)} posts to {output}")
 
 
 def main() -> None:

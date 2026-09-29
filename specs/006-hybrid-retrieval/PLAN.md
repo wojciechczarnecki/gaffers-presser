@@ -711,7 +711,7 @@ makes the product change. Run all commands from the repository root. `V` =
 
 ### Group 4 — Evaluation tooling, set v1 and documents
 
-- [ ] 16. **Dataset models and `export-corpus` (AC19).**
+- [x] 16. **Dataset models and `export-corpus` (AC19).**
       - `app/retrieval/evaluation/dataset.py`: pydantic `CorpusPost`, `Judgement`
         (`x_id: int`, `relevant: bool`, `reviewed: bool`, `labelled_by: str`) and `Query`
         (see Approach), all `extra="forbid"`.
