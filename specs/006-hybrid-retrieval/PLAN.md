@@ -421,7 +421,7 @@ makes the product change. Run all commands from the repository root. `V` =
           returns it.
 
       Automatic verification: `cd backend && uv run pytest -q tests/db/test_migrations.py tests/retrieval/test_store.py tests/tweets tests/extraction/test_store.py`
-- [ ] 6. **Embedder (AC28 guard, basis of AC7).** `app/retrieval/embedder.py`:
+- [x] 6. **Embedder (AC28 guard, basis of AC7).** `app/retrieval/embedder.py`:
       - `Embedder` Protocol and `EmbeddingResult` (see Key shapes).
       - `OpenRouterEmbedder(api_key: SecretStr, model: str, client: httpx.Client | None = None)`:
         - builds `OpenRouter(api_key=…, client=client, timeout_ms=30_000)` with
