@@ -6,7 +6,8 @@ from app.content import PROMPTS_DIR, PromptError, load_prompt
 def test_load_prompt_parses_version_header():
     prompt = load_prompt("extraction")
     assert prompt.name == "extraction"
-    assert prompt.version == 1
+    # Bumped on every prompt change (spec 005 AC11), so only its shape is checked here.
+    assert isinstance(prompt.version, int) and prompt.version >= 1
     assert "player" in prompt.text.lower()
 
 
