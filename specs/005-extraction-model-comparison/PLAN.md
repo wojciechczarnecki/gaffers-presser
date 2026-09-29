@@ -845,6 +845,8 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 - 2026-09-29 — final review (report) — Question: which findings to fix. Decision: accepted F1 (blocker) and F2, F3, F4, F5, F6 (worth-fixing); rejected F7, F8, F9, F10, F11 (nit) and the 22 nit findings left out of the table.
 
+- 2026-09-29 — final review (apply) — Question: the closing commit was not made because the auto-mode permission classifier returned no verdict on every call after CI went green (PR #9 open, CI green, F1–F6 fixed). Decision: resume the reviewer in apply mode to do only the closing step (status done, stage_history, metrics.finished_at, `workflow_metrics.py --check`, commit, push, CI on that commit) and check whether any CI job passed only on a re-run; no second PR.
+
 ## Review log
 
 ### 2026-09-29 — /pipeline:plan-review
