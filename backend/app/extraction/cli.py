@@ -1,5 +1,6 @@
 import json
 import re
+import subprocess
 import threading
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -15,7 +16,14 @@ from app.core.errors import CollectorError, ConfigError
 from app.core.settings import ExtractionSettings, load_extraction_settings, load_settings
 from app.db.engine import make_engine
 from app.extraction.config import resolve_llm, resolve_tracing
-from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
+from app.extraction.evaluation.cases import (
+    EvalCase,
+    ExpectedEvent,
+    load_cases,
+    parse_cases,
+    write_cases,
+)
+from app.extraction.evaluation.compare import compare_sets
 from app.extraction.evaluation.review import (
     PlayerDirectory,
     case_to_json,
@@ -373,6 +381,55 @@ def _fmt(value: float | None, digits: int = 2) -> str:
 def _default_run_name(split: str, spec: ChatModelSpec, now: datetime) -> str:
     raw = f"{split}-{spec.provider}-{spec.model}-{now:%Y%m%dT%H%M}"
     return re.sub(r"[^A-Za-z0-9._-]+", "-", raw)
+
+
+DEFAULT_BASELINE_REVISION = "dc02d98"
+
+
+def _read_baseline(cases_path: Path, revision: str) -> list[EvalCase]:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(cases_path.parent), "show", f"{revision}:./{cases_path.name}"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (subprocess.CalledProcessError, OSError):
+        raise fail(f"cannot read {cases_path.name} at revision {revision}") from None
+    return parse_cases(completed.stdout)
+
+
+@app.command(
+    "compare-labels", help="Compare the reviewed set with the pre-labelled set at a revision."
+)
+def compare_labels(
+    cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
+    revision: Annotated[str, typer.Option("--revision")] = DEFAULT_BASELINE_REVISION,
+    baseline_path: Annotated[
+        Path | None, typer.Option("--baseline", help="A cases file instead of a git revision.")
+    ] = None,
+) -> None:
+    # Needs no database and no LLM key, so it never builds ExtractionCliDeps.
+    reviewed = load_cases(cases_path)
+    baseline = load_cases(baseline_path) if baseline_path else _read_baseline(cases_path, revision)
+    for comparison in compare_sets(reviewed, baseline):
+        by_field = ", ".join(f"{k} {v}" for k, v in comparison.relabelled_by_field.items())
+        typer.echo(f"split {comparison.split}")
+        typer.echo(f"  cases: {comparison.cases}")
+        typer.echo(f"  cases changed: {comparison.cases_changed}")
+        typer.echo(
+            "  events added / removed / relabelled: "
+            f"{comparison.added} / {comparison.removed} / {comparison.relabelled}"
+        )
+        typer.echo(f"  relabelled by field: {by_field}")
+        typer.echo(
+            f"  ids only in the reviewed set: {', '.join(comparison.only_in_reviewed) or '-'}"
+        )
+        typer.echo(f"  ids only in the baseline: {', '.join(comparison.only_in_baseline) or '-'}")
+        typer.echo(
+            "  pre-labels precision / recall / f1: "
+            f"{comparison.precision:.3f} / {comparison.recall:.3f} / {comparison.f1:.3f}"
+        )
 
 
 REVIEW_ACTIONS = "[a]ccept  [e]dit  [f]ind player  [s]kip  [q]uit"

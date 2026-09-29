@@ -180,7 +180,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
 | AC1 | 12 | `tests/extraction/evaluation/test_eval_set.py::test_composition`, `::test_every_case_reviewed` | n/a — gate on data that already holds (136/136 reviewed, composition green); run as a check before the first paid run, a failure escalates |
-| AC2 | 1, 2, 12 | `tests/extraction/evaluation/test_compare.py`, `tests/extraction/test_cli.py::test_compare_labels_*` | |
+| AC2 | 1, 2, 12 | `tests/extraction/evaluation/test_compare.py`, `tests/extraction/test_cli.py::test_compare_labels_*` |  `uv run pytest -q tests/extraction/evaluation/test_compare.py` (stub) → `KeyError: 'dev'`; `uv run pytest -q tests/extraction/test_cli.py -k compare_labels` → `assert 2 == 0` (No such command) |
 | AC3 | 3, 5, 8 | `tests/extraction/test_dependency.py::test_removed_llm_packages_absent`, `::test_no_module_imports_removed_packages`, `tests/extraction/test_providers.py::test_builds_chat_openrouter` | |
 | AC4 | 5 | `tests/extraction/test_config.py::test_disabled_without_key_even_with_model`, `tests/worker/test_cli.py::test_deps_disable_extraction_without_key_even_with_model` | |
 | AC5 | 5, 16 | `tests/extraction/test_config.py::test_default_model_when_llm_model_empty`, `::test_llm_model_overrides_default`, `::test_llm_provider_variable_ignored`, `tests/extraction/test_cli.py::test_provider_option_removed`, `::test_*_without_key_names_openrouter_variable` | |
@@ -206,7 +206,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
 
 ### Group 1 — Code: disagreement report, OpenRouter-only provider, evaluation tooling
 
-- [ ] 1. **Label comparison logic (AC2).** New module
+- [x] 1. **Label comparison logic (AC2).** New module
       `backend/app/extraction/evaluation/compare.py`:
 
       ```python
@@ -239,7 +239,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
         the same pairs.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/evaluation/test_compare.py && uv run ruff check app/extraction/evaluation tests/extraction/evaluation`
 
-- [ ] 2. **`compare-labels` command (AC2).** In `backend/app/extraction/cli.py` add
+- [x] 2. **`compare-labels` command (AC2).** In `backend/app/extraction/cli.py` add
       `compare-labels` with `--cases` (default `DEFAULT_CASES_PATH`), `--revision` (default
       `dc02d98`) and `--baseline <path>` (a file instead of a git revision). It needs no
       database and no key, so it does not build `ExtractionCliDeps`, like `review`.

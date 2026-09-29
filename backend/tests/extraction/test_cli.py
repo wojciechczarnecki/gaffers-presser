@@ -736,3 +736,101 @@ def test_malformed_variable_is_named_without_its_value(tmp_path, monkeypatch):
     assert result.exit_code == 1
     assert "USD_PLN_RATE" in result.stderr
     assert "4,05" not in result.stderr
+
+
+def _compare_case(case_id, split, *events):
+    return EvalCase(
+        id=case_id,
+        author_handle="reporter",
+        text=f"post {case_id}",
+        created_at=NOW,
+        is_repost=False,
+        is_reply=False,
+        split=split,
+        synthetic=False,
+        reviewed=True,
+        tags=[],
+        expected_events=[
+            ExpectedEvent(mention=m, fpl_id=i, event_type="out", certainty=c) for m, i, c in events
+        ],
+    )
+
+
+def _reviewed_and_baseline():
+    reviewed = [
+        _compare_case("a", "dev", ("Salah", 1, "likely")),
+        _compare_case("b", "test", ("Haaland", 2, "confirmed"), ("Saka", 3, "confirmed")),
+        _compare_case("c", "test"),
+    ]
+    baseline = [
+        _compare_case("a", "dev", ("Salah", 1, "confirmed")),
+        _compare_case("b", "test", ("Haaland", 2, "confirmed")),
+        _compare_case("c", "test", ("Kane", 4, "confirmed")),
+    ]
+    return reviewed, baseline
+
+
+def test_compare_labels_with_baseline_file(tmp_path):
+    reviewed, baseline = _reviewed_and_baseline()
+    cases, base = tmp_path / "cases.jsonl", tmp_path / "base.jsonl"
+    write_cases(cases, reviewed)
+    write_cases(base, baseline)
+
+    result = CliRunner().invoke(
+        app, ["compare-labels", "--cases", str(cases), "--baseline", str(base)]
+    )
+
+    assert result.exit_code == 0, result.output
+    out = result.stdout
+    dev, test = out.split("split test")
+    assert "split dev" in dev
+    assert "cases: 1" in dev and "cases changed: 1" in dev
+    assert "events added / removed / relabelled: 0 / 0 / 1" in dev
+    assert "relabelled by field: event_type 0, certainty 1, fpl_id 0" in dev
+    assert "pre-labels precision / recall / f1: 1.000 / 1.000 / 1.000" in dev
+    assert "cases: 2" in test and "cases changed: 2" in test
+    assert "events added / removed / relabelled: 1 / 1 / 0" in test
+    assert "pre-labels precision / recall / f1: 0.500 / 0.500 / 0.500" in test
+
+
+def test_compare_labels_at_git_revision(tmp_path):
+    reviewed, baseline = _reviewed_and_baseline()
+    cases = tmp_path / "cases.jsonl"
+
+    def git(*args):
+        subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+        )
+
+    git("init", "-q")
+    write_cases(cases, baseline)
+    git("add", "cases.jsonl")
+    git("commit", "-q", "-m", "prelabels")
+    write_cases(cases, reviewed)
+    git("add", "cases.jsonl")
+    git("commit", "-q", "-m", "reviewed")
+
+    result = CliRunner().invoke(
+        app, ["compare-labels", "--cases", str(cases), "--revision", "HEAD~1"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "events added / removed / relabelled: 1 / 1 / 0" in result.stdout
+    assert "events added / removed / relabelled: 0 / 0 / 1" in result.stdout
+
+
+def test_compare_labels_unknown_revision_fails(tmp_path):
+    reviewed, _ = _reviewed_and_baseline()
+    cases = tmp_path / "cases.jsonl"
+    write_cases(cases, reviewed)
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True, capture_output=True)
+
+    result = CliRunner().invoke(
+        app, ["compare-labels", "--cases", str(cases), "--revision", "nope"]
+    )
+
+    assert result.exit_code == 1
+    assert "cannot read cases.jsonl at revision nope" in result.stderr
