@@ -1054,3 +1054,10 @@ green after the fixes (653 passed).
 | F5 | `test_build_spec_from_settings_sends_the_fallback_only_when_asked`, `test_build_spec_from_settings_without_key_raises`, `test_host_lookup_from_settings_needs_the_key`, the worker's `test_deps_enable_extraction_with_key` and `test_status_shows_the_fallback_model` | `df66613` |
 | F6 | the AC → steps matrix has a red record for AC4, AC5, AC6 (response side), AC7 (steps 6 and 9), AC8, AC13, AC14 and AC15, each shown at this stage by removing the behaviour; the AC8 and AC15 proving tests updated; step 16 names `test_default_models_are_catalogue_models` | `4000087` |
 
+CI on PR #9 (https://github.com/wojciechczarnecki/gaffers-presser/pull/9) green on
+`5ac4cdf`: CI (`backend`, `image`) and Security (`backend-audit`), every run on its first
+attempt and no test retry configured, so no flaky test goes to the backlog. The CI publishes
+no visual artifacts (no UI scope). BACKLOG unchanged by this review: no new items (the
+rejected nits are not deferred), no trigger fired. AC22 stays a manual owner check before the
+merge.
+
