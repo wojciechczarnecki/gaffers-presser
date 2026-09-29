@@ -630,7 +630,7 @@ makes the product change. Run all commands from the repository root. `V` =
 
 ### Group 3 — Search
 
-- [ ] 13. **Fusion and result types (AC13, AC14).** `app/retrieval/search.py`:
+- [x] 13. **Fusion and result types (AC13, AC14).** `app/retrieval/search.py`:
       - `Mode`, `SearchFilters`, `SearchResult`, `SearchResponse`, and
         `SearchError(CollectorError)` with its subclass `NoEmbeddingsError`;
       - `fuse(rankings, k)`: RRF `Σ 1/(k + rank)` over the legs, ranks 1-based; order by
