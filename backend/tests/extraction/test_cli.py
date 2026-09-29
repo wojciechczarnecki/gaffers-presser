@@ -663,6 +663,35 @@ def test_evaluate_fills_the_host_from_the_generation_lookup(tmp_path):
     assert data["case_results"][0]["generation_id"] == "gen-1"
 
 
+def test_evaluate_closes_the_host_lookup(tmp_path):
+    files = _Files(tmp_path, [_eval_case("1", "test")])
+    build_spec, _ = _build_spec(_haaland_out(), model="m", generation_id="gen-1")
+
+    class _Lookup:
+        closed = False
+
+        def __call__(self, generation_id):
+            return "DeepInfra"
+
+        def close(self):
+            self.closed = True
+
+    lookup = _Lookup()
+    base = _no_db_deps(build_spec)
+    deps = ExtractionCliDeps(
+        engine=None,
+        settings=base.settings,
+        build_spec=build_spec,
+        clock=base.clock,
+        host_lookup=lambda: lookup,
+    )
+
+    result = CliRunner().invoke(app, files.args("--run-name", "run-c"), obj=deps)
+
+    assert result.exit_code == 0, result.output
+    assert lookup.closed
+
+
 def test_evaluate_writes_results(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "app.extraction.evaluation.runner.load_prices",

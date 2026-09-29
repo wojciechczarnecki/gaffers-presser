@@ -355,6 +355,7 @@ def evaluate(
     player_aliases, team_aliases = load_aliases()
     index = PlayerIndex(players, teams, player_aliases, team_aliases)
     handler = make_handler(resolve_tracing(deps.settings))
+    host_lookup = deps.host_lookup()
     try:
         report = run_evaluation(
             selected,
@@ -366,10 +367,13 @@ def evaluate(
             clock=deps.clock,
             posts_per_month=posts_per_month,
             usd_pln_rate=usd_pln_rate,
-            host_lookup=deps.host_lookup(),
+            host_lookup=host_lookup,
         )
     finally:
         flush(handler)
+        close = getattr(host_lookup, "close", None)
+        if close is not None:
+            close()
 
     output_dir = output_dir or default_output_dir(split)
     output_dir.mkdir(parents=True, exist_ok=True)
