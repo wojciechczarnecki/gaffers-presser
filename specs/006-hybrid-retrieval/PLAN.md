@@ -234,21 +234,21 @@ Evaluation JSONL (one object per line):
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 1, 2, 4 | `tests/test_module_boundaries.py::test_extraction_takes_no_clock_from_tweets_or_worker`, `::test_shared_layer_lives_in_app_llm_and_core`, `::test_retrieval_imports_nothing_from_extraction` | |
+| AC1 | 1, 2, 4 | `tests/test_module_boundaries.py::test_extraction_takes_no_clock_from_tweets_or_worker`, `::test_shared_layer_lives_in_app_llm_and_core`, `::test_retrieval_imports_nothing_from_extraction` | `cd backend && uv run pytest -q tests/test_module_boundaries.py` → `assert ['extraction/...ervice.py:27'] == []` (`test_extraction_takes_no_clock_from_tweets_or_worker`, before step 1) |
 | AC2 | 1, 2, 3 | n/a — kept behaviour: the existing suite passes after steps 1–3 with import-path changes only. The one exception is the catalogue-equality assertion in `tests/extraction/test_model_settings.py`, which narrows to chat rows (step 3, see Risks) | n/a |
-| AC3 | 3 | `tests/llm/test_pricing.py::test_input_only_row_loads_and_costs_input_alone`, `::test_unknown_model_costs_none`, `::test_chat_rows_keep_their_cost` | |
-| AC4 | 5 | `tests/db/test_migrations.py::test_retrieval_migration_keeps_data_and_downgrades`, `::test_upgrade_downgrade_upgrade`, `::test_models_match_migration` | |
+| AC3 | 3 | `tests/llm/test_pricing.py::test_input_only_row_loads_and_costs_input_alone`, `::test_unknown_model_costs_none`, `::test_chat_rows_keep_their_cost` | `cd backend && uv run pytest -q tests/llm/test_pricing.py` → `KeyError: 'output_per_million'` (`test_input_only_row_loads_and_costs_input_alone`), `KeyError: 'openai/text-embedding-3-small'` (`test_embedding_default_is_priced`) |
+| AC4 | 5 | `tests/db/test_migrations.py::test_retrieval_migration_keeps_data_and_downgrades`, `::test_upgrade_downgrade_upgrade`, `::test_models_match_migration` | `cd backend && uv run pytest -q tests/db/test_migrations.py -k retrieval_migration_keeps_data_and_downgrades` (0005 moved away) → `assert 'post_embedding' in {'alembic_version', ...}` |
 | AC5 | 5, 15 | `tests/retrieval/test_store.py::test_post_findable_by_fulltext_in_the_storing_transaction`; `tests/retrieval/test_cli.py::test_fulltext_search_needs_no_key` | |
-| AC6 | 11 | `tests/worker/test_cli.py::test_run_without_key_logs_retrieval_indexing_disabled_once`, `::test_run_with_indexing_logs_model_and_embeds_new_post` | |
-| AC7 | 9, 10 | `tests/retrieval/test_indexing.py::test_embed_post_stores_model_dimensions_tokens_cost_latency`, `::test_oldest_first`; `tests/retrieval/test_loop.py::test_new_post_embedded_without_restart` | |
-| AC8 | 9, 10, 11 | `tests/retrieval/test_indexing.py::test_three_attempts_then_failed_with_error_class`, `::test_failed_post_not_retried_before_10_minutes`; `tests/retrieval/test_loop.py::test_failure_does_not_stop_the_loop`; `tests/worker/test_cli.py::test_failing_embedder_does_not_stop_polls_or_extraction` | |
+| AC6 | 11 | `tests/worker/test_cli.py::test_run_without_key_logs_retrieval_indexing_disabled_once`, `::test_run_with_indexing_logs_model_and_embeds_new_post` | `cd backend && uv run pytest -q tests/worker/test_cli.py -k "indexing or embedding"` (worker wiring stashed) → `AttributeError` on `WorkerDeps.indexing` (`test_deps_enable_indexing_with_key`) and missing log line (`test_run_without_key_logs_retrieval_indexing_disabled_once`) |
+| AC7 | 9, 10 | `tests/retrieval/test_indexing.py::test_embed_post_stores_model_dimensions_tokens_cost_latency`, `::test_oldest_first`; `tests/retrieval/test_loop.py::test_new_post_embedded_without_restart` | `cd backend && uv run pytest -q tests/retrieval/test_indexing.py` (stubbed `embed_post`) → `assert [] == [11, 12, 10]` (`test_oldest_first`), `assert outcome is not None and outcome.status == "failed"` (`test_three_attempts_then_failed_with_error_class`) |
+| AC8 | 9, 10, 11 | `tests/retrieval/test_indexing.py::test_three_attempts_then_failed_with_error_class`, `::test_failed_post_not_retried_before_10_minutes`; `tests/retrieval/test_loop.py::test_failure_does_not_stop_the_loop`; `tests/worker/test_cli.py::test_failing_embedder_does_not_stop_polls_or_extraction` | same run → `assert (summary.embedded, summary.failed) == (1, 1)` (`test_index_missing_counts_and_retries_failed_ones`) |
 | AC9 | 7, 11 | `tests/retrieval/test_config.py::test_unpriced_embedding_model_names_the_variable`, `::test_empty_or_unset_uses_default`; `tests/worker/test_cli.py::test_worker_rejects_unpriced_embedding_model_at_start` | |
 | AC10 | 12 | `tests/retrieval/test_cli.py::test_index_embeds_missing_and_prints_counts_and_cost`, `::test_index_second_run_embeds_nothing`, `::test_index_model_option_leaves_other_model_untouched` | |
-| AC11 | 14 | `tests/retrieval/test_search.py::test_fulltext_injured_finds_injury`, `::test_fulltext_odegaard_finds_accented` | |
-| AC12 | 14 | `tests/retrieval/test_search.py::test_vector_orders_by_cosine_within_model`, `::test_vector_without_embeddings_errors_clearly` | |
-| AC13 | 13, 14 | `tests/retrieval/test_fusion.py::test_fuse_matches_hand_computed_rrf`, `::test_single_leg_post_still_appears`; `tests/retrieval/test_search.py::test_hybrid_order_equals_hand_computed_rrf`, `::test_k_and_depth_overridable` | |
-| AC14 | 13, 14 | `tests/retrieval/test_search.py::test_filters_limit_window_reposts_replies`, `::test_result_fields_and_ranks` | |
-| AC15 | 14 | `tests/retrieval/test_search.py::test_hybrid_degrades_to_fulltext_when_embedding_fails`, `::test_vector_fails_clearly_when_embedding_fails` | |
+| AC11 | 14 | `tests/retrieval/test_search.py::test_fulltext_injured_finds_injury`, `::test_fulltext_odegaard_finds_accented` | `cd backend && uv run pytest -q tests/retrieval/test_search.py` (stubbed `search`) → `assert [] == [1]` (`test_fulltext_injured_finds_injury`), `test_fulltext_odegaard_finds_accented` failed |
+| AC12 | 14 | `tests/retrieval/test_search.py::test_vector_orders_by_cosine_within_model`, `::test_vector_without_embeddings_errors_clearly` | same run → `test_vector_orders_by_cosine_within_model` and `test_vector_without_embeddings_errors_clearly` failed (`DID NOT RAISE`) |
+| AC13 | 13, 14 | `tests/retrieval/test_fusion.py::test_fuse_matches_hand_computed_rrf`, `::test_single_leg_post_still_appears`; `tests/retrieval/test_search.py::test_hybrid_order_equals_hand_computed_rrf`, `::test_k_and_depth_overridable` | `cd backend && uv run pytest -q tests/retrieval/test_fusion.py` (stubbed `fuse`) → `assert [] == [1, 2, 3]`-style failures in 5 tests (`test_fuse_matches_hand_computed_rrf`) |
+| AC14 | 13, 14 | `tests/retrieval/test_search.py::test_filters_limit_window_reposts_replies`, `::test_result_fields_and_ranks` | same run → `test_filters_limit_window_reposts_replies`, `test_result_fields_and_ranks` failed |
+| AC15 | 14 | `tests/retrieval/test_search.py::test_hybrid_degrades_to_fulltext_when_embedding_fails`, `::test_vector_fails_clearly_when_embedding_fails` | same run → `assert response.failed_legs == ("vector",)` (`test_hybrid_degrades_to_fulltext_when_embedding_fails`) |
 | AC16 | 15 | `tests/retrieval/test_cli.py::test_search_prints_ranked_results_with_ranks`, `::test_search_time_filters_in_warsaw_compared_in_utc` | |
 | AC17 | 12 | `tests/retrieval/test_cli.py::test_status_prints_counts_latest_and_cost` | |
 | AC18 | 8, 12, 15, 22 | `tests/retrieval/test_tracing.py::test_langfuse_tracer_records_embedding_generation_offline`, `::test_no_tracing_logs_once`; `tests/retrieval/test_indexing.py::test_embedding_call_traced_with_model_tokens_cost`; `tests/retrieval/test_cli.py::test_search_traced_with_query_mode_and_ids`, `::test_index_without_langfuse_logs_once`; `tests/retrieval/evaluation/test_runner.py::test_runner_traces_searches_and_embeddings` | |
@@ -943,6 +943,25 @@ makes the product change. Run all commands from the repository root. `V` =
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_eval_set.py && test -z "$(git status --porcelain evals/retrieval/results/)" && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
 
+### Converge pass 1 — 2026-09-30
+
+A fresh subagent compared the diff with SPEC.md and reported three findings. Verdicts:
+
+- `[partial] AC15 — search.py` (`hybrid` with no embeddings for the model raises
+  `NoEmbeddingsError` instead of degrading): **rejected.** AC15 covers a failed embedding
+  *call*; a model with no embeddings at all is the AC12 error condition, and PLAN step 14
+  states that `hybrid` raises there too (`test_vector_without_embeddings_errors_clearly`
+  checks both modes). The SPEC does not ask for a degrade here.
+- `[unrequested] labelling.py pool()` (the source post of a `post` query joins the pool):
+  **rejected.** PLAN step 20 asks for it, so it stays. It ensures the post the query was
+  written from is judged even when no mode retrieves it.
+- `[partial] AC21 — prelabel` (a label that fails after its attempts is left out and the
+  query is not re-pooled on resume): **rejected.** PLAN step 20 defines the behaviour ("a
+  failed label after its attempts is left out and counted"). All 671 candidates of set v1
+  were labelled with 0 failures, and a failure is printed by the command.
+
+Real gaps kept: 0. No step added, so no second pass.
+
 ## Risks and traps
 
 - **AC2 and the catalogue test.** `tests/extraction/test_model_settings.py` asserts
@@ -1019,6 +1038,27 @@ makes the product change. Run all commands from the repository root. `V` =
 
 Record the outputs (counts, costs) under Deviations or the step notes.
 
+**Result of the automatic end-to-end verification (2026-09-30)**
+
+1. `verify.command` green: 800 passed, ruff check and format clean.
+2. `docker compose up -d db` (already up) and `uv run alembic upgrade head` on the local
+   development database (`localhost`): `0004 -> 0005`, `alembic current` shows `0005 (head)`.
+3. `--help` of the group and of `index`, `search`, `status`, `export-corpus`,
+   `build-queries`, `prelabel`, `review` and `evaluate` all exit 0.
+4. `status` before indexing: `posts: 210`, `model openai/text-embedding-3-small: embedded 0
+   missing 210  failed 0`.
+5. `search "injury" --mode fulltext --limit 5`: five posts with `fts=1..5  vec=-`, no key used.
+6. With the key: `index` → `embedded: 210`, `failed: 0`, `total cost: $0.000246`; a second
+   `index` → `embedded: 0`; `status` → `embedded 210  missing 0  failed 0` and a latest
+   embedding; `search "Saka kontuzja" --mode hybrid` and `search "Odegaard injured" --mode
+   hybrid` returned results carrying both `fts=` and `vec=` ranks.
+7. Set v1: `export-corpus` → 210 posts; `build-queries` → 40 queries (event en 15, event pl 3,
+   post en 15, post pl 7), cost $0.000875; `prelabel` → 40 queries, 671 candidates, 101
+   labelled relevant, 0 failures, cost $0.028107. Total spend of the run: about $0.03.
+   `evaluate --split dev --include-unreviewed` printed the 3 modes × {all, en, pl} table
+   (hybrid on `all`: recall@5 0.857, recall@10 0.963, MRR 0.772, over 9 evaluable queries)
+   and wrote the ignored `results/dev/dev-openai-text-embedding-3-small.json`.
+
 ### Manual (performed by the owner)
 
 1. Run the worker locally with the real `OPENROUTER_API_KEY` and Langfuse keys. The log
@@ -1031,14 +1071,14 @@ Record the outputs (counts, costs) under Deviations or the step notes.
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
       fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated (Stage 2 item 1 ticked); `docs/DECISIONS.md` rows 52 and 55
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated (Stage 2 item 1 ticked); `docs/DECISIONS.md` rows 52 and 55
       amended; `docs/BACKLOG.md` entries added; `docs/DEPLOYMENT.md` and `.env.example`
       updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -1116,7 +1156,38 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+- **Minor — boundary test written early.** `tests/test_module_boundaries.py` was created in
+  step 1 with all three tests, so `test_retrieval_imports_nothing_from_extraction` was red
+  in the commits of steps 1–3 and went green in step 4 as planned.
+- **Minor — `.env.example` path.** The file is `backend/.env.example` (the plan says
+  `.env.example`). `EMBEDDING_MODEL=` is an uncommented empty placeholder like `LLM_MODEL=`,
+  because `test_every_retrieval_setting_is_an_empty_placeholder` (like the extraction one)
+  requires every variable to appear as a placeholder line.
+- **Minor — `build_embedder` signature.** It takes an `EmbeddingConfig` (step 7's shape),
+  not `api_key, model`; it was switched in step 11.
+- **Minor — `RetrievalCliDeps.prices`.** An optional `prices: dict[str, Price] | None` field
+  was added to the CLI deps (plan: `engine, settings, make_embedder, clock, make_tracer,
+  make_chat_model`), so tests can inject a catalogue; `None` loads `prices.toml`.
+- **Minor — `--force` on `export-corpus`.** Like `build-queries`, it refuses to overwrite an
+  existing file unless `--force` is given (the plan names the flag only for `build-queries`).
+- **Minor — extra helpers.** `index_missing` takes `record_latency` (default false),
+  `pool()` takes `prices`, `prelabel` reports the corpus indexing and the query embeddings
+  through a small `CostTracer`, and the runner hides the query embeddings that `search` reuses
+  from its tracer, so each query embedding is traced once.
+- **Minor — test-first evidence.** Red records are in the matrix for the ACs whose proving
+  tests were written before a stub or before the code (AC1, AC3, AC4, AC6–AC8, AC11–AC15).
+  For the later steps (16–22) and for AC5, AC9, AC10, AC16–AC26 the tests were written in
+  the same step as the code and the module did not exist yet, so the first run failed on an
+  import error, which the skill does not count as red. AC5's proving test errors on the
+  missing column before the migration rather than failing an assertion.
+- **Minor — set v1 counts.** `build-queries` found 18 distinct (player, event type) pairs in
+  the 25 extracted events, so it wrote 15 English and 3 Polish event queries; the Polish
+  shortfall was filled with 7 Polish post queries (10 Polish in all, 40 queries in all).
+- **Follow-up for the owner.** `test_set_v1_committed_and_consistent` (as the plan gives it)
+  asserts that every judgement is `reviewed=false`, so it fails as soon as the owner's
+  `review` pass is committed; relax that one assertion in the commit that adds the reviewed
+  labels.
+
 
 ## Final review
 
