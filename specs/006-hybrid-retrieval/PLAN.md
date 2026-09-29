@@ -830,7 +830,7 @@ makes the product change. Run all commands from the repository root. `V` =
         - `test_prelabel_never_touches_public_tweet`.
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_labelling.py`
-- [ ] 21. **Review command (AC22).** `review [--queries] [--corpus] [--split dev|test]`
+- [x] 21. **Review command (AC22).** `review [--queries] [--corpus] [--split dev|test]`
       needs no database or key and never builds deps. It walks the queries with unreviewed
       judgements in file order. Per judgement it shows:
       - a progress line;
