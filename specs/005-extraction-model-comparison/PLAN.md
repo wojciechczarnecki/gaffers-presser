@@ -840,6 +840,8 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 - 2026-09-29 — implement (step 16, third escalation; the owner took the decision) — Question: the AC17 fallback `qwen/qwen3.8-flash` cannot be routed with `openai/gpt-6-luna` through OpenRouter's shared-parameter `models` fallback (no qwen endpoint accepts the forced `tool_choice`; `z-ai/glm-5.3-flash` fails too, its mandatory reasoning rejects `effort: none`). Decision: default `openai/gpt-6-luna`, fallback `google/gemini-3.1-flash-lite` (the best-ranked other candidate that works in the pair: 4 of 5 thresholds, test F1 0.883, 1.28 PLN a month). Add the pair-compatibility filter to AC17/AC18 and record it in ADR 0006. Also note in the report and ADR 0006: the projected monthly cost uses list prices from `prices.toml`, while OpenRouter's reported cost per call on the test split is lower than list for qwen (0.000061 vs 0.000199 USD), deepseek (0.000091 vs 0.000206) and glm (0.000103 vs 0.000203), and equal for luna, gemini and haiku.
 
+- 2026-09-29 — final review (report) — Question: which findings to fix. Decision: accepted F1 (blocker) and F2, F3, F4, F5, F6 (worth-fixing); rejected F7, F8, F9, F10, F11 (nit) and the 22 nit findings left out of the table.
+
 ## Review log
 
 ### 2026-09-29 — /pipeline:plan-review
