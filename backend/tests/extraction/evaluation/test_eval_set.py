@@ -9,6 +9,11 @@ def test_schema():
     assert all(case.text.strip() and case.author_handle for case in cases)
 
 
+def test_every_case_reviewed():
+    unreviewed = [case.id for case in load_cases(DEFAULT_CASES_PATH) if not case.reviewed]
+    assert unreviewed == []
+
+
 def test_composition():
     cases = load_cases(DEFAULT_CASES_PATH)
     players, _ = load_snapshot(DEFAULT_PLAYERS_PATH)

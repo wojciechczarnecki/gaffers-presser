@@ -596,7 +596,7 @@ Rules for every step in this group:
 - **Run names.** `<split>-p<prompt version>-<model slug>`, where the slug is the part after
   `/` (e.g. `dev-p2-gemini-3.1-flash-lite`). A repeat run appends `-r2`.
 
-- [ ] 12. **Gate and baseline figures (AC1, AC2, AC13).**
+- [x] 12. **Gate and baseline figures (AC1, AC2, AC13).**
       - Run the gate. If a case is unreviewed or the composition test fails → `RESULT:
         ESCALATE`, listing the failing rules; add nothing.
         - Add `test_every_case_reviewed` to `tests/extraction/evaluation/test_eval_set.py`
@@ -864,6 +864,10 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
 ### Run log
 
 _(filled in during Group 2: credits readings and spend per step)_
+
+| when | step | run-file total (USD) | credits: total / usage (USD) | note |
+|------|------|----------------------|------------------------------|------|
+| 2026-09-29 | 12 | 0.0000 | 5 / 3.3045 | starting reading; remaining 1.6955, ceiling for this spec 1.50 |
 
 ## Final review
 
