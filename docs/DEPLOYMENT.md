@@ -66,4 +66,5 @@ below; agents never touch production.
    Re-extraction and evaluation run from a shell with the production variables, or locally:
    `python -m app.extraction reextract --failed`, `python -m app.extraction prelabel`,
    `python -m app.extraction evaluate --split dev --model <OpenRouter model ID>`,
-   `python -m app.extraction compare-labels` (see the README's Development section).
+   `python -m app.extraction compare-labels`, `python -m app.extraction spend` (see the
+   README's Development section).
