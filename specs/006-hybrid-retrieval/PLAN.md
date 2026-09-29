@@ -484,7 +484,7 @@ makes the product change. Run all commands from the repository root. `V` =
           `test_every_retrieval_setting_is_an_empty_placeholder`.
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_config.py tests/test_env_example.py`
-- [ ] 8. **Retrieval tracing (AC18 base).**
+- [x] 8. **Retrieval tracing (AC18 base).**
       - `app/llm/tracing.py::make_client(tracing) -> Langfuse | None`.
       - `app/retrieval/tracing.py` defines `RetrievalTracer` (Protocol) with:
         - `embedding(*, model, texts, input_tokens, cost_usd)`;

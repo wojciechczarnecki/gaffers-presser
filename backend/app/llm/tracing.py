@@ -40,3 +40,11 @@ def flush(handler: CallbackHandler | None) -> None:
     if handler is None:
         return
     handler._langfuse_client.flush()
+
+
+def make_client(tracing: TracingConfig) -> Langfuse:
+    return Langfuse(
+        public_key=tracing.public_key.get_secret_value(),
+        secret_key=tracing.secret_key.get_secret_value(),
+        host=tracing.host,
+    )
