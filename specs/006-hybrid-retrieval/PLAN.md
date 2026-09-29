@@ -684,7 +684,7 @@ makes the product change. Run all commands from the repository root. `V` =
         - `test_vector_fails_clearly_when_embedding_fails`.
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_search.py tests/retrieval/test_fusion.py`
-- [ ] 15. **CLI `search` and search tracing (AC16, AC18).**
+- [x] 15. **CLI `search` and search tracing (AC16, AC18).**
       - `search QUERY [--mode hybrid|fulltext|vector] [--limit 10] [--since] [--until] [--exclude-reposts] [--exclude-replies] [--model] [--k 60] [--depth 50]`.
       - `--since`/`--until` accept `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM`, read as
         `Europe/Warsaw` (`zoneinfo`) and converted to UTC; an explicit offset is honoured.

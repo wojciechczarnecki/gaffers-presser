@@ -1,8 +1,9 @@
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC
+from datetime import UTC, datetime
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
 import typer
 from langchain_core.language_models import BaseChatModel
@@ -22,6 +23,7 @@ from app.retrieval.config import (
 )
 from app.retrieval.embedder import Embedder, build_embedder
 from app.retrieval.indexing import IndexingRuntime, index_missing
+from app.retrieval.search import Mode, SearchError, SearchFilters, search
 from app.retrieval.store import embedding_status
 from app.retrieval.tracing import RetrievalTracer, make_tracer
 
@@ -158,6 +160,96 @@ def status(
             f"latest embedding: {when} x_id={latest.x_id} model={latest.model} latency={latency}s"
         )
     typer.echo(f"total embedding cost: {state.total_cost_usd:.6f} USD")
+
+
+WARSAW = ZoneInfo("Europe/Warsaw")
+KEY_HINT = "OPENROUTER_API_KEY is not set; use --mode fulltext or set the key"
+
+
+def parse_warsaw(value: str, option: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        raise fail(f"{option} must be YYYY-MM-DD or YYYY-MM-DDTHH:MM") from None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=WARSAW)
+    return parsed.astimezone(UTC)
+
+
+def _warsaw(moment: datetime) -> str:
+    return moment.astimezone(WARSAW).strftime("%Y-%m-%d %H:%M")
+
+
+def _rank(rank: int | None) -> str:
+    return "-" if rank is None else str(rank)
+
+
+@app.command(name="search", help="Search posts by full text, vector similarity or both.")
+def search_command(
+    ctx: typer.Context,
+    query: Annotated[str, typer.Argument(help="The query text.")],
+    mode: Annotated[Mode, typer.Option("--mode", help="fulltext, vector or hybrid.")] = "hybrid",
+    limit: Annotated[int, typer.Option("--limit", min=1)] = 10,
+    since: Annotated[str | None, typer.Option("--since", help="Europe/Warsaw time.")] = None,
+    until: Annotated[str | None, typer.Option("--until", help="Europe/Warsaw time.")] = None,
+    exclude_reposts: Annotated[bool, typer.Option("--exclude-reposts")] = False,
+    exclude_replies: Annotated[bool, typer.Option("--exclude-replies")] = False,
+    model: Annotated[str | None, typer.Option("--model", help="Embedding model ID.")] = None,
+    k: Annotated[int, typer.Option("--k", min=0)] = 60,
+    depth: Annotated[int, typer.Option("--depth", min=1)] = 50,
+) -> None:
+    deps = get_deps(ctx)
+    filters = SearchFilters(
+        since=parse_warsaw(since, "--since") if since is not None else None,
+        until=parse_warsaw(until, "--until") if until is not None else None,
+        exclude_reposts=exclude_reposts,
+        exclude_replies=exclude_replies,
+    )
+    embedder = None
+    try:
+        prices = deps.prices if deps.prices is not None else load_prices()
+        if mode != "fulltext":
+            embedder = deps.make_embedder(model)
+    except CollectorError as exc:
+        message = str(exc)
+        raise fail(KEY_HINT if "OPENROUTER_API_KEY is not set" in message else message) from None
+    engine = db_engine(deps)
+    tracer = deps.make_tracer()
+    try:
+        response = search(
+            engine,
+            query,
+            mode,
+            embedder=embedder,
+            filters=filters,
+            limit=limit,
+            k=k,
+            depth=depth,
+            tracer=tracer,
+            prices=prices,
+        )
+    except SearchError as exc:
+        raise fail(str(exc)) from None
+    finally:
+        tracer.flush()
+
+    window = ""
+    if filters.since is not None:
+        window += f"  since {_warsaw(filters.since)}"
+    if filters.until is not None:
+        window += f"  until {_warsaw(filters.until)}"
+    typer.echo(f"mode: {response.mode}  model: {response.model or '-'}{window} (Europe/Warsaw)")
+    if response.failed_legs:
+        typer.echo("vector leg failed — full-text only")
+    if not response.results:
+        typer.echo("no results")
+    for number, result in enumerate(response.results, start=1):
+        typer.echo(
+            f"{number}. {result.score:.4f}  fts={_rank(result.ranks['fulltext'])}"
+            f"  vec={_rank(result.ranks['vector'])}  @{result.author_handle}"
+            f"  {_warsaw(result.created_at)}  {result.x_id}"
+        )
+        typer.echo(f"    {' '.join(result.text.split())}")
 
 
 def main() -> None:

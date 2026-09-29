@@ -152,3 +152,100 @@ def test_index_config_error_names_the_variable(db):
     result = _run(deps, "index")
     assert result.exit_code == 1
     assert "EMBEDDING_MODEL" in result.stderr
+
+
+def _seed_search(db):
+    add_tweet(db, 1, "Saka injury doubt", author="fabrizio", created_at=NOW - timedelta(hours=3))
+    add_tweet(db, 2, "Saka scores again", created_at=NOW - timedelta(hours=2))
+    add_tweet(db, 3, "Haaland hat-trick", created_at=NOW - timedelta(hours=1))
+    _run(_deps(db, {MODEL: FakeEmbedder(default=[1.0, 0.0, 0.0])}), "index")
+
+
+def test_search_prints_ranked_results_with_ranks(db):
+    _seed_search(db)
+    embedder = FakeEmbedder(default=[1.0, 0.0, 0.0])
+    result = _run(_deps(db, {MODEL: embedder}), "search", "saka injury")
+    assert result.exit_code == 0, result.output
+    lines = result.stdout.splitlines()
+    assert lines[0].startswith("mode: hybrid  model: fake/embed")
+    first = next(line for line in lines if line.startswith("1. "))
+    assert re.fullmatch(
+        r"1\. \d\.\d{4}  fts=\d+  vec=\d+  @\w+  \d{4}-\d\d-\d\d \d\d:\d\d  \d+", first
+    )
+    assert "    Saka injury doubt" in lines or "    Haaland hat-trick" in lines
+    assert any("fts=1" in line and "@fabrizio" in line for line in lines)
+
+
+def test_search_fulltext_shows_no_vector_rank(db):
+    _seed_search(db)
+    result = _run(_deps(db), "search", "haaland", "--mode", "fulltext")
+    assert "fts=1  vec=-" in result.stdout
+    assert result.stdout.splitlines()[0].startswith("mode: fulltext  model: -")
+
+
+def test_search_time_filters_in_warsaw_compared_in_utc(db):
+    # 22:30 UTC on 2026-09-30 is 00:30 on 2026-10-01 in Warsaw (UTC+2)
+    from datetime import UTC, datetime
+
+    add_tweet(db, 1, "Saka injury", created_at=datetime(2026, 9, 30, 22, 30, tzinfo=UTC))
+    kept = _run(_deps(db), "search", "saka", "--mode", "fulltext", "--since", "2026-10-01")
+    dropped = _run(_deps(db), "search", "saka", "--mode", "fulltext", "--until", "2026-10-01")
+    assert "2026-10-01 00:30" in kept.stdout
+    assert "no results" in dropped.stdout
+    assert "since 2026-10-01 00:00" in kept.stdout
+    explicit = _run(
+        _deps(db), "search", "saka", "--mode", "fulltext", "--since", "2026-09-30T22:31+00:00"
+    )
+    assert "no results" in explicit.stdout
+
+
+def test_search_rejects_a_malformed_time(db):
+    result = _run(_deps(db), "search", "saka", "--since", "yesterday")
+    assert result.exit_code == 1
+    assert "--since" in result.stderr
+
+
+def test_search_traced_with_query_mode_and_ids(db):
+    _seed_search(db)
+    tracer = RecordingTracer()
+    deps = _deps(db, {MODEL: FakeEmbedder(default=[1.0, 0.0, 0.0])}, tracer=tracer)
+    _run(deps, "search", "saka", "--mode", "hybrid")
+    (record,) = tracer.searches
+    assert (record["query"], record["mode"]) == ("saka", "hybrid")
+    assert set(record["ids_by_mode"]) == {"fulltext", "vector", "hybrid"}
+    assert set(record["ids_by_mode"]["fulltext"]) == {1, 2}
+    assert tracer.flushed == 1
+
+
+def test_vector_search_without_embeddings_fails_with_hint(db):
+    add_tweet(db, 1)
+    result = _run(_deps(db), "search", "saka", "--mode", "vector")
+    assert result.exit_code == 1
+    assert "no embeddings for model fake/embed" in result.stderr
+    assert "app.retrieval index" in result.stderr
+
+
+def test_fulltext_search_needs_no_key(db):
+    add_tweet(db, 1, "Saka injury")
+
+    def no_embedder(model):
+        raise ConfigError("OPENROUTER_API_KEY is not set")
+
+    deps = RetrievalCliDeps(**{**_deps(db).__dict__, "make_embedder": no_embedder})
+    ok = _run(deps, "search", "saka", "--mode", "fulltext")
+    assert ok.exit_code == 0, ok.output
+    assert "fts=1" in ok.stdout
+    hybrid = _run(deps, "search", "saka", "--mode", "hybrid")
+    assert hybrid.exit_code == 1
+    assert "OPENROUTER_API_KEY" in hybrid.stderr
+    assert "--mode fulltext" in hybrid.stderr
+
+
+def test_search_shows_a_failed_vector_leg(db):
+    _seed_search(db)
+    from tests.retrieval.fakes import AlwaysFailingEmbedder
+
+    deps = _deps(db, {MODEL: AlwaysFailingEmbedder()})
+    result = _run(deps, "search", "saka")
+    assert result.exit_code == 0
+    assert "vector leg failed — full-text only" in result.stdout
