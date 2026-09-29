@@ -1,7 +1,13 @@
 import pytest
 
 from app.extraction.evaluation.cases import ExpectedEvent
-from app.extraction.evaluation.metrics import CaseResult, compute_metrics, passes
+from app.extraction.evaluation.metrics import (
+    MAX_MONTHLY_COST_PLN,
+    CaseResult,
+    compute_metrics,
+    passes,
+    threshold_flags,
+)
 
 
 def ev(mention="Haaland", fpl_id=5, event_type="out", certainty="confirmed") -> ExpectedEvent:
@@ -198,3 +204,75 @@ def test_exact_edge_ratios_are_not_lost_to_float_error():
         CaseResult(expected=[], predicted=[]) for _ in range(19)
     ]
     assert run(empty).false_alarm_rate == 0.05
+
+
+def test_thresholds_passed_per_threshold():
+    ok = dict(f1=0.85, linking_accuracy=0.95, false_alarm_rate=0.05, monthly_cost_pln=5.0)
+    assert threshold_flags(**ok) == {
+        "f1": True,
+        "linking_accuracy": True,
+        "false_alarm_rate": True,
+        "monthly_cost": True,
+        "no_errored_cases": True,
+    }
+    assert threshold_flags(**{**ok, "f1": 0.849})["f1"] is False
+    assert threshold_flags(**{**ok, "linking_accuracy": 0.949})["linking_accuracy"] is False
+    assert threshold_flags(**{**ok, "false_alarm_rate": 0.051})["false_alarm_rate"] is False
+    assert threshold_flags(**{**ok, "monthly_cost_pln": 5.01})["monthly_cost"] is False
+    assert threshold_flags(**{**ok, "monthly_cost_pln": None})["monthly_cost"] is False
+    assert threshold_flags(**ok, errored_cases=1)["no_errored_cases"] is False
+    flags = threshold_flags(**{**ok, "f1": 0.5})
+    assert [name for name, value in flags.items() if not value] == ["f1"]
+    assert passes(**ok) is True
+    assert passes(**{**ok, "f1": 0.5}) is False
+
+
+def test_metrics_carry_thresholds_and_passes_is_their_conjunction():
+    metrics = run(
+        [CaseResult(expected=[ev()], predicted=[ev()], input_tokens=1, output_tokens=1, cost_usd=0)]
+    )
+    assert metrics.thresholds_passed["f1"] is True
+    assert metrics.passes is all(metrics.thresholds_passed.values())
+    over_budget = run([CaseResult(expected=[], predicted=[], cost_usd=1.0)], posts_per_month=1000)
+    assert over_budget.projected_monthly_cost_pln > MAX_MONTHLY_COST_PLN
+    assert over_budget.thresholds_passed["monthly_cost"] is False
+    assert over_budget.passes is False
+
+
+def test_mean_reasoning_tokens_and_reported_cost():
+    results = [
+        CaseResult(expected=[], predicted=[], reasoning_tokens=10, reported_cost_usd=0.001),
+        CaseResult(expected=[], predicted=[], reasoning_tokens=30, reported_cost_usd=0.003),
+        CaseResult(expected=[], predicted=[], error_class="RuntimeError"),
+    ]
+    metrics = run(results)
+    assert metrics.mean_reasoning_tokens == 20
+    assert metrics.mean_reported_cost_usd == pytest.approx(0.002)
+    assert metrics.total_reported_cost_usd == pytest.approx(0.004)
+
+
+def test_no_reasoning_tokens_gives_none():
+    metrics = run([CaseResult(expected=[], predicted=[])])
+    assert metrics.mean_reasoning_tokens is None
+    assert metrics.mean_reported_cost_usd is None
+
+
+def test_hosts_and_answered_models_counted():
+    results = [
+        CaseResult(expected=[], predicted=[], host="DeepInfra", answered_model="a/m"),
+        CaseResult(expected=[], predicted=[], host="DeepInfra", answered_model="a/m"),
+        CaseResult(expected=[], predicted=[], host="Together", answered_model="b/fallback"),
+        CaseResult(expected=[], predicted=[]),
+    ]
+    metrics = run(results)
+    assert metrics.hosts == {"DeepInfra": 2, "Together": 1}
+    assert metrics.answered_models == {"a/m": 2, "b/fallback": 1}
+
+
+def test_totals_sum_case_costs():
+    results = [
+        CaseResult(expected=[], predicted=[], cost_usd=0.25),
+        CaseResult(expected=[], predicted=[], cost_usd=0.5),
+        CaseResult(expected=[], predicted=[]),
+    ]
+    assert run(results).total_cost_usd == pytest.approx(0.75)

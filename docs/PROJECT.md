@@ -80,8 +80,10 @@ Grouped by roadmap stage (`docs/ROADMAP.md`).
 - **Budget:** external APIs ≤ **20 PLN/month** in total (LLM, embeddings, X data, e-mail).
   Hosting (the owner's existing Railway account) is budgeted separately.
 - **Language:** product content in Polish FPL slang; repository, code, docs in English.
-- **Swappability:** the tweet source, the LLM provider and the e-mail provider are adapters
-  behind interfaces; switching one is a configuration change.
+- **Swappability:** the tweet source and the e-mail provider are adapters behind interfaces;
+  switching one is a configuration change. The LLM is swapped by model through OpenRouter, the
+  only provider: a change of `LLM_MODEL` (a model outside the compared set needs a row in
+  `model_settings.toml` and `prices.toml`).
 - **Observability:** every LLM call is traced (inputs, outputs, tokens, cost, latency) from
   the first stage that calls an LLM.
 - **Evaluation:** every LLM step that produces data has an evaluation set before its
@@ -127,8 +129,9 @@ X (source ─►│ Tweet ingest    │────►│  (facts, posts,      �
   production on Railway (worker + PostgreSQL); no staging. Tests that need a database use a
   PostgreSQL container, also in CI.
 - **Models:** LLM and embeddings through provider APIs behind adapters; no local models in
-  production (memory cost). The default LLM is picked in the stage 1 spec by comparing
-  cheap models on the extraction evaluation set.
+  production (memory cost). The default LLM is picked in
+  [ADR 0006](adr/0006-default-extraction-model-openrouter.md) by comparing cheap models on the
+  extraction evaluation set.
 - Decisions and their rationale: `docs/DECISIONS.md` and `docs/adr/`.
 
 ## Risks

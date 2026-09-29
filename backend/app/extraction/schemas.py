@@ -47,15 +47,19 @@ class LinkedEvent:
 class Usage:
     input_tokens: int | None = None
     output_tokens: int | None = None
+    reasoning_tokens: int | None = None
+    reported_cost_usd: float | None = None
 
     def __add__(self, other: "Usage") -> "Usage":
         return Usage(
             input_tokens=_add_optional(self.input_tokens, other.input_tokens),
             output_tokens=_add_optional(self.output_tokens, other.output_tokens),
+            reasoning_tokens=_add_optional(self.reasoning_tokens, other.reasoning_tokens),
+            reported_cost_usd=_add_optional(self.reported_cost_usd, other.reported_cost_usd),
         )
 
 
-def _add_optional(a: int | None, b: int | None) -> int | None:
+def _add_optional[T: (int, float)](a: T | None, b: T | None) -> T | None:
     if a is None and b is None:
         return None
     return (a or 0) + (b or 0)
@@ -66,3 +70,6 @@ class FlowResult:
     events: list[LinkedEvent]
     usage: Usage
     llm_calls: int
+    answered_model: str | None = None
+    host: str | None = None
+    generation_id: str | None = None

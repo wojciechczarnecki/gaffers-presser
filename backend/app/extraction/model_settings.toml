@@ -1,0 +1,42 @@
+# Request settings per model, keyed by OpenRouter ID. Source: https://openrouter.ai/api/v1/models
+# (fields `reasoning` and `supported_parameters`), checked on the date in each row.
+#
+# reasoning_effort = the lowest level the model allows: `mandatory: false` -> "none";
+# `mandatory: true` -> the lowest of `supported_efforts`
+# (order: none < minimal < low < medium < high < xhigh < max).
+# temperature = the model lists `temperature` in `supported_parameters`.
+# structured_method (optional, default "function_calling") is set only when the dev baseline
+# shows that a model cannot answer by tool call.
+# A model missing here fails the worker on start: add a row here and one in prices.toml.
+
+["google/gemini-3.1-flash-lite"]
+reasoning_effort = "none"
+temperature = true
+checked = "2026-09-29"
+
+["openai/gpt-6-luna"]
+reasoning_effort = "none"
+temperature = false
+checked = "2026-09-29"
+
+["anthropic/claude-haiku-4.5"]
+reasoning_effort = "none"
+temperature = true
+checked = "2026-09-29"
+
+["deepseek/deepseek-v4-flash"]
+reasoning_effort = "none"
+temperature = true
+checked = "2026-09-29"
+
+["qwen/qwen3.8-flash"]
+reasoning_effort = "none"
+temperature = true
+checked = "2026-09-29"
+# no endpoint accepts a forced tool_choice under require_parameters (dev baseline, 2026-09-29)
+structured_method = "json_schema"
+
+["z-ai/glm-5.3-flash"]
+reasoning_effort = "low"
+temperature = true
+checked = "2026-09-29"

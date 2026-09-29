@@ -24,6 +24,11 @@ class FakeChatModel(BaseChatModel):
     """
 
     responses: list[Any]
+    response_model: str | None = None
+    host: str | None = None
+    reasoning_tokens: int | None = None
+    reported_cost: float | None = None
+    generation_id: str | None = None
 
     _index: int = PrivateAttr(default=0)
     _bound_tool_name: str | None = PrivateAttr(default=None)
@@ -73,18 +78,30 @@ class FakeChatModel(BaseChatModel):
         else:
             args = dict(response)
         tool_name = kwargs.get("_fake_tool_name") or self._bound_tool_name
+        usage_metadata: dict[str, Any] = {
+            "input_tokens": 10,
+            "output_tokens": 5,
+            "total_tokens": 15,
+        }
+        if self.reasoning_tokens is not None:
+            usage_metadata["output_token_details"] = {"reasoning": self.reasoning_tokens}
+        response_metadata: dict[str, Any] = {}
+        if self.host is not None:
+            response_metadata["provider"] = self.host
+        if self.reported_cost is not None:
+            response_metadata["cost"] = self.reported_cost
+        if self.generation_id is not None:
+            response_metadata["id"] = self.generation_id
         message = AIMessage(
             content="",
             tool_calls=[
                 {"name": tool_name, "args": args, "id": f"fake-{uuid.uuid4()}"},
             ],
-            usage_metadata={
-                "input_tokens": 10,
-                "output_tokens": 5,
-                "total_tokens": 15,
-            },
+            usage_metadata=usage_metadata,
+            response_metadata=response_metadata,
         )
-        return ChatResult(generations=[ChatGeneration(message=message)])
+        llm_output = {"model_name": self.response_model} if self.response_model else None
+        return ChatResult(generations=[ChatGeneration(message=message)], llm_output=llm_output)
 
 
 class RecordingHandler(BaseCallbackHandler):
@@ -156,5 +173,6 @@ class RecordingHandler(BaseCallbackHandler):
                 "run_id": run_id,
                 "parent_run_id": parent_run_id,
                 "usage": usage,
+                "llm_output": response.llm_output,
             }
         )

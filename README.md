@@ -102,20 +102,22 @@ measured, so Ctrl-C stops the run early and still prints the summary of what was
 
 Tweet extraction — a third loop inside the same worker turns every stored post into typed
 events (which player, out / doubt / benched / confirmed starter, how sure the author is),
-linked to FPL player IDs. Disabled unless `LLM_PROVIDER` is set; the worker then runs the FPL
-jobs and the tweet ingest exactly as above. Configuration (`backend/.env.example` has all
-ten): `LLM_PROVIDER` (`google` | `openai` | `anthropic` | `openrouter`), `LLM_MODEL`, the key
-of the chosen provider (`GOOGLE_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
-`OPENROUTER_API_KEY`), the optional Langfuse Cloud keys `LANGFUSE_PUBLIC_KEY` /
-`LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST` (without them extraction runs untraced) and
-`USD_PLN_RATE` (only `evaluate` reads it). `uv run python -m app.worker status` then also shows
-the model, the posts waiting, the failed posts and the latest extraction.
+linked to FPL player IDs. OpenRouter is the only LLM provider: extraction is disabled unless
+`OPENROUTER_API_KEY` is set, and the worker then runs the FPL jobs and the tweet ingest exactly as
+above. Configuration (`backend/.env.example` has all of it): `OPENROUTER_API_KEY`, the optional
+`LLM_MODEL` (an OpenRouter model ID) and `LLM_FALLBACK_MODEL` (empty means the defaults from
+[ADR 0006](docs/adr/0006-default-extraction-model-openrouter.md): `openai/gpt-6-luna` with the
+fallback `google/gemini-3.1-flash-lite`; a model needs a row in `backend/app/extraction/model_settings.toml` and `prices.toml`),
+the optional Langfuse Cloud keys `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST`
+(without them extraction runs untraced) and `USD_PLN_RATE` (only `evaluate` reads it).
+`uv run python -m app.worker status` then also shows the model, the fallback, the posts waiting,
+the failed posts and the latest extraction.
 
 ```bash
 uv run python -m app.extraction --help
 uv run python -m app.extraction reextract --x-id 123                 # one post
 uv run python -m app.extraction reextract --since 2026-09-25T00:00:00Z --until 2026-09-26T00:00:00Z
-uv run python -m app.extraction reextract --failed --provider openai --model <model>
+uv run python -m app.extraction reextract --failed --model google/gemini-3.1-flash-lite
 ```
 
 The evaluation set lives in `backend/evals/extraction/v1/` (`cases.jsonl` plus a snapshot of
@@ -133,17 +135,22 @@ run and `--id <case id>` reopens one case, reviewed or not. The commands, none o
 ```bash
 uv run python -m app.extraction snapshot-players --output evals/extraction/v1/players-2026-27.json
 uv run python -m app.extraction prelabel --output evals/extraction/v1/cases.jsonl \
-  --provider openai --model <model>          # appends candidates for posts not in the set yet
+  --model google/gemini-3.1-flash-lite       # appends candidates for posts not in the set yet
 uv run python -m app.extraction review --split test   # interactive; --id <case id> for one case
-uv run python -m app.extraction evaluate --split dev --provider openai --model <model>
-uv run python -m app.extraction evaluate --split test --provider google --model <model> \
-  --run-name gemini-test-1                   # needs USD_PLN_RATE; tune the prompt on dev only
+uv run python -m app.extraction spend             # total cost of every run file, dev included
+uv run python -m app.extraction compare-labels     # reviewed labels against the pre-labels (git rev dc02d98)
+uv run python -m app.extraction evaluate --split dev --model google/gemini-3.1-flash-lite
+uv run python -m app.extraction evaluate --split test --model openai/gpt-6-luna \
+  --run-name gpt-6-luna-test-1               # needs USD_PLN_RATE; tune the prompt on dev only
 ```
 
-`evaluate` writes `backend/evals/extraction/results/<run-name>.json` (precision, recall, F1,
-linking accuracy, false-alarm rate, certainty confusion table, latency, tokens, cost and the
-projected monthly cost in PLN) and traces the run in Langfuse under the run name. Prices for
-the cost figures come from `backend/app/extraction/prices.toml`.
+`evaluate` writes `backend/evals/extraction/results/<run-name>.json` for the test split and
+`backend/evals/extraction/results/dev/<run-name>.json` (gitignored) for dev runs. A file holds
+precision, recall, F1, linking accuracy, false-alarm rate, the certainty confusion table, latency,
+tokens (with reasoning tokens), cost, the serving hosts and the projected monthly cost in PLN, and
+the run is traced in Langfuse under the run name. Prices for the cost figures come from
+`backend/app/extraction/prices.toml`; `uv run python -m app.extraction spend` sums the cost of
+every run file under `results/`, dev runs included.
 
 The project is built with a spec-driven agentic workflow
 ([agentic-pipeline](https://github.com/wojciechczarnecki/agentic-pipeline)): every feature

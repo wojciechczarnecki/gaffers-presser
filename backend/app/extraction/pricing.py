@@ -25,7 +25,6 @@ def load_prices(path: Path = DEFAULT_PRICES_PATH) -> dict[str, Price]:
 
 
 def compute_cost(
-    provider: str,
     model: str,
     input_tokens: int | None,
     output_tokens: int | None,
@@ -33,7 +32,7 @@ def compute_cost(
 ) -> float | None:
     if input_tokens is None or output_tokens is None:
         return None
-    price = prices.get(f"{provider}:{model}")
+    price = prices.get(model)
     if price is None:
         return None
     return (

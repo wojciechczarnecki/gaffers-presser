@@ -1,5 +1,6 @@
 import json
 import re
+import subprocess
 import threading
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
@@ -15,7 +16,20 @@ from app.core.errors import CollectorError, ConfigError
 from app.core.settings import ExtractionSettings, load_extraction_settings, load_settings
 from app.db.engine import make_engine
 from app.extraction.config import resolve_llm, resolve_tracing
-from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
+from app.extraction.evaluation.cases import (
+    EvalCase,
+    ExpectedEvent,
+    load_cases,
+    parse_cases,
+    write_cases,
+)
+from app.extraction.evaluation.compare import compare_sets
+from app.extraction.evaluation.metrics import (
+    MAX_FALSE_ALARM_RATE,
+    MAX_MONTHLY_COST_PLN,
+    MIN_F1,
+    MIN_LINKING_ACCURACY,
+)
 from app.extraction.evaluation.review import (
     PlayerDirectory,
     case_to_json,
@@ -27,6 +41,7 @@ from app.extraction.evaluation.review import (
 )
 from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.flow import PROMPT_VERSION, build_flow
+from app.extraction.generation import HostLookup
 from app.extraction.linking import PlayerIndex, load_aliases, load_players, load_snapshot
 from app.extraction.providers import ChatModelSpec, build_chat_model
 from app.extraction.service import (
@@ -42,7 +57,7 @@ from app.worker.loop import SystemClock
 
 app = typer.Typer(add_completion=False, no_args_is_help=True, help="The extraction toolkit.")
 
-BuildSpec = Callable[[str | None, str | None], ChatModelSpec]
+BuildSpec = Callable[..., ChatModelSpec]
 
 
 @app.callback()
@@ -63,16 +78,25 @@ class ExtractionCliDeps:
     settings: ExtractionSettings
     build_spec: BuildSpec
     clock: Clock
+    host_lookup: Callable[[], Callable[[str], str | None] | None] = lambda: None
 
 
 def build_spec_from_settings(settings: ExtractionSettings) -> BuildSpec:
-    def build_spec(provider: str | None, model: str | None) -> ChatModelSpec:
-        config = resolve_llm(settings, provider, model)
+    def build_spec(model: str | None, *, fallback: bool) -> ChatModelSpec:
+        config = resolve_llm(settings, model, use_fallback=fallback)
         if config is None:
-            raise ConfigError("LLM_PROVIDER must be set")
+            raise ConfigError("OPENROUTER_API_KEY must be set")
         return build_chat_model(config)
 
     return build_spec
+
+
+def host_lookup_from_settings(
+    settings: ExtractionSettings,
+) -> Callable[[str], str | None] | None:
+    if settings.openrouter_api_key is None:
+        return None
+    return HostLookup(settings.openrouter_api_key)
 
 
 def db_engine(deps: ExtractionCliDeps) -> Engine:
@@ -104,6 +128,7 @@ def _deps_from_settings() -> ExtractionCliDeps:
         settings=settings,
         build_spec=build_spec_from_settings(settings),
         clock=SystemClock(),
+        host_lookup=lambda: host_lookup_from_settings(settings),
     )
 
 
@@ -114,14 +139,13 @@ def _parse_iso(value: str) -> datetime:
     return parsed
 
 
-@app.command(help="Re-extract posts, optionally with another provider/model.")
+@app.command(help="Re-extract posts, optionally with another model.")
 def reextract(
     ctx: typer.Context,
     x_id: int | None = typer.Option(None, "--x-id"),
     since: str | None = typer.Option(None, "--since"),
     until: str | None = typer.Option(None, "--until"),
     failed: bool = typer.Option(False, "--failed"),
-    provider: str | None = typer.Option(None, "--provider"),
     model: str | None = typer.Option(None, "--model"),
 ) -> None:
     deps = get_deps(ctx)
@@ -133,7 +157,7 @@ def reextract(
         raise fail("--since and --until must be given together")
 
     try:
-        spec = deps.build_spec(provider, model)
+        spec = deps.build_spec(model, fallback=True)
         prices, aliases = load_reference_files()
     except CollectorError as exc:
         raise fail(str(exc)) from None
@@ -220,13 +244,12 @@ def prelabel(
     since: str | None = typer.Option(None, "--since"),
     until: str | None = typer.Option(None, "--until"),
     limit: int | None = typer.Option(None, "--limit"),
-    provider: str | None = typer.Option(None, "--provider"),
     model: str | None = typer.Option(None, "--model"),
     eval_set: Annotated[Path | None, typer.Option("--eval-set")] = None,
 ) -> None:
     deps = get_deps(ctx)
     try:
-        spec = deps.build_spec(provider, model)
+        spec = deps.build_spec(model, fallback=False)
     except CollectorError as exc:
         raise fail(str(exc)) from None
 
@@ -292,20 +315,26 @@ EVALS_DIR = Path(__file__).resolve().parents[2] / "evals" / "extraction"
 DEFAULT_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
 DEFAULT_PLAYERS_PATH = EVALS_DIR / "v1" / "players-2026-27.json"
 DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
+THRESHOLD_LABELS = {
+    "f1": f"f1 >= {MIN_F1:g}",
+    "linking_accuracy": f"linking accuracy >= {MIN_LINKING_ACCURACY:g}",
+    "false_alarm_rate": f"false alarm rate <= {MAX_FALSE_ALARM_RATE:g}",
+    "monthly_cost": f"monthly cost <= {MAX_MONTHLY_COST_PLN:g} PLN",
+    "no_errored_cases": "no errored case",
+}
 RUN_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9._-]*")
 
 
-@app.command(help="Evaluate a provider and model on a split of the evaluation set.")
+@app.command(help="Evaluate a model on a split of the evaluation set.")
 def evaluate(
     ctx: typer.Context,
     split: Annotated[str, typer.Option("--split")],
-    provider: str | None = typer.Option(None, "--provider"),
     model: str | None = typer.Option(None, "--model"),
     run_name: str | None = typer.Option(None, "--run-name"),
     posts_per_month: float = typer.Option(1050.0, "--posts-per-month"),
     cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
     players_path: Annotated[Path, typer.Option("--players")] = DEFAULT_PLAYERS_PATH,
-    output_dir: Annotated[Path, typer.Option("--output-dir")] = DEFAULT_RESULTS_DIR,
+    output_dir: Annotated[Path | None, typer.Option("--output-dir")] = None,
 ) -> None:
     deps = get_deps(ctx)
 
@@ -323,7 +352,7 @@ def evaluate(
         raise fail("--run-name may hold only letters, digits, '.', '_' and '-'")
 
     try:
-        spec = deps.build_spec(provider, model)
+        spec = deps.build_spec(model, fallback=False)
     except CollectorError as exc:
         raise fail(str(exc)) from None
 
@@ -332,6 +361,7 @@ def evaluate(
     player_aliases, team_aliases = load_aliases()
     index = PlayerIndex(players, teams, player_aliases, team_aliases)
     handler = make_handler(resolve_tracing(deps.settings))
+    host_lookup = deps.host_lookup()
     try:
         report = run_evaluation(
             selected,
@@ -343,10 +373,15 @@ def evaluate(
             clock=deps.clock,
             posts_per_month=posts_per_month,
             usd_pln_rate=usd_pln_rate,
+            host_lookup=host_lookup,
         )
     finally:
         flush(handler)
+        close = getattr(host_lookup, "close", None)
+        if close is not None:
+            close()
 
+    output_dir = output_dir or default_output_dir(split)
     output_dir.mkdir(parents=True, exist_ok=True)
     result_path = output_dir / f"{name}.json"
     result_path.write_text(json.dumps(report.to_json_dict(), ensure_ascii=False, indent=1) + "\n")
@@ -360,10 +395,49 @@ def evaluate(
     typer.echo(f"certainty accuracy: {m.certainty_accuracy:.3f}")
     typer.echo(f"latency p50/p95: {_fmt(m.latency_p50_seconds)} / {_fmt(m.latency_p95_seconds)} s")
     typer.echo(f"mean tokens in/out: {_fmt(m.mean_input_tokens)} / {_fmt(m.mean_output_tokens)}")
+    typer.echo(f"mean reasoning tokens: {_fmt(m.mean_reasoning_tokens)}")
     typer.echo(f"mean cost per post: {_fmt(m.mean_cost_usd, 6)} USD")
+    typer.echo(f"mean reported cost per post: {_fmt(m.mean_reported_cost_usd, 6)} USD")
+    hosts = ", ".join(f"{host} {count}" for host, count in sorted(m.hosts.items())) or "n/a"
+    typer.echo(f"serving hosts: {hosts}")
     typer.echo(f"projected monthly cost: {_fmt(m.projected_monthly_cost_pln, 2)} PLN")
+    for threshold, label in THRESHOLD_LABELS.items():
+        typer.echo(f"{label}: {'yes' if m.thresholds_passed[threshold] else 'no'}")
     typer.echo(f"passes thresholds: {'yes' if m.passes else 'no'}")
     typer.echo(f"results: {result_path}")
+
+
+def default_output_dir(split: str) -> Path:
+    # Dev runs are working iterations: results/dev/ is gitignored.
+    return DEFAULT_RESULTS_DIR / "dev" if split == "dev" else DEFAULT_RESULTS_DIR
+
+
+def _run_total(data: dict, metrics_key: str, case_key: str) -> float:
+    total = data.get("metrics", {}).get(metrics_key)
+    if total is not None:
+        return total
+    return sum(c.get(case_key) or 0.0 for c in data.get("case_results", []))
+
+
+@app.command(help="Sum the cost of every evaluation run file under the results directory.")
+def spend(
+    results_dir: Annotated[Path, typer.Option("--results-dir")] = DEFAULT_RESULTS_DIR,
+) -> None:
+    # Needs no database and no LLM key, so it never builds ExtractionCliDeps.
+    total = 0.0
+    total_reported = 0.0
+    for path in sorted(results_dir.rglob("*.json")):
+        data = json.loads(path.read_text())
+        cost = _run_total(data, "total_cost_usd", "cost_usd")
+        reported = _run_total(data, "total_reported_cost_usd", "reported_cost_usd")
+        total += cost
+        total_reported += reported
+        typer.echo(
+            f"{data.get('run_name', path.stem)}  {data.get('split')}  {data.get('model')}  "
+            f"{data.get('cases')} cases  {cost:.4f} USD  {reported:.4f} USD reported"
+        )
+    typer.echo(f"total cost: {total:.4f} USD (prices.toml)")
+    typer.echo(f"total reported cost: {total_reported:.4f} USD (OpenRouter)")
 
 
 def _fmt(value: float | None, digits: int = 2) -> str:
@@ -371,8 +445,57 @@ def _fmt(value: float | None, digits: int = 2) -> str:
 
 
 def _default_run_name(split: str, spec: ChatModelSpec, now: datetime) -> str:
-    raw = f"{split}-{spec.provider}-{spec.model}-{now:%Y%m%dT%H%M}"
+    raw = f"{split}-{spec.model}-{now:%Y%m%dT%H%M}"
     return re.sub(r"[^A-Za-z0-9._-]+", "-", raw)
+
+
+DEFAULT_BASELINE_REVISION = "dc02d98"
+
+
+def _read_baseline(cases_path: Path, revision: str) -> list[EvalCase]:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(cases_path.parent), "show", f"{revision}:./{cases_path.name}"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (subprocess.CalledProcessError, OSError):
+        raise fail(f"cannot read {cases_path.name} at revision {revision}") from None
+    return parse_cases(completed.stdout)
+
+
+@app.command(
+    "compare-labels", help="Compare the reviewed set with the pre-labelled set at a revision."
+)
+def compare_labels(
+    cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
+    revision: Annotated[str, typer.Option("--revision")] = DEFAULT_BASELINE_REVISION,
+    baseline_path: Annotated[
+        Path | None, typer.Option("--baseline", help="A cases file instead of a git revision.")
+    ] = None,
+) -> None:
+    # Needs no database and no LLM key, so it never builds ExtractionCliDeps.
+    reviewed = load_cases(cases_path)
+    baseline = load_cases(baseline_path) if baseline_path else _read_baseline(cases_path, revision)
+    for comparison in compare_sets(reviewed, baseline):
+        by_field = ", ".join(f"{k} {v}" for k, v in comparison.relabelled_by_field.items())
+        typer.echo(f"split {comparison.split}")
+        typer.echo(f"  cases: {comparison.cases}")
+        typer.echo(f"  cases changed: {comparison.cases_changed}")
+        typer.echo(
+            "  events added / removed / relabelled: "
+            f"{comparison.added} / {comparison.removed} / {comparison.relabelled}"
+        )
+        typer.echo(f"  relabelled by field: {by_field}")
+        typer.echo(
+            f"  ids only in the reviewed set: {', '.join(comparison.only_in_reviewed) or '-'}"
+        )
+        typer.echo(f"  ids only in the baseline: {', '.join(comparison.only_in_baseline) or '-'}")
+        typer.echo(
+            "  pre-labels precision / recall / f1: "
+            f"{comparison.precision:.3f} / {comparison.recall:.3f} / {comparison.f1:.3f}"
+        )
 
 
 REVIEW_ACTIONS = "[a]ccept  [e]dit  [f]ind player  [s]kip  [q]uit"

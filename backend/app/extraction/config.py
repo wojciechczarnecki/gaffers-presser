@@ -4,32 +4,22 @@ from pydantic import SecretStr
 
 from app.core.errors import ConfigError
 from app.core.settings import ExtractionSettings
+from app.extraction.model_settings import ModelSettings, load_model_settings, pair_compatible
 
-PROVIDERS: tuple[str, ...] = ("google", "openai", "anthropic", "openrouter")
+PROVIDER = "openrouter"
 
-_KEY_FIELD_BY_PROVIDER = {
-    "google": "google_api_key",
-    "openai": "openai_api_key",
-    "anthropic": "anthropic_api_key",
-    "openrouter": "openrouter_api_key",
-}
-
-_KEY_VARIABLE_BY_PROVIDER = {
-    "google": "GOOGLE_API_KEY",
-    "openai": "OPENAI_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-    "openrouter": "OPENROUTER_API_KEY",
-}
-
-# Filled in by step 22 (ADR 0006): provider -> default model used when LLM_MODEL is empty.
-DEFAULT_MODEL_BY_PROVIDER: dict[str, str] = {}
+# Chosen in ADR 0006 from the test-split runs (selection rule of SPEC 005, AC17/AC18).
+DEFAULT_MODEL = "openai/gpt-6-luna"
+DEFAULT_FALLBACK_MODEL = "google/gemini-3.1-flash-lite"
 
 
 @dataclass(frozen=True)
 class LlmConfig:
-    provider: str
     model: str
+    fallback_model: str | None
     api_key: SecretStr
+    settings: ModelSettings
+    fallback_settings: ModelSettings | None
 
 
 @dataclass(frozen=True)
@@ -39,35 +29,61 @@ class TracingConfig:
     host: str
 
 
+def _catalogue_row(catalogue: dict[str, ModelSettings], model: str, variable: str) -> ModelSettings:
+    row = catalogue.get(model)
+    if row is None:
+        raise ConfigError(f"{variable} names a model with no entry in model_settings.toml")
+    return row
+
+
 def resolve_llm(
     settings: ExtractionSettings,
-    provider: str | None = None,
     model: str | None = None,
+    use_fallback: bool = True,
+    catalogue: dict[str, ModelSettings] | None = None,
 ) -> LlmConfig | None:
-    effective_provider = provider if provider is not None else settings.llm_provider
-    if not effective_provider:
+    if settings.openrouter_api_key is None:
         return None
-    if effective_provider not in PROVIDERS:
-        raise ConfigError(f"LLM_PROVIDER must be one of: {', '.join(PROVIDERS)}")
-    key_field = _KEY_FIELD_BY_PROVIDER[effective_provider]
-    api_key = getattr(settings, key_field)
-    if not api_key:
-        variable = _KEY_VARIABLE_BY_PROVIDER[effective_provider]
-        raise ConfigError(f"{variable} must be set for LLM_PROVIDER={effective_provider}")
-    provider_overridden = provider is not None and provider != settings.llm_provider
-    if model is not None:
-        effective_model = model
-    elif provider_overridden:
-        effective_model = DEFAULT_MODEL_BY_PROVIDER.get(effective_provider, "")
-        if not effective_model:
-            raise ConfigError("--model must be given with --provider")
+    if catalogue is None:
+        try:
+            catalogue = load_model_settings()
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise ConfigError(
+                f"model_settings.toml cannot be loaded: {type(exc).__name__}"
+            ) from None
+
+    if model:
+        primary, primary_variable = model, "--model"
+    elif settings.llm_model:
+        primary, primary_variable = settings.llm_model, "LLM_MODEL"
     else:
-        effective_model = settings.llm_model or DEFAULT_MODEL_BY_PROVIDER.get(
-            effective_provider, ""
-        )
-    if not effective_model:
-        raise ConfigError("LLM_MODEL must be set")
-    return LlmConfig(provider=effective_provider, model=effective_model, api_key=api_key)
+        primary, primary_variable = DEFAULT_MODEL, "DEFAULT_MODEL"
+    primary_row = _catalogue_row(catalogue, primary, primary_variable)
+
+    fallback: str | None = None
+    fallback_row: ModelSettings | None = None
+    if use_fallback:
+        if settings.llm_fallback_model:
+            candidate, fallback_variable = settings.llm_fallback_model, "LLM_FALLBACK_MODEL"
+        else:
+            candidate, fallback_variable = DEFAULT_FALLBACK_MODEL, "DEFAULT_FALLBACK_MODEL"
+        if candidate and candidate != primary:
+            candidate_row = _catalogue_row(catalogue, candidate, fallback_variable)
+            if pair_compatible(primary, candidate, catalogue):
+                fallback, fallback_row = candidate, candidate_row
+            elif fallback_variable == "LLM_FALLBACK_MODEL":
+                raise ConfigError(
+                    "LLM_FALLBACK_MODEL cannot answer for the primary model: their"
+                    " structured_method or reasoning_effort in model_settings.toml differ"
+                )
+
+    return LlmConfig(
+        model=primary,
+        fallback_model=fallback,
+        api_key=settings.openrouter_api_key,
+        settings=primary_row,
+        fallback_settings=fallback_row,
+    )
 
 
 def resolve_tracing(settings: ExtractionSettings) -> TracingConfig | None:

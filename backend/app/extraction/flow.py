@@ -38,6 +38,9 @@ class FlowState(TypedDict):
     events: list[LinkedEvent]
     usage: Usage
     llm_calls: int
+    answered_model: str | None
+    host: str | None
+    generation_id: str | None
 
 
 def _render_post(post: PostInput) -> str:
@@ -79,9 +82,24 @@ def _render_disambiguation(
 
 def _usage_from_raw(raw: Any) -> Usage:
     usage_metadata = getattr(raw, "usage_metadata", None) or {}
+    response_metadata = getattr(raw, "response_metadata", None) or {}
+    output_details = usage_metadata.get("output_token_details") or {}
     return Usage(
         input_tokens=usage_metadata.get("input_tokens"),
         output_tokens=usage_metadata.get("output_tokens"),
+        reasoning_tokens=output_details.get("reasoning"),
+        reported_cost_usd=response_metadata.get("cost"),
+    )
+
+
+def _answer_from_raw(raw: Any) -> tuple[str | None, str | None, str | None]:
+    response_metadata = getattr(raw, "response_metadata", None) or {}
+    # The pinned SDK's ChatResult drops `provider`, so the host comes from the generation lookup;
+    # the read stays so a client that keeps the field skips that lookup (runner._with_host).
+    return (
+        response_metadata.get("model_name"),
+        response_metadata.get("provider"),
+        response_metadata.get("id"),
     )
 
 
@@ -96,10 +114,18 @@ class Flow:
             "events": [],
             "usage": Usage(),
             "llm_calls": 0,
+            "answered_model": None,
+            "host": None,
+            "generation_id": None,
         }
         result = self._graph.invoke(state, config=config)
         return FlowResult(
-            events=result["events"], usage=result["usage"], llm_calls=result["llm_calls"]
+            events=result["events"],
+            usage=result["usage"],
+            llm_calls=result["llm_calls"],
+            answered_model=result["answered_model"],
+            host=result["host"],
+            generation_id=result["generation_id"],
         )
 
 
@@ -116,7 +142,15 @@ def build_flow(spec: ChatModelSpec, index: PlayerIndex) -> Flow:
             reason = type(parsing_error).__name__ if parsing_error else "no parsed result"
             raise ExtractionOutputError(f"extraction output failed validation: {reason}")
         usage = state["usage"] + _usage_from_raw(result["raw"])
-        return {"extracted": result["parsed"], "usage": usage, "llm_calls": state["llm_calls"] + 1}
+        answered_model, host, generation_id = _answer_from_raw(result["raw"])
+        return {
+            "extracted": result["parsed"],
+            "usage": usage,
+            "llm_calls": state["llm_calls"] + 1,
+            "answered_model": answered_model,
+            "host": host,
+            "generation_id": generation_id,
+        }
 
     def link_node(state: FlowState) -> dict[str, Any]:
         extracted = state["extracted"]

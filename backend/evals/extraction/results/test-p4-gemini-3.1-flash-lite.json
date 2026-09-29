@@ -1,0 +1,2246 @@
+{
+ "run_name": "test-p4-gemini-3.1-flash-lite",
+ "provider": "openrouter",
+ "model": "google/gemini-3.1-flash-lite",
+ "prompt_version": "extraction@4+link_disambiguation@1",
+ "split": "test",
+ "structured_method": "function_calling",
+ "reasoning_effort": "none",
+ "temperature": true,
+ "cases": 91,
+ "errored_cases": 0,
+ "metrics": {
+  "cases": 91,
+  "errored_cases": 0,
+  "precision": 0.8032786885245902,
+  "recall": 0.98,
+  "f1": 0.8828828828828829,
+  "linking_accuracy": 0.98,
+  "linking_paired": 50,
+  "false_alarm_rate": 0.09090909090909091,
+  "certainty_accuracy": 0.7755102040816326,
+  "certainty_confusion": {
+   "confirmed": {
+    "confirmed": 26,
+    "likely": 2,
+    "rumour": 0
+   },
+   "likely": {
+    "confirmed": 9,
+    "likely": 6,
+    "rumour": 0
+   },
+   "rumour": {
+    "confirmed": 0,
+    "likely": 0,
+    "rumour": 6
+   }
+  },
+  "latency_p50_seconds": 0.9801760519912932,
+  "latency_p95_seconds": 1.7028856970136985,
+  "mean_input_tokens": 1082.6813186813188,
+  "mean_output_tokens": 30.208791208791208,
+  "mean_cost_usd": 0.0003159835164835165,
+  "projected_monthly_cost_pln": 1.2773633653846155,
+  "posts_per_month": 1050.0,
+  "usd_pln_rate": 3.85,
+  "passes": false,
+  "mean_reasoning_tokens": 0.0,
+  "mean_reported_cost_usd": 0.0003159835164835165,
+  "total_cost_usd": 0.0287545,
+  "total_reported_cost_usd": 0.0287545,
+  "hosts": {
+   "Google": 91
+  },
+  "answered_models": {
+   "google/gemini-3.1-flash-lite": 91
+  },
+  "thresholds_passed": {
+   "f1": true,
+   "linking_accuracy": true,
+   "false_alarm_rate": false,
+   "monthly_cost": true,
+   "no_errored_cases": true
+  }
+ },
+ "case_results": [
+  {
+   "id": "2103436877860593885",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1420061179960612,
+   "input_tokens": 1043,
+   "output_tokens": 35,
+   "cost_usd": 0.00031325,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00031325,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686642-OMYc2JXLJOunoiojhEQX",
+   "expected": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2103809666761531519",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9265408520004712,
+   "input_tokens": 1021,
+   "output_tokens": 57,
+   "cost_usd": 0.00034075,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00034075,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686643-bkiOWkKUtzYtVJwyrjQY",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Hemp",
+     "fpl_id": null,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2103820653937709564",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9010837259993423,
+   "input_tokens": 1078,
+   "output_tokens": 12,
+   "cost_usd": 0.0002875,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002875,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686644-hU0mHcupg56OBxhiWHlB",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103821706699612219",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0701791750034317,
+   "input_tokens": 1034,
+   "output_tokens": 12,
+   "cost_usd": 0.0002765,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002765,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686645-8aZZ1Stz1EG1nIs8PjaR",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103848750057660918",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9860602649860084,
+   "input_tokens": 1037,
+   "output_tokens": 12,
+   "cost_usd": 0.00027725,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027725,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686646-jBRDLxjoXp9ejiijctUn",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103849740454539308",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.5846772390068509,
+   "input_tokens": 1422,
+   "output_tokens": 12,
+   "cost_usd": 0.0003735,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0003735,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686647-9Bdb0pglHpSH5Q2Bm11S",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103850171758997676",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8665517370100133,
+   "input_tokens": 1228,
+   "output_tokens": 12,
+   "cost_usd": 0.000325,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000325,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686648-KGNqDXsHLMD0Gv3ZlSdU",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103851583297712216",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8935435449820943,
+   "input_tokens": 1070,
+   "output_tokens": 38,
+   "cost_usd": 0.00032450000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0003245,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686649-ku6uY798qK7N8UfdoUJP",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Rayan Ait-Nouri",
+     "fpl_id": 392,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2103854250623201316",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.4454145499912556,
+   "input_tokens": 1088,
+   "output_tokens": 12,
+   "cost_usd": 0.00029,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00029,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686649-kvi5ASxIdRD9I6uUVrfk",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103859019479953476",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8569750979950186,
+   "input_tokens": 1282,
+   "output_tokens": 12,
+   "cost_usd": 0.0003385,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0003385,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686651-tEjMp5OkntKrNbBk4i6b",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103859072168800725",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.833184451010311,
+   "input_tokens": 1145,
+   "output_tokens": 12,
+   "cost_usd": 0.00030425,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00030425,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686652-edSBa48XAStcH4TVto4X",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103881423497408975",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8929584529832937,
+   "input_tokens": 1062,
+   "output_tokens": 12,
+   "cost_usd": 0.0002835,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002835,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686653-BVT4ehsvjVDZTXeoVMuq",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103893055723982873",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8033701179956552,
+   "input_tokens": 1069,
+   "output_tokens": 12,
+   "cost_usd": 0.00028525,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028525,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686653-NEfXRFMHROzPVfDQFIdn",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103903694412710319",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.065578142995946,
+   "input_tokens": 1046,
+   "output_tokens": 12,
+   "cost_usd": 0.0002795,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002795,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686654-2x1ZBo9BnmIfqxU531dO",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103911402478125345",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.7670960609975737,
+   "input_tokens": 1070,
+   "output_tokens": 12,
+   "cost_usd": 0.0002855,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002855,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686655-QuGrZb9SI1MZyvbAGsqg",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103916008239161523",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.676862741005607,
+   "input_tokens": 1077,
+   "output_tokens": 12,
+   "cost_usd": 0.00028725,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028725,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686656-ktB92j0KBS4DUyuJWfz3",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103923861641105679",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.5296237880247645,
+   "input_tokens": 1102,
+   "output_tokens": 12,
+   "cost_usd": 0.0002935,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002935,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686657-mjZsIXFkr9PqXRblbJdB",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103939538213032046",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.7552671479934361,
+   "input_tokens": 1029,
+   "output_tokens": 12,
+   "cost_usd": 0.00027525,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027525,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686658-9DNeWsmSx94Ci0ntGZ26",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103955750015905855",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.7550701229774859,
+   "input_tokens": 1069,
+   "output_tokens": 12,
+   "cost_usd": 0.00028525,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028525,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686659-ceT2lueu4VCzcoXePswY",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103958805142978873",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0638437739980873,
+   "input_tokens": 1032,
+   "output_tokens": 12,
+   "cost_usd": 0.000276,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000276,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686660-D4KUTxU06GrAc4QtMlh2",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104101438649729388",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.330025231000036,
+   "input_tokens": 1036,
+   "output_tokens": 12,
+   "cost_usd": 0.000277,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000277,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686661-HVzUMSVVK8gaFpn7E2W2",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104113395599335907",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.7417418390105013,
+   "input_tokens": 1075,
+   "output_tokens": 12,
+   "cost_usd": 0.00028675,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028675,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686662-LPuVurlHpX8ITJFYScd1",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104118871305105417",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8074674390081782,
+   "input_tokens": 1087,
+   "output_tokens": 12,
+   "cost_usd": 0.00028975,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028975,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686663-SR4TRonoG4ZrZjdQlPZj",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104124182170566816",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.5544644530164078,
+   "input_tokens": 1133,
+   "output_tokens": 36,
+   "cost_usd": 0.00033725,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00033725,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686664-1Q8Au3ui3CsyzFCDc935",
+   "expected": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "2104125409809879545",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.7672235689824447,
+   "input_tokens": 1119,
+   "output_tokens": 41,
+   "cost_usd": 0.00034125,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00034125,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686665-f4NNuFINvprH6W9vw4tI",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Lewis Hall",
+     "fpl_id": 449,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104128254106050686",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.6641643200127874,
+   "input_tokens": 1040,
+   "output_tokens": 12,
+   "cost_usd": 0.000278,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000278,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686666-8tP76SDAnIX7biTNHxyu",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104135413397082285",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.959963464003522,
+   "input_tokens": 1064,
+   "output_tokens": 12,
+   "cost_usd": 0.000284,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000284,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686667-SDNYMmdAONmDMWduAzDk",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104136860088103347",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8309269900200889,
+   "input_tokens": 1043,
+   "output_tokens": 12,
+   "cost_usd": 0.00027875,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027875,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686668-vvxMa3nRCpyq3Bdp2ZGg",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104142752036581744",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0689602030033711,
+   "input_tokens": 1032,
+   "output_tokens": 12,
+   "cost_usd": 0.000276,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000276,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686669-HscjGCXwUcjA5X4Lhhup",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104148975821443236",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0234599910036195,
+   "input_tokens": 1043,
+   "output_tokens": 12,
+   "cost_usd": 0.00027875,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027875,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686670-a10MkcPR3xw5LqByz5wI",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104158837540622748",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.896312244993169,
+   "input_tokens": 1672,
+   "output_tokens": 271,
+   "cost_usd": 0.0008244999999999999,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0008244999999999999,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686671-WbXbgRFXZ6VsnFwNehs8",
+   "expected": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Brobbey",
+     "fpl_id": 552,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Ballard",
+     "fpl_id": 532,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Joao Pedro",
+     "fpl_id": 165,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Pedro Porro",
+     "fpl_id": 499,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Brobbey",
+     "fpl_id": 552,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Ballard",
+     "fpl_id": 532,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Joao Pedro",
+     "fpl_id": null,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Pedro Porro",
+     "fpl_id": 499,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104169958418547163",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.5081191799836233,
+   "input_tokens": 1093,
+   "output_tokens": 12,
+   "cost_usd": 0.00029125,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00029125,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686674-a4VlHuAx9Mc17S0z4L4Q",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104173076380303608",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.865697935980279,
+   "input_tokens": 1074,
+   "output_tokens": 35,
+   "cost_usd": 0.000321,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000321,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686675-k2VsheuRzQtS1IXbARiE",
+   "expected": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Alexander Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104175133694804334",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9799896639888175,
+   "input_tokens": 1174,
+   "output_tokens": 34,
+   "cost_usd": 0.00034449999999999997,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0003445,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686676-h4YICNwCQF7NCB66hjhm",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104177542324273565",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.384810195013415,
+   "input_tokens": 1406,
+   "output_tokens": 100,
+   "cost_usd": 0.0005015,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0005015,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686677-b4Kse7T9uOWyRqoNvTIq",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Bruno",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "2104184615342674076",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9801760519912932,
+   "input_tokens": 1050,
+   "output_tokens": 12,
+   "cost_usd": 0.0002805,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002805,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686679-WPiLrgxbNuzuVrfdZ1sF",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104208281241547236",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0151757520216051,
+   "input_tokens": 1132,
+   "output_tokens": 12,
+   "cost_usd": 0.000301,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000301,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686680-rsIx6ZjobQ3yG8kTp44o",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104208927735046198",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9643865340040065,
+   "input_tokens": 1048,
+   "output_tokens": 12,
+   "cost_usd": 0.00028000000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686681-2dm49HDTYmCXAVU8Sw62",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104209061050782103",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8301972119952552,
+   "input_tokens": 1090,
+   "output_tokens": 12,
+   "cost_usd": 0.0002905,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002905,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686682-YW6awQXa9deotmPd2Yit",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104238743922069518",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.7923002080060542,
+   "input_tokens": 1091,
+   "output_tokens": 12,
+   "cost_usd": 0.00029075,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00029075,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686683-EiYEC8jNhy8u784y1BIM",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104242478950019357",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.5466906239744276,
+   "input_tokens": 1043,
+   "output_tokens": 12,
+   "cost_usd": 0.00027875,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027875,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686684-6QhQH775uixEdU0cgHfh",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104264937493422556",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8957690910028759,
+   "input_tokens": 1075,
+   "output_tokens": 12,
+   "cost_usd": 0.00028675,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028675,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686685-kJ8bL1bzcZPc5aSYchqT",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104267360009920983",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.862307667004643,
+   "input_tokens": 1044,
+   "output_tokens": 12,
+   "cost_usd": 0.000279,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000279,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686686-X8pQcomQcdy0BUhSOhtr",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104269606542082554",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8956626050057821,
+   "input_tokens": 1051,
+   "output_tokens": 12,
+   "cost_usd": 0.00028075,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028075,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686687-euHQ5NHBAkKsWQbMRCBq",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104270786454577468",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8399464680114761,
+   "input_tokens": 1029,
+   "output_tokens": 12,
+   "cost_usd": 0.00027525,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027525,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686688-QkI4BafPI7acdjYteC05",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104273037319454995",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8574436839844566,
+   "input_tokens": 1039,
+   "output_tokens": 12,
+   "cost_usd": 0.00027775,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027775,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686689-KHXkAptH2yfnHjsX4g6X",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104293882557026758",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.012777215015376,
+   "input_tokens": 1084,
+   "output_tokens": 12,
+   "cost_usd": 0.000289,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000289,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686690-WtRu4GIqAYoTJuk54wSn",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104299798362738869",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0409276299760677,
+   "input_tokens": 1039,
+   "output_tokens": 12,
+   "cost_usd": 0.00027775,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027775,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686691-wSyAW15vovq1VqDqkoKo",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104301949453537423",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.7979739019938279,
+   "input_tokens": 1021,
+   "output_tokens": 12,
+   "cost_usd": 0.00027325,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027325,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686692-FsZEvj78CPEb2S5arlDC",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104345349183746388",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9528502089960966,
+   "input_tokens": 1043,
+   "output_tokens": 12,
+   "cost_usd": 0.00027875,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027875,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686693-7SBvNzztlGGGI86nIOh3",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104452956900766117",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.7886774710204918,
+   "input_tokens": 1099,
+   "output_tokens": 12,
+   "cost_usd": 0.00029275,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00029275,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686694-UMRWloLJ0KN6T1IJLiUJ",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104458586688762067",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9557648579939269,
+   "input_tokens": 1102,
+   "output_tokens": 12,
+   "cost_usd": 0.0002935,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002935,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686694-ENErSJlt3bLsHfFiRLlm",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104469147253948835",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8294403049803805,
+   "input_tokens": 1061,
+   "output_tokens": 12,
+   "cost_usd": 0.00028325000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028325,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686695-bapga6gRWbnFhBTutj16",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104489898455478454",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9893479979946278,
+   "input_tokens": 1041,
+   "output_tokens": 12,
+   "cost_usd": 0.00027825,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027825,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686696-yehqWzx3QT7XdgBxLELM",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104492012888326553",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.7297811220050789,
+   "input_tokens": 1072,
+   "output_tokens": 12,
+   "cost_usd": 0.000286,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000286,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686697-QL1VxWfSvDC4Gu9Ny4mA",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104496383990358219",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1529458870063536,
+   "input_tokens": 1017,
+   "output_tokens": 12,
+   "cost_usd": 0.00027225,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027225,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686698-mgs3QO6UHzqC72lPeV7k",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104500381380452505",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.4096363150165416,
+   "input_tokens": 1060,
+   "output_tokens": 12,
+   "cost_usd": 0.000283,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000283,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686699-GqP87vRQuSRbLKJ2PeAp",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104505435390935125",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.7010822329903021,
+   "input_tokens": 1045,
+   "output_tokens": 12,
+   "cost_usd": 0.00027925,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027925,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686700-q4G3wnNX8xr2eGD7XkPC",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104509469715763577",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3688070109928958,
+   "input_tokens": 1067,
+   "output_tokens": 12,
+   "cost_usd": 0.00028475,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028475,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686701-OdZoLw3q74oDBhDLU6dj",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104511766172467564",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9706150829733815,
+   "input_tokens": 1048,
+   "output_tokens": 12,
+   "cost_usd": 0.00028000000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686703-oI9eour35vqE8ccPTCfM",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104516939213095099",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9770043249882292,
+   "input_tokens": 1089,
+   "output_tokens": 35,
+   "cost_usd": 0.00032474999999999995,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00032475,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686703-a8WtBfcsaMHXDXFBVVqh",
+   "expected": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Alexander Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104519520841027654",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.167368547001388,
+   "input_tokens": 1087,
+   "output_tokens": 45,
+   "cost_usd": 0.00033925000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00033925,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686704-8i5huLP3QgeFv8W44Bj9",
+   "expected": [
+    {
+     "mention": "Dango Ouattara",
+     "fpl_id": 95,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Dango Ouattara",
+     "fpl_id": 95,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104522447735099746",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1542148339794949,
+   "input_tokens": 1032,
+   "output_tokens": 12,
+   "cost_usd": 0.000276,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000276,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686706-QwvcXCJg795802b661b7",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104522789382238687",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.4697490239923354,
+   "input_tokens": 1070,
+   "output_tokens": 12,
+   "cost_usd": 0.0002855,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002855,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686707-OmsjL3B91qOqadJsXZnD",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104523734438588623",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.029176042007748,
+   "input_tokens": 1070,
+   "output_tokens": 36,
+   "cost_usd": 0.0003215,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0003215,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686708-XHIhbh1777d0zBWKWtbY",
+   "expected": [
+    {
+     "mention": "Dorgu",
+     "fpl_id": 415,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Patrick Dorgu",
+     "fpl_id": 415,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104528798175695288",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8995493839902338,
+   "input_tokens": 1104,
+   "output_tokens": 12,
+   "cost_usd": 0.000294,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000294,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686709-MhOxuSFn25Oki0q7lqQT",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104535940823978027",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3526606319937855,
+   "input_tokens": 1086,
+   "output_tokens": 12,
+   "cost_usd": 0.0002895,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002895,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686710-rgNDZ7UOBq0rcKPHOZHw",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104540141801066807",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0895564700185787,
+   "input_tokens": 1086,
+   "output_tokens": 12,
+   "cost_usd": 0.0002895,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002895,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686712-y6ERgDlRMtxduA5FUpUU",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104567601145741767",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0020892919856124,
+   "input_tokens": 1055,
+   "output_tokens": 12,
+   "cost_usd": 0.00028175,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028175,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686713-2G90oxTkuHPmWaKdR1r4",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-001",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.0730257850082126,
+   "input_tokens": 1334,
+   "output_tokens": 329,
+   "cost_usd": 0.000827,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000827,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686714-b8CZq37BLn72UUaMqWoe",
+   "expected": [
+    {
+     "mention": "Raya",
+     "fpl_id": 1,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gabriel",
+     "fpl_id": 4,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Ødegaard",
+     "fpl_id": 15,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Martinelli",
+     "fpl_id": 18,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Eze",
+     "fpl_id": 14,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Raya",
+     "fpl_id": 1,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gabriel",
+     "fpl_id": 4,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Ødegaard",
+     "fpl_id": 15,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Martinelli",
+     "fpl_id": 18,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Eze",
+     "fpl_id": 14,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-002",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.512909041979583,
+   "input_tokens": 1041,
+   "output_tokens": 133,
+   "cost_usd": 0.00045975000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00045975,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686717-7lanCfXlYpRJeSRs6M8s",
+   "expected": [
+    {
+     "mention": "Mbeumo",
+     "fpl_id": 427,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Cunha",
+     "fpl_id": 428,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "B.Fernandes",
+     "fpl_id": 426,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Mainoo",
+     "fpl_id": 432,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Mbeumo",
+     "fpl_id": 427,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Cunha",
+     "fpl_id": 428,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "B.Fernandes",
+     "fpl_id": 426,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Mainoo",
+     "fpl_id": 432,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-003",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0941482819907833,
+   "input_tokens": 1037,
+   "output_tokens": 101,
+   "cost_usd": 0.00041075,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00041075,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686718-lpCV08xq0VHtr9x18eJ5",
+   "expected": [
+    {
+     "mention": "Haaland",
+     "fpl_id": 411,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "benched",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Haaland",
+     "fpl_id": 411,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "benched",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-005",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.4034999430004973,
+   "input_tokens": 1029,
+   "output_tokens": 36,
+   "cost_usd": 0.00031125,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00031125,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686719-WHyxGyLVRVtrhhiZxypi",
+   "expected": [
+    {
+     "mention": "Cole Palmer",
+     "fpl_id": 154,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Cole Palmer",
+     "fpl_id": 154,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-006",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.6849379199848045,
+   "input_tokens": 1036,
+   "output_tokens": 35,
+   "cost_usd": 0.0003115,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0003115,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686721-010ntNhB9qcfGt7v4BE0",
+   "expected": [
+    {
+     "mention": "Caicedo",
+     "fpl_id": 159,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Caicedo",
+     "fpl_id": 159,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-007",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.7028856970136985,
+   "input_tokens": 1029,
+   "output_tokens": 36,
+   "cost_usd": 0.00031125,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00031125,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686721-5faxRhf4vCt7YWg8ALXe",
+   "expected": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-009",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1310333219880704,
+   "input_tokens": 1031,
+   "output_tokens": 35,
+   "cost_usd": 0.00031025,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00031025,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686723-MUPQih7ohin55G1f3SgS",
+   "expected": [
+    {
+     "mention": "Gvardiol",
+     "fpl_id": 391,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Gvardiol",
+     "fpl_id": 391,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-010",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.239664533000905,
+   "input_tokens": 1023,
+   "output_tokens": 40,
+   "cost_usd": 0.00031575,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00031575,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686724-MbYivnZ6kWAY6b1jhAs1",
+   "expected": [
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-011",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1187326369981747,
+   "input_tokens": 1039,
+   "output_tokens": 58,
+   "cost_usd": 0.00034675,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00034675,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686725-APr1OJhocbJJFefFrg17",
+   "expected": [
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "out",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "out",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-013",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.7084495319868438,
+   "input_tokens": 1026,
+   "output_tokens": 42,
+   "cost_usd": 0.0003195,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0003195,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686727-Dg8H5B3Y6FIVJr9Azkn8",
+   "expected": [
+    {
+     "mention": "Starboy",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Starboy",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-014",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0093795269785915,
+   "input_tokens": 1030,
+   "output_tokens": 40,
+   "cost_usd": 0.0003175,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0003175,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686727-8tUsWOS3sE0hGh4J8WaZ",
+   "expected": [
+    {
+     "mention": "The Terminator",
+     "fpl_id": 411,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "The Terminator",
+     "fpl_id": 411,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-015",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8418146689946298,
+   "input_tokens": 1026,
+   "output_tokens": 40,
+   "cost_usd": 0.0003165,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0003165,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686728-SoDO9Q1iK6TMXh3nR5Qc",
+   "expected": [
+    {
+     "mention": "Cold Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Cold Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-017",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0079270470014308,
+   "input_tokens": 1029,
+   "output_tokens": 44,
+   "cost_usd": 0.00032324999999999997,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00032325,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686729-9ySGCjQA0cUz1qmi4fxk",
+   "expected": [
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-018",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8457596570078749,
+   "input_tokens": 1028,
+   "output_tokens": 35,
+   "cost_usd": 0.0003095,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0003095,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686730-u6wwXZjIzB2HJXGtUBGn",
+   "expected": [
+    {
+     "mention": "Guéhi",
+     "fpl_id": 388,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Guéhi",
+     "fpl_id": 388,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-019",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.9151056150149088,
+   "input_tokens": 1267,
+   "output_tokens": 52,
+   "cost_usd": 0.00039474999999999997,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00039475,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686731-7MkFz0WplvBSmItw2pZo",
+   "expected": [
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-022",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.579285676998552,
+   "input_tokens": 1034,
+   "output_tokens": 12,
+   "cost_usd": 0.0002765,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002765,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686733-TQFgzKz3CX91j8Wx5vJN",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-023",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.799424833006924,
+   "input_tokens": 1048,
+   "output_tokens": 12,
+   "cost_usd": 0.00028000000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00028,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686734-j5LQVItMEpownnEnUQBy",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-024",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.6278455640131142,
+   "input_tokens": 1040,
+   "output_tokens": 104,
+   "cost_usd": 0.000416,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000416,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686735-zL2L7E92vFe21LnLTTsw",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Szoboszlai",
+     "fpl_id": 368,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gakpo",
+     "fpl_id": 367,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-025",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.221878511016257,
+   "input_tokens": 1041,
+   "output_tokens": 12,
+   "cost_usd": 0.00027825,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00027825,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686737-eCLvvGJs667LcufgFUXg",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-027",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0965685329865664,
+   "input_tokens": 1034,
+   "output_tokens": 36,
+   "cost_usd": 0.0003125,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0003125,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686738-uuwz2DmLTPtXbd2XkZXi",
+   "expected": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-028",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8205251829931512,
+   "input_tokens": 1029,
+   "output_tokens": 34,
+   "cost_usd": 0.00030825,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00030825,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686739-QVlY3j2tYZM8YDWk0mdk",
+   "expected": [
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-029",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.5803348300105426,
+   "input_tokens": 1028,
+   "output_tokens": 36,
+   "cost_usd": 0.000311,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000311,
+   "host": "Google",
+   "answered_model": "google/gemini-3.1-flash-lite",
+   "generation_id": "gen-1790686740-b5fEOjYDSHsUN84WPdrr",
+   "expected": [
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ]
+  }
+ ]
+}

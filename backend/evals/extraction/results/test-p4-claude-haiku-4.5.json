@@ -1,0 +1,2213 @@
+{
+ "run_name": "test-p4-claude-haiku-4.5",
+ "provider": "openrouter",
+ "model": "anthropic/claude-haiku-4.5",
+ "prompt_version": "extraction@4+link_disambiguation@1",
+ "split": "test",
+ "structured_method": "function_calling",
+ "reasoning_effort": "none",
+ "temperature": true,
+ "cases": 91,
+ "errored_cases": 0,
+ "metrics": {
+  "cases": 91,
+  "errored_cases": 0,
+  "precision": 0.8392857142857143,
+  "recall": 0.94,
+  "f1": 0.8867924528301887,
+  "linking_accuracy": 1.0,
+  "linking_paired": 49,
+  "false_alarm_rate": 0.06060606060606061,
+  "certainty_accuracy": 0.9361702127659575,
+  "certainty_confusion": {
+   "confirmed": {
+    "confirmed": 24,
+    "likely": 2,
+    "rumour": 0
+   },
+   "likely": {
+    "confirmed": 0,
+    "likely": 16,
+    "rumour": 0
+   },
+   "rumour": {
+    "confirmed": 0,
+    "likely": 1,
+    "rumour": 4
+   }
+  },
+  "latency_p50_seconds": 1.0089880079904106,
+  "latency_p95_seconds": 2.6651880550198257,
+  "mean_input_tokens": 1819.2417582417581,
+  "mean_output_tokens": 56.032967032967036,
+  "mean_cost_usd": 0.0020994065934065932,
+  "projected_monthly_cost_pln": 8.486851153846153,
+  "posts_per_month": 1050.0,
+  "usd_pln_rate": 3.85,
+  "passes": false,
+  "mean_reasoning_tokens": 0.0,
+  "mean_reported_cost_usd": 0.0020994065934065932,
+  "total_cost_usd": 0.191046,
+  "total_reported_cost_usd": 0.191046,
+  "hosts": {
+   "Amazon Bedrock": 91
+  },
+  "answered_models": {
+   "anthropic/claude-haiku-4.5": 91
+  },
+  "thresholds_passed": {
+   "f1": true,
+   "linking_accuracy": true,
+   "false_alarm_rate": false,
+   "monthly_cost": false,
+   "no_errored_cases": true
+  }
+ },
+ "case_results": [
+  {
+   "id": "2103436877860593885",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3676268050039653,
+   "input_tokens": 1750,
+   "output_tokens": 58,
+   "cost_usd": 0.00204,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00204,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686920-7rn2MFLmtcNDwZ8VZBzP",
+   "expected": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2103809666761531519",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.395790744019905,
+   "input_tokens": 1727,
+   "output_tokens": 103,
+   "cost_usd": 0.002242,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002242,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686921-Gt1hm7Stxbs3r7qgGZP8",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Hemp",
+     "fpl_id": null,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2103820653937709564",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0860446130100172,
+   "input_tokens": 1792,
+   "output_tokens": 33,
+   "cost_usd": 0.001957,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001957,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686922-kPserrGiUAsKMJze3M79",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103821706699612219",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9465837249881588,
+   "input_tokens": 1740,
+   "output_tokens": 33,
+   "cost_usd": 0.001905,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001905,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686924-ppyqixfB9CaOZdoJhrMI",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103848750057660918",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8863492520176806,
+   "input_tokens": 1745,
+   "output_tokens": 33,
+   "cost_usd": 0.00191,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00191,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686924-IS2yBfK3dvLDYPBUxNPW",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103849740454539308",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9620708489965182,
+   "input_tokens": 2154,
+   "output_tokens": 33,
+   "cost_usd": 0.002319,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002319,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686925-lW9Hbz1ZailgtaJb2u0k",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103850171758997676",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9734703660069499,
+   "input_tokens": 1934,
+   "output_tokens": 33,
+   "cost_usd": 0.002099,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002099,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686926-qhvT3D7UQajfaJdNaphT",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103851583297712216",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9283979189931415,
+   "input_tokens": 1779,
+   "output_tokens": 33,
+   "cost_usd": 0.001944,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001944,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686927-Cza2D29pdaAOOGLnLQV9",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103854250623201316",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9997166430111974,
+   "input_tokens": 1808,
+   "output_tokens": 33,
+   "cost_usd": 0.001973,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001973,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686928-02MYoqyXSeBUuDQanna8",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103859019479953476",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9903717279958073,
+   "input_tokens": 2007,
+   "output_tokens": 33,
+   "cost_usd": 0.0021720000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002172,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686929-k85zFfj3MM2O6I4RWRtH",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103859072168800725",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9878229830064811,
+   "input_tokens": 1896,
+   "output_tokens": 33,
+   "cost_usd": 0.002061,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002061,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686930-RIH5738TVbJhICgPDtUz",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103881423497408975",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9629156019946095,
+   "input_tokens": 1765,
+   "output_tokens": 33,
+   "cost_usd": 0.00193,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00193,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686931-JdFS8qelpfGO3vmuNc4k",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103893055723982873",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9590306710160803,
+   "input_tokens": 1807,
+   "output_tokens": 33,
+   "cost_usd": 0.001972,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001972,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686932-eqdaxNexyZQNL6GHoWIy",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103903694412710319",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9916775339806918,
+   "input_tokens": 1778,
+   "output_tokens": 33,
+   "cost_usd": 0.001943,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001943,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686933-HuzjcduGnyHtI22edjmi",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103911402478125345",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9384962140175048,
+   "input_tokens": 1787,
+   "output_tokens": 33,
+   "cost_usd": 0.001952,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001952,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686934-UznxZ9tpMZj8Fu8JFBYx",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103916008239161523",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9505416939791758,
+   "input_tokens": 1792,
+   "output_tokens": 33,
+   "cost_usd": 0.001957,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001957,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686935-92K8wDsUqNVKqPLAUZuX",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103923861641105679",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9533760049962439,
+   "input_tokens": 1841,
+   "output_tokens": 33,
+   "cost_usd": 0.002006,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002006,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686936-JXPPgITRDWC0PbNet3RB",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103939538213032046",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9441011849849019,
+   "input_tokens": 1733,
+   "output_tokens": 33,
+   "cost_usd": 0.001898,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001898,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686937-WC1GuaMqvF8ID5G9tae1",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103955750015905855",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9709656949853525,
+   "input_tokens": 1799,
+   "output_tokens": 33,
+   "cost_usd": 0.001964,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001964,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686938-WshgJirA8uzX3NCMGjsz",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103958805142978873",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9407639660057612,
+   "input_tokens": 1740,
+   "output_tokens": 33,
+   "cost_usd": 0.001905,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001905,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686939-to9o7mxgQknXGXxQaRnT",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104101438649729388",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9362520359863993,
+   "input_tokens": 1739,
+   "output_tokens": 33,
+   "cost_usd": 0.001904,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001904,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686940-WIP7FmXyI6rrnvjBBjPl",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104113395599335907",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9401850019930862,
+   "input_tokens": 1803,
+   "output_tokens": 33,
+   "cost_usd": 0.001968,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001968,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686941-mFp6hs5DEDIZet9Hvvyh",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104118871305105417",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1286958529963158,
+   "input_tokens": 1796,
+   "output_tokens": 58,
+   "cost_usd": 0.002086,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002086,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686942-5LGRQ0n8XzoFVhrQmIZ2",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Alexander Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104124182170566816",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1709217430034187,
+   "input_tokens": 1844,
+   "output_tokens": 79,
+   "cost_usd": 0.0022389999999999997,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002239,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686943-tP1vqfd6gq2eqA8rnXBk",
+   "expected": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "out",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104125409809879545",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.224816814006772,
+   "input_tokens": 1827,
+   "output_tokens": 56,
+   "cost_usd": 0.002107,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002107,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686944-yg5snYGsM704LUfyCqjR",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Lewis Hall",
+     "fpl_id": 449,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104128254106050686",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9784882709791418,
+   "input_tokens": 1749,
+   "output_tokens": 33,
+   "cost_usd": 0.001914,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001914,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686945-eAkRfpbHK5USr6XZbeam",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104135413397082285",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3301825250091497,
+   "input_tokens": 1791,
+   "output_tokens": 33,
+   "cost_usd": 0.0019560000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001956,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686946-oAW8zMqjm0ppRNNliFHx",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104136860088103347",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9430424640013371,
+   "input_tokens": 1748,
+   "output_tokens": 33,
+   "cost_usd": 0.001913,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001913,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686948-hYBqxkTT0ToUTSTzneWq",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104142752036581744",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9389388749841601,
+   "input_tokens": 1736,
+   "output_tokens": 33,
+   "cost_usd": 0.001901,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001901,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686948-wjLaMMVTOlk0Q4vbibX1",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104148975821443236",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9063719710102305,
+   "input_tokens": 1754,
+   "output_tokens": 33,
+   "cost_usd": 0.001919,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001919,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686949-ISiLjlOW2agCdSeJzAsp",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104158837540622748",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 4.582435343007091,
+   "input_tokens": 3693,
+   "output_tokens": 459,
+   "cost_usd": 0.005988,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.005988,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686950-OmS3oTbtINTp4WZjTN3k",
+   "expected": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Brobbey",
+     "fpl_id": 552,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Ballard",
+     "fpl_id": 532,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Joao Pedro",
+     "fpl_id": 165,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Pedro Porro",
+     "fpl_id": 499,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Brobbey",
+     "fpl_id": 552,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Ballard",
+     "fpl_id": 532,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Joao Pedro",
+     "fpl_id": 165,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Pedro Porro",
+     "fpl_id": 499,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104169958418547163",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9378869220090564,
+   "input_tokens": 1799,
+   "output_tokens": 33,
+   "cost_usd": 0.001964,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001964,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686955-dyH8kxb8ebSIUNbZh214",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104173076380303608",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0927555539819878,
+   "input_tokens": 1784,
+   "output_tokens": 58,
+   "cost_usd": 0.002074,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002074,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686956-jK56tYvuQm6TsKMBPysz",
+   "expected": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Alexander Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104175133694804334",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9397530970163643,
+   "input_tokens": 1890,
+   "output_tokens": 33,
+   "cost_usd": 0.002055,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002055,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686957-bKCHQlZMb9ouzZrGIqLV",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104177542324273565",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0229789080040064,
+   "input_tokens": 1807,
+   "output_tokens": 33,
+   "cost_usd": 0.001972,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001972,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686958-ROr98VggzyoksYSGZHgu",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104184615342674076",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.026438483997481,
+   "input_tokens": 1752,
+   "output_tokens": 33,
+   "cost_usd": 0.001917,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001917,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686959-3feOL7m8et0pXC6zRjNF",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104208281241547236",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0222893779864535,
+   "input_tokens": 1845,
+   "output_tokens": 33,
+   "cost_usd": 0.00201,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00201,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686960-f9qaa7qDCwpCqCDyAqSY",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104208927735046198",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9648769969935529,
+   "input_tokens": 1764,
+   "output_tokens": 33,
+   "cost_usd": 0.001929,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001929,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686961-D9PbV6T6TbEc0MgDPk0Z",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104209061050782103",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2159671080007683,
+   "input_tokens": 1811,
+   "output_tokens": 33,
+   "cost_usd": 0.001976,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001976,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686962-3ESoqBqyU5wpBhKGiW9e",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104238743922069518",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0089880079904106,
+   "input_tokens": 1803,
+   "output_tokens": 33,
+   "cost_usd": 0.001968,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001968,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686963-YHjikZETPRfqQrO4v1An",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104242478950019357",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9575161109969486,
+   "input_tokens": 1752,
+   "output_tokens": 33,
+   "cost_usd": 0.001917,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001917,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686964-ikIYTC2Dhgur6SdLkPnk",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104264937493422556",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.016865001001861,
+   "input_tokens": 1791,
+   "output_tokens": 33,
+   "cost_usd": 0.0019560000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001956,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686965-aXk03VPRFWAlooCh6Goq",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104267360009920983",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9849484050064348,
+   "input_tokens": 1747,
+   "output_tokens": 33,
+   "cost_usd": 0.001912,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001912,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686966-qu1hajrAlcF30vOJChiG",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104269606542082554",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9744592350034509,
+   "input_tokens": 1760,
+   "output_tokens": 33,
+   "cost_usd": 0.001925,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001925,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686967-pV21rbYH31nwkUk6zUtI",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104270786454577468",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.994045219005784,
+   "input_tokens": 1736,
+   "output_tokens": 33,
+   "cost_usd": 0.001901,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001901,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686968-0YsN5BntgyWz7TmYmK2b",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104273037319454995",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9362486439931672,
+   "input_tokens": 1758,
+   "output_tokens": 33,
+   "cost_usd": 0.001923,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001923,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686969-pdbFme2qoofjmgd50hSG",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104293882557026758",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9564672270207666,
+   "input_tokens": 1789,
+   "output_tokens": 33,
+   "cost_usd": 0.001954,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001954,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686970-c3MmR4Kn3om7Bp5Q7O9t",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104299798362738869",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9454316130140796,
+   "input_tokens": 1754,
+   "output_tokens": 33,
+   "cost_usd": 0.001919,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001919,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686971-nhv4hmhbhkKbBSBkRs2j",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104301949453537423",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9788138830044772,
+   "input_tokens": 1727,
+   "output_tokens": 33,
+   "cost_usd": 0.001892,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001892,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686972-7thWxZaV4xk9bsCHCZKW",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104345349183746388",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0271904919936787,
+   "input_tokens": 1751,
+   "output_tokens": 33,
+   "cost_usd": 0.001916,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001916,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686973-E20U5U2MT4kOTbVtuf8h",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104452956900766117",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.927685645991005,
+   "input_tokens": 1812,
+   "output_tokens": 33,
+   "cost_usd": 0.001977,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001977,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686974-dxkUa6CHwP7mkXPZPa3I",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104458586688762067",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9465083749964833,
+   "input_tokens": 1827,
+   "output_tokens": 33,
+   "cost_usd": 0.001992,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001992,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686975-vnypixY95r5KsNUVMNA6",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104469147253948835",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9572047840047162,
+   "input_tokens": 1779,
+   "output_tokens": 33,
+   "cost_usd": 0.001944,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001944,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686976-BZAFadSbtUluSlgS1h5F",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104489898455478454",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.073738778999541,
+   "input_tokens": 1754,
+   "output_tokens": 33,
+   "cost_usd": 0.001919,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001919,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686977-7IXnJtPvnTtWUZ7L9Ujr",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104492012888326553",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0386472600221168,
+   "input_tokens": 1777,
+   "output_tokens": 33,
+   "cost_usd": 0.001942,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001942,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686978-Nyr56slUnn4NFz8vzV3i",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104496383990358219",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9074056549870875,
+   "input_tokens": 1723,
+   "output_tokens": 33,
+   "cost_usd": 0.001888,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001888,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686979-8oe9LJ1jTsi0QjknC0ZP",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104500381380452505",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9603622459981125,
+   "input_tokens": 1768,
+   "output_tokens": 33,
+   "cost_usd": 0.001933,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001933,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686980-wLxnpckg3kaBFNpd4ZIU",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104505435390935125",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0110637590114493,
+   "input_tokens": 1747,
+   "output_tokens": 33,
+   "cost_usd": 0.001912,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001912,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686981-pZKctlGCq28WYCuoy85r",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104509469715763577",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.6651880550198257,
+   "input_tokens": 1771,
+   "output_tokens": 33,
+   "cost_usd": 0.001936,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001936,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686982-5AuijWebpmvS3Nss5nYd",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104511766172467564",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0317316930158995,
+   "input_tokens": 1762,
+   "output_tokens": 33,
+   "cost_usd": 0.001927,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001927,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686984-gHpt1lowC7pbu8slTyRz",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104516939213095099",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1201125369989313,
+   "input_tokens": 1793,
+   "output_tokens": 33,
+   "cost_usd": 0.001958,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001958,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686985-1pCPXe1kZCNeWJtgOnQ2",
+   "expected": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": []
+  },
+  {
+   "id": "2104519520841027654",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.31965180701809,
+   "input_tokens": 1805,
+   "output_tokens": 70,
+   "cost_usd": 0.002155,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002155,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686987-P60tqaKicY2Y7jsaZyhk",
+   "expected": [
+    {
+     "mention": "Dango Ouattara",
+     "fpl_id": 95,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Dango Ouattara",
+     "fpl_id": 95,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104522447735099746",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9574615210003685,
+   "input_tokens": 1739,
+   "output_tokens": 33,
+   "cost_usd": 0.001904,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001904,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686988-8H8A8Zj5XLPeyQ3O8Fap",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104522789382238687",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9994860459992196,
+   "input_tokens": 1790,
+   "output_tokens": 33,
+   "cost_usd": 0.001955,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001955,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686989-I13vlGkigxNHLqeYD1HD",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104523734438588623",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.226888399978634,
+   "input_tokens": 1772,
+   "output_tokens": 64,
+   "cost_usd": 0.002092,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002092,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686990-4mPCTtzg06lPNvuqnVy9",
+   "expected": [
+    {
+     "mention": "Dorgu",
+     "fpl_id": 415,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Patrick Dorgu",
+     "fpl_id": 415,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104528798175695288",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9543224569933955,
+   "input_tokens": 1820,
+   "output_tokens": 33,
+   "cost_usd": 0.001985,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001985,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686991-lqvZYAHisOacm3lskoCi",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104535940823978027",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9882534450152889,
+   "input_tokens": 1800,
+   "output_tokens": 33,
+   "cost_usd": 0.0019649999999999997,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001965,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686992-hWYVUBRyjnyKg53MAWAd",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104540141801066807",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0188539489754476,
+   "input_tokens": 1800,
+   "output_tokens": 33,
+   "cost_usd": 0.0019649999999999997,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001965,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686993-LMawka7nBUO1uFguiuFM",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104567601145741767",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.068836188991554,
+   "input_tokens": 1763,
+   "output_tokens": 33,
+   "cost_usd": 0.001928,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001928,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686994-xeIDSyVbfuA3WDvQV7RU",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-001",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.982789894012967,
+   "input_tokens": 2698,
+   "output_tokens": 519,
+   "cost_usd": 0.005293,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.005293,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686995-DA9IO4Crhh07wlXzLa4s",
+   "expected": [
+    {
+     "mention": "Raya",
+     "fpl_id": 1,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gabriel",
+     "fpl_id": 4,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Ødegaard",
+     "fpl_id": 15,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Martinelli",
+     "fpl_id": 18,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Eze",
+     "fpl_id": 14,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Raya",
+     "fpl_id": 1,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gabriel",
+     "fpl_id": 4,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Ødegaard",
+     "fpl_id": 15,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Martinelli",
+     "fpl_id": 18,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Eze",
+     "fpl_id": 14,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-002",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.0298013139981776,
+   "input_tokens": 1752,
+   "output_tokens": 219,
+   "cost_usd": 0.002847,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002847,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790686999-LcK9l3PSuGqgsCYr24h0",
+   "expected": [
+    {
+     "mention": "Mbeumo",
+     "fpl_id": 427,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Cunha",
+     "fpl_id": 428,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "B.Fernandes",
+     "fpl_id": 426,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Mainoo",
+     "fpl_id": 432,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Mbeumo",
+     "fpl_id": 427,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Cunha",
+     "fpl_id": 428,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "B.Fernandes",
+     "fpl_id": 426,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Mainoo",
+     "fpl_id": 432,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-003",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.6336298600072041,
+   "input_tokens": 1744,
+   "output_tokens": 146,
+   "cost_usd": 0.002474,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002474,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687001-MtrNhqopIG26LUv4P7ta",
+   "expected": [
+    {
+     "mention": "Haaland",
+     "fpl_id": 411,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "benched",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Haaland",
+     "fpl_id": 411,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "benched",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-005",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2327139980043285,
+   "input_tokens": 1734,
+   "output_tokens": 58,
+   "cost_usd": 0.002024,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002024,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687003-Vb4AmTgD6Byy4COdUqKF",
+   "expected": [
+    {
+     "mention": "Cole Palmer",
+     "fpl_id": 154,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Cole Palmer",
+     "fpl_id": 154,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-006",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.4310405470023397,
+   "input_tokens": 1738,
+   "output_tokens": 58,
+   "cost_usd": 0.002028,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002028,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687004-pzMWm5opzRUK8bQ3njdX",
+   "expected": [
+    {
+     "mention": "Caicedo",
+     "fpl_id": 159,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Caicedo",
+     "fpl_id": 159,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-007",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2217388919962104,
+   "input_tokens": 1731,
+   "output_tokens": 58,
+   "cost_usd": 0.002021,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002021,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687005-5i0DLBsz1hz1X1c1yAs4",
+   "expected": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-009",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.1776326970139053,
+   "input_tokens": 1735,
+   "output_tokens": 59,
+   "cost_usd": 0.00203,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00203,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687007-8XjUFs4omEOTTp1FNX3R",
+   "expected": [
+    {
+     "mention": "Gvardiol",
+     "fpl_id": 391,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Gvardiol",
+     "fpl_id": 391,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-010",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2436268060118891,
+   "input_tokens": 1726,
+   "output_tokens": 63,
+   "cost_usd": 0.0020410000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002041,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687010-6GEX6kV17SzDR9Jn8wz0",
+   "expected": [
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-011",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.438417370984098,
+   "input_tokens": 1747,
+   "output_tokens": 107,
+   "cost_usd": 0.002282,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002282,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687011-qjQECl7XNE05T1anX7CM",
+   "expected": [
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "out",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "out",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-013",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3753785860026255,
+   "input_tokens": 1731,
+   "output_tokens": 65,
+   "cost_usd": 0.0020559999999999997,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002056,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687013-aZ3AGIQYfRngralCwz6r",
+   "expected": [
+    {
+     "mention": "Starboy",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Starboy",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-014",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3712895240169019,
+   "input_tokens": 1735,
+   "output_tokens": 64,
+   "cost_usd": 0.002055,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002055,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687014-5mI1ixHUgLKDLkT6hExd",
+   "expected": [
+    {
+     "mention": "The Terminator",
+     "fpl_id": 411,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "The Terminator",
+     "fpl_id": 411,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-015",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1810160340100992,
+   "input_tokens": 1727,
+   "output_tokens": 62,
+   "cost_usd": 0.002037,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002037,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687015-7lyEYqnerr99474hfU6h",
+   "expected": [
+    {
+     "mention": "Cold Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Cold Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-017",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2728924450057093,
+   "input_tokens": 1731,
+   "output_tokens": 66,
+   "cost_usd": 0.002061,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002061,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687016-ORH4IyDp1i2FX1rXIzLn",
+   "expected": [
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-018",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3434424650040455,
+   "input_tokens": 1735,
+   "output_tokens": 58,
+   "cost_usd": 0.002025,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002025,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687018-vCRWoTZ9TsnIfy4sFYVZ",
+   "expected": [
+    {
+     "mention": "Guéhi",
+     "fpl_id": 388,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Guéhi",
+     "fpl_id": 388,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-019",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.6652060610067565,
+   "input_tokens": 2608,
+   "output_tokens": 91,
+   "cost_usd": 0.003063,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.003063,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687019-Qzwavzq3RORarhPkNOAc",
+   "expected": [
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-022",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9969144789793063,
+   "input_tokens": 1740,
+   "output_tokens": 33,
+   "cost_usd": 0.001905,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001905,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687023-DScumBj3X8yWjWi9Uyc2",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-023",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0242033639806323,
+   "input_tokens": 1761,
+   "output_tokens": 33,
+   "cost_usd": 0.001926,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001926,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687024-EPfIiG4VbFV52JPgYmZo",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-024",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.549892732000444,
+   "input_tokens": 1746,
+   "output_tokens": 148,
+   "cost_usd": 0.002486,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002486,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687025-fhgoPyldzWtMdRDyovOT",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Szoboszlai",
+     "fpl_id": 368,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gakpo",
+     "fpl_id": 367,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-025",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9453387339890469,
+   "input_tokens": 1750,
+   "output_tokens": 33,
+   "cost_usd": 0.001915,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.001915,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687026-4AyyGaAzuNHsGQ3f7hol",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-027",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2597584890027065,
+   "input_tokens": 1739,
+   "output_tokens": 59,
+   "cost_usd": 0.0020340000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002034,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687027-wksWDRuC0YntJnLpvSmB",
+   "expected": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-028",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1824645290034823,
+   "input_tokens": 1734,
+   "output_tokens": 56,
+   "cost_usd": 0.002014,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002014,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687028-NGZPbykj2BiFKyjLKYnQ",
+   "expected": [
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-029",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2050053699931595,
+   "input_tokens": 1733,
+   "output_tokens": 59,
+   "cost_usd": 0.002028,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.002028,
+   "host": "Amazon Bedrock",
+   "answered_model": "anthropic/claude-haiku-4.5",
+   "generation_id": "gen-1790687030-GhnHgh4e5W5iTNg5atby",
+   "expected": [
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ]
+  }
+ ]
+}

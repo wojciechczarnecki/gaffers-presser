@@ -44,6 +44,7 @@ class ExtractionRuntime:
     prices: dict[str, Price]
     aliases: Aliases
     clock: Clock | None = None
+    fallback_model: str | None = None
 
 
 @dataclass(frozen=True)
@@ -164,9 +165,9 @@ def _store_extracted(
     attempts: int,
     record_latency: bool,
 ) -> StoredOutcome:
+    model = result.answered_model or runtime.model
     cost_usd = compute_cost(
-        runtime.provider,
-        runtime.model,
+        model,
         result.usage.input_tokens,
         result.usage.output_tokens,
         runtime.prices,
@@ -176,7 +177,7 @@ def _store_extracted(
             tweet_x_id=post.x_id,
             status="extracted",
             provider=runtime.provider,
-            model=runtime.model,
+            model=model,
             prompt_version=PROMPT_VERSION,
             started_at=started_at,
             finished_at=finished_at,

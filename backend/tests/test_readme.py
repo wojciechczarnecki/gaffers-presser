@@ -24,11 +24,8 @@ TWEET_VARIABLES = [
 ]
 
 EXTRACTION_VARIABLES = [
-    "LLM_PROVIDER",
     "LLM_MODEL",
-    "GOOGLE_API_KEY",
-    "OPENAI_API_KEY",
-    "ANTHROPIC_API_KEY",
+    "LLM_FALLBACK_MODEL",
     "OPENROUTER_API_KEY",
     "LANGFUSE_PUBLIC_KEY",
     "LANGFUSE_SECRET_KEY",
@@ -40,7 +37,12 @@ EXTRACTION_COMMANDS = [
     "app.extraction reextract",
     "app.extraction prelabel",
     "app.extraction evaluate",
+    "app.extraction compare-labels",
+    "app.extraction spend",
 ]
+
+REMOVED_VARIABLES = ["LLM_PROVIDER", "GOOGLE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"]
+ENV_EXAMPLE = ROOT / "backend" / ".env.example"
 
 
 def _development_section() -> str:
@@ -106,3 +108,10 @@ def test_deployment_doc_is_a_runbook():
     for command in EXTRACTION_COMMANDS:
         assert command in section, f"{command!r} missing from docs/DEPLOYMENT.md"
     assert "Extraction: disabled" in section
+
+
+def test_removed_llm_variables_absent_from_docs():
+    for path in (README, DEPLOYMENT, ENV_EXAMPLE):
+        text = path.read_text(encoding="utf-8")
+        for removed in [*REMOVED_VARIABLES, "--provider"]:
+            assert removed not in text, f"{removed!r} still in {path.name}"

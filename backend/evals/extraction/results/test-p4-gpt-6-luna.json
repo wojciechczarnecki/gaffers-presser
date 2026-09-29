@@ -1,0 +1,2200 @@
+{
+ "run_name": "test-p4-gpt-6-luna",
+ "provider": "openrouter",
+ "model": "openai/gpt-6-luna",
+ "prompt_version": "extraction@4+link_disambiguation@1",
+ "split": "test",
+ "structured_method": "function_calling",
+ "reasoning_effort": "none",
+ "temperature": false,
+ "cases": 91,
+ "errored_cases": 0,
+ "metrics": {
+  "cases": 91,
+  "errored_cases": 0,
+  "precision": 0.8703703703703703,
+  "recall": 0.94,
+  "f1": 0.9038461538461539,
+  "linking_accuracy": 1.0,
+  "linking_paired": 49,
+  "false_alarm_rate": 0.045454545454545456,
+  "certainty_accuracy": 0.9361702127659575,
+  "certainty_confusion": {
+   "confirmed": {
+    "confirmed": 27,
+    "likely": 0,
+    "rumour": 0
+   },
+   "likely": {
+    "confirmed": 2,
+    "likely": 14,
+    "rumour": 0
+   },
+   "rumour": {
+    "confirmed": 0,
+    "likely": 1,
+    "rumour": 3
+   }
+  },
+  "latency_p50_seconds": 1.2234940619964618,
+  "latency_p95_seconds": 2.4882649079954717,
+  "mean_input_tokens": 1043.6593406593406,
+  "mean_output_tokens": 31.582417582417584,
+  "mean_cost_usd": 0.00012015714285714287,
+  "projected_monthly_cost_pln": 0.4857352500000001,
+  "posts_per_month": 1050.0,
+  "usd_pln_rate": 3.85,
+  "passes": true,
+  "mean_reasoning_tokens": 0.0,
+  "mean_reported_cost_usd": 0.00012108571428571429,
+  "total_cost_usd": 0.010934300000000001,
+  "total_reported_cost_usd": 0.0110188,
+  "hosts": {
+   "OpenAI": 91
+  },
+  "answered_models": {
+   "openai/gpt-6-luna": 91
+  },
+  "thresholds_passed": {
+   "f1": true,
+   "linking_accuracy": true,
+   "false_alarm_rate": true,
+   "monthly_cost": true,
+   "no_errored_cases": true
+  }
+ },
+ "case_results": [
+  {
+   "id": "2103436877860593885",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.625447879981948,
+   "input_tokens": 1003,
+   "output_tokens": 40,
+   "cost_usd": 0.0001203,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001203,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686767-a6gu1rMhfbTaqwevp9w1",
+   "expected": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2103809666761531519",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0227582980005536,
+   "input_tokens": 984,
+   "output_tokens": 18,
+   "cost_usd": 0.00010740000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001074,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686769-4or1GFYOcd8A07nEuIkE",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103820653937709564",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9786046780063771,
+   "input_tokens": 1030,
+   "output_tokens": 18,
+   "cost_usd": 0.00011200000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000112,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686770-J4wW3PgI0dauXbAyGTLU",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103821706699612219",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1722134849987924,
+   "input_tokens": 994,
+   "output_tokens": 18,
+   "cost_usd": 0.00010840000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001084,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686771-sfKBe17vztqhsNcwVbpg",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103848750057660918",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.092981868016068,
+   "input_tokens": 997,
+   "output_tokens": 18,
+   "cost_usd": 0.00010870000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001087,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686772-1yN6WONWQuHlAukIFV1i",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103849740454539308",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1544222260126844,
+   "input_tokens": 1379,
+   "output_tokens": 18,
+   "cost_usd": 0.00014690000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00017805,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686773-X56yGrNbw8jZRiE0A5TL",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103850171758997676",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8713316000066698,
+   "input_tokens": 1172,
+   "output_tokens": 18,
+   "cost_usd": 0.0001262,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000152175,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686774-FNtkjCTz55ROa7HWayYt",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103851583297712216",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.051101047982229,
+   "input_tokens": 1029,
+   "output_tokens": 18,
+   "cost_usd": 0.00011190000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001119,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686775-Ht6s0kP97faRpYhJblub",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103854250623201316",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.837129075982375,
+   "input_tokens": 1051,
+   "output_tokens": 18,
+   "cost_usd": 0.00011410000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001141,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686776-iUChulFKmii3pAwyR66T",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103859019479953476",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.8053995309746824,
+   "input_tokens": 1228,
+   "output_tokens": 18,
+   "cost_usd": 0.0001318,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000159175,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686779-ZhGZYnVXYOKQ0KCUwav5",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103859072168800725",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.8992106789955869,
+   "input_tokens": 1109,
+   "output_tokens": 18,
+   "cost_usd": 0.0001199,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001199,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686781-o6lwx2JmxgJGuOag725C",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103881423497408975",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2234940619964618,
+   "input_tokens": 1018,
+   "output_tokens": 18,
+   "cost_usd": 0.00011080000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001108,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686782-RXAomHolYyDAEwhIwiTE",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103893055723982873",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0512869210215285,
+   "input_tokens": 1038,
+   "output_tokens": 18,
+   "cost_usd": 0.00011280000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001128,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686783-OwFGCKn0X27LX16amYBK",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103903694412710319",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2368191340065096,
+   "input_tokens": 1027,
+   "output_tokens": 18,
+   "cost_usd": 0.0001117,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001117,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686784-6It8kVkOr8jxNNDM2z0X",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103911402478125345",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.009789648000151,
+   "input_tokens": 1028,
+   "output_tokens": 18,
+   "cost_usd": 0.00011180000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001118,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686785-GouwiY0uD86YyH7ImY5n",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103916008239161523",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.126782039005775,
+   "input_tokens": 1037,
+   "output_tokens": 18,
+   "cost_usd": 0.0001127,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001127,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686786-FUEsgm9H8x7mcL6Wp4q1",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103923861641105679",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2067096440005116,
+   "input_tokens": 1072,
+   "output_tokens": 18,
+   "cost_usd": 0.0001162,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001162,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686787-CM6PAMxL5YVUTEEZP225",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103939538213032046",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.250328010006342,
+   "input_tokens": 992,
+   "output_tokens": 18,
+   "cost_usd": 0.00010820000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001082,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686789-36i3BQjrqPBgTxa0YLju",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103955750015905855",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2951989409921225,
+   "input_tokens": 1032,
+   "output_tokens": 18,
+   "cost_usd": 0.0001122,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001122,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686790-j0yWZAA0yhM1YEUW3ZGm",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2103958805142978873",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1878350710030645,
+   "input_tokens": 992,
+   "output_tokens": 18,
+   "cost_usd": 0.00010820000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001082,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686791-i6is3uHbbrbKdYpynm4M",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104101438649729388",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0818085479841102,
+   "input_tokens": 995,
+   "output_tokens": 18,
+   "cost_usd": 0.00010850000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001085,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686792-1qheYlHDJEsZEspjb3Iq",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104113395599335907",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9466389319859445,
+   "input_tokens": 1039,
+   "output_tokens": 18,
+   "cost_usd": 0.0001129,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001129,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686793-2UUwoBWPCN3aGzhkV44P",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104118871305105417",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2200924629869405,
+   "input_tokens": 1049,
+   "output_tokens": 18,
+   "cost_usd": 0.0001139,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001139,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686794-VfDu6oC4qVE2T2aD3sh4",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104124182170566816",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2379837949993089,
+   "input_tokens": 1083,
+   "output_tokens": 41,
+   "cost_usd": 0.00012880000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001288,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686795-nX18ImaZmGzznG4iq9Rl",
+   "expected": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "2104125409809879545",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.2974664350040257,
+   "input_tokens": 1077,
+   "output_tokens": 39,
+   "cost_usd": 0.0001272,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001272,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686797-DiUGs94Yrh9rpbQcOc1j",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Lewis Hall",
+     "fpl_id": 449,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104128254106050686",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0767466799879912,
+   "input_tokens": 1000,
+   "output_tokens": 18,
+   "cost_usd": 0.000109,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000109,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686799-4dZPFQHyDzJPmTSK9h5l",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104135413397082285",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0230741319828667,
+   "input_tokens": 1030,
+   "output_tokens": 18,
+   "cost_usd": 0.00011200000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000112,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686800-TAWzEsOMAdpbf0JsV66b",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104136860088103347",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1010751599969808,
+   "input_tokens": 1001,
+   "output_tokens": 18,
+   "cost_usd": 0.0001091,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001091,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686801-4E3bsc1NAtfPFd6TfCLa",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104142752036581744",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1272958269983064,
+   "input_tokens": 992,
+   "output_tokens": 18,
+   "cost_usd": 0.00010820000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001082,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686802-YscAajZJOUb9Sk955uxV",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104148975821443236",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9226837400055956,
+   "input_tokens": 1002,
+   "output_tokens": 18,
+   "cost_usd": 0.00010920000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001092,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686803-Aw7EZrsg8mpbQctHto6B",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104158837540622748",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 4.638969288003864,
+   "input_tokens": 1652,
+   "output_tokens": 256,
+   "cost_usd": 0.00029319999999999997,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00029319999999999997,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686804-KSIaD6pUEWBDxkoEw9QO",
+   "expected": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Brobbey",
+     "fpl_id": 552,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Ballard",
+     "fpl_id": 532,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Joao Pedro",
+     "fpl_id": 165,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Pedro Porro",
+     "fpl_id": 499,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Brobbey",
+     "fpl_id": 552,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Ballard",
+     "fpl_id": 532,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Joao Pedro",
+     "fpl_id": 165,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Pedro Porro",
+     "fpl_id": 499,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "2104169958418547163",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9091011419950519,
+   "input_tokens": 1049,
+   "output_tokens": 18,
+   "cost_usd": 0.0001139,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001139,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686809-8OKwDsjMwpaYrtr2tKqq",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104173076380303608",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1564221209846437,
+   "input_tokens": 1032,
+   "output_tokens": 40,
+   "cost_usd": 0.0001232,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001232,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686810-ABapdjVHk44TWRTF9eQ9",
+   "expected": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Alexander Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104175133694804334",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.4080352610035334,
+   "input_tokens": 1129,
+   "output_tokens": 39,
+   "cost_usd": 0.00013240000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001324,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686811-3HKAbtOj6YsUHTlOr4tY",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Bruno Fernandes",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104177542324273565",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.764859469985822,
+   "input_tokens": 1372,
+   "output_tokens": 101,
+   "cost_usd": 0.0001877,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001877,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686812-V6ISkEAzTOQcInnPHcNm",
+   "expected": [],
+   "predicted": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Bruno",
+     "fpl_id": 426,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "2104184615342674076",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.5301392789988313,
+   "input_tokens": 1011,
+   "output_tokens": 18,
+   "cost_usd": 0.0001101,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001101,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686815-IxmlUd8GquFdKwDm1TML",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104208281241547236",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9324219679983798,
+   "input_tokens": 1087,
+   "output_tokens": 18,
+   "cost_usd": 0.00011770000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001177,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686817-kIVck9KgkImiRzFd882Q",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104208927735046198",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.4285753160074819,
+   "input_tokens": 1010,
+   "output_tokens": 18,
+   "cost_usd": 0.00011000000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00011,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686818-LFhikLinJW5xFd0lbMgm",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104209061050782103",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.8456516599981114,
+   "input_tokens": 1050,
+   "output_tokens": 18,
+   "cost_usd": 0.000114,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000114,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686819-WAGpzMEAdd7CXfdIT1Et",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104238743922069518",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.329498507984681,
+   "input_tokens": 1048,
+   "output_tokens": 18,
+   "cost_usd": 0.00011380000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001138,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686821-oOIZLKqFtdrQRKXUNnGD",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104242478950019357",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.4649369980033953,
+   "input_tokens": 1003,
+   "output_tokens": 18,
+   "cost_usd": 0.0001093,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001093,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686822-lr20inuJ5EPCYxbpl4tY",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104264937493422556",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.202529914007755,
+   "input_tokens": 1034,
+   "output_tokens": 18,
+   "cost_usd": 0.00011240000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001124,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686824-BpiicdWVkgJVMkmcq1ut",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104267360009920983",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0182360129838344,
+   "input_tokens": 1005,
+   "output_tokens": 18,
+   "cost_usd": 0.0001095,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001095,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686825-Dz6dmAKFXylbNatqUbDo",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104269606542082554",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0296235420100857,
+   "input_tokens": 1010,
+   "output_tokens": 18,
+   "cost_usd": 0.00011000000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.00011,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686826-v3IKD5uT97Xi0HSeNduB",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104270786454577468",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.42387779901037,
+   "input_tokens": 989,
+   "output_tokens": 18,
+   "cost_usd": 0.00010790000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001079,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686827-oG2ffu9DchsU31d0AFs5",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104273037319454995",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.7402893739927094,
+   "input_tokens": 1004,
+   "output_tokens": 18,
+   "cost_usd": 0.0001094,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001094,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686828-djRT4bNYhRmnMfJfH337",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104293882557026758",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1029515690170228,
+   "input_tokens": 1044,
+   "output_tokens": 18,
+   "cost_usd": 0.0001134,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001134,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686830-A8yyadtBs4BZ7enB3M0X",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104299798362738869",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0509835310222115,
+   "input_tokens": 1003,
+   "output_tokens": 18,
+   "cost_usd": 0.0001093,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001093,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686831-Pxdty5CDemksmPI9DGVs",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104301949453537423",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2443193940271158,
+   "input_tokens": 983,
+   "output_tokens": 18,
+   "cost_usd": 0.0001073,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001073,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686832-pyYc3c7h8k2wxwKyJvc0",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104345349183746388",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1296937150182202,
+   "input_tokens": 1003,
+   "output_tokens": 18,
+   "cost_usd": 0.0001093,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001093,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686833-BRgBTQd3HmTp3nUKzKkc",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104452956900766117",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0995222679921426,
+   "input_tokens": 1057,
+   "output_tokens": 18,
+   "cost_usd": 0.00011470000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001147,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686835-NCTQh3YhWtbBjlOQJlPN",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104458586688762067",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.1598565010062885,
+   "input_tokens": 1057,
+   "output_tokens": 18,
+   "cost_usd": 0.00011470000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001147,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686836-FifQsjLe0VluMWRp8LPY",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104469147253948835",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.7403227369941305,
+   "input_tokens": 1019,
+   "output_tokens": 18,
+   "cost_usd": 0.0001109,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001109,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686838-FNjbaxyh0Dhjo0MyRdGt",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104489898455478454",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1109674990002532,
+   "input_tokens": 1004,
+   "output_tokens": 18,
+   "cost_usd": 0.0001094,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001094,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686840-cULOFDYydZ1ZfatwTyBb",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104492012888326553",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2441974610264879,
+   "input_tokens": 1030,
+   "output_tokens": 18,
+   "cost_usd": 0.00011200000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000112,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686841-6KWGzDv0plDzwIt0cCuG",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104496383990358219",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2118003830255475,
+   "input_tokens": 979,
+   "output_tokens": 18,
+   "cost_usd": 0.00010690000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001069,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686842-LFkdwOlFa7HwBXCFIkn1",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104500381380452505",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1688626109971665,
+   "input_tokens": 1020,
+   "output_tokens": 18,
+   "cost_usd": 0.00011100000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000111,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686843-EaE147QllD3FvnO7hzF5",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104505435390935125",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9515623610059265,
+   "input_tokens": 1003,
+   "output_tokens": 18,
+   "cost_usd": 0.0001093,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001093,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686844-A71NcnGxaqAEQwHy6bv1",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104509469715763577",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.275160914985463,
+   "input_tokens": 1022,
+   "output_tokens": 18,
+   "cost_usd": 0.00011119999999999999,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001112,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686845-8MKJE4ZvAkicjmgKt5Pv",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104511766172467564",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2295163189992309,
+   "input_tokens": 1012,
+   "output_tokens": 18,
+   "cost_usd": 0.00011020000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001102,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686847-YOxjPQlA3ZANSiBT0Bir",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104516939213095099",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0476192559872288,
+   "input_tokens": 1041,
+   "output_tokens": 18,
+   "cost_usd": 0.00011310000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001131,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686848-Xuz93xgQTQ1Ple9dyshy",
+   "expected": [
+    {
+     "mention": "Isak",
+     "fpl_id": 379,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": []
+  },
+  {
+   "id": "2104519520841027654",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2748555699945427,
+   "input_tokens": 1047,
+   "output_tokens": 43,
+   "cost_usd": 0.0001262,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001262,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686849-Czgigo3laLr3zqONiztS",
+   "expected": [
+    {
+     "mention": "Dango Ouattara",
+     "fpl_id": 95,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Dango Ouattara",
+     "fpl_id": 95,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104522447735099746",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0497802589961793,
+   "input_tokens": 992,
+   "output_tokens": 18,
+   "cost_usd": 0.00010820000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001082,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686850-JFELQFxBKckSp7M9aQ0g",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104522789382238687",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2367556609970052,
+   "input_tokens": 1033,
+   "output_tokens": 18,
+   "cost_usd": 0.00011230000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001123,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686851-hCVnuIAbr5E89asH4srf",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104523734438588623",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3990286719927099,
+   "input_tokens": 1023,
+   "output_tokens": 40,
+   "cost_usd": 0.00012230000000000002,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001223,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686852-v7RcISr4bOPw5c5rgcZX",
+   "expected": [
+    {
+     "mention": "Dorgu",
+     "fpl_id": 415,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Patrick Dorgu",
+     "fpl_id": 415,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "2104528798175695288",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.6918456479907036,
+   "input_tokens": 1062,
+   "output_tokens": 18,
+   "cost_usd": 0.00011520000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001152,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686854-MSIkllgocU8s1CLM946C",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104535940823978027",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9619208340009209,
+   "input_tokens": 1044,
+   "output_tokens": 18,
+   "cost_usd": 0.0001134,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001134,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686856-NGFKAxObYLRVzCVz7RNv",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104540141801066807",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.1739005470008124,
+   "input_tokens": 1041,
+   "output_tokens": 18,
+   "cost_usd": 0.00011310000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001131,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686856-fccQ692er0AcmvZIIzmW",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "2104567601145741767",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 0.9140370399982203,
+   "input_tokens": 1011,
+   "output_tokens": 18,
+   "cost_usd": 0.0001101,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001101,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686858-UgyRdnuafkxbTRbexxZp",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-001",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 3.8917040580126923,
+   "input_tokens": 1309,
+   "output_tokens": 251,
+   "cost_usd": 0.0002564,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0002564,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686859-154BGrqSO15rzDXFPUoW",
+   "expected": [
+    {
+     "mention": "Raya",
+     "fpl_id": 1,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gabriel",
+     "fpl_id": 4,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Ødegaard",
+     "fpl_id": 15,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Martinelli",
+     "fpl_id": 18,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Eze",
+     "fpl_id": 14,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Raya",
+     "fpl_id": 1,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gabriel",
+     "fpl_id": 4,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Ødegaard",
+     "fpl_id": 15,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Havertz",
+     "fpl_id": 26,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Martinelli",
+     "fpl_id": 18,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Eze",
+     "fpl_id": 14,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-002",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.7438501919968985,
+   "input_tokens": 1006,
+   "output_tokens": 131,
+   "cost_usd": 0.00016610000000000003,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001661,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686862-bCrlLcr7LH7hynWxV6v4",
+   "expected": [
+    {
+     "mention": "Mbeumo",
+     "fpl_id": 427,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Cunha",
+     "fpl_id": 428,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "B.Fernandes",
+     "fpl_id": 426,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Mainoo",
+     "fpl_id": 432,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Mbeumo",
+     "fpl_id": 427,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Cunha",
+     "fpl_id": 428,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "B.Fernandes",
+     "fpl_id": 426,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Shaw",
+     "fpl_id": 423,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Mainoo",
+     "fpl_id": 432,
+     "event_type": "benched",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-003",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.655547831003787,
+   "input_tokens": 1001,
+   "output_tokens": 79,
+   "cost_usd": 0.00013959999999999998,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001396,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686864-Xo8IHv2zipXcad8d3EIB",
+   "expected": [
+    {
+     "mention": "Haaland",
+     "fpl_id": 411,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "benched",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Haaland",
+     "fpl_id": 411,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    },
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "benched",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-005",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.4882007670239545,
+   "input_tokens": 993,
+   "output_tokens": 39,
+   "cost_usd": 0.0001188,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001188,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686866-y8RG8foEl4LLmXXcRe2p",
+   "expected": [
+    {
+     "mention": "Cole Palmer",
+     "fpl_id": 154,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Cole Palmer",
+     "fpl_id": 154,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-006",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.283802996011218,
+   "input_tokens": 997,
+   "output_tokens": 39,
+   "cost_usd": 0.00011920000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001192,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686868-TmY1GRDr1a4PQMSZqPKO",
+   "expected": [
+    {
+     "mention": "Caicedo",
+     "fpl_id": 159,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Caicedo",
+     "fpl_id": 159,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-007",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.5077740359993186,
+   "input_tokens": 992,
+   "output_tokens": 40,
+   "cost_usd": 0.00011920000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001192,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686870-hsGZWoerGKDkTrQgzsfI",
+   "expected": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Wirtz",
+     "fpl_id": 366,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-009",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.6956490809971,
+   "input_tokens": 995,
+   "output_tokens": 39,
+   "cost_usd": 0.000119,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000119,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686871-dNiYT7XD4G0PRjgTfGkO",
+   "expected": [
+    {
+     "mention": "Gvardiol",
+     "fpl_id": 391,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Gvardiol",
+     "fpl_id": 391,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-010",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.5054388679855037,
+   "input_tokens": 986,
+   "output_tokens": 38,
+   "cost_usd": 0.0001176,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001176,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686873-tGD3v9aZ0pyzpBq2sPVR",
+   "expected": [
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Saliba",
+     "fpl_id": 6,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-011",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.0458602229773533,
+   "input_tokens": 1003,
+   "output_tokens": 57,
+   "cost_usd": 0.0001288,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001288,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686874-idhzMQeNwMqNBuuIEVjV",
+   "expected": [
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "out",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Doku",
+     "fpl_id": 400,
+     "event_type": "out",
+     "certainty": "confirmed"
+    },
+    {
+     "mention": "Foden",
+     "fpl_id": 398,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-013",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2292689550085925,
+   "input_tokens": 990,
+   "output_tokens": 40,
+   "cost_usd": 0.000119,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.000119,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686876-bIfkBX9KiDAjWBzd9rEG",
+   "expected": [
+    {
+     "mention": "Starboy",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Starboy",
+     "fpl_id": 12,
+     "event_type": "confirmed_starter",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-014",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.22519099098281,
+   "input_tokens": 993,
+   "output_tokens": 39,
+   "cost_usd": 0.0001188,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001188,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686878-jE6rrRgVOaR0MBD1js40",
+   "expected": [
+    {
+     "mention": "The Terminator",
+     "fpl_id": 411,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "The Terminator",
+     "fpl_id": 411,
+     "event_type": "doubt",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-015",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.235336017998634,
+   "input_tokens": 988,
+   "output_tokens": 37,
+   "cost_usd": 0.0001173,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001173,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686879-GgXqNDSML8NRieY9xK6c",
+   "expected": [
+    {
+     "mention": "Cold Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Cold Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-017",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.8553227049997076,
+   "input_tokens": 992,
+   "output_tokens": 42,
+   "cost_usd": 0.00012020000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001202,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686880-kxN546lP2SLVhEjmSgFW",
+   "expected": [
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Gyökeres",
+     "fpl_id": 25,
+     "event_type": "confirmed_starter",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-018",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.2147506060136948,
+   "input_tokens": 991,
+   "output_tokens": 38,
+   "cost_usd": 0.0001181,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001181,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686882-JtBj2PZL3rZElfsIUwCv",
+   "expected": [
+    {
+     "mention": "Guéhi",
+     "fpl_id": 388,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Guéhi",
+     "fpl_id": 388,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-019",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 2.4882649079954717,
+   "input_tokens": 1241,
+   "output_tokens": 58,
+   "cost_usd": 0.0001531,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001531,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686883-m5qT8tDpgdD48UcCFgdy",
+   "expected": [
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Palmer",
+     "fpl_id": 154,
+     "event_type": "out",
+     "certainty": "confirmed"
+    }
+   ]
+  },
+  {
+   "id": "syn-022",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.095177432987839,
+   "input_tokens": 996,
+   "output_tokens": 18,
+   "cost_usd": 0.0001086,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001086,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686886-3Cq7nR0TOK9EI6Sw4gzM",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-023",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0236219780053943,
+   "input_tokens": 1013,
+   "output_tokens": 18,
+   "cost_usd": 0.00011030000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001103,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686887-JrOtMHBqXyzOmfyW6oDK",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-024",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.4393605510122143,
+   "input_tokens": 1003,
+   "output_tokens": 18,
+   "cost_usd": 0.0001093,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001093,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686888-x1YQwSxtwy1lBsbTwj0h",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-025",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.325788118003402,
+   "input_tokens": 1006,
+   "output_tokens": 18,
+   "cost_usd": 0.00010960000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001096,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686889-LTGflDz4N7RQQNip93Ih",
+   "expected": [],
+   "predicted": []
+  },
+  {
+   "id": "syn-027",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.048737353994511,
+   "input_tokens": 998,
+   "output_tokens": 40,
+   "cost_usd": 0.0001198,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001198,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686891-93FwV4M9Ir5FiuMjKwGW",
+   "expected": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "out",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Semenyo",
+     "fpl_id": 397,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ]
+  },
+  {
+   "id": "syn-028",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.0898153030138928,
+   "input_tokens": 993,
+   "output_tokens": 37,
+   "cost_usd": 0.0001178,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001178,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686892-KYSLvepwzpQozPxS3VbL",
+   "expected": [
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Rice",
+     "fpl_id": 13,
+     "event_type": "doubt",
+     "certainty": "likely"
+    }
+   ]
+  },
+  {
+   "id": "syn-029",
+   "attempts": 1,
+   "error_class": null,
+   "latency_seconds": 1.3656682150030974,
+   "input_tokens": 992,
+   "output_tokens": 39,
+   "cost_usd": 0.00011870000000000001,
+   "reasoning_tokens": 0,
+   "reported_cost_usd": 0.0001187,
+   "host": "OpenAI",
+   "answered_model": "openai/gpt-6-luna",
+   "generation_id": "gen-1790686893-oYRdqO95d2ip2Jtsv2Rf",
+   "expected": [
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ],
+   "predicted": [
+    {
+     "mention": "Saka",
+     "fpl_id": 12,
+     "event_type": "benched",
+     "certainty": "rumour"
+    }
+   ]
+  }
+ ]
+}

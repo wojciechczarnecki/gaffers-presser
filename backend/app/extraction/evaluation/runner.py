@@ -1,7 +1,7 @@
 import threading
 import time
-from collections.abc import Sequence
-from dataclasses import asdict, dataclass
+from collections.abc import Callable, Sequence
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -11,6 +11,7 @@ from app.extraction.evaluation.cases import EvalCase, ExpectedEvent
 from app.extraction.evaluation.metrics import CaseResult, Metrics, compute_metrics
 from app.extraction.flow import PROMPT_VERSION, Flow, build_flow
 from app.extraction.linking import PlayerIndex
+from app.extraction.model_settings import ModelSettings
 from app.extraction.pricing import compute_cost, load_prices
 from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import FlowResult, PostInput
@@ -35,14 +36,19 @@ class EvaluationReport:
     split: str
     metrics: Metrics
     outcomes: list[CaseOutcome]
+    settings: ModelSettings | None = None
 
     def to_json_dict(self) -> dict[str, Any]:
+        settings = self.settings
         return {
             "run_name": self.run_name,
             "provider": self.provider,
             "model": self.model,
             "prompt_version": self.prompt_version,
             "split": self.split,
+            "structured_method": settings.structured_method if settings else None,
+            "reasoning_effort": settings.reasoning_effort if settings else None,
+            "temperature": settings.temperature if settings else None,
             "cases": self.metrics.cases,
             "errored_cases": self.metrics.errored_cases,
             "metrics": asdict(self.metrics),
@@ -55,6 +61,11 @@ class EvaluationReport:
                     "input_tokens": outcome.result.input_tokens,
                     "output_tokens": outcome.result.output_tokens,
                     "cost_usd": outcome.result.cost_usd,
+                    "reasoning_tokens": outcome.result.reasoning_tokens,
+                    "reported_cost_usd": outcome.result.reported_cost_usd,
+                    "host": outcome.result.host,
+                    "answered_model": outcome.result.answered_model,
+                    "generation_id": outcome.result.generation_id,
                     "expected": [e.model_dump() for e in outcome.result.expected],
                     "predicted": [e.model_dump() for e in outcome.result.predicted],
                 }
@@ -88,6 +99,14 @@ def _post_from_case(case: EvalCase) -> PostInput:
     )
 
 
+def _with_host(outcome: CaseOutcome, host_lookup: Callable[[str], str | None]) -> CaseOutcome:
+    result = outcome.result
+    if result.host is not None or result.generation_id is None:
+        return outcome
+    host = host_lookup(result.generation_id)
+    return CaseOutcome(outcome.case_id, replace(result, host=host), outcome.attempts)
+
+
 def run_evaluation(
     cases: Sequence[EvalCase],
     spec: ChatModelSpec,
@@ -98,6 +117,7 @@ def run_evaluation(
     clock: Clock,
     posts_per_month: float,
     usd_pln_rate: float,
+    host_lookup: Callable[[str], str | None] | None = None,
 ) -> EvaluationReport:
     flow = _TimedFlow(build_flow(spec, index))
     prices = load_prices()
@@ -116,6 +136,7 @@ def run_evaluation(
             result = CaseResult(expected=expected, predicted=[], error_class=error_class)
         else:
             usage = retry.result.usage
+            answered_model = retry.result.answered_model or spec.model
             result = CaseResult(
                 expected=expected,
                 predicted=[
@@ -131,10 +152,18 @@ def run_evaluation(
                 input_tokens=usage.input_tokens,
                 output_tokens=usage.output_tokens,
                 cost_usd=compute_cost(
-                    spec.provider, spec.model, usage.input_tokens, usage.output_tokens, prices
+                    answered_model, usage.input_tokens, usage.output_tokens, prices
                 ),
+                reasoning_tokens=usage.reasoning_tokens,
+                reported_cost_usd=usage.reported_cost_usd,
+                host=retry.result.host,
+                answered_model=retry.result.answered_model,
+                generation_id=retry.result.generation_id,
             )
         outcomes.append(CaseOutcome(case.id, result, retry.attempts))
+
+    if host_lookup is not None:
+        outcomes = [_with_host(outcome, host_lookup) for outcome in outcomes]
 
     metrics = compute_metrics(
         [outcome.result for outcome in outcomes],
@@ -149,4 +178,5 @@ def run_evaluation(
         split=split,
         metrics=metrics,
         outcomes=outcomes,
+        settings=spec.settings,
     )

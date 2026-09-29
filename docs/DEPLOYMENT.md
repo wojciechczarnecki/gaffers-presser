@@ -43,24 +43,32 @@ below; agents never touch production.
      naming the missing variable, never its value.
    `python -m app.worker status` then also prints the source, the last successful poll, the
    next poll and the current mode (`window` near a deadline, `sparse` otherwise).
-8. **Tweet extraction (optional).** With no `LLM_PROVIDER` set, the worker runs exactly as
-   above and logs `extraction disabled` once; `python -m app.worker status` shows
-   `Extraction: disabled`. To turn it on, set the worker service's variables (placeholders
-   only here; the values go in Railway's variables, never in the repository or in logs):
-   - `LLM_PROVIDER` — one of `google`, `openai`, `anthropic`, `openrouter`.
-   - `LLM_MODEL` — the model name for that provider (required until ADR 0006 names a
-     default).
-   - the key of the chosen provider: `GOOGLE_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
-     or `OPENROUTER_API_KEY`. An unknown provider or a missing key fails the worker on start
-     with a message naming the variable, never its value.
+8. **Tweet extraction (optional).** With no `OPENROUTER_API_KEY` set, the worker runs exactly
+   as above and logs `extraction disabled` once, whatever `LLM_MODEL` says;
+   `python -m app.worker status` shows `Extraction: disabled`. OpenRouter is the only LLM
+   provider, so the key is the switch. To turn extraction on, set the worker service's
+   variables (placeholders only here; the values go in Railway's variables, never in the
+   repository or in logs):
+   - `OPENROUTER_API_KEY` — the switch and the only LLM credential.
+   - `LLM_MODEL` — optional OpenRouter model ID; empty means the default from
+     [ADR 0006](adr/0006-default-extraction-model-openrouter.md), `openai/gpt-6-luna`.
+   - `LLM_FALLBACK_MODEL` — optional OpenRouter model ID answering when the primary fails
+     (OpenRouter's model fallback); empty means the default fallback from ADR 0006, `google/gemini-3.1-flash-lite`.
+     The fallback must share the primary's structured-output method and reasoning effort: an
+     explicit `LLM_FALLBACK_MODEL` that does not fails the worker on start, and the default
+     fallback is dropped (no fallback) under an `LLM_MODEL` it cannot answer for. A model
+     outside `backend/app/extraction/model_settings.toml` fails the worker on start with a
+     message naming the variable, never a key; add a row there and in `prices.toml` first.
    - `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` from a Langfuse Cloud project in the EU
      region, and `LANGFUSE_HOST` (defaults to `https://cloud.langfuse.com`, the EU region).
      Without both keys extraction still runs, untraced, and the worker logs one warning.
    - `USD_PLN_RATE` — only the evaluation command needs it; the worker does not.
-   `python -m app.worker status` then prints `Extraction:` with the model, the posts waiting,
-   the failed posts and the latest extraction. New posts are extracted oldest first within
-   seconds of being stored, in their own thread, so a slow provider never delays tweet polls
-   or FPL jobs; a failed post is stored as `failed` and never blocks the rest. Re-extraction
-   and evaluation run from a shell with the production variables, or locally:
+   `python -m app.worker status` then prints `Extraction:` with the model, the fallback, the
+   posts waiting, the failed posts and the latest extraction. New posts are extracted oldest
+   first within seconds of being stored, in their own thread, so a slow provider never delays
+   tweet polls or FPL jobs; a failed post is stored as `failed` and never blocks the rest.
+   Re-extraction and evaluation run from a shell with the production variables, or locally:
    `python -m app.extraction reextract --failed`, `python -m app.extraction prelabel`,
-   `python -m app.extraction evaluate` (see the README's Development section).
+   `python -m app.extraction evaluate --split dev --model <OpenRouter model ID>`,
+   `python -m app.extraction compare-labels`, `python -m app.extraction spend` (see the
+   README's Development section).

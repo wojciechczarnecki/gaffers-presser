@@ -219,3 +219,38 @@ def test_invalid_output_raises():
 
     with pytest.raises(ExtractionOutputError):
         flow.run(POST, config={})
+
+
+def test_reasoning_tokens_summed():
+    output = ExtractionOutput(events=[_event("Smith")])
+    disambiguation = Disambiguation(fpl_id=SMITH_TWO.fpl_id)
+    fake = FakeChatModel(responses=[output, disambiguation], reasoning_tokens=3, reported_cost=0.5)
+    flow = build_flow(ChatModelSpec(provider="fake", model="fake", chat_model=fake), INDEX)
+
+    result = flow.run(POST, config={})
+
+    assert result.llm_calls == 2
+    assert result.usage.reasoning_tokens == 6
+    assert result.usage.reported_cost_usd == 1.0
+    assert result.usage.input_tokens == 20
+
+
+def test_no_reasoning_tokens_stays_none():
+    flow = build_flow(_spec(ExtractionOutput(events=[])), INDEX)
+
+    result = flow.run(POST, config={})
+
+    assert result.usage.reasoning_tokens is None
+    assert result.usage.reported_cost_usd is None
+
+
+def test_answered_model_and_host_from_extraction_call():
+    fake = FakeChatModel(
+        responses=[ExtractionOutput(events=[])], response_model="b/fallback", host="DeepInfra"
+    )
+    flow = build_flow(ChatModelSpec(provider="fake", model="a/primary", chat_model=fake), INDEX)
+
+    result = flow.run(POST, config={})
+
+    assert result.answered_model == "b/fallback"
+    assert result.host == "DeepInfra"

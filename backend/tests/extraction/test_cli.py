@@ -9,11 +9,21 @@ import pytest
 from sqlmodel import Session, select
 from typer.testing import CliRunner
 
+from app.core.errors import ConfigError
 from app.core.settings import ExtractionSettings
-from app.extraction.cli import ExtractionCliDeps, app, build_spec_from_settings
+from app.extraction.cli import (
+    DEFAULT_RESULTS_DIR,
+    ExtractionCliDeps,
+    app,
+    build_spec_from_settings,
+    default_output_dir,
+    host_lookup_from_settings,
+)
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
 from app.extraction.evaluation.runner import run_evaluation
+from app.extraction.generation import HostLookup
 from app.extraction.linking import PlayerIndex, PlayerRecord, load_snapshot
+from app.extraction.model_settings import ModelSettings
 from app.extraction.models import Extraction
 from app.extraction.pricing import Price
 from app.extraction.providers import ChatModelSpec
@@ -25,6 +35,7 @@ from tests.conftest import BACKEND_DIR
 from tests.extraction.fakes import FakeChatModel, RecordingHandler
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
+SENTINEL = "sentinel-secret-value"
 EXTRACTION_VARIABLE = re.compile(r"(LLM_.*|LANGFUSE_.*|.*_API_KEY|USD_PLN_RATE)")
 
 
@@ -61,17 +72,21 @@ def _tweet(x_id: int, created_at: datetime = NOW) -> Tweet:
     )
 
 
-def _build_spec(*responses, provider: str = "fake", model: str = "fake-model"):
-    fake = FakeChatModel(responses=list(responses))
+def _build_spec(*responses, provider: str = "fake", model: str = "fake-model", **fake_fields):
+    fake = FakeChatModel(responses=list(responses), **fake_fields)
     spec = ChatModelSpec(provider=provider, model=model, chat_model=fake)
+    fallback_asked: list[bool] = []
+    row = ModelSettings(
+        reasoning_effort="none", temperature=True, structured_method="function_calling", checked="x"
+    )
 
-    def build_spec(cli_provider, cli_model):
+    def build_spec(cli_model, *, fallback):
+        fallback_asked.append(fallback)
         return ChatModelSpec(
-            provider=cli_provider or provider,
-            model=cli_model or model,
-            chat_model=fake,
+            provider=provider, model=cli_model or model, chat_model=fake, settings=row
         )
 
+    build_spec.fallback_asked = fallback_asked
     return build_spec, spec
 
 
@@ -200,15 +215,16 @@ def test_reextract_with_other_model(db):
     build_spec, _ = _build_spec(ExtractionOutput(events=[]), provider="fake", model="fake-model")
     result = CliRunner().invoke(
         app,
-        ["reextract", "--x-id", "1", "--provider", "other", "--model", "other-model"],
+        ["reextract", "--x-id", "1", "--model", "other/model"],
         obj=_deps(db, build_spec),
     )
 
     assert result.exit_code == 0
     with Session(db) as session:
         row = session.exec(select(Extraction).where(Extraction.tweet_x_id == 1)).one()
-    assert row.provider == "other"
-    assert row.model == "other-model"
+    assert row.provider == "fake"
+    assert row.model == "other/model"
+    assert build_spec.fallback_asked == [True]
 
 
 def test_reextract_events_and_failures_counted(db):
@@ -263,17 +279,32 @@ def test_reextract_requires_one_selector(db):
     assert result.exit_code == 1
 
 
-def test_reextract_config_error_names_variable(db, monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = ExtractionSettings(_env_file=None, llm_provider="", llm_model="")
+def test_reextract_without_key_names_openrouter_variable(db, monkeypatch):
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", SENTINEL)
+    settings = ExtractionSettings(_env_file=None)
     build_spec = build_spec_from_settings(settings)
     result = CliRunner().invoke(
         app,
-        ["reextract", "--x-id", "1", "--provider", "openai"],
+        ["reextract", "--x-id", "1"],
         obj=_deps(db, build_spec, settings=settings),
     )
     assert result.exit_code == 1
-    assert "OPENAI_API_KEY" in result.stderr
+    assert "OPENROUTER_API_KEY" in result.stderr
+    assert SENTINEL not in result.stderr
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["reextract", "--x-id", "1"],
+        ["prelabel", "--output", "out.jsonl"],
+        ["evaluate", "--split", "dev"],
+    ],
+)
+def test_provider_option_removed(args):
+    build_spec, _ = _build_spec()
+    result = CliRunner().invoke(app, [*args, "--provider", "openai"], obj=_no_db_deps(build_spec))
+    assert result.exit_code == 2
 
 
 def test_help():
@@ -385,11 +416,12 @@ def test_prelabel_writes_unreviewed_candidates_with_the_split_rule(db, tmp_path)
 
     result = CliRunner().invoke(
         app,
-        ["prelabel", "--output", str(output), "--provider", "fake", "--model", "m"],
+        ["prelabel", "--output", str(output), "--model", "m"],
         obj=_deps(db, build_spec),
     )
 
     assert result.exit_code == 0, result.output
+    assert build_spec.fallback_asked == [False]
     cases = {c.id: c for c in load_cases(output)}
     assert set(cases) == {"10", "11", "13"}
     assert all(
@@ -421,7 +453,7 @@ def test_prelabel_skips_ids_already_in_the_set(db, tmp_path):
 
     result = CliRunner().invoke(
         app,
-        ["prelabel", "--output", str(output), "--eval-set", str(eval_set), "--provider", "f"],
+        ["prelabel", "--output", str(output), "--eval-set", str(eval_set)],
         obj=_deps(db, build_spec),
     )
 
@@ -459,17 +491,18 @@ def test_prelabel_limit_and_range(db, tmp_path):
     assert [c.id for c in load_cases(output)] == ["2", "3"]
 
 
-def test_prelabel_config_error_names_variable(db, tmp_path, monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    settings = ExtractionSettings(_env_file=None, llm_provider="", llm_model="")
+def test_prelabel_without_key_names_openrouter_variable(db, tmp_path, monkeypatch):
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", SENTINEL)
+    settings = ExtractionSettings(_env_file=None)
     output = tmp_path / "cases.jsonl"
     result = CliRunner().invoke(
         app,
-        ["prelabel", "--output", str(output), "--provider", "openai", "--model", "m"],
+        ["prelabel", "--output", str(output), "--model", "google/gemini-3.1-flash-lite"],
         obj=_deps(db, build_spec_from_settings(settings), settings=settings),
     )
     assert result.exit_code == 1
-    assert "OPENAI_API_KEY" in result.stderr
+    assert "OPENROUTER_API_KEY" in result.stderr
+    assert SENTINEL not in result.stderr
     assert not output.exists()
 
 
@@ -529,8 +562,6 @@ class _Files:
             "evaluate",
             "--split",
             split,
-            "--provider",
-            "fake",
             "--model",
             "m",
             "--cases",
@@ -552,7 +583,7 @@ def _no_db_deps(build_spec, settings=None) -> ExtractionCliDeps:
     )
 
 
-def _forbidden_build_spec(provider, model):
+def _forbidden_build_spec(model, *, fallback):
     raise AssertionError("no model may be built")
 
 
@@ -581,27 +612,104 @@ def test_evaluate_requires_pln_rate(tmp_path):
     assert "USD_PLN_RATE" in result.stderr
 
 
-def test_evaluate_config_error_names_variable(tmp_path, monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+def test_evaluate_without_key_names_openrouter_variable(tmp_path, monkeypatch):
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", SENTINEL)
     files = _Files(tmp_path, [_eval_case("1", "test")])
-    settings = ExtractionSettings(_env_file=None, llm_provider="", llm_model="", usd_pln_rate=4.0)
+    settings = ExtractionSettings(_env_file=None, usd_pln_rate=4.0)
     deps = _no_db_deps(build_spec_from_settings(settings), settings)
 
-    args = files.args()
-    args[args.index("fake")] = "openai"
-    result = CliRunner().invoke(app, args, obj=deps)
+    result = CliRunner().invoke(app, files.args(), obj=deps)
 
     assert result.exit_code == 1
-    assert "OPENAI_API_KEY" in result.stderr
+    assert "OPENROUTER_API_KEY" in result.stderr
+    assert SENTINEL not in result.stderr
+
+
+def test_evaluate_shows_reasoning_tokens(tmp_path):
+    files = _Files(tmp_path, [_eval_case("1", "test")])
+    build_spec, _ = _build_spec(_haaland_out(), model="m", reasoning_tokens=3, host="Fireworks")
+
+    result = CliRunner().invoke(app, files.args("--run-name", "run-r"), obj=_no_db_deps(build_spec))
+
+    assert result.exit_code == 0, result.output
+    assert "mean reasoning tokens: 3.00" in result.stdout
+    assert "serving hosts: Fireworks 1" in result.stdout
+    assert "f1 >= 0.85: yes" in result.stdout
+    assert "no errored case: yes" in result.stdout
+
+
+def test_evaluate_fills_the_host_from_the_generation_lookup(tmp_path):
+    files = _Files(tmp_path, [_eval_case("1", "test"), _eval_case("2", "test")])
+    build_spec, _ = _build_spec(_haaland_out(), _haaland_out(), model="m", generation_id="gen-1")
+    looked_up: list[str] = []
+
+    def lookup(generation_id):
+        looked_up.append(generation_id)
+        return "DeepInfra"
+
+    deps = _no_db_deps(build_spec)
+    deps = ExtractionCliDeps(
+        engine=None,
+        settings=deps.settings,
+        build_spec=build_spec,
+        clock=deps.clock,
+        host_lookup=lambda: lookup,
+    )
+
+    result = CliRunner().invoke(app, files.args("--run-name", "run-h"), obj=deps)
+
+    assert result.exit_code == 0, result.output
+    assert looked_up == ["gen-1", "gen-1"]
+    assert "serving hosts: DeepInfra 2" in result.stdout
+    data = json.loads((files.results / "run-h.json").read_text())
+    assert data["metrics"]["hosts"] == {"DeepInfra": 2}
+    assert data["case_results"][0]["generation_id"] == "gen-1"
+
+
+def test_evaluate_closes_the_host_lookup(tmp_path):
+    files = _Files(tmp_path, [_eval_case("1", "test")])
+    build_spec, _ = _build_spec(_haaland_out(), model="m", generation_id="gen-1")
+
+    class _Lookup:
+        closed = False
+
+        def __call__(self, generation_id):
+            return "DeepInfra"
+
+        def close(self):
+            self.closed = True
+
+    lookup = _Lookup()
+    base = _no_db_deps(build_spec)
+    deps = ExtractionCliDeps(
+        engine=None,
+        settings=base.settings,
+        build_spec=build_spec,
+        clock=base.clock,
+        host_lookup=lambda: lookup,
+    )
+
+    result = CliRunner().invoke(app, files.args("--run-name", "run-c"), obj=deps)
+
+    assert result.exit_code == 0, result.output
+    assert lookup.closed
 
 
 def test_evaluate_writes_results(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "app.extraction.evaluation.runner.load_prices",
-        lambda: {"fake:m": Price(input_per_million=1.0, output_per_million=2.0, checked="x")},
+        lambda: {"m": Price(input_per_million=1.0, output_per_million=2.0, checked="x")},
     )
     files = _Files(tmp_path, [_eval_case("1", "test"), _eval_case("2", "test", events=False)])
-    build_spec, _ = _build_spec(_haaland_out(), _haaland_out(), model="m")
+    build_spec, _ = _build_spec(
+        _haaland_out(),
+        _haaland_out(),
+        model="m",
+        response_model="m",
+        host="Fireworks",
+        reasoning_tokens=3,
+        reported_cost=0.00005,
+    )
 
     result = CliRunner().invoke(
         app,
@@ -611,6 +719,19 @@ def test_evaluate_writes_results(tmp_path, monkeypatch):
 
     assert result.exit_code == 0, result.output
     data = json.loads((files.results / "run-1.json").read_text())
+    assert build_spec.fallback_asked == [False]
+    assert data["reasoning_effort"] == "none"
+    assert data["temperature"] is True
+    assert data["structured_method"] == "function_calling"
+    assert data["metrics"]["hosts"] == {"Fireworks": 2}
+    assert data["metrics"]["thresholds_passed"]["f1"] is False  # 2 * 1 / (2 + 1) = 0.667
+    assert data["metrics"]["thresholds_passed"]["linking_accuracy"] is True
+    assert data["metrics"]["total_cost_usd"] == pytest.approx(4e-5)
+    by_case = {c["id"]: c for c in data["case_results"]}
+    assert by_case["1"]["host"] == "Fireworks"
+    assert by_case["1"]["answered_model"] == "m"
+    assert by_case["1"]["reasoning_tokens"] == 3
+    assert by_case["1"]["reported_cost_usd"] == 0.00005
     assert (data["run_name"], data["provider"], data["model"]) == ("run-1", "fake", "m")
     assert data["prompt_version"].startswith("extraction@")
     assert data["split"] == "test"
@@ -736,3 +857,214 @@ def test_malformed_variable_is_named_without_its_value(tmp_path, monkeypatch):
     assert result.exit_code == 1
     assert "USD_PLN_RATE" in result.stderr
     assert "4,05" not in result.stderr
+
+
+def _compare_case(case_id, split, *events):
+    return EvalCase(
+        id=case_id,
+        author_handle="reporter",
+        text=f"post {case_id}",
+        created_at=NOW,
+        is_repost=False,
+        is_reply=False,
+        split=split,
+        synthetic=False,
+        reviewed=True,
+        tags=[],
+        expected_events=[
+            ExpectedEvent(mention=m, fpl_id=i, event_type="out", certainty=c) for m, i, c in events
+        ],
+    )
+
+
+def _reviewed_and_baseline():
+    reviewed = [
+        _compare_case("a", "dev", ("Salah", 1, "likely")),
+        _compare_case("b", "test", ("Haaland", 2, "confirmed"), ("Saka", 3, "confirmed")),
+        _compare_case("c", "test"),
+    ]
+    baseline = [
+        _compare_case("a", "dev", ("Salah", 1, "confirmed")),
+        _compare_case("b", "test", ("Haaland", 2, "confirmed")),
+        _compare_case("c", "test", ("Kane", 4, "confirmed")),
+    ]
+    return reviewed, baseline
+
+
+def test_compare_labels_with_baseline_file(tmp_path):
+    reviewed, baseline = _reviewed_and_baseline()
+    cases, base = tmp_path / "cases.jsonl", tmp_path / "base.jsonl"
+    write_cases(cases, reviewed)
+    write_cases(base, baseline)
+
+    result = CliRunner().invoke(
+        app, ["compare-labels", "--cases", str(cases), "--baseline", str(base)]
+    )
+
+    assert result.exit_code == 0, result.output
+    out = result.stdout
+    dev, test = out.split("split test")
+    assert "split dev" in dev
+    assert "cases: 1" in dev and "cases changed: 1" in dev
+    assert "events added / removed / relabelled: 0 / 0 / 1" in dev
+    assert "relabelled by field: event_type 0, certainty 1, fpl_id 0" in dev
+    assert "pre-labels precision / recall / f1: 1.000 / 1.000 / 1.000" in dev
+    assert "cases: 2" in test and "cases changed: 2" in test
+    assert "events added / removed / relabelled: 1 / 1 / 0" in test
+    assert "pre-labels precision / recall / f1: 0.500 / 0.500 / 0.500" in test
+
+
+def test_compare_labels_at_git_revision(tmp_path):
+    reviewed, baseline = _reviewed_and_baseline()
+    cases = tmp_path / "cases.jsonl"
+
+    def git(*args):
+        subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+        )
+
+    git("init", "-q")
+    write_cases(cases, baseline)
+    git("add", "cases.jsonl")
+    git("commit", "-q", "-m", "prelabels")
+    write_cases(cases, reviewed)
+    git("add", "cases.jsonl")
+    git("commit", "-q", "-m", "reviewed")
+
+    result = CliRunner().invoke(
+        app, ["compare-labels", "--cases", str(cases), "--revision", "HEAD~1"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "events added / removed / relabelled: 1 / 1 / 0" in result.stdout
+    assert "events added / removed / relabelled: 0 / 0 / 1" in result.stdout
+
+
+def test_compare_labels_unknown_revision_fails(tmp_path):
+    reviewed, _ = _reviewed_and_baseline()
+    cases = tmp_path / "cases.jsonl"
+    write_cases(cases, reviewed)
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True, capture_output=True)
+
+    result = CliRunner().invoke(
+        app, ["compare-labels", "--cases", str(cases), "--revision", "nope"]
+    )
+
+    assert result.exit_code == 1
+    assert "cannot read cases.jsonl at revision nope" in result.stderr
+
+
+def test_dev_runs_default_to_the_ignored_directory():
+    assert default_output_dir("dev") == DEFAULT_RESULTS_DIR / "dev"
+    assert default_output_dir("test") == DEFAULT_RESULTS_DIR
+
+    def ignored(path: str) -> int:
+        return subprocess.run(
+            ["git", "check-ignore", "-q", path],
+            cwd=str(BACKEND_DIR.parent),
+            capture_output=True,
+        ).returncode
+
+    assert ignored("backend/evals/extraction/results/dev/x.json") == 0
+    assert ignored("backend/evals/extraction/results/x.json") == 1
+
+
+def test_evaluate_dev_writes_into_the_dev_directory(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.extraction.cli.DEFAULT_RESULTS_DIR", tmp_path / "results")
+    files = _Files(tmp_path, [_eval_case("1", "dev")])
+    build_spec, _ = _build_spec(_haaland_out(), model="m")
+    args = files.args("--run-name", "d1", split="dev")
+    del args[args.index("--output-dir") : args.index("--output-dir") + 2]
+
+    result = CliRunner().invoke(app, args, obj=_no_db_deps(build_spec))
+
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "results" / "dev" / "d1.json").exists()
+
+
+def _run_file(directory, name, cost, reported=None, with_totals=True, split="test"):
+    directory.mkdir(parents=True, exist_ok=True)
+    metrics = {"cases": 2}
+    if with_totals:
+        metrics["total_cost_usd"] = cost
+        metrics["total_reported_cost_usd"] = reported or 0.0
+    (directory / f"{name}.json").write_text(
+        json.dumps(
+            {
+                "run_name": name,
+                "split": split,
+                "model": "a/m",
+                "cases": 2,
+                "metrics": metrics,
+                "case_results": [
+                    {"id": "1", "cost_usd": cost / 2, "reported_cost_usd": (reported or 0) / 2},
+                    {"id": "2", "cost_usd": cost / 2, "reported_cost_usd": (reported or 0) / 2},
+                ],
+            }
+        )
+    )
+
+
+def test_spend_sums_run_files_recursively(tmp_path):
+    _run_file(tmp_path / "results", "test-run", 0.25, reported=0.3)
+    _run_file(tmp_path / "results" / "dev", "dev-run", 0.5, reported=0.6, with_totals=False)
+
+    result = CliRunner().invoke(
+        app, ["spend", "--results-dir", str(tmp_path / "results")], obj=_no_db_deps(None)
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "test-run" in result.stdout
+    assert "dev-run" in result.stdout
+    assert "total cost: 0.7500 USD (prices.toml)" in result.stdout
+    assert "total reported cost: 0.9000 USD (OpenRouter)" in result.stdout
+
+
+def test_spend_empty_directory(tmp_path):
+    result = CliRunner().invoke(
+        app, ["spend", "--results-dir", str(tmp_path / "none")], obj=_no_db_deps(None)
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "total cost: 0.0000 USD (prices.toml)" in result.stdout
+    assert "total reported cost: 0.0000 USD (OpenRouter)" in result.stdout
+
+
+LUNA, GEMINI = "openai/gpt-6-luna", "google/gemini-3.1-flash-lite"
+
+
+def _keyed_settings() -> ExtractionSettings:
+    return ExtractionSettings(
+        _env_file=None, openrouter_api_key="sk-test", llm_model=LUNA, llm_fallback_model=GEMINI
+    )
+
+
+def test_build_spec_from_settings_sends_the_fallback_only_when_asked():
+    build_spec = build_spec_from_settings(_keyed_settings())
+
+    single = build_spec(None, fallback=False)
+    assert single.model == LUNA
+    assert "models" not in single.chat_model._default_params
+
+    pair = build_spec(None, fallback=True)
+    assert pair.chat_model._default_params["models"] == [LUNA, GEMINI]
+
+    override = build_spec(GEMINI, fallback=False)
+    assert override.model == GEMINI
+    assert "models" not in override.chat_model._default_params
+
+
+def test_build_spec_from_settings_without_key_raises():
+    build_spec = build_spec_from_settings(ExtractionSettings(_env_file=None))
+    with pytest.raises(ConfigError, match="OPENROUTER_API_KEY"):
+        build_spec(None, fallback=False)
+
+
+def test_host_lookup_from_settings_needs_the_key():
+    assert host_lookup_from_settings(ExtractionSettings(_env_file=None)) is None
+    lookup = host_lookup_from_settings(_keyed_settings())
+    assert isinstance(lookup, HostLookup)
+    lookup.close()

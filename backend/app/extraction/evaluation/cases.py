@@ -46,9 +46,12 @@ class EvalCase(BaseModel):
     expected_events: list[ExpectedEvent]
 
 
+def parse_cases(text: str) -> list[EvalCase]:
+    return [EvalCase.model_validate_json(line) for line in text.splitlines() if line.strip()]
+
+
 def load_cases(path: Path) -> list[EvalCase]:
-    lines = Path(path).read_text().splitlines()
-    return [EvalCase.model_validate_json(line) for line in lines if line.strip()]
+    return parse_cases(Path(path).read_text())
 
 
 def write_cases(path: Path, cases: Sequence[EvalCase]) -> None:
