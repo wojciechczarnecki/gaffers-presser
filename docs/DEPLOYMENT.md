@@ -54,7 +54,9 @@ below; agents never touch production.
      [ADR 0006](adr/0006-default-extraction-model-openrouter.md), `openai/gpt-6-luna`.
    - `LLM_FALLBACK_MODEL` — optional OpenRouter model ID answering when the primary fails
      (OpenRouter's model fallback); empty means the default fallback from ADR 0006, `google/gemini-3.1-flash-lite`.
-     The fallback shares the primary's structured-output method and reasoning effort. A model
+     The fallback must share the primary's structured-output method and reasoning effort: an
+     explicit `LLM_FALLBACK_MODEL` that does not fails the worker on start, and the default
+     fallback is dropped (no fallback) under an `LLM_MODEL` it cannot answer for. A model
      outside `backend/app/extraction/model_settings.toml` fails the worker on start with a
      message naming the variable, never a key; add a row there and in `prices.toml` first.
    - `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` from a Langfuse Cloud project in the EU

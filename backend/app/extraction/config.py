@@ -4,7 +4,7 @@ from pydantic import SecretStr
 
 from app.core.errors import ConfigError
 from app.core.settings import ExtractionSettings
-from app.extraction.model_settings import ModelSettings, load_model_settings
+from app.extraction.model_settings import ModelSettings, load_model_settings, pair_compatible
 
 PROVIDER = "openrouter"
 
@@ -70,8 +70,14 @@ def resolve_llm(
         else:
             candidate, fallback_variable = DEFAULT_FALLBACK_MODEL, "DEFAULT_FALLBACK_MODEL"
         if candidate and candidate != primary:
-            fallback = candidate
-            fallback_row = _catalogue_row(catalogue, candidate, fallback_variable)
+            candidate_row = _catalogue_row(catalogue, candidate, fallback_variable)
+            if pair_compatible(primary, candidate, catalogue):
+                fallback, fallback_row = candidate, candidate_row
+            elif fallback_variable == "LLM_FALLBACK_MODEL":
+                raise ConfigError(
+                    "LLM_FALLBACK_MODEL cannot answer for the primary model: their"
+                    " structured_method or reasoning_effort in model_settings.toml differ"
+                )
 
     return LlmConfig(
         model=primary,

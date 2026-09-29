@@ -54,7 +54,10 @@ handles structured output, reasoning and routing without work-arounds).
   disabled, whatever `LLM_MODEL` says. `LLM_MODEL` and `LLM_FALLBACK_MODEL` are optional and
   default to the two models above (`app/extraction/config.py`). `LLM_PROVIDER` and the CLI's
   `--provider` are gone. A model outside the six needs a row in `model_settings.toml` and in
-  `prices.toml`; without it the worker fails on start, not per post.
+  `prices.toml`; without it the worker fails on start, not per post. `resolve_llm` enforces
+  the pair rule: an incompatible `LLM_FALLBACK_MODEL` fails the start with a message naming the
+  variable, and an incompatible default fallback under another `LLM_MODEL` or `--model` is
+  dropped.
 - **Reasoning at the lowest level** each model allows (`none` for five of the six, `low` for
   `z-ai/glm-5.3-flash`), recorded per model in `model_settings.toml` and used identically by
   evaluation and the worker. Extraction is a simple task, and reasoning multiplies cost and

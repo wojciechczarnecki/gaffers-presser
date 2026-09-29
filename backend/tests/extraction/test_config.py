@@ -11,7 +11,17 @@ SENTINEL = "sentinel-secret-value"
 ROW = ModelSettings(
     reasoning_effort="none", temperature=True, structured_method="function_calling", checked="x"
 )
-CATALOGUE = {"a/primary": ROW, "b/other": ROW, "c/fallback": ROW}
+CATALOGUE = {
+    "a/primary": ROW,
+    "b/other": ROW,
+    "c/fallback": ROW,
+    "d/json-schema": ModelSettings(
+        reasoning_effort="none", temperature=True, structured_method="json_schema", checked="x"
+    ),
+    "e/reasoning-low": ModelSettings(
+        reasoning_effort="low", temperature=True, structured_method="function_calling", checked="x"
+    ),
+}
 
 
 REAL_DEFAULTS = (config_module.DEFAULT_MODEL, config_module.DEFAULT_FALLBACK_MODEL)
@@ -96,6 +106,32 @@ def test_fallback_from_variable_then_default_and_dropped_when_equal(monkeypatch)
 
     settings = _settings(monkeypatch, LLM_FALLBACK_MODEL="a/primary")
     assert resolve_llm(settings, catalogue=CATALOGUE).fallback_model is None
+
+
+@pytest.mark.parametrize("fallback", ["d/json-schema", "e/reasoning-low"])
+def test_incompatible_explicit_fallback_raises_naming_the_variable(monkeypatch, fallback):
+    settings = _settings(
+        monkeypatch, OPENROUTER_API_KEY=SENTINEL, LLM_MODEL="a/primary", LLM_FALLBACK_MODEL=fallback
+    )
+    with pytest.raises(ConfigError) as exc_info:
+        resolve_llm(settings, catalogue=CATALOGUE)
+    assert "LLM_FALLBACK_MODEL" in str(exc_info.value)
+    assert SENTINEL not in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    "env,override",
+    [({"LLM_MODEL": "d/json-schema"}, None), ({}, "e/reasoning-low")],
+    ids=["llm-model", "cli-model"],
+)
+def test_incompatible_default_fallback_is_dropped(monkeypatch, env, override):
+    monkeypatch.setattr(config_module, "DEFAULT_MODEL", "a/primary")
+    monkeypatch.setattr(config_module, "DEFAULT_FALLBACK_MODEL", "c/fallback")
+    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL, **env)
+    config = resolve_llm(settings, model=override, catalogue=CATALOGUE)
+    assert config.model == (override or env["LLM_MODEL"])
+    assert config.fallback_model is None
+    assert config.fallback_settings is None
 
 
 def test_no_fallback_when_use_fallback_false(monkeypatch):
