@@ -451,7 +451,7 @@ makes the product change. Run all commands from the repository root. `V` =
         scan).
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/test_embedder.py tests/retrieval/test_no_network.py`
-- [ ] 7. **Retrieval config and `.env.example` (AC9, AC26 part).** `app/retrieval/config.py`:
+- [x] 7. **Retrieval config and `.env.example` (AC9, AC26 part).** `app/retrieval/config.py`:
       - `RetrievalSettings(LlmSettings)` with `embedding_model: str = ""`, and
         `load_retrieval_settings()` (via `load_llm_settings`).
       - `DEFAULT_EMBEDDING_MODEL = "openai/text-embedding-3-small"`.
