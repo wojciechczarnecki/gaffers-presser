@@ -18,6 +18,9 @@ metrics:
   converge_gaps: 0
   deviations_minor: 2
   deviations_major: 1
+  final_review_blockers: 1
+  final_review_worth_fixing: 5
+  final_review_nits: 5
 ---
 
 # SPEC 005 — Extraction model comparison and OpenRouter as the only LLM provider

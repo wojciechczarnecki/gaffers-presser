@@ -927,3 +927,109 @@ _(filled in during Group 2: credits readings and spend per step)_
 ## Final review
 
 _(filled in by /pipeline:final-review)_
+
+### 2026-09-29 — report
+
+Three independent perspectives (compliance, quality, tests) reviewed `origin/main...HEAD`.
+`verify.command` is green (631 passed). The committed test runs, the report, ADR 0006 and
+`config.py` agree: `select_models(..., pair_compatible)` gives `openai/gpt-6-luna` /
+`google/gemini-3.1-flash-lite`.
+
+**AC → evidence matrix**
+
+| AC | Evidence | Status |
+|---|---|---|
+| AC1 | `test_eval_set.py::test_every_case_reviewed`, `::test_composition`; Run log step 12 | ok |
+| AC2 | `evaluation/compare.py`, `cli.py compare-labels`; `test_compare.py`; `test_cli.py::test_compare_labels_*`; output in the report | ok |
+| AC3 | `providers.py` (ChatOpenRouter only); `pyproject.toml`, `uv.lock`; `test_dependency.py::test_removed_llm_packages_absent`, `::test_no_module_imports_removed_packages`; `test_providers.py::test_builds_chat_openrouter` | ok |
+| AC4 | `config.resolve_llm` → None without a key; `test_config.py::test_disabled_without_key_even_with_model`; `worker/test_cli.py::test_deps_disable_extraction_without_key_even_with_model` | ok |
+| AC5 | `test_config.py::test_default_model_when_llm_model_empty`, `::test_llm_model_overrides_default`, `::test_llm_provider_variable_ignored`, `::test_default_models_are_catalogue_models`; `test_cli.py::test_provider_option_removed`, `::test_*_without_key_names_openrouter_variable` | ok |
+| AC6 | `providers.py` `model_kwargs.models`; `test_providers.py::test_fallback_sent_as_models_list`; `test_openrouter_payload.py::test_fallback_answer_recorded`; `test_service.py::test_stored_provider_is_openrouter_and_model_is_answering_id` | partial — F2, F3 |
+| AC7 | `model_settings.toml`; `test_model_settings.py`; `test_providers.py::test_reasoning_effort_from_catalogue`; `test_flow.py::test_reasoning_tokens_summed`; `test_cli.py::test_evaluate_shows_reasoning_tokens`; run files | ok |
+| AC8 | `test_providers.py::test_timeout_and_no_client_retries`; `test_openrouter_payload.py::test_usage_and_callback_through_chat_openrouter`, `::test_provider_error_gives_three_attempts_then_a_failed_row` | **fails — F1** (client retries are not off) |
+| AC9 | `service._store_extracted`; `test_service.py::test_stored_provider_is_openrouter_and_model_is_answering_id`, `::test_failed_row_keeps_the_configured_model` | ok |
+| AC10 | `prices.toml`; `test_pricing.py::test_every_candidate_priced_with_checked_date`, `::test_cost_keyed_by_openrouter_id` | ok |
+| AC11 | prompt v2 → v3 → v4; dev iteration table in the report | ok |
+| AC12 | `test_results_files.py::test_one_test_run_per_candidate_with_one_prompt`; six `test-p4-*` files | ok |
+| AC13 | `cli.py spend`; `test_cli.py::test_spend_sums_run_files_recursively`; report 0.7076 USD list / 0.6485 USD credits ≤ 1.50 | ok |
+| AC14 | `.gitignore` `results/dev/`; `test_cli.py::test_dev_runs_default_to_the_ignored_directory`; `git ls-files` shows only test runs | ok |
+| AC15 | `generation.py` (D1); `test_generation.py`; `test_cli.py::test_evaluate_fills_the_host_from_the_generation_lookup`; hosts in every committed run | ok (matrix row stale — F6) |
+| AC16 | `docs/reports/extraction-eval-v1.md` (all bullets); `test_results_files.py::test_report_names_every_test_run`; `test_metrics.py::test_thresholds_passed_per_threshold` | ok |
+| AC17 | `selection.py`; `test_selection.py`; `test_results_files.py::test_config_defaults_match_selection` | ok |
+| AC18 | `select_models` interim branch; `test_selection.py::test_no_passing_*`, `::test_interim_pair_respects_compatibility`; not triggered | ok |
+| AC19 | ADR 0006; three DECISIONS rows; `config.DEFAULT_MODEL`; `test_results_files.py::test_adr_0006_names_the_defaults` | ok |
+| AC20 | `.env.example`, DEPLOYMENT §8, README, PROJECT; `test_readme.py::test_removed_llm_variables_absent_from_docs`, `test_env_example.py` | ok |
+| AC21 | ROADMAP ticked; BACKLOG without #13 and #14, #12 kept | ok |
+| AC22 | manual owner run (x_id `2104665908933489005` in the Run log) | pending — manual, before the merge |
+
+**Findings**
+
+- **F1 `blocker`** `backend/app/extraction/providers.py:30`, `backend/tests/extraction/test_providers.py:40-43`
+  - **Scenario:** the primary returns HTTP 5xx or a connection error.
+  - **Why it happens:** with `max_retries=0`, `ChatOpenRouter` passes no `retry_config`, so the pinned `openrouter` `chat.send` uses its own default: `RetryConfig("backoff", BackoffStrategy(500, 60000, 1.5, 3600000), True)` on `5XX` (`openrouter/chat.py:818-824`).
+  - **Evidence:** reproduced offline with a MockTransport that always returns 503. It made 71 attempts over about an hour of simulated time.
+  - **Impact:**
+    - the worker hangs up to about 1 h per attempt, and about 3 h per post with the service's 3 attempts;
+    - retried calls may be billed without reaching a run file;
+    - AC8 ("no client-side retries") is broken.
+  - **Why the test misses it:** it only checks the `max_retries` attribute.
+  - **Fix:** after construction, set `chat_model.client.sdk_configuration.retry_config = RetryConfig("none", None, False)`, or pass `retries=` per call. Replace the attribute test with a behavioural one: a MockTransport returning 503, asserting exactly 1 request.
+- **F2 `worth-fixing`** `backend/app/extraction/config.py:105-114`
+  - **Scenario:** `resolve_llm` never calls `pair_compatible`. For example:
+    - `LLM_MODEL=qwen/qwen3.8-flash` with an empty `LLM_FALLBACK_MODEL` adds the default fallback gemini, but qwen uses `json_schema` and gemini uses `function_calling`;
+    - `LLM_FALLBACK_MODEL=z-ai/glm-5.3-flash` with luna gives a pair whose efforts differ;
+    - `reextract --model qwen/...` hits the same path.
+  - **Wrong behaviour:** the worker starts, and the fallback silently cannot answer during an outage (proven live in D3). ADR 0006 and DEPLOYMENT §8 say the pair must match, but nothing enforces it.
+  - **Fix:**
+    - an incompatible explicit `LLM_FALLBACK_MODEL` → `ConfigError` naming the variable;
+    - an incompatible *default* fallback under a user-chosen model → drop it;
+    - add tests for both.
+- **F3 `worth-fixing`** `backend/tests/extraction/test_openrouter_payload.py:44-48,139`, `backend/app/extraction/flow.py:98`
+  - **Scenario:** the fake `chat.send` returns a raw dict, so the top-level `provider` reaches `response_metadata`.
+  - **Wrong behaviour:** the pinned SDK returns a `ChatResult` model, whose dump has no `provider` (the cause of D1). So the test asserts `host == "DeepInfra"` on a path that never runs live, and the `provider` read in `_answer_from_raw` is dead. This contradicts plan step 6 and review R5. The payload also lacks the required `system_fingerprint`.
+  - **Fix:**
+    - have the fake return `ChatResult.model_validate(payload)`, and add `system_fingerprint` to the payload;
+    - assert `host is None` and the `generation_id`;
+    - drop the dead `provider` read, or comment why it stays.
+- **F4 `worth-fixing`** `backend/app/extraction/generation.py:22-37`
+  - **Scenario 1:** a 200 response with a non-JSON body, or with a non-dict `data`. It raises `JSONDecodeError` / `AttributeError`, uncaught in `lookup` and `runner._with_host`. That happens before `evaluate` writes the result file, so a paid run's results are lost.
+  - **Scenario 2:** the endpoint answers 404 for every id. That adds 7 × 3 s per case, about 32 min on the test split, silently.
+  - **Also:** the `httpx.Client` is never closed. The timeout/network-error branch and the 200-without-data case are untested.
+  - **Fix:**
+    - catch `ValueError` / `AttributeError` and check `isinstance(data, dict)` → None;
+    - cap the total wait across cases;
+    - close the client after the run;
+    - add MockTransport tests for `ConnectTimeout`, `ConnectError` and a 200 with no data.
+- **F5 `worth-fixing`** `backend/app/extraction/cli.py:78-93`, `backend/app/worker/cli.py:120-129,281`
+  - **Scenario:** real wiring with the key set is untested.
+  - **What could break unnoticed:**
+    - `build_spec_from_settings` could ignore `fallback=False`. `evaluate` would then measure a pair instead of one model (AC12), and every CLI test would stay green because they use a fake `_build_spec` or the no-key path.
+    - `host_lookup_from_settings` is untested.
+    - The worker's `_deps_from_settings` with a key is untested.
+    - The `status` fallback line is asserted only as `fallback: none`.
+  - **Fix:**
+    - `ExtractionSettings(_env_file=None, openrouter_api_key=…, llm_model=<catalogue>, llm_fallback_model=<compatible>)`: `fallback=False` → no `models` in `_default_params`, and `True` → `[primary, fallback]`;
+    - `host_lookup_from_settings` None/callable;
+    - a worker deps test with a key, asserting provider, model and fallback;
+    - a status test with `fallback_model="b/f"`.
+- **F6 `worth-fixing`** `specs/005-extraction-model-comparison/PLAN.md:185-196, 697`
+  - **Scenario:** the matrix's fourth column is empty for AC4, AC5, AC8, AC13, AC14 and AC15.
+    - AC6 has no response-side red record.
+    - AC7's "later steps' records are added as they run" was never done.
+    - The AC15 proving test no longer asserts the host after D1.
+    - Step 16 names `test_default_model_is_a_catalogue_model`, but the implemented test is `test_default_models_are_catalogue_models`.
+  - **Fix:** fill in the red records or mark each row `n/a` with a reason, and update the AC15 row and the step 16 test name.
+- **F7 `nit`** `backend/app/extraction/cli.py:419-420` — one malformed or non-object `*.json` under `results/` (for example an interrupted run) makes `spend` crash with a traceback, so the AC13 guard cannot be computed. Fix: `fail(f"cannot read {path}")` or skip the file with a warning line, plus a test.
+- **F8 `nit`** `backend/app/extraction/generation.py:17-21`, `evaluation/selection.py:50-54`, `model_settings.py:39-43` — these docstrings go against CONVENTIONS ("No docstrings"). Fix: keep a `#` comment only where a constraint needs stating (the shared-parameter `models` list, the generation record lag).
+- **F9 `nit`** `backend/app/extraction/cli.py:448` — `compare-labels --revision=--output=/tmp/x` becomes a `git show` option and writes a file. It is a local CLI, so the risk is low. Fix: reject revisions starting with `-`, or pass `--end-of-options`.
+- **F10 `nit`** `backend/app/extraction/service.py:168`, `evaluation/runner.py` — the summed usage of every call in the flow is priced at the model that answered the extraction call. When the primary and the fallback answered different calls (extraction and disambiguation), part of the cost uses the wrong price. Fix: price per call, or document the approximation.
+- **F11 `nit`** `backend/tests/extraction/test_config.py:27` — `_settings` only sets variables. With `OPENROUTER_API_KEY` or `LLM_FALLBACK_MODEL` exported in the shell, `test_disabled_without_key_even_with_model` and the fallback tests fail. Fix: `delenv` `OPENROUTER_API_KEY`, `LLM_*` and `LANGFUSE_*` first, as `test_cli.py`'s autouse fixture does.
+
+**Rejected**
+
+- The branch carries the owner's precondition work (`06a8041`, `d21b962`) — rejected. SPEC Context names it as the precondition, and the owner made it; it is not implementer scope creep. The PR description can mention it.
+- `spend` sums only `DEFAULT_RESULTS_DIR`, so `evaluate --output-dir` elsewhere escapes it — rejected. Plan step 10 defines `spend` over the default directory, and every run in this spec used it.
+- `test_rerun_replaces_first_run` "never runs the rerun branch" (worth-fixing) — reduced to a left-out nit. `-r2` sorts before `.json`, so the rerun wins by the first-seen rule and the behaviour is correct. Only the test's discriminating power is weak.
+
+Left out: 22 nit findings
+
