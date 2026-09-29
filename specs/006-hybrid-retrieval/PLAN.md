@@ -597,7 +597,7 @@ makes the product change. Run all commands from the repository root. `V` =
         constructed, never used).
 
       Automatic verification: `cd backend && uv run pytest -q tests/worker/test_cli.py`
-- [ ] 12. **CLI `index` and `status` (AC10, AC17, AC18).**
+- [x] 12. **CLI `index` and `status` (AC10, AC17, AC18).**
       - `app/retrieval/cli.py` (a typer app, `prog_name="python -m app.retrieval"`) and
         `app/retrieval/__main__.py`.
       - `RetrievalCliDeps(engine: Engine | None, settings: RetrievalSettings, make_embedder: Callable[[str | None], Embedder], clock: Clock, make_tracer: Callable[[], RetrievalTracer], make_chat_model: Callable[[str], BaseChatModel] | None = None)`,
