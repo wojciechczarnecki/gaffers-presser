@@ -727,7 +727,7 @@ makes the product change. Run all commands from the repository root. `V` =
         - `test_query_rejects_unknown_fields`.
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_dataset.py`
-- [ ] 17. **Isolated evaluation schema (AC19).** `app/retrieval/evaluation/schema.py`:
+- [x] 17. **Isolated evaluation schema (AC19).** `app/retrieval/evaluation/schema.py`:
       - `EVAL_SCHEMA = "retrieval_eval"`.
       - `make_eval_engine(engine) -> Engine`: `create_engine(engine.url, pool_pre_ping=True, hide_parameters=True, connect_args={"options": "-c timezone=UTC -c search_path=retrieval_eval,public"})`.
       - `load_eval_corpus(engine, corpus) -> Engine`:
