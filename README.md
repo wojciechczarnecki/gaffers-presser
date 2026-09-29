@@ -105,8 +105,9 @@ events (which player, out / doubt / benched / confirmed starter, how sure the au
 linked to FPL player IDs. OpenRouter is the only LLM provider: extraction is disabled unless
 `OPENROUTER_API_KEY` is set, and the worker then runs the FPL jobs and the tweet ingest exactly as
 above. Configuration (`backend/.env.example` has all of it): `OPENROUTER_API_KEY`, the optional
-`LLM_MODEL` (an OpenRouter model ID) and `LLM_FALLBACK_MODEL` (empty means the defaults named in
-ADR 0006; a model needs a row in `backend/app/extraction/model_settings.toml` and `prices.toml`),
+`LLM_MODEL` (an OpenRouter model ID) and `LLM_FALLBACK_MODEL` (empty means the defaults from
+[ADR 0006](docs/adr/0006-default-extraction-model-openrouter.md): `openai/gpt-6-luna` with the
+fallback `google/gemini-3.1-flash-lite`; a model needs a row in `backend/app/extraction/model_settings.toml` and `prices.toml`),
 the optional Langfuse Cloud keys `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST`
 (without them extraction runs untraced) and `USD_PLN_RATE` (only `evaluate` reads it).
 `uv run python -m app.worker status` then also shows the model, the fallback, the posts waiting,

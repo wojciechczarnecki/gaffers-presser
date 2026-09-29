@@ -723,7 +723,7 @@ Rules for every step in this group:
       spend").
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/evaluation/test_results_files.py && grep -n "USD_PLN_RATE\|Threats to validity\|total spend" ../docs/reports/extraction-eval-v1.md`
 
-- [ ] 18. **Documents close-out (AC18, AC20, AC21).**
+- [x] 18. **Documents close-out (AC18, AC20, AC21).**
       - `backend/.env.example`, `docs/DEPLOYMENT.md` section 8 and the README name the
         default model and the fallback from ADR 0006, with a link to the ADR from
         DEPLOYMENT and the README.

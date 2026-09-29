@@ -50,9 +50,11 @@ below; agents never touch production.
    variables (placeholders only here; the values go in Railway's variables, never in the
    repository or in logs):
    - `OPENROUTER_API_KEY` — the switch and the only LLM credential.
-   - `LLM_MODEL` — optional OpenRouter model ID; empty means the default named in ADR 0006.
+   - `LLM_MODEL` — optional OpenRouter model ID; empty means the default from
+     [ADR 0006](adr/0006-default-extraction-model-openrouter.md), `openai/gpt-6-luna`.
    - `LLM_FALLBACK_MODEL` — optional OpenRouter model ID answering when the primary fails
-     (OpenRouter's model fallback); empty means the default fallback from ADR 0006. A model
+     (OpenRouter's model fallback); empty means the default fallback from ADR 0006, `google/gemini-3.1-flash-lite`.
+     The fallback shares the primary's structured-output method and reasoning effort. A model
      outside `backend/app/extraction/model_settings.toml` fails the worker on start with a
      message naming the variable, never a key; add a row there and in `prices.toml` first.
    - `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` from a Langfuse Cloud project in the EU
