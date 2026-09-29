@@ -24,6 +24,12 @@ from app.extraction.evaluation.cases import (
     write_cases,
 )
 from app.extraction.evaluation.compare import compare_sets
+from app.extraction.evaluation.metrics import (
+    MAX_FALSE_ALARM_RATE,
+    MAX_MONTHLY_COST_PLN,
+    MIN_F1,
+    MIN_LINKING_ACCURACY,
+)
 from app.extraction.evaluation.review import (
     PlayerDirectory,
     case_to_json,
@@ -35,7 +41,7 @@ from app.extraction.evaluation.review import (
 )
 from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.flow import PROMPT_VERSION, build_flow
-from app.extraction.generation import make_host_lookup
+from app.extraction.generation import HostLookup
 from app.extraction.linking import PlayerIndex, load_aliases, load_players, load_snapshot
 from app.extraction.providers import ChatModelSpec, build_chat_model
 from app.extraction.service import (
@@ -90,7 +96,7 @@ def host_lookup_from_settings(
 ) -> Callable[[str], str | None] | None:
     if settings.openrouter_api_key is None:
         return None
-    return make_host_lookup(settings.openrouter_api_key)
+    return HostLookup(settings.openrouter_api_key)
 
 
 def db_engine(deps: ExtractionCliDeps) -> Engine:
@@ -310,10 +316,10 @@ DEFAULT_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
 DEFAULT_PLAYERS_PATH = EVALS_DIR / "v1" / "players-2026-27.json"
 DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
 THRESHOLD_LABELS = {
-    "f1": "f1 >= 0.85",
-    "linking_accuracy": "linking accuracy >= 0.95",
-    "false_alarm_rate": "false alarm rate <= 0.05",
-    "monthly_cost": "monthly cost <= 5 PLN",
+    "f1": f"f1 >= {MIN_F1:g}",
+    "linking_accuracy": f"linking accuracy >= {MIN_LINKING_ACCURACY:g}",
+    "false_alarm_rate": f"false alarm rate <= {MAX_FALSE_ALARM_RATE:g}",
+    "monthly_cost": f"monthly cost <= {MAX_MONTHLY_COST_PLN:g} PLN",
     "no_errored_cases": "no errored case",
 }
 RUN_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9._-]*")
@@ -395,8 +401,8 @@ def evaluate(
     hosts = ", ".join(f"{host} {count}" for host, count in sorted(m.hosts.items())) or "n/a"
     typer.echo(f"serving hosts: {hosts}")
     typer.echo(f"projected monthly cost: {_fmt(m.projected_monthly_cost_pln, 2)} PLN")
-    for name, label in THRESHOLD_LABELS.items():
-        typer.echo(f"{label}: {'yes' if m.thresholds_passed[name] else 'no'}")
+    for threshold, label in THRESHOLD_LABELS.items():
+        typer.echo(f"{label}: {'yes' if m.thresholds_passed[threshold] else 'no'}")
     typer.echo(f"passes thresholds: {'yes' if m.passes else 'no'}")
     typer.echo(f"results: {result_path}")
 

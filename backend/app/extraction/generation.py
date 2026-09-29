@@ -62,7 +62,3 @@ def _provider_name(response: httpx.Response) -> str | None:
         return None
     name = data.get("provider_name")
     return name if isinstance(name, str) else None
-
-
-def make_host_lookup(api_key: SecretStr, **kwargs) -> HostLookup:
-    return HostLookup(api_key, **kwargs)

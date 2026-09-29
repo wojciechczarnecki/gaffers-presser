@@ -70,13 +70,6 @@ def test_cli_model_overrides_llm_model(monkeypatch):
     assert resolve_llm(settings, model="b/other", catalogue=CATALOGUE).model == "b/other"
 
 
-def test_empty_model_and_no_default_raises(monkeypatch):
-    monkeypatch.setattr(config_module, "DEFAULT_MODEL", "")
-    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL)
-    with pytest.raises(ConfigError, match="LLM_MODEL"):
-        resolve_llm(settings, catalogue=CATALOGUE)
-
-
 @pytest.mark.parametrize(
     "env,override,variable",
     [

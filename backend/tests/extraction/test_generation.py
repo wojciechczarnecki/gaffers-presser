@@ -2,7 +2,7 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
-from app.extraction.generation import make_host_lookup
+from app.extraction.generation import HostLookup
 
 
 def _lookup(statuses, host="DeepInfra", attempts=3, body=None, error=None, **kwargs):
@@ -23,7 +23,7 @@ def _lookup(statuses, host="DeepInfra", attempts=3, body=None, error=None, **kwa
         )
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
-    lookup = make_host_lookup(
+    lookup = HostLookup(
         SecretStr("sk-test"),
         client=client,
         sleep=sleeps.append,
@@ -95,9 +95,9 @@ def test_waiting_is_capped_across_lookups():
 
 def test_close_closes_only_an_own_client():
     injected = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(404)))
-    make_host_lookup(SecretStr("sk-test"), client=injected).close()
+    HostLookup(SecretStr("sk-test"), client=injected).close()
     assert not injected.is_closed
 
-    own = make_host_lookup(SecretStr("sk-test"))
+    own = HostLookup(SecretStr("sk-test"))
     own.close()
     assert own._http.is_closed

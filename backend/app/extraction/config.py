@@ -58,8 +58,6 @@ def resolve_llm(
         primary, primary_variable = settings.llm_model, "LLM_MODEL"
     else:
         primary, primary_variable = DEFAULT_MODEL, "DEFAULT_MODEL"
-    if not primary:
-        raise ConfigError("LLM_MODEL must be set")
     primary_row = _catalogue_row(catalogue, primary, primary_variable)
 
     fallback: str | None = None
