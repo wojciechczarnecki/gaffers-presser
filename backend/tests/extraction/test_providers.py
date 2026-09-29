@@ -1,3 +1,6 @@
+import httpx
+import pytest
+from langchain_core.messages import HumanMessage
 from langchain_openrouter import ChatOpenRouter
 from pydantic import SecretStr
 
@@ -37,10 +40,36 @@ def test_structured_method_comes_from_the_catalogue_row():
     assert spec.structured_kwargs == {"method": "json_schema"}
 
 
-def test_timeout_and_no_client_retries():
+def test_timeout_is_sixty_seconds():
+    assert build_chat_model(_config()).chat_model.request_timeout == 60_000
+
+
+@pytest.mark.parametrize(
+    "respond",
+    [
+        lambda request: httpx.Response(503, json={"error": {"message": "overloaded"}}),
+        lambda request: (_ for _ in ()).throw(httpx.ConnectError("refused", request=request)),
+    ],
+    ids=["http-503", "connection-error"],
+)
+def test_sdk_client_sends_exactly_one_request(respond):
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if len(requests) > 1:
+            raise RuntimeError("retried")  # fail fast instead of waiting out the SDK backoff
+        return respond(request)
+
     chat_model = build_chat_model(_config()).chat_model
-    assert chat_model.request_timeout == 60_000
-    assert chat_model.max_retries == 0
+    chat_model.client.sdk_configuration.client = httpx.Client(
+        transport=httpx.MockTransport(handler)
+    )
+
+    with pytest.raises(Exception):  # noqa: B017 - the SDK error class is not the point here
+        chat_model.invoke([HumanMessage("Haaland is out.")])
+
+    assert len(requests) == 1
 
 
 def test_reasoning_effort_from_catalogue():
