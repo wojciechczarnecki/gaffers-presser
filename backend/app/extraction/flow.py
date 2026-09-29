@@ -40,6 +40,7 @@ class FlowState(TypedDict):
     llm_calls: int
     answered_model: str | None
     host: str | None
+    generation_id: str | None
 
 
 def _render_post(post: PostInput) -> str:
@@ -91,9 +92,13 @@ def _usage_from_raw(raw: Any) -> Usage:
     )
 
 
-def _answer_from_raw(raw: Any) -> tuple[str | None, str | None]:
+def _answer_from_raw(raw: Any) -> tuple[str | None, str | None, str | None]:
     response_metadata = getattr(raw, "response_metadata", None) or {}
-    return response_metadata.get("model_name"), response_metadata.get("provider")
+    return (
+        response_metadata.get("model_name"),
+        response_metadata.get("provider"),
+        response_metadata.get("id"),
+    )
 
 
 class Flow:
@@ -109,6 +114,7 @@ class Flow:
             "llm_calls": 0,
             "answered_model": None,
             "host": None,
+            "generation_id": None,
         }
         result = self._graph.invoke(state, config=config)
         return FlowResult(
@@ -117,6 +123,7 @@ class Flow:
             llm_calls=result["llm_calls"],
             answered_model=result["answered_model"],
             host=result["host"],
+            generation_id=result["generation_id"],
         )
 
 
@@ -133,13 +140,14 @@ def build_flow(spec: ChatModelSpec, index: PlayerIndex) -> Flow:
             reason = type(parsing_error).__name__ if parsing_error else "no parsed result"
             raise ExtractionOutputError(f"extraction output failed validation: {reason}")
         usage = state["usage"] + _usage_from_raw(result["raw"])
-        answered_model, host = _answer_from_raw(result["raw"])
+        answered_model, host, generation_id = _answer_from_raw(result["raw"])
         return {
             "extracted": result["parsed"],
             "usage": usage,
             "llm_calls": state["llm_calls"] + 1,
             "answered_model": answered_model,
             "host": host,
+            "generation_id": generation_id,
         }
 
     def link_node(state: FlowState) -> dict[str, Any]:

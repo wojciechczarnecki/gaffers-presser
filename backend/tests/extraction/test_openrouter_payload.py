@@ -143,6 +143,7 @@ def test_host_and_reasoning_tokens_reach_the_flow_result():
 
     assert result.host == "DeepInfra"
     assert result.answered_model == "b/fallback-model"
+    assert result.generation_id == "gen-synthetic-0001"
     assert result.usage.reasoning_tokens == 7
     assert result.usage.reported_cost_usd == pytest.approx(0.000123)
     assert [e.mention for e in result.events] == ["Haaland"]

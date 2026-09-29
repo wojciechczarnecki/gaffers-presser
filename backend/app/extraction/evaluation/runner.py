@@ -1,7 +1,7 @@
 import threading
 import time
-from collections.abc import Sequence
-from dataclasses import asdict, dataclass
+from collections.abc import Callable, Sequence
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -65,6 +65,7 @@ class EvaluationReport:
                     "reported_cost_usd": outcome.result.reported_cost_usd,
                     "host": outcome.result.host,
                     "answered_model": outcome.result.answered_model,
+                    "generation_id": outcome.result.generation_id,
                     "expected": [e.model_dump() for e in outcome.result.expected],
                     "predicted": [e.model_dump() for e in outcome.result.predicted],
                 }
@@ -98,6 +99,14 @@ def _post_from_case(case: EvalCase) -> PostInput:
     )
 
 
+def _with_host(outcome: CaseOutcome, host_lookup: Callable[[str], str | None]) -> CaseOutcome:
+    result = outcome.result
+    if result.host is not None or result.generation_id is None:
+        return outcome
+    host = host_lookup(result.generation_id)
+    return CaseOutcome(outcome.case_id, replace(result, host=host), outcome.attempts)
+
+
 def run_evaluation(
     cases: Sequence[EvalCase],
     spec: ChatModelSpec,
@@ -108,6 +117,7 @@ def run_evaluation(
     clock: Clock,
     posts_per_month: float,
     usd_pln_rate: float,
+    host_lookup: Callable[[str], str | None] | None = None,
 ) -> EvaluationReport:
     flow = _TimedFlow(build_flow(spec, index))
     prices = load_prices()
@@ -148,8 +158,12 @@ def run_evaluation(
                 reported_cost_usd=usage.reported_cost_usd,
                 host=retry.result.host,
                 answered_model=retry.result.answered_model,
+                generation_id=retry.result.generation_id,
             )
         outcomes.append(CaseOutcome(case.id, result, retry.attempts))
+
+    if host_lookup is not None:
+        outcomes = [_with_host(outcome, host_lookup) for outcome in outcomes]
 
     metrics = compute_metrics(
         [outcome.result for outcome in outcomes],

@@ -27,6 +27,7 @@ class CaseResult:
     reported_cost_usd: float | None = None
     host: str | None = None
     answered_model: str | None = None
+    generation_id: str | None = None
 
 
 @dataclass(frozen=True)

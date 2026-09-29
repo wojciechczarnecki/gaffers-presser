@@ -861,6 +861,16 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
 
+- **D1 (minor, step 13, AC15):** the plan (Approach §5) assumed the serving host arrives in
+  `response_metadata["provider"]`. The pinned `openrouter` SDK's `ChatResult` model has no
+  `provider` field and drops it, so a live call returned no host. New `app/extraction/generation.py`
+  looks the host up from OpenRouter's `GET /api/v1/generation?id=` (`provider_name`, available
+  about 10 s after the call, so a 404 is retried), and `run_evaluation` fills each case's host
+  after the run through an injected `host_lookup`. `FlowResult` / `CaseResult` gain
+  `generation_id`, and the run files gain `generation_id` per case. Tested with an httpx mock
+  transport. No new dependency (httpx is already a dependency); no scope, architecture or
+  schema change.
+
 ### Run log
 
 _(filled in during Group 2: credits readings and spend per step)_

@@ -35,6 +35,7 @@ from app.extraction.evaluation.review import (
 )
 from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.flow import PROMPT_VERSION, build_flow
+from app.extraction.generation import make_host_lookup
 from app.extraction.linking import PlayerIndex, load_aliases, load_players, load_snapshot
 from app.extraction.providers import ChatModelSpec, build_chat_model
 from app.extraction.service import (
@@ -71,6 +72,7 @@ class ExtractionCliDeps:
     settings: ExtractionSettings
     build_spec: BuildSpec
     clock: Clock
+    host_lookup: Callable[[], Callable[[str], str | None] | None] = lambda: None
 
 
 def build_spec_from_settings(settings: ExtractionSettings) -> BuildSpec:
@@ -81,6 +83,14 @@ def build_spec_from_settings(settings: ExtractionSettings) -> BuildSpec:
         return build_chat_model(config)
 
     return build_spec
+
+
+def host_lookup_from_settings(
+    settings: ExtractionSettings,
+) -> Callable[[str], str | None] | None:
+    if settings.openrouter_api_key is None:
+        return None
+    return make_host_lookup(settings.openrouter_api_key)
 
 
 def db_engine(deps: ExtractionCliDeps) -> Engine:
@@ -112,6 +122,7 @@ def _deps_from_settings() -> ExtractionCliDeps:
         settings=settings,
         build_spec=build_spec_from_settings(settings),
         clock=SystemClock(),
+        host_lookup=lambda: host_lookup_from_settings(settings),
     )
 
 
@@ -355,6 +366,7 @@ def evaluate(
             clock=deps.clock,
             posts_per_month=posts_per_month,
             usd_pln_rate=usd_pln_rate,
+            host_lookup=deps.host_lookup(),
         )
     finally:
         flush(handler)

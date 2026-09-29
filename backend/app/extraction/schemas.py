@@ -72,3 +72,4 @@ class FlowResult:
     llm_calls: int
     answered_model: str | None = None
     host: str | None = None
+    generation_id: str | None = None

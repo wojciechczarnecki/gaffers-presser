@@ -635,6 +635,34 @@ def test_evaluate_shows_reasoning_tokens(tmp_path):
     assert "no errored case: yes" in result.stdout
 
 
+def test_evaluate_fills_the_host_from_the_generation_lookup(tmp_path):
+    files = _Files(tmp_path, [_eval_case("1", "test"), _eval_case("2", "test")])
+    build_spec, _ = _build_spec(_haaland_out(), _haaland_out(), model="m", generation_id="gen-1")
+    looked_up: list[str] = []
+
+    def lookup(generation_id):
+        looked_up.append(generation_id)
+        return "DeepInfra"
+
+    deps = _no_db_deps(build_spec)
+    deps = ExtractionCliDeps(
+        engine=None,
+        settings=deps.settings,
+        build_spec=build_spec,
+        clock=deps.clock,
+        host_lookup=lambda: lookup,
+    )
+
+    result = CliRunner().invoke(app, files.args("--run-name", "run-h"), obj=deps)
+
+    assert result.exit_code == 0, result.output
+    assert looked_up == ["gen-1", "gen-1"]
+    assert "serving hosts: DeepInfra 2" in result.stdout
+    data = json.loads((files.results / "run-h.json").read_text())
+    assert data["metrics"]["hosts"] == {"DeepInfra": 2}
+    assert data["case_results"][0]["generation_id"] == "gen-1"
+
+
 def test_evaluate_writes_results(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "app.extraction.evaluation.runner.load_prices",

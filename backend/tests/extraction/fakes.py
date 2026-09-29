@@ -28,6 +28,7 @@ class FakeChatModel(BaseChatModel):
     host: str | None = None
     reasoning_tokens: int | None = None
     reported_cost: float | None = None
+    generation_id: str | None = None
 
     _index: int = PrivateAttr(default=0)
     _bound_tool_name: str | None = PrivateAttr(default=None)
@@ -89,6 +90,8 @@ class FakeChatModel(BaseChatModel):
             response_metadata["provider"] = self.host
         if self.reported_cost is not None:
             response_metadata["cost"] = self.reported_cost
+        if self.generation_id is not None:
+            response_metadata["id"] = self.generation_id
         message = AIMessage(
             content="",
             tool_calls=[
