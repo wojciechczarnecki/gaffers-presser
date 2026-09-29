@@ -890,7 +890,7 @@ makes the product change. Run all commands from the repository root. `V` =
         `embedding` record per query embedding).
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_runner.py && cd .. && git check-ignore -q backend/evals/retrieval/results/dev/x.json`
-- [ ] 23. **Documents (AC26, AC27).**
+- [x] 23. **Documents (AC26, AC27).**
       - `docs/DEPLOYMENT.md`: a new item after 8, "Retrieval indexing". It says:
         - indexing runs whenever `OPENROUTER_API_KEY` is set, and without it the worker
           logs `retrieval indexing disabled`;

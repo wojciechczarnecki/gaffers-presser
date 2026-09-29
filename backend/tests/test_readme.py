@@ -115,3 +115,16 @@ def test_removed_llm_variables_absent_from_docs():
         text = path.read_text(encoding="utf-8")
         for removed in [*REMOVED_VARIABLES, "--provider"]:
             assert removed not in text, f"{removed!r} still in {path.name}"
+
+
+def test_deployment_documents_embedding_model():
+    section = DEPLOYMENT.read_text(encoding="utf-8")
+    for term in (
+        "EMBEDDING_MODEL",
+        "retrieval indexing disabled",
+        "app.retrieval index",
+        "app.retrieval status",
+        "app.retrieval search",
+        "0005",
+    ):
+        assert term in section, f"{term!r} missing from docs/DEPLOYMENT.md"

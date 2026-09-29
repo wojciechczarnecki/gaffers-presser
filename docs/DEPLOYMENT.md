@@ -72,3 +72,19 @@ below; agents never touch production.
    `python -m app.extraction evaluate --split dev --model <OpenRouter model ID>`,
    `python -m app.extraction compare-labels`, `python -m app.extraction spend` (see the
    README's Development section).
+9. **Retrieval indexing.** Indexing runs whenever `OPENROUTER_API_KEY` is set (the same key as
+   extraction); without it the worker logs `retrieval indexing disabled` and every other loop
+   runs as before.
+   - `EMBEDDING_MODEL` is optional; empty means the default `openai/text-embedding-3-small`.
+     A model with no row in `backend/app/llm/prices.toml` fails the worker on start with a
+     message naming the variable, never a key; add the row first.
+   - Migration `0005` enables the `vector` and `unaccent` extensions and adds the full-text
+     column and `post_embedding`; it runs through the pre-deploy like the others, and the
+     PostgreSQL image already ships both extensions.
+   - New posts are embedded oldest first in their own thread, so an embedding outage never
+     delays tweet polls, extraction or FPL jobs. The backfill of posts stored before the
+     first deploy, and any re-indexing with another model, run from a shell with the
+     production variables: `python -m app.retrieval index [--model <OpenRouter model ID>]`.
+     `python -m app.retrieval status` prints the embedded, missing and failed posts per model
+     and the cost, and `python -m app.retrieval search "<query>" [--mode fulltext|vector|hybrid]`
+     searches the stored posts (`--mode fulltext` needs no key).
