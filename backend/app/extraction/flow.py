@@ -94,6 +94,8 @@ def _usage_from_raw(raw: Any) -> Usage:
 
 def _answer_from_raw(raw: Any) -> tuple[str | None, str | None, str | None]:
     response_metadata = getattr(raw, "response_metadata", None) or {}
+    # The pinned SDK's ChatResult drops `provider`, so the host comes from the generation lookup;
+    # the read stays so a client that keeps the field skips that lookup (runner._with_host).
     return (
         response_metadata.get("model_name"),
         response_metadata.get("provider"),

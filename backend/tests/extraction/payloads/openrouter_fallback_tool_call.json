@@ -4,6 +4,7 @@
   "created": 1790000000,
   "model": "b/fallback-model",
   "provider": "DeepInfra",
+  "system_fingerprint": null,
   "choices": [
     {
       "index": 0,

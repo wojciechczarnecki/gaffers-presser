@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from openrouter.components import ChatResult
 from pydantic import SecretStr
 from sqlmodel import Session, select
 
@@ -45,7 +46,8 @@ class _Chat:
         self._owner.calls.append(params)
         if self._owner.error is not None:
             raise self._owner.error
-        return self._owner.payload
+        # The pinned SDK returns its response model, which drops the top-level `provider`.
+        return ChatResult.model_validate(self._owner.payload)
 
 
 class FakeSdkClient:
@@ -136,12 +138,12 @@ def test_fallback_answer_recorded(db_session):
     assert call["tool_choice"]["function"]["name"] == "ExtractionOutput"
 
 
-def test_host_and_reasoning_tokens_reach_the_flow_result():
+def test_generation_id_and_reasoning_tokens_reach_the_flow_result():
     flow = build_flow(_spec(FakeSdkClient()), PlayerIndex([], [], [], []))
 
     result = flow.run(POST, config={})
 
-    assert result.host == "DeepInfra"
+    assert result.host is None  # filled later from the generation lookup (PLAN 005, D1)
     assert result.answered_model == "b/fallback-model"
     assert result.generation_id == "gen-synthetic-0001"
     assert result.usage.reasoning_tokens == 7
