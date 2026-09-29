@@ -748,7 +748,7 @@ makes the product change. Run all commands from the repository root. `V` =
         `test_reload_replaces_previous_corpus`.
 
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_schema.py`
-- [ ] 18. **Metrics (AC24, AC23 base).** `app/retrieval/evaluation/metrics.py`:
+- [x] 18. **Metrics (AC24, AC23 base).** `app/retrieval/evaluation/metrics.py`:
       - `recall_at_k(ranked, relevant, k)`;
       - `reciprocal_rank(ranked, relevant)`, which is 0 when none is found;
       - `aggregate(per_query, slices)`: mean recall@5, recall@10 and MRR per mode for
