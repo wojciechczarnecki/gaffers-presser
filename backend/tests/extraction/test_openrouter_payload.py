@@ -13,11 +13,11 @@ from app.extraction.flow import build_flow
 from app.extraction.linking import PlayerIndex
 from app.extraction.model_settings import ModelSettings
 from app.extraction.models import Extraction
-from app.extraction.pricing import Price
 from app.extraction.providers import build_chat_model
 from app.extraction.schemas import PostInput
 from app.extraction.service import ExtractionRuntime, extract_post
 from app.extraction.tracing import run_config
+from app.llm.pricing import Price
 from app.tweets.models import Tweet
 from tests.extraction.fakes import RecordingHandler
 

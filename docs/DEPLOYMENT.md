@@ -58,7 +58,7 @@ below; agents never touch production.
      explicit `LLM_FALLBACK_MODEL` that does not fails the worker on start, and the default
      fallback is dropped (no fallback) under an `LLM_MODEL` it cannot answer for. A model
      outside `backend/app/extraction/model_settings.toml` fails the worker on start with a
-     message naming the variable, never a key; add a row there and in `prices.toml` first.
+     message naming the variable, never a key; add a row there and in `backend/app/llm/prices.toml` first.
    - `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` from a Langfuse Cloud project in the EU
      region, and `LANGFUSE_HOST` (defaults to `https://cloud.langfuse.com`, the EU region).
      Without both keys extraction still runs, untraced, and the worker logs one warning.

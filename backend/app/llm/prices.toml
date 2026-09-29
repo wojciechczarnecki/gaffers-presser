@@ -1,6 +1,7 @@
 # USD per 1M tokens, keyed by OpenRouter model ID. Prices come from OpenRouter's model list
 # (https://openrouter.ai/api/v1/models, `pricing.prompt` / `pricing.completion` x 1e6); each
-# entry carries the date it was checked. A model missing here gets no cost.
+# entry carries the date it was checked. A model missing here gets no cost. Embedding
+# models carry only `input_per_million`.
 
 ["google/gemini-3.1-flash-lite"]
 input_per_million = 0.25
@@ -30,4 +31,8 @@ checked = "2026-09-29"
 ["z-ai/glm-5.3-flash"]
 input_per_million = 0.15
 output_per_million = 0.50
+checked = "2026-09-29"
+
+["openai/text-embedding-3-small"]
+input_per_million = 0.02
 checked = "2026-09-29"

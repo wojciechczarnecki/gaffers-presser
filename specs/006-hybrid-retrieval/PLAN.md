@@ -315,7 +315,7 @@ makes the product change. Run all commands from the repository root. `V` =
         and a malformed `USD_PLN_RATE` → `ConfigError` naming only the variable.
 
       Automatic verification: `cd backend && uv run pytest -q tests/test_module_boundaries.py tests/llm tests/test_env_example.py tests/extraction tests/worker`
-- [ ] 3. **Price catalogue to `app/llm/`, input-only rows (AC2, AC3).**
+- [x] 3. **Price catalogue to `app/llm/`, input-only rows (AC2, AC3).**
       - `git mv app/extraction/pricing.py app/llm/pricing.py` and `app/extraction/prices.toml`
         `app/llm/prices.toml`.
       - Make `Price.output_per_million: float | None` (`entry.get("output_per_million")`).
