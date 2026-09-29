@@ -2,21 +2,16 @@ import pytest
 
 from app.core.errors import ConfigError
 from app.core.settings import ExtractionSettings
-from app.extraction.config import (
-    DEFAULT_MODEL_BY_PROVIDER,
-    PROVIDERS,
-    resolve_llm,
-    resolve_tracing,
-)
+from app.extraction import config as config_module
+from app.extraction.config import resolve_llm, resolve_tracing
+from app.extraction.model_settings import ModelSettings
 
 SENTINEL = "sentinel-secret-value"
 
-_KEY_VARIABLE_BY_PROVIDER = {
-    "google": "GOOGLE_API_KEY",
-    "openai": "OPENAI_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-    "openrouter": "OPENROUTER_API_KEY",
-}
+ROW = ModelSettings(
+    reasoning_effort="none", temperature=True, structured_method="function_calling", checked="x"
+)
+CATALOGUE = {"a/primary": ROW, "b/other": ROW, "c/fallback": ROW}
 
 
 def _settings(monkeypatch, **env: str) -> ExtractionSettings:
@@ -25,109 +20,114 @@ def _settings(monkeypatch, **env: str) -> ExtractionSettings:
     return ExtractionSettings(_env_file=None)
 
 
-def test_extraction_disabled_when_provider_empty(monkeypatch):
-    settings = _settings(monkeypatch)
-    assert resolve_llm(settings) is None
+def test_disabled_without_key_even_with_model(monkeypatch):
+    settings = _settings(monkeypatch, LLM_MODEL="a/primary")
+    assert resolve_llm(settings, catalogue=CATALOGUE) is None
 
 
-@pytest.mark.parametrize("provider", PROVIDERS)
-def test_each_provider_resolves_with_its_key(monkeypatch, provider):
-    variable = _KEY_VARIABLE_BY_PROVIDER[provider]
-    settings = _settings(
-        monkeypatch,
-        LLM_PROVIDER=provider,
-        LLM_MODEL="a-model",
-        **{variable: SENTINEL},
-    )
-    config = resolve_llm(settings)
-    assert config.provider == provider
-    assert config.model == "a-model"
+def test_enabled_with_key_and_model(monkeypatch):
+    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL, LLM_MODEL="a/primary")
+    config = resolve_llm(settings, catalogue=CATALOGUE)
+    assert config.model == "a/primary"
     assert config.api_key.get_secret_value() == SENTINEL
+    assert config.settings == ROW
 
 
-def test_unknown_provider_does_not_echo_value(monkeypatch):
-    settings = _settings(monkeypatch, LLM_PROVIDER="bogus-provider")
-    with pytest.raises(ConfigError) as exc_info:
-        resolve_llm(settings)
-    assert "LLM_PROVIDER" in str(exc_info.value)
-    assert "bogus-provider" not in str(exc_info.value)
+def test_default_model_when_llm_model_empty(monkeypatch):
+    monkeypatch.setattr(config_module, "DEFAULT_MODEL", "b/other")
+    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL)
+    assert resolve_llm(settings, catalogue=CATALOGUE).model == "b/other"
 
 
-@pytest.mark.parametrize("provider", PROVIDERS)
-def test_missing_key_names_the_variable(monkeypatch, provider):
-    variable = _KEY_VARIABLE_BY_PROVIDER[provider]
-    settings = _settings(monkeypatch, LLM_PROVIDER=provider, LLM_MODEL="a-model")
-    with pytest.raises(ConfigError, match=variable):
-        resolve_llm(settings)
+def test_llm_model_overrides_default(monkeypatch):
+    monkeypatch.setattr(config_module, "DEFAULT_MODEL", "b/other")
+    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL, LLM_MODEL="a/primary")
+    assert resolve_llm(settings, catalogue=CATALOGUE).model == "a/primary"
 
 
-def test_empty_model_with_no_default_raises(monkeypatch):
-    settings = _settings(monkeypatch, LLM_PROVIDER="openai", OPENAI_API_KEY=SENTINEL)
+def test_cli_model_overrides_llm_model(monkeypatch):
+    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL, LLM_MODEL="a/primary")
+    assert resolve_llm(settings, model="b/other", catalogue=CATALOGUE).model == "b/other"
+
+
+def test_empty_model_and_no_default_raises(monkeypatch):
+    monkeypatch.setattr(config_module, "DEFAULT_MODEL", "")
+    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL)
     with pytest.raises(ConfigError, match="LLM_MODEL"):
-        resolve_llm(settings)
+        resolve_llm(settings, catalogue=CATALOGUE)
 
 
-def test_overrides_take_precedence_over_settings(monkeypatch):
-    settings = _settings(
-        monkeypatch,
-        LLM_PROVIDER="openai",
-        LLM_MODEL="settings-model",
-        OPENAI_API_KEY=SENTINEL,
-        ANTHROPIC_API_KEY=SENTINEL,
-    )
-    config = resolve_llm(settings, provider="anthropic", model="override-model")
-    assert config.provider == "anthropic"
-    assert config.model == "override-model"
-
-
-def test_other_provider_without_model_does_not_borrow_the_settings_model(monkeypatch):
-    settings = _settings(
-        monkeypatch,
-        LLM_PROVIDER="openai",
-        LLM_MODEL="gpt-4.1-mini",
-        OPENAI_API_KEY=SENTINEL,
-        ANTHROPIC_API_KEY=SENTINEL,
-    )
-    with pytest.raises(ConfigError, match="--model must be given with --provider"):
-        resolve_llm(settings, provider="anthropic")
-
-
-def test_other_provider_without_model_takes_the_provider_default(monkeypatch):
-    monkeypatch.setitem(DEFAULT_MODEL_BY_PROVIDER, "anthropic", "anthropic-default")
-    settings = _settings(
-        monkeypatch,
-        LLM_PROVIDER="openai",
-        LLM_MODEL="gpt-4.1-mini",
-        OPENAI_API_KEY=SENTINEL,
-        ANTHROPIC_API_KEY=SENTINEL,
-    )
-    config = resolve_llm(settings, provider="anthropic")
-    assert (config.provider, config.model) == ("anthropic", "anthropic-default")
-
-
-def test_same_provider_override_keeps_the_settings_model(monkeypatch):
-    settings = _settings(
-        monkeypatch, LLM_PROVIDER="openai", LLM_MODEL="gpt-4.1-mini", OPENAI_API_KEY=SENTINEL
-    )
-    config = resolve_llm(settings, provider="openai")
-    assert config.model == "gpt-4.1-mini"
-
-
-def test_errors_never_carry_values(monkeypatch):
-    settings = _settings(
-        monkeypatch,
-        LLM_PROVIDER="bogus-provider",
-        OPENAI_API_KEY=SENTINEL,
-        GOOGLE_API_KEY=SENTINEL,
-    )
+@pytest.mark.parametrize(
+    "env,override,variable",
+    [
+        ({"LLM_MODEL": "x/unknown-model"}, None, "LLM_MODEL"),
+        ({}, "x/unknown-model", "--model"),
+        ({"LLM_MODEL": "a/primary", "LLM_FALLBACK_MODEL": "x/unknown-model"}, None, "LLM_FALLBACK"),
+    ],
+)
+def test_unknown_model_names_the_variable_not_the_key(monkeypatch, env, override, variable):
+    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL, **env)
     with pytest.raises(ConfigError) as exc_info:
-        resolve_llm(settings)
+        resolve_llm(settings, model=override, catalogue=CATALOGUE)
+    assert variable in str(exc_info.value)
+    assert "model_settings.toml" in str(exc_info.value)
     assert SENTINEL not in str(exc_info.value)
 
-    settings = _settings(monkeypatch, LLM_PROVIDER="openai")
+
+def test_fallback_from_variable_then_default_and_dropped_when_equal(monkeypatch):
+    monkeypatch.setattr(config_module, "DEFAULT_FALLBACK_MODEL", "b/other")
+    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL, LLM_MODEL="a/primary")
+    assert resolve_llm(settings, catalogue=CATALOGUE).fallback_model == "b/other"
+
+    settings = _settings(monkeypatch, LLM_FALLBACK_MODEL="c/fallback")
+    config = resolve_llm(settings, catalogue=CATALOGUE)
+    assert config.fallback_model == "c/fallback"
+    assert config.fallback_settings == ROW
+
+    settings = _settings(monkeypatch, LLM_FALLBACK_MODEL="a/primary")
+    assert resolve_llm(settings, catalogue=CATALOGUE).fallback_model is None
+
+
+def test_no_fallback_when_use_fallback_false(monkeypatch):
+    settings = _settings(
+        monkeypatch,
+        OPENROUTER_API_KEY=SENTINEL,
+        LLM_MODEL="a/primary",
+        LLM_FALLBACK_MODEL="c/fallback",
+    )
+    config = resolve_llm(settings, use_fallback=False, catalogue=CATALOGUE)
+    assert config.fallback_model is None
+    assert config.fallback_settings is None
+
+
+def test_llm_provider_variable_ignored(monkeypatch):
+    assert "llm_provider" not in ExtractionSettings.model_fields
+    settings = _settings(
+        monkeypatch, OPENROUTER_API_KEY=SENTINEL, LLM_MODEL="a/primary", LLM_PROVIDER="google"
+    )
+    config = resolve_llm(settings, catalogue=CATALOGUE)
+    assert config.model == "a/primary"
+    assert not hasattr(settings, "llm_provider")
+
+
+def test_errors_never_carry_key_values(monkeypatch):
+    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL, LLM_MODEL="x/unknown-model")
     with pytest.raises(ConfigError) as exc_info:
-        resolve_llm(settings)
+        resolve_llm(settings, catalogue=CATALOGUE)
     assert SENTINEL not in str(exc_info.value)
+
+    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL)
+    monkeypatch.setattr(config_module, "DEFAULT_MODEL", "")
+    with pytest.raises(ConfigError) as exc_info:
+        resolve_llm(settings, catalogue=CATALOGUE)
+    assert SENTINEL not in str(exc_info.value)
+
+
+def test_real_catalogue_is_loaded_when_none_is_given(monkeypatch):
+    settings = _settings(
+        monkeypatch, OPENROUTER_API_KEY=SENTINEL, LLM_MODEL="google/gemini-3.1-flash-lite"
+    )
+    assert resolve_llm(settings).model == "google/gemini-3.1-flash-lite"
 
 
 def test_resolve_tracing_with_both_keys(monkeypatch):

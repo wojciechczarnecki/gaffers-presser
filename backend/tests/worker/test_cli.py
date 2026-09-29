@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -31,8 +32,16 @@ from tests.fpl.payloads import load
 from tests.tweets.fakes import FakeSource
 from tests.worker.sim import FakeClock
 
+EXTRACTION_VARIABLE = re.compile(r"(LLM_.*|LANGFUSE_.*|.*_API_KEY|USD_PLN_RATE)")
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 D6 = datetime(2026, 10, 10, 10, 0, tzinfo=UTC)
+
+
+@pytest.fixture(autouse=True)
+def _no_extraction_variables(monkeypatch):
+    for name in list(os.environ):
+        if EXTRACTION_VARIABLE.fullmatch(name):
+            monkeypatch.delenv(name)
 
 
 class FixedClock:
@@ -616,24 +625,32 @@ def test_polls_continue_while_extraction_blocks(db):
     assert len(rows) == 9
 
 
-def test_worker_rejects_llm_provider_without_key(monkeypatch, tmp_path):
+def test_worker_rejects_unknown_model_at_start(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-sentinel-value")
+    monkeypatch.setenv("LLM_MODEL", "x/unknown-model")
 
     result = CliRunner().invoke(app, ["run"])
 
     assert result.exit_code == 1
-    assert "OPENAI_API_KEY" in result.stderr
+    assert "LLM_MODEL" in result.stderr
+    assert "model_settings.toml" in result.stderr
+    assert "sk-sentinel-value" not in result.stderr
 
 
-def test_worker_rejects_unknown_llm_provider(monkeypatch, tmp_path):
+def test_deps_disable_extraction_without_key_even_with_model(monkeypatch, tmp_path):
+    from app.core.settings import Settings
+    from app.worker import cli as worker_cli
+
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("LLM_PROVIDER", "unknown")
+    monkeypatch.setenv("LLM_MODEL", "google/gemini-3.1-flash-lite")
+    monkeypatch.setattr(
+        worker_cli,
+        "load_settings",
+        lambda: Settings(_env_file=None, database_url="postgresql+psycopg://u@localhost/x"),
+    )
 
-    result = CliRunner().invoke(app, ["run"])
-
-    assert result.exit_code == 1
-    assert "LLM_PROVIDER must be one of" in result.stderr
+    assert worker_cli._deps_from_settings().extraction is None
 
 
 def test_worker_rejects_malformed_extraction_variable_naming_it_only(monkeypatch, tmp_path):
@@ -652,9 +669,8 @@ def test_worker_rejects_unreadable_prices_file_at_start(monkeypatch, tmp_path):
     import tomllib
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("LLM_PROVIDER", "openai")
-    monkeypatch.setenv("LLM_MODEL", "gpt-test")
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-sentinel-value")
+    monkeypatch.setenv("LLM_MODEL", "google/gemini-3.1-flash-lite")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-sentinel-value")
 
     def broken_prices():
         raise tomllib.TOMLDecodeError("Invalid value (at line 1, column 5)")
@@ -898,6 +914,7 @@ def test_status_shows_extraction_never(cli, db):
     lines = result.stdout.splitlines()
     assert "Extraction:" in lines
     assert "  model: fake:fake-model" in lines
+    assert "  fallback: none" in lines
     assert "  posts waiting: 0" in lines
     assert "  failed posts: 0" in lines
     assert "  latest extraction: never" in lines
@@ -958,6 +975,7 @@ def test_status_shows_extraction_counts_and_latest(cli, db):
     lines = result.stdout.splitlines()
     assert "Extraction:" in lines
     assert "  model: fake:fake-model" in lines
+    assert "  fallback: none" in lines
     assert "  posts waiting: 1" in lines  # x_id=2 has no extraction yet
     assert "  failed posts: 1" in lines
     assert "  latest extraction: 2026-09-26T00:00:03Z x_id=1 status=failed latency=3.0" in lines

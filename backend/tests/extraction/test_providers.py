@@ -1,63 +1,78 @@
-import pytest
-from langchain_anthropic import ChatAnthropic
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
+from langchain_openrouter import ChatOpenRouter
 from pydantic import SecretStr
 
 from app.extraction.config import LlmConfig
+from app.extraction.model_settings import ModelSettings
 from app.extraction.providers import build_chat_model
 
 DUMMY_KEY = SecretStr("dummy-key")
 
 
-def test_google_provider_builds_offline():
-    spec = build_chat_model(LlmConfig("google", "gemini-2.0-flash", DUMMY_KEY))
-    assert isinstance(spec.chat_model, ChatGoogleGenerativeAI)
-    assert spec.chat_model.model.endswith("gemini-2.0-flash")
-    assert spec.chat_model.temperature == 0
-    assert spec.chat_model.max_retries == 0
-    assert spec.structured_kwargs == {}
+def _row(effort="none", temperature=True, method="function_calling") -> ModelSettings:
+    return ModelSettings(
+        reasoning_effort=effort, temperature=temperature, structured_method=method, checked="x"
+    )
 
 
-def test_openai_provider_builds_offline():
-    spec = build_chat_model(LlmConfig("openai", "gpt-4.1-mini", DUMMY_KEY))
-    assert isinstance(spec.chat_model, ChatOpenAI)
-    assert spec.chat_model.model_name == "gpt-4.1-mini"
-    assert spec.chat_model.temperature == 0
-    assert spec.chat_model.max_retries == 0
-    assert spec.structured_kwargs == {}
+def _config(model="a/primary", row=None, fallback=None, fallback_row=None) -> LlmConfig:
+    return LlmConfig(
+        model=model,
+        fallback_model=fallback,
+        api_key=DUMMY_KEY,
+        settings=row or _row(),
+        fallback_settings=fallback_row,
+    )
 
 
-def test_anthropic_provider_builds_offline():
-    spec = build_chat_model(LlmConfig("anthropic", "claude-haiku-4", DUMMY_KEY))
-    assert isinstance(spec.chat_model, ChatAnthropic)
-    assert spec.chat_model.model == "claude-haiku-4"
-    assert spec.chat_model.temperature == 0
-    assert spec.chat_model.max_retries == 0
-    assert spec.structured_kwargs == {}
-
-
-def test_openrouter_provider_builds_offline():
-    spec = build_chat_model(LlmConfig("openrouter", "openai/gpt-4.1-mini", DUMMY_KEY))
-    assert isinstance(spec.chat_model, ChatOpenAI)
-    assert spec.chat_model.model_name == "openai/gpt-4.1-mini"
-    assert spec.chat_model.openai_api_base == "https://openrouter.ai/api/v1"
-    assert spec.chat_model.temperature == 0
+def test_builds_chat_openrouter():
+    spec = build_chat_model(_config())
+    assert isinstance(spec.chat_model, ChatOpenRouter)
+    assert spec.chat_model.model_name == "a/primary"
+    assert (spec.provider, spec.model) == ("openrouter", "a/primary")
     assert spec.structured_kwargs == {"method": "function_calling"}
 
 
-@pytest.mark.parametrize(
-    "provider,model,expect_temperature",
-    [
-        ("openai", "gpt-5-nano", False),
-        ("openrouter", "openai/o4-mini", False),
-        ("openai", "gpt-4.1-mini", True),
-        ("anthropic", "claude-haiku-4", True),
-    ],
-)
-def test_reasoning_models_get_no_temperature(provider, model, expect_temperature):
-    spec = build_chat_model(LlmConfig(provider, model, DUMMY_KEY))
-    if expect_temperature:
-        assert spec.chat_model.temperature == 0
-    else:
-        assert spec.chat_model.temperature is None
+def test_structured_method_comes_from_the_catalogue_row():
+    spec = build_chat_model(_config(row=_row(method="json_schema")))
+    assert spec.structured_kwargs == {"method": "json_schema"}
+
+
+def test_timeout_and_no_client_retries():
+    chat_model = build_chat_model(_config()).chat_model
+    assert chat_model.request_timeout == 60_000
+    assert chat_model.max_retries == 0
+
+
+def test_reasoning_effort_from_catalogue():
+    for effort in ("none", "low"):
+        chat_model = build_chat_model(_config(row=_row(effort=effort))).chat_model
+        assert chat_model._default_params["reasoning"] == {"effort": effort}
+
+
+def test_temperature_only_where_listed():
+    assert build_chat_model(_config()).chat_model._default_params["temperature"] == 0
+    params = build_chat_model(_config(row=_row(temperature=False))).chat_model._default_params
+    assert "temperature" not in params
+
+
+def test_require_parameters_sent():
+    params = build_chat_model(_config()).chat_model._default_params
+    assert params["provider"] == {"require_parameters": True}
+
+
+def test_fallback_sent_as_models_list():
+    with_fallback = build_chat_model(
+        _config(fallback="b/fallback", fallback_row=_row())
+    ).chat_model._default_params
+    assert with_fallback["models"] == ["a/primary", "b/fallback"]
+    assert with_fallback["model"] == "a/primary"
+    assert "route" not in with_fallback
+    assert "models" not in build_chat_model(_config()).chat_model._default_params
+
+
+def test_pair_temperature_only_when_both_allow():
+    both = _config(fallback="b/f", fallback_row=_row(temperature=True))
+    assert build_chat_model(both).chat_model._default_params["temperature"] == 0
+    for row, fallback_row in ((_row(), _row(temperature=False)), (_row(temperature=False), _row())):
+        config = _config(row=row, fallback="b/f", fallback_row=fallback_row)
+        assert "temperature" not in build_chat_model(config).chat_model._default_params

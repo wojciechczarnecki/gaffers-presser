@@ -50,7 +50,7 @@ from app.worker.loop import SystemClock
 
 app = typer.Typer(add_completion=False, no_args_is_help=True, help="The extraction toolkit.")
 
-BuildSpec = Callable[[str | None, str | None], ChatModelSpec]
+BuildSpec = Callable[..., ChatModelSpec]
 
 
 @app.callback()
@@ -74,10 +74,10 @@ class ExtractionCliDeps:
 
 
 def build_spec_from_settings(settings: ExtractionSettings) -> BuildSpec:
-    def build_spec(provider: str | None, model: str | None) -> ChatModelSpec:
-        config = resolve_llm(settings, provider, model)
+    def build_spec(model: str | None, *, fallback: bool) -> ChatModelSpec:
+        config = resolve_llm(settings, model, use_fallback=fallback)
         if config is None:
-            raise ConfigError("LLM_PROVIDER must be set")
+            raise ConfigError("OPENROUTER_API_KEY must be set")
         return build_chat_model(config)
 
     return build_spec
@@ -122,14 +122,13 @@ def _parse_iso(value: str) -> datetime:
     return parsed
 
 
-@app.command(help="Re-extract posts, optionally with another provider/model.")
+@app.command(help="Re-extract posts, optionally with another model.")
 def reextract(
     ctx: typer.Context,
     x_id: int | None = typer.Option(None, "--x-id"),
     since: str | None = typer.Option(None, "--since"),
     until: str | None = typer.Option(None, "--until"),
     failed: bool = typer.Option(False, "--failed"),
-    provider: str | None = typer.Option(None, "--provider"),
     model: str | None = typer.Option(None, "--model"),
 ) -> None:
     deps = get_deps(ctx)
@@ -141,7 +140,7 @@ def reextract(
         raise fail("--since and --until must be given together")
 
     try:
-        spec = deps.build_spec(provider, model)
+        spec = deps.build_spec(model, fallback=True)
         prices, aliases = load_reference_files()
     except CollectorError as exc:
         raise fail(str(exc)) from None
@@ -228,13 +227,12 @@ def prelabel(
     since: str | None = typer.Option(None, "--since"),
     until: str | None = typer.Option(None, "--until"),
     limit: int | None = typer.Option(None, "--limit"),
-    provider: str | None = typer.Option(None, "--provider"),
     model: str | None = typer.Option(None, "--model"),
     eval_set: Annotated[Path | None, typer.Option("--eval-set")] = None,
 ) -> None:
     deps = get_deps(ctx)
     try:
-        spec = deps.build_spec(provider, model)
+        spec = deps.build_spec(model, fallback=False)
     except CollectorError as exc:
         raise fail(str(exc)) from None
 
@@ -303,11 +301,10 @@ DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
 RUN_NAME_PATTERN = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9._-]*")
 
 
-@app.command(help="Evaluate a provider and model on a split of the evaluation set.")
+@app.command(help="Evaluate a model on a split of the evaluation set.")
 def evaluate(
     ctx: typer.Context,
     split: Annotated[str, typer.Option("--split")],
-    provider: str | None = typer.Option(None, "--provider"),
     model: str | None = typer.Option(None, "--model"),
     run_name: str | None = typer.Option(None, "--run-name"),
     posts_per_month: float = typer.Option(1050.0, "--posts-per-month"),
@@ -331,7 +328,7 @@ def evaluate(
         raise fail("--run-name may hold only letters, digits, '.', '_' and '-'")
 
     try:
-        spec = deps.build_spec(provider, model)
+        spec = deps.build_spec(model, fallback=False)
     except CollectorError as exc:
         raise fail(str(exc)) from None
 
@@ -379,7 +376,7 @@ def _fmt(value: float | None, digits: int = 2) -> str:
 
 
 def _default_run_name(split: str, spec: ChatModelSpec, now: datetime) -> str:
-    raw = f"{split}-{spec.provider}-{spec.model}-{now:%Y%m%dT%H%M}"
+    raw = f"{split}-{spec.model}-{now:%Y%m%dT%H%M}"
     return re.sub(r"[^A-Za-z0-9._-]+", "-", raw)
 
 

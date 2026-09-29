@@ -19,7 +19,7 @@ from app.core.settings import (
 )
 from app.db.engine import make_engine
 from app.db.locks import try_schedule_lock
-from app.extraction.config import resolve_llm, resolve_tracing
+from app.extraction.config import PROVIDER, resolve_llm, resolve_tracing
 from app.extraction.loop import start_extractor
 from app.extraction.providers import build_chat_model
 from app.extraction.service import ExtractionRuntime, load_reference_files
@@ -120,8 +120,9 @@ def _deps_from_settings() -> WorkerDeps:
     extraction = None
     if llm_config is not None:
         extraction = ExtractionRuntime(
-            provider=llm_config.provider,
+            provider=PROVIDER,
             model=llm_config.model,
+            fallback_model=llm_config.fallback_model,
             make_spec=lambda: build_chat_model(llm_config),
             tracing=resolve_tracing(extraction_settings),
             prices=prices,
@@ -277,6 +278,7 @@ def status(ctx: typer.Context) -> None:
         extraction_state = extraction_status(deps.engine)
         typer.echo("Extraction:")
         typer.echo(f"  model: {deps.extraction.provider}:{deps.extraction.model}")
+        typer.echo(f"  fallback: {deps.extraction.fallback_model or 'none'}")
         typer.echo(f"  posts waiting: {extraction_state.waiting}")
         typer.echo(f"  failed posts: {extraction_state.failed_posts}")
         if extraction_state.latest is None:

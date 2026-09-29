@@ -44,6 +44,7 @@ class ExtractionRuntime:
     prices: dict[str, Price]
     aliases: Aliases
     clock: Clock | None = None
+    fallback_model: str | None = None
 
 
 @dataclass(frozen=True)

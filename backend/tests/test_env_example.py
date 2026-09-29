@@ -16,11 +16,8 @@ _FIELD_TO_VARIABLE = {
 }
 
 _EXTRACTION_FIELD_TO_VARIABLE = {
-    "llm_provider": "LLM_PROVIDER",
     "llm_model": "LLM_MODEL",
-    "google_api_key": "GOOGLE_API_KEY",
-    "openai_api_key": "OPENAI_API_KEY",
-    "anthropic_api_key": "ANTHROPIC_API_KEY",
+    "llm_fallback_model": "LLM_FALLBACK_MODEL",
     "openrouter_api_key": "OPENROUTER_API_KEY",
     "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
     "langfuse_secret_key": "LANGFUSE_SECRET_KEY",

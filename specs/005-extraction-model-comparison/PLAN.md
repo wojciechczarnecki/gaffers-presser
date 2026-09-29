@@ -184,8 +184,8 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
 | AC3 | 3, 5, 8 | `tests/extraction/test_dependency.py::test_removed_llm_packages_absent`, `::test_no_module_imports_removed_packages`, `tests/extraction/test_providers.py::test_builds_chat_openrouter` | |
 | AC4 | 5 | `tests/extraction/test_config.py::test_disabled_without_key_even_with_model`, `tests/worker/test_cli.py::test_deps_disable_extraction_without_key_even_with_model` | |
 | AC5 | 5, 16 | `tests/extraction/test_config.py::test_default_model_when_llm_model_empty`, `::test_llm_model_overrides_default`, `::test_llm_provider_variable_ignored`, `tests/extraction/test_cli.py::test_provider_option_removed`, `::test_*_without_key_names_openrouter_variable` | |
-| AC6 | 5, 6 | `tests/extraction/test_providers.py::test_fallback_sent_as_models_list`, `tests/extraction/test_openrouter_payload.py::test_fallback_answer_recorded` | |
-| AC7 | 4, 5, 6, 9 | `tests/extraction/test_model_settings.py`, `tests/extraction/test_providers.py::test_reasoning_effort_from_catalogue`, `tests/extraction/test_flow.py::test_reasoning_tokens_summed`, `tests/extraction/test_cli.py::test_evaluate_shows_reasoning_tokens` | step 4 (catalogue): `uv run pytest -q tests/extraction/test_model_settings.py` (stub loader returning `{}`) → `assert {'anthropic/c...lm-5.3-flash'} <= set()`; later steps' records are added as they run |
+| AC6 | 5, 6 | `tests/extraction/test_providers.py::test_fallback_sent_as_models_list`, `tests/extraction/test_openrouter_payload.py::test_fallback_answer_recorded` | step 5 (request side; the tests were written together with the code, so red was shown by removing the behaviour): `uv run pytest -q tests/extraction/test_providers.py` with the `models` list removed → `KeyError: 'models'` |
+| AC7 | 4, 5, 6, 9 | `tests/extraction/test_model_settings.py`, `tests/extraction/test_providers.py::test_reasoning_effort_from_catalogue`, `tests/extraction/test_flow.py::test_reasoning_tokens_summed`, `tests/extraction/test_cli.py::test_evaluate_shows_reasoning_tokens` | step 4 (catalogue): `uv run pytest -q tests/extraction/test_model_settings.py` (stub loader returning `{}`) → `assert {'anthropic/c...lm-5.3-flash'} <= set()`; step 5: with `reasoning` removed from the client, `test_reasoning_effort_from_catalogue` → `KeyError: 'reasoning'`; later steps' records are added as they run |
 | AC8 | 5, 6 | `tests/extraction/test_providers.py::test_timeout_and_no_client_retries`, `tests/extraction/test_openrouter_payload.py::test_usage_and_callback_through_chat_openrouter`; existing extraction, service, worker and tracing suites | |
 | AC9 | 6 | `tests/extraction/test_service.py::test_stored_provider_is_openrouter_and_model_is_answering_id` | |
 | AC10 | 4 | `tests/extraction/test_pricing.py::test_every_candidate_priced_with_checked_date`, `::test_cost_keyed_by_openrouter_id` | `uv run pytest -q tests/extraction/test_pricing.py` (empty prices.toml, old signature) → `KeyError: 'openai/gpt-6-luna'`; `TypeError: compute_cost() missing 1 required positional argument: 'prices'` |
@@ -315,7 +315,7 @@ prompt is at version 2. `backend/.env` has `OPENROUTER_API_KEY`, the Langfuse ke
           4, 15 and 16.
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_model_settings.py tests/extraction/test_pricing.py tests/extraction/test_service.py tests/extraction/test_cli.py -k "cost or price or evaluate or model_settings or pricing"`
 
-- [ ] 5. **OpenRouter as the only provider: settings, config, client, CLI, worker (AC3, AC4,
+- [x] 5. **OpenRouter as the only provider: settings, config, client, CLI, worker (AC3, AC4,
       AC5, AC6 request side, AC7 request side, AC8).**
       - `core/settings.py` `ExtractionSettings`: remove `llm_provider`, `google_api_key`,
         `openai_api_key` and `anthropic_api_key`; add `llm_fallback_model: str = ""`.
