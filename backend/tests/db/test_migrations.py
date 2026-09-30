@@ -14,13 +14,16 @@ from testcontainers.postgres import PostgresContainer
 
 import app.extraction.models  # noqa: F401
 import app.fpl.models  # noqa: F401
+import app.retrieval.models  # noqa: F401
 import app.tweets.models  # noqa: F401
 import app.worker.models  # noqa: F401
 from app.db.engine import make_engine
 from app.fpl.reference import apply_bootstrap
 from app.fpl.schemas import Bootstrap
+from app.retrieval.evaluation.dataset import CorpusPost
+from app.retrieval.evaluation.schema import EVAL_SCHEMA, load_eval_corpus
 from tests.conftest import BACKEND_DIR, run_alembic
-from tests.fpl.fakes import table_contents
+from tests.fpl.fakes import DEFAULT_EXCLUDE, table_contents
 from tests.fpl.payloads import load
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
@@ -76,6 +79,7 @@ def test_job_run_migration_keeps_collector_data():
             "tweet_poll",
             "extraction",
             "extraction_event",
+            "post_embedding",
         }
         with Session(engine) as session:
             before = table_contents(session, tables=collector_tables)
@@ -119,6 +123,7 @@ def test_tweet_migration_adds_only_new_tables():
             "tweet_poll",
             "extraction",
             "extraction_event",
+            "post_embedding",
         }
         with Session(engine) as session:
             before = table_contents(session, tables=other_tables)
@@ -167,16 +172,21 @@ def test_extraction_migration_adds_only_new_tables():
                 {"now": NOW},
             )
 
-        other_tables = set(SQLModel.metadata.tables.keys()) - {"extraction", "extraction_event"}
+        other_tables = set(SQLModel.metadata.tables.keys()) - {
+            "extraction",
+            "extraction_event",
+            "post_embedding",
+        }
+        excluded = DEFAULT_EXCLUDE | {"search_vector"}
         with Session(engine) as session:
-            before = table_contents(session, tables=other_tables)
+            before = table_contents(session, exclude=excluded, tables=other_tables)
 
-        run_alembic(url, "upgrade", "head")
+        run_alembic(url, "upgrade", "0004")
         with engine.connect() as conn:
             tables = set(inspect(conn).get_table_names())
         assert {"extraction", "extraction_event"} <= tables
         with Session(engine) as session:
-            assert table_contents(session, tables=other_tables) == before
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before
 
         run_alembic(url, "downgrade", "-1")
         with engine.connect() as conn:
@@ -185,7 +195,76 @@ def test_extraction_migration_adds_only_new_tables():
         assert "extraction_event" not in tables
         assert "tweet" in tables
         with Session(engine) as session:
-            assert table_contents(session, tables=other_tables) == before
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before
+
+
+EVAL_POST = CorpusPost(
+    x_id=2,
+    author_handle="reporter",
+    text="Saka injury",
+    created_at=NOW,
+    is_repost=False,
+    is_reply=False,
+)
+
+
+def test_retrieval_migration_keeps_data_and_downgrades():
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
+        url = container.get_connection_url()
+        run_alembic(url, "upgrade", "0004")
+        engine = make_engine(url)
+
+        with engine.begin() as conn:
+            conn.execute(
+                sa_text(
+                    "INSERT INTO job_run (job, season, gameweek_fpl_id, started_at,"
+                    " finished_at, outcome) VALUES ('reference_sync', NULL, NULL,"
+                    " :now, :now, 'succeeded')"
+                ),
+                {"now": NOW},
+            )
+            conn.execute(
+                sa_text(
+                    "INSERT INTO tweet (x_id, author_handle, text, created_at,"
+                    " first_fetched_at, source, is_repost, is_reply, raw) VALUES"
+                    " (1, 'reporter', 'Ødegaard injury', :now, :now, 'list', false, false, '{}')"
+                ),
+                {"now": NOW},
+            )
+
+        other_tables = set(SQLModel.metadata.tables.keys()) - {"post_embedding"}
+        excluded = DEFAULT_EXCLUDE | {"search_vector"}
+        with Session(engine) as session:
+            before = table_contents(session, exclude=excluded, tables=other_tables)
+
+        run_alembic(url, "upgrade", "head")
+        with engine.connect() as conn:
+            assert "post_embedding" in set(inspect(conn).get_table_names())
+            vector = conn.execute(sa_text("SELECT search_vector::text FROM tweet")).scalar_one()
+        assert "'odegaard'" in vector
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before
+
+        load_eval_corpus(engine, [EVAL_POST])  # what prelabel and evaluate leave behind
+
+        run_alembic(url, "downgrade", "-1")
+        with engine.connect() as conn:
+            schemas = set(inspect(conn).get_schema_names())
+            tables = set(inspect(conn).get_table_names())
+            columns = {column["name"] for column in inspect(conn).get_columns("tweet")}
+            configs = conn.execute(
+                sa_text("SELECT cfgname FROM pg_ts_config WHERE cfgname = 'english_unaccent'")
+            ).all()
+            extensions = set(
+                conn.execute(sa_text("SELECT extname FROM pg_extension")).scalars().all()
+            )
+        assert EVAL_SCHEMA not in schemas
+        assert "post_embedding" not in tables
+        assert "search_vector" not in columns
+        assert configs == []
+        assert not {"vector", "unaccent"} & extensions
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before
 
 
 def test_alembic_cli_runs_from_backend(migration_url):

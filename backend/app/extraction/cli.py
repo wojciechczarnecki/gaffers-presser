@@ -12,10 +12,11 @@ import typer
 from sqlalchemy import Engine
 from sqlmodel import Session
 
+from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError, ConfigError
-from app.core.settings import ExtractionSettings, load_extraction_settings, load_settings
+from app.core.settings import load_settings
 from app.db.engine import make_engine
-from app.extraction.config import resolve_llm, resolve_tracing
+from app.extraction.config import ExtractionSettings, load_extraction_settings, resolve_llm
 from app.extraction.evaluation.cases import (
     EvalCase,
     ExpectedEvent,
@@ -51,9 +52,8 @@ from app.extraction.service import (
     run_with_retries,
 )
 from app.extraction.store import posts_for_reextract
-from app.extraction.tracing import flush, make_handler, run_config
-from app.tweets.loop import Clock
-from app.worker.loop import SystemClock
+from app.extraction.tracing import run_config
+from app.llm.tracing import flush, make_handler, resolve_tracing
 
 app = typer.Typer(add_completion=False, no_args_is_help=True, help="The extraction toolkit.")
 

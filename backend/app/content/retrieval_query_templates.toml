@@ -1,0 +1,14 @@
+# Query templates for evaluation set queries built from extracted events (spec 006).
+# Keyed by event type; `{player}` is replaced with the player's name.
+
+[en]
+out = "{player} injury"
+doubt = "{player} injury doubt"
+benched = "{player} benched"
+confirmed_starter = "{player} starts"
+
+[pl]
+out = "{player} kontuzja"
+doubt = "{player} pod znakiem zapytania"
+benched = "{player} na ławce"
+confirmed_starter = "{player} w podstawowym składzie"

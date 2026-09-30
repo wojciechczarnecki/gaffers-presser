@@ -1,7 +1,7 @@
 import pytest
 
 from app.extraction.model_settings import DEFAULT_PATH, load_model_settings, pair_compatible
-from app.extraction.pricing import load_prices
+from app.llm.pricing import load_prices
 from tests.extraction.candidates import CANDIDATES
 
 
@@ -55,7 +55,9 @@ def test_structured_method_override_is_read(tmp_path):
 
 def test_model_settings_and_prices_have_the_same_models():
     assert DEFAULT_PATH.exists()
-    assert set(load_model_settings()) == set(load_prices())
+    assert set(load_model_settings()) == {
+        model for model, price in load_prices().items() if price.output_per_million is not None
+    }
 
 
 def test_pair_compatible_needs_same_structured_method_and_reasoning_effort():

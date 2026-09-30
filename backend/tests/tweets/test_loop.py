@@ -6,8 +6,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlmodel import Session, select
 
+from app.core.clock import StopAwareClock
 from app.fpl.models import Gameweek, Season
-from app.tweets.loop import StopAwareClock, TweetPoller, start_poller
+from app.tweets.loop import TweetPoller, start_poller
 from app.tweets.models import TweetPoll
 from app.tweets.sources.base import SourceRateLimitedError, SourceUnavailableError
 from app.worker.jobs import Shutdown

@@ -40,11 +40,20 @@ and each LLM step that produces data has an evaluation set with recorded results
 
 ## Stage 2 — RAG v1 and alert e-mails (portfolio MVP)
 
-- [ ] Hybrid retrieval on PostgreSQL (full-text + pgvector, rank fusion) (spec: TBD)
-- [ ] Corroboration of leaks across independent accounts (spec: TBD)
+- [x] Hybrid retrieval on PostgreSQL (full-text + pgvector, rank fusion)
+      (spec: [006](../specs/006-hybrid-retrieval/SPEC.md))
+- [ ] Corroboration of leaks across independent accounts: retrieval plus SQL over the linked
+      players; an LLM step, if the spec adds one, gets its own evaluation set (spec: TBD)
+- [ ] E-mail delivery adapter behind an interface (ADR 0004), shared with the Stage 3 presser
+      (spec: TBD)
 - [ ] Pre-deadline alert e-mails with cited sources for league-owned and widely owned
-      players (spec: TBD)
-- [ ] Retrieval evaluation set and a results report in the README (spec: TBD)
+      players, with post → inbox latency measured; whether the alert text is LLM-generated
+      from the retrieved posts (with a faithfulness evaluation) is decided in its spec.
+      Preconditions: the production deployment (Stage 0) and BACKLOG #11 settled
+      (spec: TBD) — **first functional MVP**
+- [ ] Retrieval evaluation report after the GW6 window: the owner's review of set v1, the
+      comparison of modes and embedding models, the default-model ADR, a results section in
+      the README (tooling and set v1 come with spec 006) (spec: TBD) — **portfolio MVP**
 
 ## Stage 3 — League presser
 

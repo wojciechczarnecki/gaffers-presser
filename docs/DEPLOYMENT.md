@@ -58,7 +58,7 @@ below; agents never touch production.
      explicit `LLM_FALLBACK_MODEL` that does not fails the worker on start, and the default
      fallback is dropped (no fallback) under an `LLM_MODEL` it cannot answer for. A model
      outside `backend/app/extraction/model_settings.toml` fails the worker on start with a
-     message naming the variable, never a key; add a row there and in `prices.toml` first.
+     message naming the variable, never a key; add a row there and in `backend/app/llm/prices.toml` first.
    - `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` from a Langfuse Cloud project in the EU
      region, and `LANGFUSE_HOST` (defaults to `https://cloud.langfuse.com`, the EU region).
      Without both keys extraction still runs, untraced, and the worker logs one warning.
@@ -72,3 +72,25 @@ below; agents never touch production.
    `python -m app.extraction evaluate --split dev --model <OpenRouter model ID>`,
    `python -m app.extraction compare-labels`, `python -m app.extraction spend` (see the
    README's Development section).
+9. **Retrieval indexing.** Indexing runs whenever `OPENROUTER_API_KEY` is set (the same key as
+   extraction); without it the worker logs `retrieval indexing disabled` and every other loop
+   runs as before.
+   - `EMBEDDING_MODEL` is optional; empty means the default `openai/text-embedding-3-small`.
+     A model with no row in `backend/app/llm/prices.toml`, or with a chat-model row (one that
+     has an output price), fails the worker on start with a message naming the variable, never
+     a key; add an input-only row first.
+   - Migration `0005` enables the `vector` and `unaccent` extensions and adds the full-text
+     column and `post_embedding`; it runs through the pre-deploy like the others, and the
+     PostgreSQL image already ships both extensions.
+   - Posts are embedded oldest first in their own thread, so an embedding outage never
+     delays tweet polls, extraction or FPL jobs. After the first deploy the loop backfills
+     the posts stored before it on its own; their latency is not recorded, because it would
+     measure the deploy date rather than the indexing path. A post that keeps failing is
+     retried every 10 minutes, behind every never-attempted post, until 15 attempts in total;
+     after that it stays `failed` until an `index` run.
+   - Re-indexing with another model, or retrying posts the loop gave up on, runs from a shell
+     with the production variables: `python -m app.retrieval index [--model <OpenRouter model
+     ID>]`.
+     `python -m app.retrieval status` prints the embedded, missing and failed posts per model
+     and the cost, and `python -m app.retrieval search "<query>" [--mode fulltext|vector|hybrid]`
+     searches the stored posts (`--mode fulltext` needs no key).

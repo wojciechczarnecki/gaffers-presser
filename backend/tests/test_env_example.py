@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from app.core.settings import ExtractionSettings, TweetSettings
+from app.core.settings import TweetSettings
+from app.extraction.config import ExtractionSettings
+from app.retrieval.config import RetrievalSettings
 
 ROOT = Path(__file__).resolve().parents[2]
 ENV_EXAMPLE = ROOT / "backend" / ".env.example"
@@ -18,6 +20,15 @@ _FIELD_TO_VARIABLE = {
 _EXTRACTION_FIELD_TO_VARIABLE = {
     "llm_model": "LLM_MODEL",
     "llm_fallback_model": "LLM_FALLBACK_MODEL",
+    "openrouter_api_key": "OPENROUTER_API_KEY",
+    "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
+    "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
+    "langfuse_host": "LANGFUSE_HOST",
+    "usd_pln_rate": "USD_PLN_RATE",
+}
+
+_RETRIEVAL_FIELD_TO_VARIABLE = {
+    "embedding_model": "EMBEDDING_MODEL",
     "openrouter_api_key": "OPENROUTER_API_KEY",
     "langfuse_public_key": "LANGFUSE_PUBLIC_KEY",
     "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
@@ -76,3 +87,21 @@ def test_every_extraction_variable_is_an_empty_placeholder():
             seen.add(name)
             assert value == "", f"{name} must be an empty placeholder in .env.example"
     assert seen == extraction_variables
+
+
+def test_every_retrieval_setting_field_has_its_variable_covered():
+    assert set(RetrievalSettings.model_fields) == set(_RETRIEVAL_FIELD_TO_VARIABLE)
+
+
+def test_every_retrieval_setting_is_an_empty_placeholder():
+    retrieval_variables = set(_RETRIEVAL_FIELD_TO_VARIABLE.values())
+    seen = set()
+    for line in _lines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        name, _, value = stripped.partition("=")
+        if name in retrieval_variables:
+            seen.add(name)
+            assert value == "", f"{name} must be an empty placeholder in .env.example"
+    assert seen == retrieval_variables
