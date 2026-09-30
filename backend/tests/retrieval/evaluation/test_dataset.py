@@ -35,6 +35,18 @@ def test_export_corpus_writes_public_fields_only(db, tmp_path):
     assert [post.x_id for post in load_corpus(output)] == [1, 2]
 
 
+def test_export_corpus_leaves_out_the_own_test_account(db, tmp_path):
+    add_tweet(db, 1, "hello everyone", author="GafferPresser")
+    add_tweet(db, 2, "Saka injury", author="FFScout")
+    output = tmp_path / "corpus.jsonl"
+
+    result = CliRunner().invoke(app, ["export-corpus", "--output", str(output)], obj=_deps(db))
+
+    assert result.exit_code == 0, result.output
+    assert [post.x_id for post in load_corpus(output)] == [2]
+    assert "exported 1 posts" in result.stdout
+
+
 def test_export_corpus_refuses_to_overwrite_without_force(db, tmp_path):
     add_tweet(db, 1)
     output = tmp_path / "corpus.jsonl"

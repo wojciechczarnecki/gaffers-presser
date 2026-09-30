@@ -84,12 +84,31 @@ def traced_embed(
     tracer: RetrievalTracer,
     prices: dict[str, Price],
 ) -> tuple[EmbeddingResult, float | None]:
-    result = embedder.embed(texts)
+    try:
+        result = embedder.embed(texts)
+    except Exception as exc:
+        _trace_safely(
+            tracer,
+            model=embedder.model,
+            texts=texts,
+            input_tokens=None,
+            cost_usd=None,
+            error_class=type(exc).__name__,
+        )
+        raise
     cost = compute_cost(embedder.model, result.input_tokens, None, prices)
-    tracer.embedding(
-        model=embedder.model, texts=texts, input_tokens=result.input_tokens, cost_usd=cost
+    _trace_safely(
+        tracer, model=embedder.model, texts=texts, input_tokens=result.input_tokens, cost_usd=cost
     )
     return result, cost
+
+
+def _trace_safely(tracer: RetrievalTracer, **kwargs) -> None:
+    # A paid embedding must never be lost, or retried, because tracing it failed.
+    try:
+        tracer.embedding(**kwargs)
+    except Exception as exc:
+        logger.error("retrieval tracing failed: %s", type(exc).__name__)
 
 
 def embed_post(

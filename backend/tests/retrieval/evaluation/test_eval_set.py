@@ -1,6 +1,7 @@
 from app.retrieval.evaluation.dataset import (
     DEFAULT_CORPUS_PATH,
     DEFAULT_QUERIES_PATH,
+    EXCLUDED_AUTHORS,
     load_corpus,
     load_queries,
 )
@@ -14,6 +15,7 @@ def test_set_v1_committed_and_consistent():
     ids = [post.x_id for post in corpus]
     assert len(corpus) >= 100
     assert len(set(ids)) == len(ids)
+    assert not {post.author_handle.lower() for post in corpus} & EXCLUDED_AUTHORS
 
     assert 35 <= len(queries) <= 45
     assert len({query.id for query in queries}) == len(queries)
@@ -28,5 +30,5 @@ def test_set_v1_committed_and_consistent():
         assert query.judgements, f"{query.id} has no judgement"
         for judgement in query.judgements:
             assert judgement.x_id in known
-            assert judgement.reviewed is False
-            assert "/" in judgement.labelled_by
+            # the owner's review after the PR turns labels into reviewed ones
+            assert "/" in judgement.labelled_by or judgement.labelled_by == "owner"

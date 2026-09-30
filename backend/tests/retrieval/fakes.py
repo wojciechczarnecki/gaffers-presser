@@ -66,3 +66,26 @@ class RecordingTracer:
 
     def flush(self) -> None:
         self.flushed += 1
+
+
+class _Observation:
+    def end(self) -> None:
+        return None
+
+
+@dataclass
+class FakeLangfuseClient:
+    fail: bool = False
+    observations: list[dict[str, Any]] = field(default_factory=list)
+    flushed: int = 0
+
+    def start_observation(self, **kwargs: Any) -> _Observation:
+        if self.fail:
+            raise ConnectionError("langfuse down")
+        self.observations.append(kwargs)
+        return _Observation()
+
+    def flush(self) -> None:
+        if self.fail:
+            raise ConnectionError("langfuse down")
+        self.flushed += 1

@@ -43,6 +43,9 @@ def resolve_embedding(
         chosen, variable = settings.embedding_model, "EMBEDDING_MODEL"
     else:
         chosen, variable = DEFAULT_EMBEDDING_MODEL, "DEFAULT_EMBEDDING_MODEL"
-    if chosen not in prices:
+    price = prices.get(chosen)
+    if price is None:
         raise ConfigError(f"{variable} names a model with no row in prices.toml")
+    if price.output_per_million is not None:
+        raise ConfigError(f"{variable} names a chat model, not an embedding model")
     return EmbeddingConfig(model=chosen, api_key=settings.openrouter_api_key, prices=prices)

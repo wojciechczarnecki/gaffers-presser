@@ -64,3 +64,11 @@ def test_server_error_raises_after_exactly_one_request():
     with pytest.raises(OpenRouterError):
         embedder.embed(["first", "second"])
     assert len(requests) == 1
+
+
+def test_non_list_embedding_raises_value_error():
+    payload = json.loads(json.dumps(PAYLOAD))
+    payload["data"][0]["embedding"] = "AAAA"
+    embedder, _ = _embedder(lambda request: httpx.Response(200, json=payload))
+    with pytest.raises(ValueError, match="embedding is not a list of floats"):
+        embedder.embed(["first", "second"])

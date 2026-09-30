@@ -12,6 +12,7 @@ SENTINEL_KEY = "sk-sentinel-key"
 PRICES = {
     DEFAULT_EMBEDDING_MODEL: Price(input_per_million=0.02, output_per_million=None, checked="x"),
     "other/embed": Price(input_per_million=0.1, output_per_million=None, checked="x"),
+    "chat/model": Price(input_per_million=0.1, output_per_million=0.5, checked="x"),
 }
 
 
@@ -49,6 +50,14 @@ def test_unpriced_embedding_model_names_the_variable(monkeypatch):
         resolve_embedding(settings, prices=PRICES)
     assert "EMBEDDING_MODEL" in str(caught.value)
     assert SENTINEL_KEY not in str(caught.value)
+
+
+def test_chat_model_as_embedding_model_names_the_variable(monkeypatch):
+    settings = _settings(monkeypatch, OPENROUTER_API_KEY=SENTINEL_KEY, EMBEDDING_MODEL="chat/model")
+    with pytest.raises(ConfigError, match="EMBEDDING_MODEL names a chat model"):
+        resolve_embedding(settings, prices=PRICES)
+    with pytest.raises(ConfigError, match="--model names a chat model"):
+        resolve_embedding(settings, "chat/model", PRICES)
 
 
 def test_model_option_overrides(monkeypatch):

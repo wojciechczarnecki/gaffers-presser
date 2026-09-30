@@ -17,6 +17,7 @@ class RetrievalTracer(Protocol):
         texts: Sequence[str],
         input_tokens: int | None,
         cost_usd: float | None,
+        error_class: str | None = None,
     ) -> None: ...
 
     def search(
@@ -48,6 +49,7 @@ NULL_TRACER = NullTracer()
 
 
 class LangfuseTracer:
+    # A tracing failure never fails the traced work: it is logged by class name and dropped.
     def __init__(self, client: Langfuse) -> None:
         self._client = client
 
@@ -58,17 +60,23 @@ class LangfuseTracer:
         texts: Sequence[str],
         input_tokens: int | None,
         cost_usd: float | None,
+        error_class: str | None = None,
     ) -> None:
         usage = {"input": input_tokens} if input_tokens is not None else None
         cost = {"input": cost_usd} if cost_usd is not None else None
-        self._client.start_observation(
-            name="embedding",
-            as_type="embedding",
-            model=model,
-            input=list(texts),
-            usage_details=usage,
-            cost_details=cost,
-        ).end()
+        try:
+            self._client.start_observation(
+                name="embedding",
+                as_type="embedding",
+                model=model,
+                input=list(texts),
+                usage_details=usage,
+                cost_details=cost,
+                level="ERROR" if error_class is not None else None,
+                status_message=error_class,
+            ).end()
+        except Exception as exc:
+            logger.error("retrieval tracing failed: %s", type(exc).__name__)
 
     def search(
         self,
@@ -80,16 +88,22 @@ class LangfuseTracer:
         ids_by_mode: dict[str, list[int]],
         failed_legs: Sequence[str],
     ) -> None:
-        self._client.start_observation(
-            name="retrieval-search",
-            as_type="retriever",
-            input={"query": query, "mode": mode, "filters": filters},
-            output={leg: [str(x_id) for x_id in ids] for leg, ids in ids_by_mode.items()},
-            metadata={"model": model, "failed_legs": list(failed_legs)},
-        ).end()
+        try:
+            self._client.start_observation(
+                name="retrieval-search",
+                as_type="retriever",
+                input={"query": query, "mode": mode, "filters": filters},
+                output={leg: [str(x_id) for x_id in ids] for leg, ids in ids_by_mode.items()},
+                metadata={"model": model, "failed_legs": list(failed_legs)},
+            ).end()
+        except Exception as exc:
+            logger.error("retrieval tracing failed: %s", type(exc).__name__)
 
     def flush(self) -> None:
-        self._client.flush()
+        try:
+            self._client.flush()
+        except Exception as exc:
+            logger.error("retrieval tracing flush failed: %s", type(exc).__name__)
 
 
 def make_tracer(tracing: TracingConfig | None) -> RetrievalTracer:

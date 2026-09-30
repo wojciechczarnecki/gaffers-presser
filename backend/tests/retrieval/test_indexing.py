@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 
 from app.retrieval.indexing import embed_post, index_missing
 from app.retrieval.models import PostEmbedding
-from app.retrieval.store import next_unembedded
+from app.retrieval.store import MAX_TOTAL_ATTEMPTS, next_unembedded
 from app.retrieval.tracing import NULL_TRACER
 from tests.retrieval.fakes import FakeEmbedder, RecordingTracer
 from tests.retrieval.helpers import MODEL, NOW, FixedClock, add_tweet, runtime
@@ -130,7 +130,7 @@ def test_success_after_failure_replaces_the_failed_row(db):
     clock.current = NOW + timedelta(minutes=11)
     _embed(db, FakeEmbedder(), _next(db, clock), clock)
     (row,) = _rows(db)
-    assert (row.status, row.error_class, row.attempts) == ("embedded", None, 1)
+    assert (row.status, row.error_class, row.attempts) == ("embedded", None, 4)
     assert row.embedding is not None
 
 
@@ -188,3 +188,59 @@ def test_index_missing_counts_and_retries_failed_ones(db):
     assert (again.embedded, again.failed) == (1, 0)
     third = index_missing(db, runtime(embedder), embedder, NULL_TRACER, clock, threading.Event())
     assert (third.embedded, third.failed, third.cost_usd) == (0, 0, None)
+
+
+class RaisingTracer(RecordingTracer):
+    def embedding(self, **kwargs) -> None:
+        raise ConnectionError("tracing backend down")
+
+
+def test_tracing_error_neither_retries_nor_fails_a_paid_embedding(db, caplog):
+    clock = FixedClock(NOW)
+    add_tweet(db, 1)
+    embedder = FakeEmbedder()
+    outcome = _embed(db, embedder, _next(db, clock), clock, tracer=RaisingTracer())
+    assert outcome is not None and outcome.status == "embedded"
+    assert len(embedder.calls) == 1
+    (row,) = _rows(db)
+    assert (row.status, row.attempts) == ("embedded", 1)
+    assert "retrieval tracing failed: ConnectionError" in caplog.text
+
+
+def test_failed_embedding_calls_are_traced_with_the_error_class(db):
+    clock = FixedClock(NOW)
+    add_tweet(db, 1, "Saka is fit")
+    tracer = RecordingTracer()
+    embedder = FakeEmbedder(responses=[RuntimeError("x"), None])
+    _embed(db, embedder, _next(db, clock), clock, tracer=tracer)
+    failed, succeeded = tracer.embeddings
+    assert failed["error_class"] == "RuntimeError"
+    assert (failed["input_tokens"], failed["cost_usd"]) == (None, None)
+    assert "error_class" not in succeeded
+    assert succeeded["input_tokens"] == 5
+
+
+def _fail_once(db, clock) -> None:
+    _embed(db, FakeEmbedder(responses=[RuntimeError("x")] * 3), _next(db, clock), clock)
+
+
+def test_fresh_post_goes_before_an_older_failed_one(db):
+    clock = FixedClock(NOW)
+    add_tweet(db, 1, created_at=NOW - timedelta(hours=5))
+    _fail_once(db, clock)
+    add_tweet(db, 2, created_at=NOW - timedelta(minutes=1))
+    clock.current = NOW + timedelta(minutes=30)
+    fresh = _next(db, clock)
+    assert fresh is not None and fresh.x_id == 2
+
+
+def test_attempts_accumulate_and_retries_stop_at_the_cap(db):
+    clock = FixedClock(NOW)
+    add_tweet(db, 1)
+    for passes in range(1, 6):
+        _fail_once(db, clock)
+        assert _rows(db)[0].attempts == 3 * passes
+        clock.current += timedelta(minutes=10)
+    assert _rows(db)[0].attempts == MAX_TOTAL_ATTEMPTS
+    assert _next(db, clock) is None
+    assert _rows(db)[0].status == "failed"

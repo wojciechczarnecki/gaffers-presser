@@ -35,7 +35,20 @@ def test_new_post_embedded_without_restart(db):
         stop.set()
         thread.join(timeout=2)
     (row,) = _rows(db)
-    assert row.latency_seconds is not None
+    assert row.latency_seconds is not None and row.latency_seconds >= 0
+
+
+def test_backfilled_post_gets_no_latency(db):
+    stop = threading.Event()
+    add_tweet(db, 1, "stored days before the deploy", first_fetched_at=NOW - timedelta(days=3))
+    thread = start_indexer(db, runtime(FakeEmbedder()), stop, FastClock(stop))
+    try:
+        assert _wait_for(lambda: any(r.status == "embedded" for r in _rows(db)))
+    finally:
+        stop.set()
+        thread.join(timeout=2)
+    (row,) = _rows(db)
+    assert row.latency_seconds is None
 
 
 def test_failure_does_not_stop_the_loop(db):

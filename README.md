@@ -149,7 +149,7 @@ uv run python -m app.extraction evaluate --split test --model openai/gpt-6-luna 
 precision, recall, F1, linking accuracy, false-alarm rate, the certainty confusion table, latency,
 tokens (with reasoning tokens), cost, the serving hosts and the projected monthly cost in PLN, and
 the run is traced in Langfuse under the run name. Prices for the cost figures come from
-`backend/app/extraction/prices.toml`; `uv run python -m app.extraction spend` sums the cost of
+`backend/app/llm/prices.toml`; `uv run python -m app.extraction spend` sums the cost of
 every run file under `results/`, dev runs included.
 
 The project is built with a spec-driven agentic workflow

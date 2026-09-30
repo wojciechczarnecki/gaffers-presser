@@ -279,7 +279,7 @@ def search_command(
         window += f"  until {_warsaw(filters.until)}"
     typer.echo(f"mode: {response.mode}  model: {response.model or '-'}{window} (Europe/Warsaw)")
     if response.failed_legs:
-        typer.echo("vector leg failed — full-text only")
+        typer.echo(f"vector leg failed ({response.failure}) — full-text only")
     if not response.results:
         typer.echo("no results")
     for number, result in enumerate(response.results, start=1):
@@ -394,12 +394,16 @@ def prelabel_command(
             tracer,
             deps.clock,
         )
+    except EvaluationError as exc:
+        raise fail(str(exc)) from None
     finally:
         tracer.flush()
     typer.echo(f"queries labelled: {summary.queries_labelled}")
     typer.echo(f"candidates: {summary.candidates}")
     typer.echo(f"relevant: {summary.relevant}")
     typer.echo(f"label failures: {summary.failures}")
+    if summary.failures:
+        typer.echo("queries with a label failure were left unlabelled; run prelabel again")
     typer.echo(f"total cost: {_cost(summary.cost_usd)}")
 
 
@@ -496,7 +500,7 @@ def _review_queries(
     path: Path,
     counts: dict[str, int],
 ) -> None:
-    """Walks the selected queries; `queries` is saved whole after every change."""
+    # `queries` is saved whole after every change.
     for done, position in enumerate(positions):
         pending = [j.x_id for j in queries[position].judgements if not j.reviewed]
         for x_id in pending:

@@ -20,6 +20,8 @@ import app.worker.models  # noqa: F401
 from app.db.engine import make_engine
 from app.fpl.reference import apply_bootstrap
 from app.fpl.schemas import Bootstrap
+from app.retrieval.evaluation.dataset import CorpusPost
+from app.retrieval.evaluation.schema import EVAL_SCHEMA, load_eval_corpus
 from tests.conftest import BACKEND_DIR, run_alembic
 from tests.fpl.fakes import DEFAULT_EXCLUDE, table_contents
 from tests.fpl.payloads import load
@@ -196,6 +198,16 @@ def test_extraction_migration_adds_only_new_tables():
             assert table_contents(session, exclude=excluded, tables=other_tables) == before
 
 
+EVAL_POST = CorpusPost(
+    x_id=2,
+    author_handle="reporter",
+    text="Saka injury",
+    created_at=NOW,
+    is_repost=False,
+    is_reply=False,
+)
+
+
 def test_retrieval_migration_keeps_data_and_downgrades():
     with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
         url = container.get_connection_url()
@@ -233,8 +245,11 @@ def test_retrieval_migration_keeps_data_and_downgrades():
         with Session(engine) as session:
             assert table_contents(session, exclude=excluded, tables=other_tables) == before
 
+        load_eval_corpus(engine, [EVAL_POST])  # what prelabel and evaluate leave behind
+
         run_alembic(url, "downgrade", "-1")
         with engine.connect() as conn:
+            schemas = set(inspect(conn).get_schema_names())
             tables = set(inspect(conn).get_table_names())
             columns = {column["name"] for column in inspect(conn).get_columns("tweet")}
             configs = conn.execute(
@@ -243,6 +258,7 @@ def test_retrieval_migration_keeps_data_and_downgrades():
             extensions = set(
                 conn.execute(sa_text("SELECT extname FROM pg_extension")).scalars().all()
             )
+        assert EVAL_SCHEMA not in schemas
         assert "post_embedding" not in tables
         assert "search_vector" not in columns
         assert configs == []

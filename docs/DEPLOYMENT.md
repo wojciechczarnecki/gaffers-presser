@@ -76,15 +76,21 @@ below; agents never touch production.
    extraction); without it the worker logs `retrieval indexing disabled` and every other loop
    runs as before.
    - `EMBEDDING_MODEL` is optional; empty means the default `openai/text-embedding-3-small`.
-     A model with no row in `backend/app/llm/prices.toml` fails the worker on start with a
-     message naming the variable, never a key; add the row first.
+     A model with no row in `backend/app/llm/prices.toml`, or with a chat-model row (one that
+     has an output price), fails the worker on start with a message naming the variable, never
+     a key; add an input-only row first.
    - Migration `0005` enables the `vector` and `unaccent` extensions and adds the full-text
      column and `post_embedding`; it runs through the pre-deploy like the others, and the
      PostgreSQL image already ships both extensions.
-   - New posts are embedded oldest first in their own thread, so an embedding outage never
-     delays tweet polls, extraction or FPL jobs. The backfill of posts stored before the
-     first deploy, and any re-indexing with another model, run from a shell with the
-     production variables: `python -m app.retrieval index [--model <OpenRouter model ID>]`.
+   - Posts are embedded oldest first in their own thread, so an embedding outage never
+     delays tweet polls, extraction or FPL jobs. After the first deploy the loop backfills
+     the posts stored before it on its own; their latency is not recorded, because it would
+     measure the deploy date rather than the indexing path. A post that keeps failing is
+     retried every 10 minutes, behind every never-attempted post, until 15 attempts in total;
+     after that it stays `failed` until an `index` run.
+   - Re-indexing with another model, or retrying posts the loop gave up on, runs from a shell
+     with the production variables: `python -m app.retrieval index [--model <OpenRouter model
+     ID>]`.
      `python -m app.retrieval status` prints the embedded, missing and failed posts per model
      and the cost, and `python -m app.retrieval search "<query>" [--mode fulltext|vector|hybrid]`
      searches the stored posts (`--mode fulltext` needs no key).

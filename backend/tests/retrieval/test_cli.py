@@ -117,6 +117,32 @@ def test_status_prints_counts_latest_and_cost(db):
     assert lines[-1].startswith("total embedding cost: 0.0000")
 
 
+def test_status_prints_the_latest_embedding_with_its_latency(db):
+    from app.retrieval.store import save_embedded
+
+    add_tweet(db, 1)
+    add_tweet(db, 2)
+    with Session(db) as session, session.begin():
+        for x_id, when in ((1, NOW - timedelta(minutes=5)), (2, NOW)):
+            save_embedded(
+                session,
+                x_id=x_id,
+                model=MODEL,
+                vector=[1.0, 0.0, 0.0],
+                input_tokens=5,
+                cost_usd=1e-7,
+                latency_seconds=12.5 * x_id,
+                attempts=1,
+                now=when,
+            )
+
+    result = _run(_deps(db), "status")
+
+    assert "latest embedding: 2026-09-30T12:00:00Z x_id=2 model=fake/embed latency=25.0s" in (
+        result.stdout.splitlines()
+    )
+
+
 def test_status_on_empty_database(db):
     result = _run(_deps(db), "status")
     lines = result.stdout.splitlines()
@@ -248,7 +274,8 @@ def test_search_shows_a_failed_vector_leg(db):
     deps = _deps(db, {MODEL: AlwaysFailingEmbedder()})
     result = _run(deps, "search", "saka")
     assert result.exit_code == 0
-    assert "vector leg failed — full-text only" in result.stdout
+    expected = "vector leg failed (query embedding failed: RuntimeError) — full-text only"
+    assert expected in result.stdout
 
 
 def _review_files(tmp_path, split="dev"):
@@ -401,3 +428,16 @@ def test_review_needs_no_database_or_key(tmp_path, monkeypatch):
     args = _review_files(tmp_path)
     result = CliRunner().invoke(app, ["review", *args], input="q\n")
     assert result.exit_code == 0
+
+
+def test_hybrid_search_without_embeddings_shows_fulltext_and_the_hint(db):
+    add_tweet(db, 1, "Saka injury")
+    result = _run(_deps(db), "search", "saka")
+    assert result.exit_code == 0, result.output
+    assert (
+        "vector leg failed (no embeddings for model fake/embed;"
+        " run python -m app.retrieval index --model fake/embed) — full-text only"
+    ) in result.stdout
+    assert any(
+        line.startswith("1. ") and "fts=1  vec=-" in line for line in result.stdout.splitlines()
+    )

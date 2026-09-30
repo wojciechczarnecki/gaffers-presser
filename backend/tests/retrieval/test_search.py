@@ -10,7 +10,7 @@ from app.retrieval.search import (
     SearchFilters,
     search,
 )
-from app.retrieval.store import save_embedded
+from app.retrieval.store import save_embedded, save_failed
 from tests.retrieval.fakes import AlwaysFailingEmbedder, FakeEmbedder, RecordingTracer
 from tests.retrieval.helpers import MODEL, NOW, PRICES, add_tweet
 
@@ -71,6 +71,15 @@ def test_fulltext_ranks_more_matching_terms_higher(db):
     assert _ids(_search(db, "saka injury", "fulltext"))[0] == 2
 
 
+def test_fulltext_short_tokens_match_exactly_not_as_prefixes(db):
+    add_tweet(db, 1, "O'Neil keeps his place")
+    add_tweet(db, 2, "Ødegaard back, Salah outstanding")
+    add_tweet(db, 3, "Mbappé rumour costs 7.5m")
+    assert _ids(_search(db, "O'Neil", "fulltext")) == [1]
+    assert _ids(_search(db, "7.5m", "fulltext")) == [3]
+    assert _ids(_search(db, "Mbap", "fulltext")) == [3]
+
+
 def test_fulltext_query_with_quotes_and_backslashes_does_not_fail(db):
     add_tweet(db, 1, "O'Neil said it's fine")
     assert _ids(_search(db, "o'neil \\ fine", "fulltext")) == [1]
@@ -100,7 +109,44 @@ def test_vector_without_embeddings_errors_clearly(db):
     with pytest.raises(NoEmbeddingsError, match="no embeddings for model fake/embed"):
         _search(db, "q", "vector", FakeEmbedder())
     with pytest.raises(NoEmbeddingsError, match="app.retrieval index --model fake/embed"):
-        _search(db, "q", "hybrid", FakeEmbedder())
+        _search(db, "q", "vector", FakeEmbedder())
+
+
+def test_hybrid_without_embeddings_falls_back_to_fulltext(db, caplog):
+    _fulltext_corpus(db)
+    embedder = FakeEmbedder()
+    tracer = RecordingTracer()
+    with caplog.at_level(logging.ERROR):
+        response = _search(db, "injured", "hybrid", embedder, tracer=tracer)
+    assert _ids(response) == [1]
+    assert response.failed_legs == ("vector",)
+    assert response.failure == (
+        "no embeddings for model fake/embed; run python -m app.retrieval index --model fake/embed"
+    )
+    assert response.results[0].ranks == {"fulltext": 1, "vector": None}
+    assert embedder.calls == []
+    assert "vector leg failed: no embeddings for model fake/embed" in caplog.text
+    (record,) = tracer.searches
+    assert record["failed_legs"] == ("vector",)
+    assert "vector" not in record["ids_by_mode"]
+
+
+def test_vector_uses_only_embedded_rows(db):
+    add_tweet(db, 1, "one")
+    add_tweet(db, 2, "two")
+    _embed(db, 1, [1.0, 0.0, 0.0])
+    with Session(db) as session, session.begin():
+        save_failed(session, x_id=2, model=MODEL, error_class="RuntimeError", attempts=3, now=NOW)
+    response = _search(db, "q", "vector", FakeEmbedder(default=[1.0, 0.0, 0.0]))
+    assert _ids(response) == [1]
+
+
+def test_vector_with_only_failed_rows_errors_clearly(db):
+    add_tweet(db, 1, "one")
+    with Session(db) as session, session.begin():
+        save_failed(session, x_id=1, model=MODEL, error_class="RuntimeError", attempts=3, now=NOW)
+    with pytest.raises(NoEmbeddingsError, match="no embeddings for model fake/embed"):
+        _search(db, "q", "vector", FakeEmbedder())
 
 
 def _hybrid_corpus(db) -> None:
@@ -221,7 +267,8 @@ def test_hybrid_degrades_to_fulltext_when_embedding_fails(db, caplog):
     assert response.failed_legs == ("vector",)
     assert sorted(_ids(response)) == [1, 2, 3]
     assert all(r.ranks["vector"] is None and r.ranks["fulltext"] for r in response.results)
-    assert "vector leg failed: RuntimeError" in caplog.text
+    assert "vector leg failed: query embedding failed: RuntimeError" in caplog.text
+    assert response.failure == "query embedding failed: RuntimeError"
 
 
 def test_vector_fails_clearly_when_embedding_fails(db):
@@ -244,6 +291,19 @@ def test_search_traced_with_ids_per_leg_and_failed_legs(db):
     assert record["failed_legs"] == ()
     (embedding,) = tracer.embeddings
     assert embedding["texts"] == [QUERY]
+
+
+def test_search_traced_with_a_failed_vector_leg(db):
+    _hybrid_corpus(db)
+    tracer = RecordingTracer()
+    response = _search(db, QUERY, "hybrid", AlwaysFailingEmbedder(), tracer=tracer)
+    (record,) = tracer.searches
+    assert record["failed_legs"] == ("vector",)
+    assert set(record["ids_by_mode"]) == {"fulltext", "hybrid"}
+    assert record["ids_by_mode"]["hybrid"] == _ids(response)
+    (embedding,) = tracer.embeddings
+    assert embedding["error_class"] == "RuntimeError"
+    assert embedding["input_tokens"] is None
 
 
 def test_fulltext_mode_never_calls_the_embedder(db):

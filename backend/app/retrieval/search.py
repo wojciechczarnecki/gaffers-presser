@@ -53,6 +53,7 @@ class SearchResponse:
     model: str | None
     results: list[SearchResult]
     failed_legs: tuple[str, ...] = field(default=())
+    failure: str | None = None
 
 
 def fuse(rankings: Mapping[str, Sequence[int]], k: int) -> list[tuple[int, float, dict[str, int]]]:
@@ -68,7 +69,9 @@ def fuse(rankings: Mapping[str, Sequence[int]], k: int) -> list[tuple[int, float
 
 NO_FILTERS = SearchFilters()
 
-# chr(39) is a quote and chr(92) a backslash: each lexeme becomes a quoted prefix term.
+# chr(39) is a quote and chr(92) a backslash: each lexeme becomes a quoted term, a prefix
+# term from MIN_PREFIX_LENGTH characters on, so that "o" or "m" does not match half the corpus.
+MIN_PREFIX_LENGTH = 3
 _FULLTEXT_SQL = """
 WITH q AS (
     SELECT to_tsquery(
@@ -76,7 +79,8 @@ WITH q AS (
         string_agg(
             chr(39)
             || replace(replace(lexeme, chr(92), chr(92) || chr(92)), chr(39), chr(39) || chr(39))
-            || chr(39) || ':*',
+            || chr(39)
+            || CASE WHEN char_length(lexeme) >= :min_prefix THEN ':*' ELSE '' END,
             ' | '
         )
     ) AS query
@@ -117,7 +121,9 @@ def _filter_sql(filters: SearchFilters) -> tuple[str, dict[str, Any]]:
 def _fulltext_leg(session: Session, query: str, filters: SearchFilters, depth: int) -> list[int]:
     clause, params = _filter_sql(filters)
     statement = text(_FULLTEXT_SQL.format(filters=clause))
-    rows = session.execute(statement, {"query": query, "depth": depth, **params})
+    rows = session.execute(
+        statement, {"query": query, "depth": depth, "min_prefix": MIN_PREFIX_LENGTH, **params}
+    )
     return [row[0] for row in rows]
 
 
@@ -174,26 +180,37 @@ def search(
 
     rankings: dict[str, list[int]] = {}
     failed_legs: list[str] = []
-    with Session(engine) as session:
-        if mode in ("fulltext", "hybrid"):
-            rankings["fulltext"] = _fulltext_leg(session, query, filters, depth)
-        if use_vector and embedder is not None and model is not None:
-            if not _has_embeddings(session, model):
-                raise NoEmbeddingsError(
-                    f"no embeddings for model {model}; "
-                    f"run python -m app.retrieval index --model {model}"
-                )
+    failure: str | None = None
+    vector: list[float] | None = None
+    if use_vector and embedder is not None and model is not None:
+        with Session(engine) as session:
+            has_embeddings = _has_embeddings(session, model)
+        if not has_embeddings:
+            failure = (
+                f"no embeddings for model {model}; "
+                f"run python -m app.retrieval index --model {model}"
+            )
+            if mode == "vector":
+                raise NoEmbeddingsError(failure)
+        else:
+            # Embedded before any session opens: the HTTP call holds no pooled connection.
             try:
                 embedded, _ = traced_embed(embedder, [query], tracer, prices or {})
             except Exception as exc:
+                failure = f"query embedding failed: {type(exc).__name__}"
                 if mode == "vector":
-                    raise SearchError(f"query embedding failed: {type(exc).__name__}") from None
-                logger.error("vector leg failed: %s", type(exc).__name__)
-                failed_legs.append("vector")
+                    raise SearchError(failure) from None
             else:
-                rankings["vector"] = _vector_leg(
-                    session, model, embedded.vectors[0], filters, depth
-                )
+                vector = embedded.vectors[0]
+        if failure is not None:
+            logger.error("vector leg failed: %s", failure)
+            failed_legs.append("vector")
+
+    with Session(engine) as session:
+        if mode in ("fulltext", "hybrid"):
+            rankings["fulltext"] = _fulltext_leg(session, query, filters, depth)
+        if vector is not None and model is not None:
+            rankings["vector"] = _vector_leg(session, model, vector, filters, depth)
 
         fused = fuse(rankings, k)[:limit]
         rows = {}
@@ -225,4 +242,10 @@ def search(
         ids_by_mode=ids_by_mode,
         failed_legs=tuple(failed_legs),
     )
-    return SearchResponse(mode=mode, model=model, results=results, failed_legs=tuple(failed_legs))
+    return SearchResponse(
+        mode=mode,
+        model=model,
+        results=results,
+        failed_legs=tuple(failed_legs),
+        failure=failure,
+    )

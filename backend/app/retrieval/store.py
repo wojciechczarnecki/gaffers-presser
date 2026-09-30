@@ -10,6 +10,8 @@ from app.retrieval.models import PostEmbedding
 from app.tweets.models import Tweet
 
 RETRY_AFTER = timedelta(minutes=10)
+# 5 passes of 3 attempts: a post that still fails is left failed until `index` is run by hand.
+MAX_TOTAL_ATTEMPTS = 15
 
 
 @dataclass(frozen=True)
@@ -59,17 +61,25 @@ def _candidates(model: str):
 
 
 def next_unembedded(
-    session: Session, model: str, now: datetime, retry_after: timedelta = RETRY_AFTER
+    session: Session,
+    model: str,
+    now: datetime,
+    retry_after: timedelta = RETRY_AFTER,
+    max_attempts: int = MAX_TOTAL_ATTEMPTS,
 ) -> PostToEmbed | None:
+    # Never-attempted posts go first, so old failures never delay a fresh post.
     row = session.execute(
         _candidates(model)
         .where(
             or_(
                 PostEmbedding.id.is_(None),
                 (PostEmbedding.status == "failed")
-                & (PostEmbedding.updated_at <= now - retry_after),
+                & (PostEmbedding.updated_at <= now - retry_after)
+                & (PostEmbedding.attempts < max_attempts),
             )
         )
+        .order_by(None)
+        .order_by(PostEmbedding.id.is_not(None), Tweet.created_at, Tweet.x_id)
         .limit(1)
     ).first()
     return _to_post(row) if row is not None else None
@@ -141,6 +151,7 @@ def _upsert(session: Session, values: dict) -> None:
     table = PostEmbedding.__table__
     statement = insert(table).values(**values)
     update = {key: value for key, value in values.items() if key not in ("tweet_x_id", "model")}
+    update["attempts"] = table.c.attempts + statement.excluded.attempts
     session.execute(
         statement.on_conflict_do_update(constraint="uq_post_embedding_tweet_model", set_=update)
     )

@@ -182,7 +182,7 @@ def test_prelabel_writes_after_every_query(eval_db, tmp_path):
     assert saved[1].judgements == []
 
 
-def test_failed_label_is_left_out_and_counted(eval_db, tmp_path):
+def test_failed_label_leaves_the_query_for_a_rerun(eval_db, tmp_path):
     corpus = _corpus()[:12]
     embedder = _embedder(corpus)
     path = tmp_path / "queries.jsonl"
@@ -198,8 +198,46 @@ def test_failed_label_is_left_out_and_counted(eval_db, tmp_path):
     )
 
     assert summary.failures == 1
-    saved = load_queries(path)[0]
-    assert len(saved.judgements) == summary.candidates - 1
+    assert summary.queries_labelled == 0
+    assert load_queries(path)[0].judgements == []
+
+    rerun = prelabel(
+        eval_db, corpus, queries, path, embedder, caller, PRICES, NULL_TRACER, FixedClock()
+    )
+
+    assert (rerun.failures, rerun.queries_labelled) == (0, 1)
+    assert len(load_queries(path)[0].judgements) == rerun.candidates == summary.candidates
+
+
+def test_prelabel_command_reports_unembeddable_corpus_without_a_traceback(eval_db, tmp_path):
+    from typer.testing import CliRunner
+
+    from app.retrieval.cli import RetrievalCliDeps, app
+    from app.retrieval.evaluation.dataset import write_corpus
+    from tests.retrieval.fakes import AlwaysFailingEmbedder
+    from tests.retrieval.test_cli import _deps
+
+    write_corpus(tmp_path / "corpus.jsonl", _corpus()[:2])
+    write_queries(tmp_path / "queries.jsonl", [_query()])
+    fake = FakeChatModel(responses=[])
+    base = _deps(eval_db, {MODEL: AlwaysFailingEmbedder()})
+    deps = RetrievalCliDeps(**{**base.__dict__, "make_chat_model": lambda model: fake})
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "prelabel",
+            "--queries",
+            str(tmp_path / "queries.jsonl"),
+            "--corpus",
+            str(tmp_path / "corpus.jsonl"),
+        ],
+        obj=deps,
+    )
+
+    assert result.exit_code == 1
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert "error: 2 corpus posts could not be embedded" in result.stderr
 
 
 def test_prelabel_never_touches_public_tweet(eval_db, tmp_path):

@@ -12,6 +12,7 @@ from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder
 from app.retrieval.evaluation.dataset import CorpusPost, Judgement, Query, write_queries
 from app.retrieval.evaluation.llm import RelevanceLabel, StructuredCaller
+from app.retrieval.evaluation.runner import EvaluationError
 from app.retrieval.evaluation.schema import load_eval_corpus
 from app.retrieval.indexing import IndexingRuntime, index_missing
 from app.retrieval.search import search
@@ -105,7 +106,7 @@ def prelabel(
     )
     indexed = index_missing(eval_engine, runtime, embedder, counting, clock, stop_event)
     if indexed.failed:
-        raise RuntimeError(f"{indexed.failed} corpus posts could not be embedded")
+        raise EvaluationError(f"{indexed.failed} corpus posts could not be embedded")
 
     by_id = {post.x_id: post for post in corpus}
     labelled = candidates = relevant = failures = 0
@@ -113,17 +114,22 @@ def prelabel(
         if query.judgements:
             continue
         judgements = []
+        failed = False
         for x_id in pool(eval_engine, query, embedder, counting, prices):
             candidates += 1
             try:
                 is_relevant = label(caller, query.text, by_id[x_id])
             except Exception:
                 failures += 1
+                failed = True
                 continue
             relevant += int(is_relevant)
             judgements.append(
                 Judgement(x_id=x_id, relevant=is_relevant, reviewed=False, labelled_by=caller.model)
             )
+        if failed:
+            # Left without judgements, so that a re-run labels the whole pool again.
+            continue
         queries[index] = query.model_copy(update={"judgements": judgements})
         write_queries(queries_path, queries)
         labelled += 1

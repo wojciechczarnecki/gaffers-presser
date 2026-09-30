@@ -238,29 +238,29 @@ Evaluation JSONL (one object per line):
 | AC2 | 1, 2, 3 | n/a — kept behaviour: the existing suite passes after steps 1–3 with import-path changes only. The one exception is the catalogue-equality assertion in `tests/extraction/test_model_settings.py`, which narrows to chat rows (step 3, see Risks) | n/a |
 | AC3 | 3 | `tests/llm/test_pricing.py::test_input_only_row_loads_and_costs_input_alone`, `::test_unknown_model_costs_none`, `::test_chat_rows_keep_their_cost` | `cd backend && uv run pytest -q tests/llm/test_pricing.py` → `KeyError: 'output_per_million'` (`test_input_only_row_loads_and_costs_input_alone`), `KeyError: 'openai/text-embedding-3-small'` (`test_embedding_default_is_priced`) |
 | AC4 | 5 | `tests/db/test_migrations.py::test_retrieval_migration_keeps_data_and_downgrades`, `::test_upgrade_downgrade_upgrade`, `::test_models_match_migration` | `cd backend && uv run pytest -q tests/db/test_migrations.py -k retrieval_migration_keeps_data_and_downgrades` (0005 moved away) → `assert 'post_embedding' in {'alembic_version', ...}` |
-| AC5 | 5, 15 | `tests/retrieval/test_store.py::test_post_findable_by_fulltext_in_the_storing_transaction`; `tests/retrieval/test_cli.py::test_fulltext_search_needs_no_key` | |
+| AC5 | 5, 15 | `tests/retrieval/test_store.py::test_post_findable_by_fulltext_in_the_storing_transaction`; `tests/retrieval/test_cli.py::test_fulltext_search_needs_no_key` | n/a — written with the code; first run was an ImportError (see Deviations) |
 | AC6 | 11 | `tests/worker/test_cli.py::test_run_without_key_logs_retrieval_indexing_disabled_once`, `::test_run_with_indexing_logs_model_and_embeds_new_post` | `cd backend && uv run pytest -q tests/worker/test_cli.py -k "indexing or embedding"` (worker wiring stashed) → `AttributeError` on `WorkerDeps.indexing` (`test_deps_enable_indexing_with_key`) and missing log line (`test_run_without_key_logs_retrieval_indexing_disabled_once`) |
 | AC7 | 9, 10 | `tests/retrieval/test_indexing.py::test_embed_post_stores_model_dimensions_tokens_cost_latency`, `::test_oldest_first`; `tests/retrieval/test_loop.py::test_new_post_embedded_without_restart` | `cd backend && uv run pytest -q tests/retrieval/test_indexing.py` (stubbed `embed_post`) → `assert [] == [11, 12, 10]` (`test_oldest_first`), `assert outcome is not None and outcome.status == "failed"` (`test_three_attempts_then_failed_with_error_class`) |
 | AC8 | 9, 10, 11 | `tests/retrieval/test_indexing.py::test_three_attempts_then_failed_with_error_class`, `::test_failed_post_not_retried_before_10_minutes`; `tests/retrieval/test_loop.py::test_failure_does_not_stop_the_loop`; `tests/worker/test_cli.py::test_failing_embedder_does_not_stop_polls_or_extraction` | same run → `assert (summary.embedded, summary.failed) == (1, 1)` (`test_index_missing_counts_and_retries_failed_ones`) |
-| AC9 | 7, 11 | `tests/retrieval/test_config.py::test_unpriced_embedding_model_names_the_variable`, `::test_empty_or_unset_uses_default`; `tests/worker/test_cli.py::test_worker_rejects_unpriced_embedding_model_at_start` | |
-| AC10 | 12 | `tests/retrieval/test_cli.py::test_index_embeds_missing_and_prints_counts_and_cost`, `::test_index_second_run_embeds_nothing`, `::test_index_model_option_leaves_other_model_untouched` | |
+| AC9 | 7, 11 | `tests/retrieval/test_config.py::test_unpriced_embedding_model_names_the_variable`, `::test_empty_or_unset_uses_default`; `tests/worker/test_cli.py::test_worker_rejects_unpriced_embedding_model_at_start` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC10 | 12 | `tests/retrieval/test_cli.py::test_index_embeds_missing_and_prints_counts_and_cost`, `::test_index_second_run_embeds_nothing`, `::test_index_model_option_leaves_other_model_untouched` | n/a — written with the code; first run was an ImportError (see Deviations) |
 | AC11 | 14 | `tests/retrieval/test_search.py::test_fulltext_injured_finds_injury`, `::test_fulltext_odegaard_finds_accented` | `cd backend && uv run pytest -q tests/retrieval/test_search.py` (stubbed `search`) → `assert [] == [1]` (`test_fulltext_injured_finds_injury`), `test_fulltext_odegaard_finds_accented` failed |
 | AC12 | 14 | `tests/retrieval/test_search.py::test_vector_orders_by_cosine_within_model`, `::test_vector_without_embeddings_errors_clearly` | same run → `test_vector_orders_by_cosine_within_model` and `test_vector_without_embeddings_errors_clearly` failed (`DID NOT RAISE`) |
 | AC13 | 13, 14 | `tests/retrieval/test_fusion.py::test_fuse_matches_hand_computed_rrf`, `::test_single_leg_post_still_appears`; `tests/retrieval/test_search.py::test_hybrid_order_equals_hand_computed_rrf`, `::test_k_and_depth_overridable` | `cd backend && uv run pytest -q tests/retrieval/test_fusion.py` (stubbed `fuse`) → `assert [] == [1, 2, 3]`-style failures in 5 tests (`test_fuse_matches_hand_computed_rrf`) |
 | AC14 | 13, 14 | `tests/retrieval/test_search.py::test_filters_limit_window_reposts_replies`, `::test_result_fields_and_ranks` | same run → `test_filters_limit_window_reposts_replies`, `test_result_fields_and_ranks` failed |
 | AC15 | 14 | `tests/retrieval/test_search.py::test_hybrid_degrades_to_fulltext_when_embedding_fails`, `::test_vector_fails_clearly_when_embedding_fails` | same run → `assert response.failed_legs == ("vector",)` (`test_hybrid_degrades_to_fulltext_when_embedding_fails`) |
-| AC16 | 15 | `tests/retrieval/test_cli.py::test_search_prints_ranked_results_with_ranks`, `::test_search_time_filters_in_warsaw_compared_in_utc` | |
-| AC17 | 12 | `tests/retrieval/test_cli.py::test_status_prints_counts_latest_and_cost` | |
-| AC18 | 8, 12, 15, 22 | `tests/retrieval/test_tracing.py::test_langfuse_tracer_records_embedding_generation_offline`, `::test_no_tracing_logs_once`; `tests/retrieval/test_indexing.py::test_embedding_call_traced_with_model_tokens_cost`; `tests/retrieval/test_cli.py::test_search_traced_with_query_mode_and_ids`, `::test_index_without_langfuse_logs_once`; `tests/retrieval/evaluation/test_runner.py::test_runner_traces_searches_and_embeddings` | |
-| AC19 | 16, 17 | `tests/retrieval/evaluation/test_dataset.py::test_export_corpus_writes_public_fields_only`; `tests/retrieval/evaluation/test_schema.py::test_eval_schema_never_touches_public_tweet` | |
-| AC20 | 19 | `tests/retrieval/evaluation/test_queries.py::test_builder_writes_counts_by_language_and_origin`, `::test_event_queries_templated_from_current_events`, `::test_split_is_stratified_and_deterministic` | |
-| AC21 | 20 | `tests/retrieval/evaluation/test_labelling.py::test_pools_top10_of_each_mode_and_prelabels_unreviewed`, `::test_prelabel_resumes_and_skips_labelled_queries` | |
-| AC22 | 21 | `tests/retrieval/test_cli.py::test_review_accept_flip_skip_add_and_saves_after_each` | |
-| AC23 | 18, 22 | `tests/retrieval/evaluation/test_runner.py::test_runner_reports_metrics_per_mode_and_slice`, `::test_only_reviewed_labels_unless_flag`, `::test_result_file_fields` | |
-| AC24 | 18 | `tests/retrieval/evaluation/test_metrics.py::test_no_relevant_in_top_k`, `::test_first_relevant_at_rank_3`, `::test_several_relevant` | |
-| AC25 | 24 | `tests/retrieval/evaluation/test_eval_set.py::test_set_v1_committed_and_consistent` | |
-| AC26 | 7, 23 | `tests/test_env_example.py::test_every_retrieval_setting_is_an_empty_placeholder`; `tests/test_readme.py::test_deployment_documents_embedding_model` | |
-| AC27 | 23 | `tests/test_docs.py::test_backlog_has_reranking_and_ann_entries`; the DECISIONS rows are checked by hand in step 23 (text) | |
+| AC16 | 15 | `tests/retrieval/test_cli.py::test_search_prints_ranked_results_with_ranks`, `::test_search_time_filters_in_warsaw_compared_in_utc` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC17 | 12 | `tests/retrieval/test_cli.py::test_status_prints_counts_latest_and_cost` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC18 | 8, 12, 15, 22 | `tests/retrieval/test_tracing.py::test_langfuse_tracer_records_embedding_generation_offline`, `::test_no_tracing_logs_once`; `tests/retrieval/test_indexing.py::test_embedding_call_traced_with_model_tokens_cost`; `tests/retrieval/test_cli.py::test_search_traced_with_query_mode_and_ids`, `::test_index_without_langfuse_logs_once`; `tests/retrieval/evaluation/test_runner.py::test_runner_traces_searches_and_embeddings` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC19 | 16, 17 | `tests/retrieval/evaluation/test_dataset.py::test_export_corpus_writes_public_fields_only`; `tests/retrieval/evaluation/test_schema.py::test_eval_schema_never_touches_public_tweet` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC20 | 19 | `tests/retrieval/evaluation/test_queries.py::test_builder_writes_counts_by_language_and_origin`, `::test_event_queries_templated_from_current_events`, `::test_split_is_stratified_and_deterministic` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC21 | 20 | `tests/retrieval/evaluation/test_labelling.py::test_pools_top10_of_each_mode_and_prelabels_unreviewed`, `::test_prelabel_resumes_and_skips_labelled_queries` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC22 | 21 | `tests/retrieval/test_cli.py::test_review_accept_flip_skip_add_and_saves_after_each` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC23 | 18, 22 | `tests/retrieval/evaluation/test_runner.py::test_runner_reports_metrics_per_mode_and_slice`, `::test_only_reviewed_labels_unless_flag`, `::test_result_file_fields` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC24 | 18 | `tests/retrieval/evaluation/test_metrics.py::test_no_relevant_in_top_k`, `::test_first_relevant_at_rank_3`, `::test_several_relevant` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC25 | 24 | `tests/retrieval/evaluation/test_eval_set.py::test_set_v1_committed_and_consistent` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC26 | 7, 23 | `tests/test_env_example.py::test_every_retrieval_setting_is_an_empty_placeholder`; `tests/test_readme.py::test_deployment_documents_embedding_model` | n/a — written with the code; first run was an ImportError (see Deviations) |
+| AC27 | 23 | `tests/test_docs.py::test_backlog_has_reranking_and_ann_entries`; the DECISIONS rows are checked by hand in step 23 (text) | n/a — written with the code; first run was an ImportError (see Deviations) |
 | AC28 | all | n/a — kept property: every new test uses `FakeEmbedder` / `FakeChatModel`; `tests/retrieval/test_no_network.py::test_openrouter_embedder_unused_without_injected_client` guards the default path (step 6); full `verify.command` green | n/a |
 
 ## Steps
@@ -1270,3 +1270,59 @@ against the code on `aabbca6`. The full suite is green: 800 passed. `ruff check`
   rejected this. DECISIONS row 52 covers a failed *call*, not a missing index.
 
 Left out: 33 nit findings.
+
+**2026-09-30 — /pipeline:final-review (apply)**
+
+The owner accepted F1–F16 and overrode the rejected finding: hybrid search with no
+embeddings for the model degrades to full-text. What was fixed:
+
+- F1 → `0005_retrieval.downgrade()` starts with `DROP SCHEMA IF EXISTS retrieval_eval CASCADE`;
+  `test_retrieval_migration_keeps_data_and_downgrades` loads an evaluation corpus before the
+  downgrade and asserts that the schema is gone (red without the fix:
+  `DependentObjectsStillExist`).
+- F2 → full-text query lexemes are prefix terms only from `MIN_PREFIX_LENGTH = 3` characters on;
+  `test_fulltext_short_tokens_match_exactly_not_as_prefixes` (red without the fix:
+  `assert [2, 1] == [1]` for `O'Neil`).
+- F3 → `next_unembedded` picks never-attempted posts before retries, `attempts` accumulates
+  across upserts, and the loop stops retrying at `MAX_TOTAL_ATTEMPTS = 15`;
+  `test_fresh_post_goes_before_an_older_failed_one`,
+  `test_attempts_accumulate_and_retries_stop_at_the_cap`.
+- F4 → `traced_embed` traces a failed call with its error class, and a tracing error is logged
+  and dropped (in `traced_embed` and in every `LangfuseTracer` method, flush included), so it can
+  neither re-embed nor fail a post, nor escape the CLI;
+  `test_tracing_error_neither_retries_nor_fails_a_paid_embedding`,
+  `test_failed_embedding_calls_are_traced_with_the_error_class`,
+  `test_langfuse_errors_are_logged_not_raised`.
+- F5 → a query with any label failure is left without judgements, so a re-run labels it again;
+  an unembeddable corpus raises `EvaluationError`, which `prelabel` prints as `error: …`;
+  `test_failed_label_leaves_the_query_for_a_rerun`,
+  `test_prelabel_command_reports_unembeddable_corpus_without_a_traceback`.
+- F6 → `resolve_embedding` rejects a chat-model row (`<VAR> names a chat model, not an
+  embedding model`); `test_chat_model_as_embedding_model_names_the_variable`, worker test
+  parametrised with `openai/gpt-6-luna`; DEPLOYMENT and `.env.example` updated.
+- F7 → `test_set_v1_committed_and_consistent` accepts owner-reviewed labels.
+- F8 → README points to `backend/app/llm/prices.toml`.
+- F9 → the 15 empty "Red before the change" cells are marked `n/a`, with the reason.
+- F10 → `test_vector_uses_only_embedded_rows`, `test_vector_with_only_failed_rows_errors_clearly`,
+  `test_search_traced_with_a_failed_vector_leg`.
+- F11 → a `FakeLangfuseClient` records `start_observation` kwargs (model, usage, cost, level);
+  `test_status_prints_the_latest_embedding_with_its_latency` asserts the exact line;
+  `test_non_list_embedding_raises_value_error`; the runner test is renamed
+  `test_unembeddable_corpus_stops_without_file` and asserts its message.
+- F12 → the query is embedded before any session opens.
+- F13 → the loop records latency only for posts first fetched after it started
+  (`test_backfilled_post_gets_no_latency`); the DEPLOYMENT runbook says the loop backfills on
+  its own and describes the retry cap.
+- F14 → `test_sigterm_with_embedder_blocked_in_a_call_exits_within_10_s`.
+- F15 → `export-corpus` leaves out `EXCLUDED_AUTHORS` (`@GafferPresser`); set v1 drops the 20
+  posts and their 11 judgements (all `not relevant`, no query sourced from them), leaving 190
+  posts, 40 queries and 660 judgements; `test_export_corpus_leaves_out_the_own_test_account`.
+- F16 → the docstring became a comment.
+- Owner decision → `search` returns full-text results with `failed_legs == ("vector",)` and a
+  `failure` reason when the model has no embeddings; only `vector` raises `NoEmbeddingsError`.
+  The CLI prints `vector leg failed (<reason>) — full-text only`;
+  `test_hybrid_without_embeddings_falls_back_to_fulltext`,
+  `test_hybrid_search_without_embeddings_shows_fulltext_and_the_hint`. DECISIONS rows 52 and 53
+  are updated in place.
+
+Verification: `ruff check`, `ruff format --check` clean; 822 passed.

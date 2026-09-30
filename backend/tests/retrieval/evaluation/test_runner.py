@@ -178,11 +178,10 @@ def test_result_file_fields(eval_db, tmp_path):
     assert json.loads(json.dumps(data)) == data
 
 
-def test_vector_leg_failure_stops_without_file(eval_db, tmp_path):
+def test_unembeddable_corpus_stops_without_file(eval_db, tmp_path):
     deps = _deps(eval_db, {MODEL: AlwaysFailingEmbedder()})
     write_corpus(tmp_path / "corpus.jsonl", CORPUS)
     write_queries(tmp_path / "queries.jsonl", _queries())
-    # the corpus itself cannot be embedded either, so the run stops before any query
     result = CliRunner().invoke(
         app,
         [
@@ -199,6 +198,7 @@ def test_vector_leg_failure_stops_without_file(eval_db, tmp_path):
         obj=deps,
     )
     assert result.exit_code == 1
+    assert f"error: {len(CORPUS)} corpus posts could not be embedded" in result.stderr
     assert not (tmp_path / "out").exists()
 
 

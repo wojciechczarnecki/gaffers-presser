@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import Engine
+from sqlalchemy import Engine, func
 from sqlmodel import Session, select
 
 from app.tweets.models import Tweet
@@ -93,9 +93,17 @@ def write_queries(path: Path, queries: Sequence[Query]) -> None:
     _write_lines(path, [query.model_dump_json() for query in queries])
 
 
+# The project's own test account (the tweet-source latency test posts) is noise for retrieval.
+EXCLUDED_AUTHORS = frozenset({"gafferpresser"})
+
+
 def export_corpus(engine: Engine) -> list[CorpusPost]:
     with Session(engine) as session:
-        tweets = session.exec(select(Tweet).order_by(Tweet.created_at, Tweet.x_id)).all()
+        tweets = session.exec(
+            select(Tweet)
+            .where(func.lower(Tweet.author_handle).not_in(EXCLUDED_AUTHORS))
+            .order_by(Tweet.created_at, Tweet.x_id)
+        ).all()
         return [
             CorpusPost(
                 x_id=tweet.x_id,

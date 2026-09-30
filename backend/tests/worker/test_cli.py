@@ -698,6 +698,47 @@ def test_run_with_indexing_logs_model_and_embeds_new_post(cli, db, caplog):
     assert not any(t.name == "indexer" and t.is_alive() for t in threading.enumerate())
 
 
+class BlockingEmbedder(FakeEmbedder):
+    def __init__(self, block: threading.Event) -> None:
+        super().__init__()
+        self._block = block
+
+    def embed(self, texts):
+        self.calls.append(list(texts))
+        self._block.wait(timeout=30)
+        return super().embed(texts)
+
+
+def test_sigterm_with_embedder_blocked_in_a_call_exits_within_10_s(cli, db):
+    # Mirrors the extraction case: a blocked embedding call is abandoned with its daemon
+    # thread, and the worker still exits within the bound without storing the embedding.
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    _seed_tweet(db)
+    block = threading.Event()
+    embedder = BlockingEmbedder(block)
+
+    killer = _sigterm_when(lambda: len(embedder.calls) >= 1)
+    start = time.monotonic()
+    try:
+        result = cli(
+            "run",
+            client=fake.client(sleep=lambda _: None),
+            clock=RealClock(far_future),
+            indexing=indexing_runtime(embedder),
+        )
+        elapsed = time.monotonic() - start
+        stored = _embeddings(db)  # read while the call is still blocked
+    finally:
+        killer.join(timeout=1)
+        block.set()
+
+    assert result.exit_code == 0
+    assert elapsed < 10
+    assert len(embedder.calls) == 1
+    assert stored == []
+
+
 def test_failing_embedder_does_not_stop_polls_or_extraction(db):
     with Session(db) as session, session.begin():
         session.add(Season(label="2026/27"))
@@ -752,10 +793,11 @@ def test_failing_embedder_does_not_stop_polls_or_extraction(db):
     assert _embeddings(db)[0].error_class == "RuntimeError"
 
 
-def test_worker_rejects_unpriced_embedding_model_at_start(monkeypatch, tmp_path):
+@pytest.mark.parametrize("model", ["x/unknown", "openai/gpt-6-luna"])
+def test_worker_rejects_unpriced_embedding_model_at_start(monkeypatch, tmp_path, model):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-sentinel-value")
-    monkeypatch.setenv("EMBEDDING_MODEL", "x/unknown")
+    monkeypatch.setenv("EMBEDDING_MODEL", model)
 
     result = CliRunner().invoke(app, ["run"])
 

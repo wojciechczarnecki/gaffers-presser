@@ -33,6 +33,9 @@ class IndexingLoop:
     def run(self) -> None:
         tracer = make_tracer(self._runtime.tracing)
         embedder: Embedder | None = None
+        # Posts stored before the loop started are a backfill: their latency is not a
+        # measure of the indexing path, so it is not recorded.
+        started_at = self._clock.now()
         try:
             while not self._stop_event.is_set():
                 try:
@@ -51,7 +54,7 @@ class IndexingLoop:
                         tracer,
                         self._clock,
                         self._stop_event,
-                        record_latency=True,
+                        record_latency=post.first_fetched_at >= started_at,
                     )
                 except Exception as exc:
                     logger.error("indexing loop iteration failed: %s", type(exc).__name__)

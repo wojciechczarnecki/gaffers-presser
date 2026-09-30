@@ -69,6 +69,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # The evaluation schema (app.retrieval.evaluation.schema) depends on english_unaccent and
+    # on the vector type; it is rebuilt on every evaluation run, so dropping it loses nothing.
+    op.execute("DROP SCHEMA IF EXISTS retrieval_eval CASCADE")
     op.drop_index("ix_post_embedding_model_status", table_name="post_embedding")
     op.drop_table("post_embedding")
     op.drop_index("ix_tweet_search_vector", table_name="tweet", postgresql_using="gin")
