@@ -316,10 +316,10 @@ their imports or move with `git mv`. New tests go into new files, so that
 | AC5 | 6, 13 | `tests/retrieval/test_embed_timeout.py`, `tests/corroboration/test_service.py::test_slow_embedding_falls_back_to_fulltext` | `cd backend && uv run pytest -q tests/retrieval/test_embed_timeout.py` (the keyword accepted and ignored) → `assert 30.0 == 2.5` and `assert () == ('vector',)` |
 | AC6 | 7 | `tests/db/test_migrations.py::test_repost_author_migration_backfills_and_downgrades` | `cd backend && uv run pytest -q tests/db/test_migrations.py -k repost_author` → `psycopg.errors.UndefinedColumn: column "reposted_author_handle" does not exist` (the column read after `upgrade head`) |
 | AC7 | 8 | `tests/tweets/sources/test_repost_authors.py` | `cd backend && uv run pytest -q tests/tweets/sources/test_repost_authors.py` (the `FetchedPost` field added, adapters not yet filling it) → `assert None == 'synthetic_leaker_9'` |
-| AC8 | 11, 13 | `tests/corroboration/test_sources.py::test_window_*`, `tests/corroboration/test_service.py::test_replay_ignores_posts_after_as_of` | |
+| AC8 | 11, 13 | `tests/corroboration/test_sources.py::test_window_*`, `tests/corroboration/test_service.py::test_replay_ignores_posts_after_as_of` | step 11: `cd backend && uv run pytest -q tests/corroboration/test_sources.py` (sources stubbed) → `assert datetime(2026, 9, 29, 18, 0, tzinfo=utc) == datetime(2026, 9, 26, 18, 0, tzinfo=utc)` (`test_window_start_is_the_latest_deadline_at_or_before_as_of`) |
 | AC9 | 11, 13, 14 | `tests/corroboration/test_service.py::test_no_claim_makes_no_judge_call`, `tests/corroboration/test_cli.py::test_no_claim_message` | |
 | AC10 | 10 | `tests/corroboration/test_rules.py::test_label_table` | `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert 'unrelated' == 'supports'` |
-| AC11 | 11, 12, 13 | `tests/corroboration/test_sources.py::test_candidates_*`, `tests/corroboration/test_judge.py`, `tests/corroboration/test_service.py::test_judged_posts_*` | |
+| AC11 | 11, 12, 13 | `tests/corroboration/test_sources.py::test_candidates_*`, `tests/corroboration/test_judge.py`, `tests/corroboration/test_service.py::test_judged_posts_*` | step 11: same command (stub `retrieval_candidates` returning no posts) → `assert [] == [2]` (`test_candidates_exclude_sql_claims_and_posts_outside_the_window`) |
 | AC12 | 9, 10 | `tests/corroboration/test_rules.py::test_accounts_*`, `tests/retrieval/test_search_repost_fields.py` | step 10: `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert [] == [2]` (`test_accounts_are_compared_case_insensitively`); step 9: `cd backend && uv run pytest -q tests/retrieval/test_search_repost_fields.py` → `assert (False, None) == (True, 'origin')` |
 | AC13 | 10, 13 | `tests/corroboration/test_rules.py::test_freshness_*`, `tests/corroboration/test_service.py::test_citations_carry_fields` | step 10: `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert 'context' == 'new'` |
 | AC14 | 10 | `tests/corroboration/test_rules.py::test_reversal_*`, `::test_newer_contradiction_*` | `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert False is True` (`test_reversal_an_older_contradicting_account_sets_it`) |
@@ -553,7 +553,7 @@ AC writes its proving test first and runs it red before the product change.
       - a custom `credibility` weight changes the supporting sum.
 
   Automatic verification: `cd backend && uv run pytest -q tests/corroboration/test_rules.py`
-- [ ] 11. **Window, player lookup, SQL claims and retrieval candidates** — file:
+- [x] 11. **Window, player lookup, SQL claims and retrieval candidates** — file:
   `app/corroboration/sources.py`.
   - Write `tests/corroboration/test_sources.py` (db, `FakeEmbedder`, helpers from
     `tests/retrieval/helpers.py`):
