@@ -19,12 +19,12 @@ from app.core.settings import (
 )
 from app.db.engine import make_engine
 from app.db.locks import try_schedule_lock
-from app.extraction.config import PROVIDER, load_extraction_settings, resolve_llm
+from app.extraction.config import load_extraction_settings
 from app.extraction.loop import start_extractor
-from app.extraction.providers import build_chat_model
 from app.extraction.service import ExtractionRuntime, load_reference_files
 from app.extraction.store import extraction_status
 from app.fpl.client import FplClient
+from app.llm.chat import PROVIDER, build_chat_model, resolve_llm
 from app.llm.tracing import resolve_tracing
 from app.retrieval.config import load_retrieval_settings, resolve_embedding
 from app.retrieval.embedder import build_embedder

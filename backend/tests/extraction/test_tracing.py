@@ -4,9 +4,9 @@ from pydantic import SecretStr
 
 from app.extraction.flow import build_flow
 from app.extraction.linking import PlayerIndex, PlayerRecord, TeamRecord
-from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import Disambiguation, ExtractedEvent, ExtractionOutput, PostInput
 from app.extraction.tracing import run_config
+from app.llm.chat import ChatModelSpec
 from app.llm.tracing import TracingConfig, flush, make_handler
 from tests.extraction.fakes import FakeChatModel, RecordingHandler
 

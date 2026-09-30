@@ -1,6 +1,6 @@
 import pytest
 
-from app.extraction.model_settings import DEFAULT_PATH, load_model_settings, pair_compatible
+from app.llm.models import DEFAULT_PATH, load_model_settings, pair_compatible
 from app.llm.pricing import load_prices
 from tests.extraction.candidates import CANDIDATES
 

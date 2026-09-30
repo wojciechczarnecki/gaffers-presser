@@ -43,3 +43,24 @@ def test_app_llm_imports_no_feature_module():
                 if name.startswith(("app.extraction", "app.retrieval", "app.corroboration")):
                     offenders.append(f"{path.relative_to(APP)}:{node.lineno}")
     assert offenders == []
+
+
+def test_chat_model_factory_and_catalogue_live_in_app_llm():
+    offenders = []
+    for package in FEATURES:
+        for path, tree in _trees(package):
+            for node in ast.walk(tree):
+                names: list[str] = []
+                if isinstance(node, ast.ImportFrom):
+                    names = [node.module or ""]
+                elif isinstance(node, ast.Import):
+                    names = [alias.name for alias in node.names]
+                elif isinstance(node, ast.Name) and node.id == "ChatOpenRouter":
+                    names = ["ChatOpenRouter"]
+                if any(
+                    n.startswith("langchain_openrouter") or n == "ChatOpenRouter" for n in names
+                ):
+                    offenders.append(f"{path.relative_to(APP)}:{node.lineno}")
+    assert offenders == []
+    assert (APP / "llm" / "model_settings.toml").is_file()
+    assert not (APP / "extraction" / "model_settings.toml").exists()

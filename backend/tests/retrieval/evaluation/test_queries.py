@@ -3,10 +3,10 @@ from datetime import timedelta
 from sqlmodel import Session
 from typer.testing import CliRunner
 
-from app.extraction.config import DEFAULT_MODEL
 from app.extraction.schemas import LinkedEvent
 from app.extraction.store import ExtractionRecord, save_extraction
 from app.fpl.models.reference import Player, Season, Team
+from app.llm.chat import DEFAULT_MODEL
 from app.retrieval.cli import RetrievalCliDeps, app
 from app.retrieval.evaluation.dataset import CorpusPost, load_queries, write_corpus
 from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL, StructuredCaller, WrittenQuery

@@ -16,7 +16,7 @@ from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError, ConfigError
 from app.core.settings import load_settings
 from app.db.engine import make_engine
-from app.extraction.config import ExtractionSettings, load_extraction_settings, resolve_llm
+from app.extraction.config import ExtractionSettings, load_extraction_settings
 from app.extraction.evaluation.cases import (
     EvalCase,
     ExpectedEvent,
@@ -44,7 +44,6 @@ from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.flow import PROMPT_VERSION, build_flow
 from app.extraction.generation import HostLookup
 from app.extraction.linking import PlayerIndex, load_aliases, load_players, load_snapshot
-from app.extraction.providers import ChatModelSpec, build_chat_model
 from app.extraction.service import (
     ExtractionRuntime,
     extract_post,
@@ -53,6 +52,7 @@ from app.extraction.service import (
 )
 from app.extraction.store import posts_for_reextract
 from app.extraction.tracing import run_config
+from app.llm.chat import ChatModelSpec, build_chat_model, resolve_llm
 from app.llm.tracing import flush, make_handler, resolve_tracing
 
 app = typer.Typer(add_completion=False, no_args_is_help=True, help="The extraction toolkit.")

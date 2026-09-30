@@ -4,9 +4,7 @@ from typing import Any, TypeVar
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openrouter import ChatOpenRouter
-from openrouter.utils import BackoffStrategy, RetryConfig
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel
 
 from app.core.clock import Clock
 from app.llm.pricing import Price, compute_cost
@@ -16,8 +14,6 @@ from app.llm.retry import with_retries
 # request settings are those of its row in the extraction model settings.
 DEFAULT_LABEL_MODEL = "openai/gpt-6-luna"
 STRUCTURED_METHOD = "function_calling"
-_REQUEST_TIMEOUT_MILLISECONDS = 60_000
-_NO_RETRIES = RetryConfig("none", BackoffStrategy(0, 0, 1.0, 0), False)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -28,19 +24,6 @@ class WrittenQuery(BaseModel):
 
 class RelevanceLabel(BaseModel):
     relevant: bool
-
-
-def build_label_model(api_key: SecretStr, model: str) -> BaseChatModel:
-    chat_model = ChatOpenRouter(
-        model=model,
-        api_key=api_key,
-        timeout=_REQUEST_TIMEOUT_MILLISECONDS,
-        max_retries=0,
-        reasoning={"effort": "none"},
-    )
-    # With `max_retries=0` the SDK falls back to its own 5XX backoff for up to an hour.
-    chat_model.client.sdk_configuration.retry_config = _NO_RETRIES
-    return chat_model
 
 
 def usage_cost(message: Any, model: str, prices: dict[str, Price]) -> float | None:

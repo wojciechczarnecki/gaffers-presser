@@ -7,7 +7,6 @@ from langgraph.graph import END, StateGraph
 
 from app.content import load_prompt
 from app.extraction.linking import PlayerIndex, PlayerRecord
-from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import (
     Disambiguation,
     ExtractionOutput,
@@ -16,6 +15,7 @@ from app.extraction.schemas import (
     PostInput,
     Usage,
 )
+from app.llm.chat import ChatModelSpec
 
 logger = logging.getLogger(__name__)
 

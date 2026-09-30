@@ -1,9 +1,10 @@
 import pytest
 
 from app.core.errors import ConfigError
-from app.extraction import config as config_module
-from app.extraction.config import ExtractionSettings, resolve_llm
-from app.extraction.model_settings import ModelSettings
+from app.extraction.config import ExtractionSettings
+from app.llm import chat as config_module
+from app.llm.chat import resolve_llm
+from app.llm.models import ModelSettings
 from app.llm.tracing import resolve_tracing
 
 SENTINEL = "sentinel-secret-value"
@@ -195,7 +196,7 @@ def test_resolve_tracing_with_one_or_no_keys(monkeypatch, env):
 
 
 def test_default_models_are_catalogue_models():
-    from app.extraction.model_settings import load_model_settings, pair_compatible
+    from app.llm.models import load_model_settings, pair_compatible
 
     catalogue = load_model_settings()
     default, fallback = REAL_DEFAULTS

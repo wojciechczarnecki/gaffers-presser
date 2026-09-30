@@ -4,8 +4,8 @@ import pytest
 
 from app.extraction.flow import ExtractionOutputError, build_flow
 from app.extraction.linking import PlayerIndex, PlayerRecord, TeamRecord
-from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import Disambiguation, ExtractedEvent, ExtractionOutput, PostInput
+from app.llm.chat import ChatModelSpec
 from tests.extraction.fakes import FakeChatModel
 
 SEASON = "2026/27"

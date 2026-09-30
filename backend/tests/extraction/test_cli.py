@@ -23,12 +23,12 @@ from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases,
 from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.generation import HostLookup
 from app.extraction.linking import PlayerIndex, PlayerRecord, load_snapshot
-from app.extraction.model_settings import ModelSettings
 from app.extraction.models import Extraction
-from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import ExtractedEvent, ExtractionOutput
 from app.extraction.store import ExtractionRecord, save_extraction
 from app.fpl.models.reference import Player, Season, Team
+from app.llm.chat import ChatModelSpec
+from app.llm.models import ModelSettings
 from app.llm.pricing import Price
 from app.tweets.models import Tweet
 from tests.conftest import BACKEND_DIR

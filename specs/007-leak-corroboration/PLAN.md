@@ -309,7 +309,7 @@ their imports or move with `git mv`. New tests go into new files, so that
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 1, 2, 3 | `tests/test_shared_code.py::test_no_chat_model_or_retry_loop_outside_app_llm`, `tests/llm/test_retry.py`, `tests/llm/test_structured.py` | `cd backend && uv run pytest -q tests/test_shared_code.py` → `AssertionError: assert ['extraction/...with_retries'] == []` (step 1); `tests/llm/test_retry.py` had no `app.llm.retry` yet (import error, then green with the module) |
+| AC1 | 1, 2, 3 | `tests/test_shared_code.py::test_no_chat_model_or_retry_loop_outside_app_llm`, `tests/llm/test_retry.py`, `tests/llm/test_structured.py` | `cd backend && uv run pytest -q tests/test_shared_code.py` → `AssertionError: assert ['extraction/...with_retries'] == []` (step 1); `tests/llm/test_retry.py` had no `app.llm.retry` yet (import error, then green with the module); `uv run pytest -q tests/test_shared_code.py::test_chat_model_factory_and_catalogue_live_in_app_llm` → `AssertionError: assert ['extraction/...on/llm.py:34'] == []` (step 2) |
 | AC2 | 4 | `tests/extraction/test_current_extractions.py`, `tests/test_shared_code.py::test_current_extraction_sql_lives_once` | |
 | AC3 | 5 | `tests/fpl/test_deadlines.py`, `tests/test_shared_code.py::test_schedules_use_fpl_deadline_helpers` | |
 | AC4 | 1–6 | n/a — kept behaviour: the existing suites stay green with import-only diffs (the check command in step 6) | |
@@ -364,7 +364,7 @@ AC writes its proving test first and runs it red before the product change.
   - Existing tests: update the imports of `RETRY_BACKOFF_SECONDS` and `with_retries` only.
 
   Automatic verification: `cd backend && uv run pytest -q tests/llm/test_retry.py tests/test_shared_code.py tests/extraction/test_service.py tests/retrieval/test_indexing.py tests/retrieval/evaluation`
-- [ ] 2. **Chat-model factory and model catalogue in `app/llm`.**
+- [x] 2. **Chat-model factory and model catalogue in `app/llm`.**
   - Extend `tests/test_shared_code.py` with a check that no file under `app/extraction`
     or `app/retrieval` imports `langchain_openrouter` or names `ChatOpenRouter`, and that
     `app/llm/model_settings.toml` exists while `app/extraction/model_settings.toml` does not.
@@ -899,7 +899,11 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+- Step 2 (minor): `single_model_config` and `structured_kwargs_for`, and the switch of the
+  retrieval CLI's default chat-model builder to `build_chat_model`, were pulled forward from
+  step 3 into step 2, because the step 2 guard test (no `ChatOpenRouter` under `app/retrieval`)
+  cannot go green while `retrieval/evaluation/llm.build_label_model` builds one. Step 3 keeps
+  the rest (`StructuredCaller`, `Usage`, tests for the two helpers).
 
 ## Final review
 

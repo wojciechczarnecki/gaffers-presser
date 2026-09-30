@@ -14,6 +14,7 @@ from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError, ConfigError
 from app.core.settings import load_settings
 from app.db.engine import make_engine
+from app.llm.chat import build_chat_model, single_model_config
 from app.llm.pricing import Price, load_prices
 from app.llm.tracing import resolve_tracing
 from app.retrieval.config import (
@@ -37,7 +38,7 @@ from app.retrieval.evaluation.dataset import (
     write_queries,
 )
 from app.retrieval.evaluation.labelling import prelabel
-from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL, StructuredCaller, build_label_model
+from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL, StructuredCaller
 from app.retrieval.evaluation.queries import (
     QueryCounts,
     build_queries,
@@ -118,7 +119,7 @@ def chat_model_from_settings(settings: RetrievalSettings) -> Callable[[str], Bas
     def make(model: str) -> BaseChatModel:
         if settings.openrouter_api_key is None:
             raise ConfigError("OPENROUTER_API_KEY is not set")
-        return build_label_model(settings.openrouter_api_key, model)
+        return build_chat_model(single_model_config(settings.openrouter_api_key, model)).chat_model
 
     return make
 

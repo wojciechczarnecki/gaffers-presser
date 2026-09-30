@@ -19,10 +19,10 @@ from app.extraction.linking import (
     load_aliases,
     load_players,
 )
-from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import FlowResult, PostInput
 from app.extraction.store import ExtractionRecord, save_extraction
 from app.extraction.tracing import run_config
+from app.llm.chat import ChatModelSpec
 from app.llm.pricing import Price, compute_cost, load_prices
 from app.llm.retry import RetryOutcome, with_retries
 from app.llm.tracing import TracingConfig
