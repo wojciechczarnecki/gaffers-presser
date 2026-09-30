@@ -53,8 +53,9 @@ def render_input(item: JudgeInput) -> str:
 
 
 class Judge:
-    def __init__(self, graph: Any) -> None:
+    def __init__(self, graph: Any, model: str) -> None:
         self._graph = graph
+        self.model = model
 
     def run(self, item: JudgeInput) -> StructuredReply[JudgeOutput]:
         state: JudgeState = {"input": item, "reply": None}
@@ -72,4 +73,4 @@ def build_judge(caller: StructuredCaller) -> Judge:
     graph.add_node("judge", judge_node)
     graph.set_entry_point("judge")
     graph.add_edge("judge", END)
-    return Judge(graph.compile())
+    return Judge(graph.compile(), caller.model)
