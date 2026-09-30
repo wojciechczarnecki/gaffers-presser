@@ -1084,6 +1084,18 @@ Record the outputs (counts, costs) under Deviations or the step notes.
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+**2026-09-30 — final review gate (/pipeline:ship)**
+
+- Question: which final review findings to fix?
+- Decision: accept all — F1–F16 (`worth-fixing` F1–F11 and `nit` F12–F16). None rejected.
+- Additional decision (overrides the rejected finding "hybrid should degrade with no
+  embeddings" and the converge-pass rejection): when the model has no embeddings at all,
+  a `hybrid` search does not raise `NoEmbeddingsError`; it returns the full-text results,
+  marks the vector leg as failed (`failed_legs == ("vector",)`) and logs the reason, the
+  same way as AC15 handles a failed embedding call. Only a `vector` search raises
+  `NoEmbeddingsError` (AC12). The owner's intent in the SPEC was that hybrid falls back to
+  full-text; update the step 14 tests and the search CLI output accordingly.
+
 ## Review log
 
 **2026-09-30 — /pipeline:plan-review**
