@@ -327,7 +327,7 @@ their imports or move with `git mv`. New tests go into new files, so that
 | AC16 | 14 | `tests/corroboration/test_cli.py`, `tests/core/test_local_time.py` | `cd backend && uv run pytest -q tests/corroboration/test_cli.py` (the command a no-op stub) → `assert ('Player: Saka' in '')` and `assert 0 == 1` (the ambiguous-name exit code); `uv run pytest -q tests/core/test_local_time.py` (stub returning `datetime.min`) → `assert datetime(1, 1, 1, 0, 0, tzinfo=utc) == datetime(2026, 9, 29, 16, 0, tzinfo=utc)` |
 | AC17 | 13 | `tests/corroboration/test_service.py::test_without_key_sql_only`, `::test_failed_judge_call_counts_unjudged` | `cd backend && uv run pytest -q tests/corroboration/test_service.py` (`corroborate` stubbed to return a fixed anchor) → `assert None == 'OPENROUTER_API_KEY is not set'` and `assert 0 == 2` (judged count) |
 | AC18 | 12, 13 | `tests/corroboration/test_tracing.py` | step 13: `cd backend && uv run pytest -q tests/corroboration/test_service.py` (`corroborate` stubbed to return a fixed anchor) → `ValueError: not enough values to unpack (expected 1, got 0)` at `(root,) = client.named("corroboration")` (`test_trace_holds_every_step`); step 12 (mutation: the tracer's `generation` returning early): `cd backend && uv run pytest -q tests/corroboration/test_tracing.py` → `ValueError: not enough values to unpack (expected 1, got 0)` at `(generation,) = client.named("corroboration-judge")` |
-| AC19 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_committed_set_composition` | step 15 (`composition_problems` returning `[]`): `test_cases.py` → `assert False` at `any(... 'cases: 40' ...)`; step 18: filled in below |
+| AC19 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_committed_set_composition` | step 18: `cd backend && uv run pytest -q tests/corroboration/evaluation/test_results_files.py` (no committed files) → `AssertionError: test-openai-gpt-6-luna.json is missing`; step 15 (`composition_problems` returning `[]`): `test_cases.py` → `assert False` at `any(... 'cases: 40' ...)`; step 18: filled in below |
 | AC20 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_prelabel_model_*`, `tests/corroboration/evaluation/test_building.py` | step 15 (`select_cases` returning its input, `assign_split` returning its input): `test_building.py` → `AssertionError: assert ['jc-001', ...] != ['jc-001', ...]` and `assert 0 == 5` (stratified dev count) |
 | AC21 | 16 | `tests/corroboration/evaluation/test_review_cli.py` | step 16 (review loop a no-op): `test_review_cli.py` → `assert False is True` (`reviewed` after accept) |
 | AC22 | 17 | `tests/corroboration/evaluation/test_metrics.py`, `tests/corroboration/evaluation/test_runner.py` | step 17 (`compute_metrics` returning zeros): `test_metrics.py` → `assert 0 == 8`; (judge never called): `test_runner.py` → `assert 0 == 1` |
@@ -689,7 +689,7 @@ AC writes its proving test first and runs it red before the product change.
       - the CLI prints the metrics.
 
   Automatic verification: `cd backend && uv run pytest -q tests/corroboration/evaluation`
-- [ ] 18. **Build set v1 and record the first run** (real calls against the development
+- [x] 18. **Build set v1 and record the first run** (real calls against the development
   database; the cost is expected below 0.50 USD).
   - Write the tests first:
     - `tests/corroboration/evaluation/test_eval_set.py::test_committed_set_composition`:
@@ -914,6 +914,18 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
   `embed_timeout_seconds` keyword and the `SearchResult` repost fields), so they went into one
   commit (step 6). Step 4's proving test and stub were committed one commit early, with
   step 3.
+- Step 18 (minor, an owner note): `build-cases` on the development database gave 177
+  candidates, all pre-labelled by `anthropic/claude-haiku-4.5` (0 failed, $0.2768), and 51 selected
+  cases (the composition rule asks 50-70; the plan aimed at about 60): supports 16, contradicts
+  1, related 10, unrelated 24; dev 15, test 36. All four labels are present, also in the test
+  split, so this is not the escalation the plan names, but `contradicts` has one case only:
+  every player in the development corpus has a single event type (19 of 25 events are `doubt`),
+  so the second-anchor pairing finds no other type, and the `contradicts` label comes from the
+  four `confirmed_starter` players alone. The corpus limits the set; BACKLOG #12 (the GW6
+  window) is when it grows. The first run (`evaluate --split test --include-unreviewed`, default
+  model `openai/gpt-6-luna`, prompt `corroboration_judge@1`, $0.0030): accuracy 0.778, supports
+  precision 0.700 / recall 0.636, related 0.500 / 0.571, unrelated 0.944 / 1.000, contradicts
+  recall 0.000 on its one case, false-support rate 0.120 (3/25), 0 errors.
 - Steps 15-17 (minor): the evaluation package was written code-first and its tests right
   after, so the red records are mutations of the implementation (see the AC19-AC22 rows), and
   the three steps share `evaluation/cli.py`, so they went into one commit. `prelabel` and

@@ -1,0 +1,370 @@
+{
+  "model": "openai/gpt-6-luna",
+  "prompt_version": "corroboration_judge@1",
+  "split": "test",
+  "date": "2026-09-30T13:51:15.167884+00:00",
+  "include_unreviewed": true,
+  "cost_usd": 0.0030065,
+  "metrics": {
+    "cases": 36,
+    "errored": 0,
+    "accuracy": 0.7777777777777778,
+    "per_label": {
+      "supports": {
+        "precision": 0.7,
+        "recall": 0.6363636363636364,
+        "expected": 11,
+        "predicted": 10
+      },
+      "contradicts": {
+        "precision": null,
+        "recall": 0.0,
+        "expected": 1,
+        "predicted": 0
+      },
+      "related": {
+        "precision": 0.5,
+        "recall": 0.5714285714285714,
+        "expected": 7,
+        "predicted": 8
+      },
+      "unrelated": {
+        "precision": 0.9444444444444444,
+        "recall": 1.0,
+        "expected": 17,
+        "predicted": 18
+      }
+    },
+    "false_support": {
+      "numerator": 3,
+      "denominator": 25,
+      "rate": 0.12
+    }
+  },
+  "outcomes": [
+    {
+      "id": "jc-13-2104158837540622748-2103958805142978873",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 689,
+      "output_tokens": 20,
+      "cost_usd": 7.890000000000001e-05
+    },
+    {
+      "id": "jc-13-2104158837540622748-2104663854315958314",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 673,
+      "output_tokens": 20,
+      "cost_usd": 7.73e-05
+    },
+    {
+      "id": "jc-13-2104158837540622748-2104665370741326220",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 673,
+      "output_tokens": 20,
+      "cost_usd": 7.73e-05
+    },
+    {
+      "id": "jc-154-2104158837540622748-2104571410026791410",
+      "expected": "related",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 730,
+      "output_tokens": 20,
+      "cost_usd": 8.3e-05
+    },
+    {
+      "id": "jc-165-2104158837540622748-2104646876389650860",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 732,
+      "output_tokens": 19,
+      "cost_usd": 8.27e-05
+    },
+    {
+      "id": "jc-25-2104124182170566816-2104121110841139241",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 804,
+      "output_tokens": 20,
+      "cost_usd": 9.04e-05
+    },
+    {
+      "id": "jc-26-2104177542324273565-2103436877860593885",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 711,
+      "output_tokens": 19,
+      "cost_usd": 8.060000000000001e-05
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104124182170566816",
+      "expected": "contradicts",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 791,
+      "output_tokens": 19,
+      "cost_usd": 8.860000000000001e-05
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104158837540622748",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 752,
+      "output_tokens": 19,
+      "cost_usd": 8.47e-05
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104487542066413950",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 792,
+      "output_tokens": 20,
+      "cost_usd": 8.92e-05
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104244495927972091",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 689,
+      "output_tokens": 19,
+      "cost_usd": 7.840000000000001e-05
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104270786454577468",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 679,
+      "output_tokens": 20,
+      "cost_usd": 7.790000000000001e-05
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104511766172467564",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 702,
+      "output_tokens": 19,
+      "cost_usd": 7.970000000000001e-05
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104612936534655146",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 733,
+      "output_tokens": 19,
+      "cost_usd": 8.280000000000001e-05
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104158837540622748",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 751,
+      "output_tokens": 19,
+      "cost_usd": 8.460000000000001e-05
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104173076380303608",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 739,
+      "output_tokens": 19,
+      "cost_usd": 8.340000000000001e-05
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104511766172467564",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 719,
+      "output_tokens": 19,
+      "cost_usd": 8.14e-05
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104516939213095099",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 748,
+      "output_tokens": 19,
+      "cost_usd": 8.43e-05
+    },
+    {
+      "id": "jc-397-2104158837540622748-2104462614600302750",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 710,
+      "output_tokens": 20,
+      "cost_usd": 8.1e-05
+    },
+    {
+      "id": "jc-397-2104158837540622748-2104600493083529570",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 806,
+      "output_tokens": 19,
+      "cost_usd": 9.010000000000001e-05
+    },
+    {
+      "id": "jc-415-2104266398126014931-2104523734438588623",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 734,
+      "output_tokens": 19,
+      "cost_usd": 8.29e-05
+    },
+    {
+      "id": "jc-415-2104266398126014931-2104673537697186283",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 688,
+      "output_tokens": 20,
+      "cost_usd": 7.88e-05
+    },
+    {
+      "id": "jc-423-2103809666761531519-2104664507385799105",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 615,
+      "output_tokens": 20,
+      "cost_usd": 7.15e-05
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104158837540622748",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 755,
+      "output_tokens": 19,
+      "cost_usd": 8.5e-05
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104175133694804334",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 840,
+      "output_tokens": 19,
+      "cost_usd": 9.350000000000001e-05
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104531353307844990",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 921,
+      "output_tokens": 19,
+      "cost_usd": 0.00010160000000000002
+    },
+    {
+      "id": "jc-501-2103771262233284892-2104665908933489005",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 718,
+      "output_tokens": 20,
+      "cost_usd": 8.18e-05
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103771262233284892",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 785,
+      "output_tokens": 19,
+      "cost_usd": 8.800000000000001e-05
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103809666761531519",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 682,
+      "output_tokens": 20,
+      "cost_usd": 7.82e-05
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103955750015905855",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 730,
+      "output_tokens": 20,
+      "cost_usd": 8.3e-05
+    },
+    {
+      "id": "jc-532-2104158837540622748-2104648476038430744",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 775,
+      "output_tokens": 19,
+      "cost_usd": 8.7e-05
+    },
+    {
+      "id": "jc-533-2103771262233284892-2104584617491669030",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 737,
+      "output_tokens": 20,
+      "cost_usd": 8.37e-05
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104273037319454995",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 746,
+      "output_tokens": 20,
+      "cost_usd": 8.460000000000001e-05
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104663313527472189",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 720,
+      "output_tokens": 20,
+      "cost_usd": 8.2e-05
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104671002722529406",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 720,
+      "output_tokens": 20,
+      "cost_usd": 8.2e-05
+    },
+    {
+      "id": "jc-552-2104158837540622748-2104452956900766117",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 766,
+      "output_tokens": 20,
+      "cost_usd": 8.66e-05
+    }
+  ]
+}
