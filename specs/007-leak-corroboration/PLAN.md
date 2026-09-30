@@ -349,9 +349,13 @@ AC writes its proving test first and runs it red before the product change.
     - exhaustion after 3 attempts, with the sleeps `[2.0, 4.0]` and the last error kept;
     - a stop before the first attempt, and a stop set during the back-off → `stopped`;
     - the back-off index is clamped when `attempts > len(backoff) + 1`.
-  - Add the first part of `tests/test_shared_code.py`: no module-level `MAX_ATTEMPTS` or
-    `RETRY_BACKOFF_SECONDS`, and no function whose name contains `retr` with a `for`/`while`
-    loop, anywhere under `app/extraction` or `app/retrieval` (AST).
+  - Add the first part of `tests/test_shared_code.py`:
+    - no module-level `MAX_ATTEMPTS` or `RETRY_BACKOFF_SECONDS`, and no function whose name
+      contains `retr` with a `for`/`while` loop, anywhere under `app/extraction` or
+      `app/retrieval` (AST); `extraction/generation.HostLookup` is a 404 poll for the serving
+      host, not a call retry, and stays;
+    - `test_app_llm_imports_no_feature_module`: nothing under `app/llm` imports
+      `app.extraction`, `app.retrieval` or `app.corroboration` (the import-cycle risk below).
   - Then implement `with_retries` + `RetryOutcome[T]` and move the constants there:
     - `extraction/service.run_with_retries` becomes a wrapper;
     - `retrieval/indexing.with_retries` and its constants are removed;
@@ -387,6 +391,8 @@ AC writes its proving test first and runs it red before the product change.
       `prices` dict;
     - a parse failure raises and increments `failures`;
     - `from_spec` passes `structured_method`;
+    - `structured_kwargs_for` returns the catalogue row's method, and `{}` for a model outside
+      the catalogue;
     - costs accumulate across calls;
     - `usage_from_raw` / `answer_from_raw` read `usage_metadata` and `response_metadata`.
   - Then:
@@ -398,11 +404,16 @@ AC writes its proving test first and runs it red before the product change.
       `StructuredCaller`;
     - `app/llm/chat.py` gains `single_model_config(api_key, model, catalogue=None) ->
       LlmConfig` (no fallback; a model outside the catalogue → `ConfigError`), which
-      `resolve_llm` also uses for its primary row. `retrieval/cli.py` builds its label model
-      with `build_chat_model(single_model_config(settings.openrouter_api_key, model))`, because
-      `RetrievalSettings` has no `llm_model` fields and must keep its field set
-      (`tests/test_env_example.py`). `RetrievalCliDeps.make_chat_model` returns a
-      `ChatModelSpec`, and `StructuredCaller.from_spec` is used;
+      `resolve_llm` also uses for its primary row, and `structured_kwargs_for(model,
+      catalogue=None) -> dict` (the catalogue row's `{"method": …}`, `{}` for a model outside
+      the catalogue). `retrieval/cli.py`'s default `make_chat_model` returns
+      `build_chat_model(single_model_config(settings.openrouter_api_key, model)).chat_model`,
+      because `RetrievalSettings` has no `llm_model` fields and must keep its field set
+      (`tests/test_env_example.py`). `RetrievalCliDeps.make_chat_model` keeps its type
+      `Callable[[str], BaseChatModel]`: `tests/retrieval/evaluation/test_{queries,labelling}.py`
+      inject `lambda model: fake`, so changing it would break AC4's import-only rule. The CLI
+      builds `StructuredCaller(chat_model, model, prices, clock,
+      structured_kwargs=structured_kwargs_for(model))`;
     - update the imports in `tests/retrieval/evaluation/test_{queries,labelling}.py`.
 
   Automatic verification: `cd backend && uv run pytest -q tests/llm tests/test_shared_code.py tests/extraction/test_flow.py tests/retrieval/evaluation tests/retrieval/test_cli.py`
@@ -536,6 +547,7 @@ AC writes its proving test first and runs it red before the product change.
       - otherwise low;
       - a `new` contradicting account lowers high → medium;
       - a newer contradiction lowers medium → low;
+      - both lowering conditions together lower the grade one step only (high → medium);
       - low stays low;
       - the reasons name each rule applied;
       - a custom `credibility` weight changes the supporting sum.
@@ -672,6 +684,8 @@ AC writes its proving test first and runs it red before the product change.
         `include_unreviewed`, `cost_usd` and per-case `{id, expected, predicted,
         error_class, input_tokens, output_tokens, cost_usd}`;
       - the default output path is `evals/corroboration/results/<split>-<model slug>.json`;
+      - `evaluate --model <id>` runs the judge on that model (AC22 "for a chosen split and
+        model"), the default being `DEFAULT_MODEL`, and a model outside the catalogue exits 1;
       - the CLI prints the metrics.
 
   Automatic verification: `cd backend && uv run pytest -q tests/corroboration/evaluation`
@@ -746,6 +760,10 @@ AC writes its proving test first and runs it red before the product change.
   `tests/test_module_boundaries.py` (AC2), and the X API query string (AC7, Group 2).
 - **Import cycles.** `app.llm` must not import `app.extraction` or `app.retrieval`.
   `app.corroboration` imports extraction, retrieval, fpl and llm, and nothing imports it.
+- **Judge latency.** Judge calls run one after another, each with up to 3 attempts and 2 s +
+  4 s of back-off, so a slow or failing provider can make one corroboration take tens of
+  seconds (10 posts). That is accepted here; the alert spec owns the latency budget and may
+  add concurrency or a shorter retry policy through `with_retries(attempts=…, backoff=…)`.
 - **Secrets.** Result files and cases hold public post text only: no key, and no manager or
   league data. The judge prompt holds no private data.
 
@@ -806,7 +824,74 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-30 — /pipeline:plan-review
+
+**Findings (severity counted before the fixes)**
+
+| id | severity | finding | change |
+|----|----------|---------|--------|
+| R1 | `major` | Step 3 changed `RetrievalCliDeps.make_chat_model` to return a `ChatModelSpec`, but `tests/retrieval/evaluation/test_queries.py:227` and `test_labelling.py:224,293` inject `lambda model: fake` (a bare chat model). Those tests would need non-import edits, which breaks AC4 and the step 6 diff check. | `make_chat_model` keeps `Callable[[str], BaseChatModel]`. The default builds `build_chat_model(single_model_config(...)).chat_model`, and the catalogue's structured method reaches `StructuredCaller` through a new `structured_kwargs_for(model)` (step 3, with a test). |
+| R2 | `minor` | AC15 says either condition "lowers the grade one step", but no test covered both conditions at once, which could lower it two steps. | Step 10: a test that both conditions together lower high → medium only. |
+| R3 | `minor` | AC22 says "for a chosen split and model", but step 17 tested only `--split`. | Step 17: a test for `evaluate --model`, with the default model and an uncatalogued model exiting 1. |
+| R4 | `minor` | The import-cycle risk (`app.llm` must not import feature modules) had no guard test. | Step 1: `test_app_llm_imports_no_feature_module` in `tests/test_shared_code.py`. |
+| R5 | `minor` | Judge calls are serial with 2 s + 4 s back-off, and the plan did not mention the latency this adds. | A "Judge latency" risk: accepted here, and the alert spec owns the budget. |
+| R6 | `minor` (no change) | An interpretation for the final review: `count_accounts` counts the anchor account's own older contradicting post as a contradicting account, so a self-reversal sets `reversal`. If that post is `new`, it also lowers the grade. AC12/AC14 allow this reading ("an account reversing its own earlier story"), and the plan states it explicitly. | Kept. Flagged so the owner can confirm it at GATE 2. |
+
+**Checked and found correct (later stages need not repeat this)**
+
+- **Coverage:** AC1–AC25 each have steps and a named proving test, and the matrix matches the
+  steps. AC4 and AC25 are properly `n/a` with a reason. Each AC's proving test is written in
+  the step that delivers it.
+- **Compliance:**
+  - The plan follows DECISIONS 2026-09-26 (fake LLM in unit tests; evaluation outside
+    `pytest`), 2026-09-28 (relevance rule, Langfuse, evaluation sets as JSONL with dev/test
+    and owner review), 2026-09-29 (OpenRouter only, `model_settings.toml`, the
+    `app/llm` shared layer) and the five 2026-09-30 rows.
+  - The one `retrieval.evaluation → extraction.store` import is a direct consequence of AC2
+    (one public query in `extraction/store.py`). It is recorded as a DECISIONS edit in step 19.
+  - Prompts stay in `app/content/prompts/`, in English like the existing four prompts.
+    CONVENTIONS "Polish product content" covers generated texts, and a judge prompt is not one.
+- **Code facts verified:**
+  - `DISTINCT ON (tweet_x_id)` appears exactly at `extraction/store.py:148,212` and
+    `retrieval/evaluation/queries.py:23`, so the regex guard is red first and then green.
+  - The only `retr`-named looped functions are `extraction/service.run_with_retries` and
+    `retrieval/indexing.with_retries`, and their semantics match the merged helper
+    (stop checks, clamped back-off index).
+  - The worker's `_deadline_after`, `_gameweek_with_deadline_after` and
+    `_gameweek_with_greatest_deadline_at_or_before`, and `tweets/schedule.next_deadline_after`,
+    are caught by the AST guard.
+  - `upcoming_deadlines` is used by `tweets/loop.py` and `worker/cli.py`.
+  - The SDK's `embeddings.generate` accepts `timeout_ms`.
+  - `anthropic/claude-haiku-4.5` has rows in `model_settings.toml` and `prices.toml`.
+  - `load_players`, `PlayerIndex.resolve`, `SearchFilters(since, until)` and the tracer
+    observation names `retrieval-search`/`embedding` exist.
+  - The X API `raw` is `{"tweet", "author"}`, so the new top-level `retweeted_author` key
+    fits the backfill path. The twitterapi.io author field is `author.userName`.
+  - The retrieval eval's `current_events` runs on the live engine, not the `retrieval_eval`
+    schema.
+  - `parse_warsaw` is not imported by any test.
+- **Minimality:** the refactors are the ones the SPEC scopes. There is no new dependency,
+  and the existing patterns are reused (`CliDeps`, `FakeChatModel`, `FakeEmbedder`, the review
+  loop, the atomic JSONL write).
+- **Feasibility:** there are no forward dependencies (`CurrentExtraction.reposted_author_handle`
+  is explicitly deferred from step 4 to step 8). The migration is its own step with the
+  upgrade/downgrade/upgrade test. The time zone, exclusive window end, missing X API
+  expansion and `.env` no-key traps are covered.
+- **E2E:** the automatic part runs on the local stack (migration, CLI runs, ambiguous name,
+  no key, Langfuse trace fetch). The manual part is only the owner's judgement of the output.
+  There is no UI scope.
+- **Testability:** every step has an `Automatic verification:` line with exact test paths.
+- **Groups:** there are 4 groups, each ending on completed work. That is appropriate for 19
+  steps, and `implement.chunked` is false.
+- **Test-first:** every AC-delivering step writes its test first, and the matrix has the
+  fourth column.
+- **Summary:** consistent with the plan. There is no new dependency, and the data migration
+  `0006` is accepted in the SPEC's `## Owner decisions`.
+- **Language:** English throughout, matching `language: en`.
+
+**Approval:** the plan is ready. The one `major` finding (R1) was fixed in the plan, no
+blocker remains, and the only escalation trigger (the `0006` data migration) is already
+accepted by the owner, so the status is set to `plan-approved`.
 
 ## Chunk notes
 
