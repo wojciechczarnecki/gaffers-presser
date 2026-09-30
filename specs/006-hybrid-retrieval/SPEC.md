@@ -27,6 +27,7 @@ metrics:
   finished_at: 2026-09-30T09:28
   cost_plan_cents: 301
   cost_plan_review_cents: 113
+  cost_implement_cents: 813
   cost_final_review_cents: 768
 ---
 
