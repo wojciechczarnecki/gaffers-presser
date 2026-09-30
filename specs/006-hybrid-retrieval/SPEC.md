@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-09-29"
   - "spec-ready — 2026-09-29"
   - "plan-draft — 2026-09-30"
   - "plan-approved — 2026-09-30"
   - "implemented — 2026-09-30"
+  - "done — 2026-09-30"
 metrics:
   started_at: 2026-09-29T23:48
   escalations: 0
@@ -23,6 +24,7 @@ metrics:
   final_review_nits: 5
   findings_accepted: 16
   findings_rejected: 0
+  finished_at: 2026-09-30T09:28
 ---
 
 # SPEC 006 — Hybrid retrieval over posts

@@ -1326,3 +1326,5 @@ embeddings for the model degrades to full-text. What was fixed:
   are updated in place.
 
 Verification: `ruff check`, `ruff format --check` clean; 822 passed.
+PR: https://github.com/wojciechczarnecki/gaffers-presser/pull/10. CI green on the first
+attempt (runs 36683641378 and 36683641453), so no test needed a retry.
