@@ -327,10 +327,10 @@ their imports or move with `git mv`. New tests go into new files, so that
 | AC16 | 14 | `tests/corroboration/test_cli.py`, `tests/core/test_local_time.py` | `cd backend && uv run pytest -q tests/corroboration/test_cli.py` (the command a no-op stub) → `assert ('Player: Saka' in '')` and `assert 0 == 1` (the ambiguous-name exit code); `uv run pytest -q tests/core/test_local_time.py` (stub returning `datetime.min`) → `assert datetime(1, 1, 1, 0, 0, tzinfo=utc) == datetime(2026, 9, 29, 16, 0, tzinfo=utc)` |
 | AC17 | 13 | `tests/corroboration/test_service.py::test_without_key_sql_only`, `::test_failed_judge_call_counts_unjudged` | `cd backend && uv run pytest -q tests/corroboration/test_service.py` (`corroborate` stubbed to return a fixed anchor) → `assert None == 'OPENROUTER_API_KEY is not set'` and `assert 0 == 2` (judged count) |
 | AC18 | 12, 13 | `tests/corroboration/test_tracing.py` | step 13: `cd backend && uv run pytest -q tests/corroboration/test_service.py` (`corroborate` stubbed to return a fixed anchor) → `ValueError: not enough values to unpack (expected 1, got 0)` at `(root,) = client.named("corroboration")` (`test_trace_holds_every_step`); step 12 (mutation: the tracer's `generation` returning early): `cd backend && uv run pytest -q tests/corroboration/test_tracing.py` → `ValueError: not enough values to unpack (expected 1, got 0)` at `(generation,) = client.named("corroboration-judge")` |
-| AC19 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_committed_set_composition` | |
-| AC20 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_prelabel_model_*`, `tests/corroboration/evaluation/test_building.py` | |
-| AC21 | 16 | `tests/corroboration/evaluation/test_review_cli.py` | |
-| AC22 | 17 | `tests/corroboration/evaluation/test_metrics.py`, `tests/corroboration/evaluation/test_runner.py` | |
+| AC19 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_committed_set_composition` | step 15 (`composition_problems` returning `[]`): `test_cases.py` → `assert False` at `any(... 'cases: 40' ...)`; step 18: filled in below |
+| AC20 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_prelabel_model_*`, `tests/corroboration/evaluation/test_building.py` | step 15 (`select_cases` returning its input, `assign_split` returning its input): `test_building.py` → `AssertionError: assert ['jc-001', ...] != ['jc-001', ...]` and `assert 0 == 5` (stratified dev count) |
+| AC21 | 16 | `tests/corroboration/evaluation/test_review_cli.py` | step 16 (review loop a no-op): `test_review_cli.py` → `assert False is True` (`reviewed` after accept) |
+| AC22 | 17 | `tests/corroboration/evaluation/test_metrics.py`, `tests/corroboration/evaluation/test_runner.py` | step 17 (`compute_metrics` returning zeros): `test_metrics.py` → `assert 0 == 8`; (judge never called): `test_runner.py` → `assert 0 == 1` |
 | AC23 | 18 | `tests/corroboration/evaluation/test_results_files.py` | |
 | AC24 | 19 | `tests/test_docs.py::test_backlog_18_closed_and_corroboration_entries_kept`, `tests/test_readme.py::test_corroboration_commands_documented` | |
 | AC25 | all | n/a — the property of every step's tests; `<verify.command>` green in step 19 | |
@@ -640,7 +640,7 @@ AC writes its proving test first and runs it red before the product change.
 
 ### Group 4 — Judge evaluation, set v1 and documentation
 
-- [ ] 15. **Cases, composition and `build-cases`** — files:
+- [x] 15. **Cases, composition and `build-cases`** — files:
   `app/corroboration/evaluation/{__init__,__main__,cases,building,cli}.py`.
   - Write the tests first:
     - `tests/corroboration/evaluation/test_cases.py`: the round trip, the atomic write,
@@ -658,7 +658,7 @@ AC writes its proving test first and runs it red before the product change.
       `model_settings.toml` and `prices.toml` and differs from `DEFAULT_MODEL`.
 
   Automatic verification: `cd backend && uv run pytest -q tests/corroboration/evaluation/test_cases.py tests/corroboration/evaluation/test_building.py`
-- [ ] 16. **`review`.**
+- [x] 16. **`review`.**
   - Write `tests/corroboration/evaluation/test_review_cli.py` (CliRunner input):
     - accept → `reviewed=true` on disk after the decision;
     - change → a label prompt, the new label saved with `reviewed=true`;
@@ -671,7 +671,7 @@ AC writes its proving test first and runs it red before the product change.
     anchor, post, pre-label, progress).
 
   Automatic verification: `cd backend && uv run pytest -q tests/corroboration/evaluation/test_review_cli.py`
-- [ ] 17. **Metrics, runner and `evaluate`.**
+- [x] 17. **Metrics, runner and `evaluate`.**
   - Write the tests first:
     - `tests/corroboration/evaluation/test_metrics.py`: hand-computed cases (accuracy,
       per-label precision and recall with zero-division → `None`, the false-support rate
@@ -914,6 +914,11 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
   `embed_timeout_seconds` keyword and the `SearchResult` repost fields), so they went into one
   commit (step 6). Step 4's proving test and stub were committed one commit early, with
   step 3.
+- Steps 15-17 (minor): the evaluation package was written code-first and its tests right
+  after, so the red records are mutations of the implementation (see the AC19-AC22 rows), and
+  the three steps share `evaluation/cli.py`, so they went into one commit. `prelabel` and
+  `build_cases` return small result records (`Prelabelled`, `Built`) so `build-cases` can print
+  the cost and the counts.
 - Step 13 (minor): the red record was taken by swapping `corroborate` for a stub after the
   service and its tests existed (the real file kept in the scratchpad and restored), for the
   same reason as step 12. `Judge` gained a `model` attribute (the caller's model), which the
