@@ -44,9 +44,12 @@ def traced_embed(
     texts: Sequence[str],
     tracer: RetrievalTracer,
     prices: dict[str, Price],
+    timeout_seconds: float | None = None,
 ) -> tuple[EmbeddingResult, float | None]:
     try:
-        result = embedder.embed(texts)
+        # Forwarded only when set, so an embedder that predates the keyword keeps working.
+        options = {} if timeout_seconds is None else {"timeout_seconds": timeout_seconds}
+        result = embedder.embed(texts, **options)
     except Exception as exc:
         _trace_safely(
             tracer,

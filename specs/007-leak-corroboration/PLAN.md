@@ -313,14 +313,14 @@ their imports or move with `git mv`. New tests go into new files, so that
 | AC2 | 4 | `tests/extraction/test_current_extractions.py`, `tests/test_shared_code.py::test_current_extraction_sql_lives_once` | `cd backend && uv run pytest -q tests/extraction/test_current_extractions.py` (stub `current_extractions` returning `[]`) → `assert [] == [1]`; `uv run pytest -q tests/test_shared_code.py::test_current_extraction_sql_lives_once` → `assert {'extraction/...ueries.py': 1} == {'extraction/store.py': 1}` |
 | AC3 | 5 | `tests/fpl/test_deadlines.py`, `tests/test_shared_code.py::test_schedules_use_fpl_deadline_helpers` | `cd backend && uv run pytest -q tests/fpl/test_deadlines.py` (stub helpers returning `None`/`[]`) → `assert None == (datetime(2026, 9, 28, 12, 0, tzinfo=utc) + timedelta(days=3))` |
 | AC4 | 1–6 | n/a — kept behaviour: the existing suites stay green with import-only diffs (the check command in step 6) | |
-| AC5 | 6, 13 | `tests/retrieval/test_embed_timeout.py`, `tests/corroboration/test_service.py::test_slow_embedding_falls_back_to_fulltext` | |
-| AC6 | 7 | `tests/db/test_migrations.py::test_repost_author_migration_backfills_and_downgrades` | |
-| AC7 | 8 | `tests/tweets/sources/test_repost_authors.py` | |
+| AC5 | 6, 13 | `tests/retrieval/test_embed_timeout.py`, `tests/corroboration/test_service.py::test_slow_embedding_falls_back_to_fulltext` | `cd backend && uv run pytest -q tests/retrieval/test_embed_timeout.py` (the keyword accepted and ignored) → `assert 30.0 == 2.5` and `assert () == ('vector',)` |
+| AC6 | 7 | `tests/db/test_migrations.py::test_repost_author_migration_backfills_and_downgrades` | `cd backend && uv run pytest -q tests/db/test_migrations.py -k repost_author` → `psycopg.errors.UndefinedColumn: column "reposted_author_handle" does not exist` (the column read after `upgrade head`) |
+| AC7 | 8 | `tests/tweets/sources/test_repost_authors.py` | `cd backend && uv run pytest -q tests/tweets/sources/test_repost_authors.py` (the `FetchedPost` field added, adapters not yet filling it) → `assert None == 'synthetic_leaker_9'` |
 | AC8 | 11, 13 | `tests/corroboration/test_sources.py::test_window_*`, `tests/corroboration/test_service.py::test_replay_ignores_posts_after_as_of` | |
 | AC9 | 11, 13, 14 | `tests/corroboration/test_service.py::test_no_claim_makes_no_judge_call`, `tests/corroboration/test_cli.py::test_no_claim_message` | |
 | AC10 | 10 | `tests/corroboration/test_rules.py::test_label_table` | |
 | AC11 | 11, 12, 13 | `tests/corroboration/test_sources.py::test_candidates_*`, `tests/corroboration/test_judge.py`, `tests/corroboration/test_service.py::test_judged_posts_*` | |
-| AC12 | 9, 10 | `tests/corroboration/test_rules.py::test_accounts_*`, `tests/retrieval/test_search_repost_fields.py` | |
+| AC12 | 9, 10 | `tests/corroboration/test_rules.py::test_accounts_*`, `tests/retrieval/test_search_repost_fields.py` | step 9: `cd backend && uv run pytest -q tests/retrieval/test_search_repost_fields.py` → `assert (False, None) == (True, 'origin')` |
 | AC13 | 10, 13 | `tests/corroboration/test_rules.py::test_freshness_*`, `tests/corroboration/test_service.py::test_citations_carry_fields` | |
 | AC14 | 10 | `tests/corroboration/test_rules.py::test_reversal_*`, `::test_newer_contradiction_*` | |
 | AC15 | 10 | `tests/corroboration/test_rules.py::test_grade_*` (one per branch) | |
@@ -453,7 +453,7 @@ AC writes its proving test first and runs it red before the product change.
     only its import changed.
 
   Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_deadlines.py tests/test_shared_code.py tests/tweets tests/worker/test_schedule.py tests/worker/test_loop.py`
-- [ ] 6. **Per-call embedding timeout.**
+- [x] 6. **Per-call embedding timeout.**
   - Write `tests/retrieval/test_embed_timeout.py`:
     - `OpenRouterEmbedder.embed(texts, timeout_seconds=2.5)` sends the request with a 2.5 s
       httpx timeout (`request.extensions["timeout"]` via the `client=` MockTransport of

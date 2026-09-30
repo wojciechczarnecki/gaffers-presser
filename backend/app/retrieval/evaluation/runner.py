@@ -53,10 +53,14 @@ class _CachedQueryEmbedder:
         self._inner = inner
         self._cache = cache
 
-    def embed(self, texts: Sequence[str]) -> EmbeddingResult:
+    def embed(
+        self, texts: Sequence[str], *, timeout_seconds: float | None = None
+    ) -> EmbeddingResult:
         if all(text in self._cache for text in texts):
             return EmbeddingResult(vectors=[self._cache[text] for text in texts], input_tokens=None)
-        return self._inner.embed(texts)
+        if timeout_seconds is None:
+            return self._inner.embed(texts)
+        return self._inner.embed(texts, timeout_seconds=timeout_seconds)
 
 
 @dataclass(frozen=True)
