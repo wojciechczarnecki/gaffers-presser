@@ -318,12 +318,12 @@ their imports or move with `git mv`. New tests go into new files, so that
 | AC7 | 8 | `tests/tweets/sources/test_repost_authors.py` | `cd backend && uv run pytest -q tests/tweets/sources/test_repost_authors.py` (the `FetchedPost` field added, adapters not yet filling it) → `assert None == 'synthetic_leaker_9'` |
 | AC8 | 11, 13 | `tests/corroboration/test_sources.py::test_window_*`, `tests/corroboration/test_service.py::test_replay_ignores_posts_after_as_of` | |
 | AC9 | 11, 13, 14 | `tests/corroboration/test_service.py::test_no_claim_makes_no_judge_call`, `tests/corroboration/test_cli.py::test_no_claim_message` | |
-| AC10 | 10 | `tests/corroboration/test_rules.py::test_label_table` | |
+| AC10 | 10 | `tests/corroboration/test_rules.py::test_label_table` | `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert 'unrelated' == 'supports'` |
 | AC11 | 11, 12, 13 | `tests/corroboration/test_sources.py::test_candidates_*`, `tests/corroboration/test_judge.py`, `tests/corroboration/test_service.py::test_judged_posts_*` | |
-| AC12 | 9, 10 | `tests/corroboration/test_rules.py::test_accounts_*`, `tests/retrieval/test_search_repost_fields.py` | step 9: `cd backend && uv run pytest -q tests/retrieval/test_search_repost_fields.py` → `assert (False, None) == (True, 'origin')` |
-| AC13 | 10, 13 | `tests/corroboration/test_rules.py::test_freshness_*`, `tests/corroboration/test_service.py::test_citations_carry_fields` | |
-| AC14 | 10 | `tests/corroboration/test_rules.py::test_reversal_*`, `::test_newer_contradiction_*` | |
-| AC15 | 10 | `tests/corroboration/test_rules.py::test_grade_*` (one per branch) | |
+| AC12 | 9, 10 | `tests/corroboration/test_rules.py::test_accounts_*`, `tests/retrieval/test_search_repost_fields.py` | step 10: `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert [] == [2]` (`test_accounts_are_compared_case_insensitively`); step 9: `cd backend && uv run pytest -q tests/retrieval/test_search_repost_fields.py` → `assert (False, None) == (True, 'origin')` |
+| AC13 | 10, 13 | `tests/corroboration/test_rules.py::test_freshness_*`, `tests/corroboration/test_service.py::test_citations_carry_fields` | step 10: `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert 'context' == 'new'` |
+| AC14 | 10 | `tests/corroboration/test_rules.py::test_reversal_*`, `::test_newer_contradiction_*` | `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert False is True` (`test_reversal_an_older_contradicting_account_sets_it`) |
+| AC15 | 10 | `tests/corroboration/test_rules.py::test_grade_*` (one per branch) | `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert 'low' == 'high'` (`test_grade_confirmed_is_high`) |
 | AC16 | 14 | `tests/corroboration/test_cli.py`, `tests/core/test_local_time.py` | |
 | AC17 | 13 | `tests/corroboration/test_service.py::test_without_key_sql_only`, `::test_failed_judge_call_counts_unjudged` | |
 | AC18 | 12, 13 | `tests/corroboration/test_tracing.py` | |
@@ -525,7 +525,7 @@ AC writes its proving test first and runs it red before the product change.
 
 ### Group 3 — Corroboration
 
-- [ ] 10. **Schemas and pure rules** — files: `app/corroboration/{__init__,schemas,rules}.py`.
+- [x] 10. **Schemas and pure rules** — files: `app/corroboration/{__init__,schemas,rules}.py`.
   - Write `tests/corroboration/test_rules.py` first:
     - `test_label_table`: all 16 pairs of the AC10 table;
     - `test_accounts_*`:
