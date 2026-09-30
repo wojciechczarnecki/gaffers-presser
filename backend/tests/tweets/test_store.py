@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import event
 from sqlmodel import Session
 
+from app.fpl.deadlines import upcoming_deadlines
 from app.fpl.models import Gameweek, Season
 from app.tweets.models import Tweet
 from app.tweets.store import (
@@ -11,7 +12,6 @@ from app.tweets.store import (
     latest_poll,
     latest_success_by_source,
     store_posts,
-    upcoming_deadlines,
     write_poll,
 )
 from tests.tweets.fakes import post

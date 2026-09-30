@@ -1,16 +1,12 @@
 from datetime import datetime, timedelta
 
+from app.fpl.deadlines import next_deadline_after
 from app.tweets.store import PollRecord
 
 WINDOW = timedelta(minutes=90)
 WINDOW_INTERVAL = timedelta(seconds=20)
 SPARSE_INTERVAL = timedelta(minutes=30)
 MAX_SLEEP = timedelta(seconds=60)
-
-
-def next_deadline_after(deadlines: list[datetime], t: datetime) -> datetime | None:
-    candidates = [deadline for deadline in deadlines if deadline > t]
-    return min(candidates) if candidates else None
 
 
 def mode(deadlines: list[datetime], t: datetime) -> str:

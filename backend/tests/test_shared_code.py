@@ -75,3 +75,25 @@ def test_current_extraction_sql_lives_once():
         if pattern.search(path.read_text())
     }
     assert found == {"extraction/store.py": 1}
+
+
+def test_schedules_use_fpl_deadline_helpers():
+    for relative in ("tweets/schedule.py", "worker/schedule.py"):
+        tree = ast.parse((APP / relative).read_text())
+        imported = {
+            node.module
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module
+        }
+        assert "app.fpl.deadlines" in imported, relative
+        defined = [
+            node.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.FunctionDef)
+            and ("deadline_after" in node.name or "at_or_before" in node.name)
+        ]
+        assert defined == [], relative
+    store = ast.parse((APP / "tweets/store.py").read_text())
+    assert "upcoming_deadlines" not in {
+        node.name for node in ast.walk(store) if isinstance(node, ast.FunctionDef)
+    }
