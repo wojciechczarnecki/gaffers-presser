@@ -494,7 +494,7 @@ AC writes its proving test first and runs it red before the product change.
     `test_models_match_migration` and `test_upgrade_downgrade_upgrade` must stay green.
 
   Automatic verification: `cd backend && uv run pytest -q tests/db/test_migrations.py`
-- [ ] 8. **Source adapters fill the original author.**
+- [x] 8. **Source adapters fill the original author.**
   - Update the synthetic payloads (keeping `tests/tweets/payloads/README.md` rules and
     `test_payloads.py` green):
     - twitterapi.io `retweeted_tweet` gains `"author": {"userName": "synthetic_leaker_9"}`;
@@ -515,7 +515,7 @@ AC writes its proving test first and runs it red before the product change.
       behaviour change).
 
   Automatic verification: `cd backend && uv run pytest -q tests/tweets tests/extraction/test_current_extractions.py`
-- [ ] 9. **`SearchResult` carries the repost fields.**
+- [x] 9. **`SearchResult` carries the repost fields.**
   - Write `tests/retrieval/test_search_repost_fields.py` (db): a repost with a stored
     original author and an original post come back from `search` with `is_repost` and
     `reposted_author_handle` set.

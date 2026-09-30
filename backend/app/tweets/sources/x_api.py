@@ -20,7 +20,7 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 _PARAMS = {
     "max_results": "20",
     "tweet.fields": "created_at,author_id,referenced_tweets",
-    "expansions": "author_id",
+    "expansions": "author_id,referenced_tweets.id.author_id",
     "user.fields": "username",
 }
 
@@ -38,9 +38,27 @@ def _retry_after(response: httpx.Response, now: float) -> float | None:
         return None
 
 
-def _to_post(tweet: dict, users_by_id: dict[str, dict]) -> FetchedPost:
+def _retweeted_author(
+    tweet: dict, users_by_id: dict[str, dict], tweets_by_id: dict[str, dict]
+) -> dict | None:
+    for ref in tweet.get("referenced_tweets", []):
+        if ref["type"] not in _REPOST_TYPES:
+            continue
+        original = tweets_by_id.get(ref["id"])
+        if original is not None:
+            return users_by_id.get(original.get("author_id"))
+    return None
+
+
+def _to_post(
+    tweet: dict, users_by_id: dict[str, dict], tweets_by_id: dict[str, dict]
+) -> FetchedPost:
     ref_types = {ref["type"] for ref in tweet.get("referenced_tweets", [])}
     author = users_by_id[tweet["author_id"]]
+    original_author = _retweeted_author(tweet, users_by_id, tweets_by_id)
+    raw = {"tweet": tweet, "author": author}
+    if original_author is not None:
+        raw["retweeted_author"] = original_author
     return FetchedPost(
         x_id=int(tweet["id"]),
         author_handle=author["username"],
@@ -50,15 +68,18 @@ def _to_post(tweet: dict, users_by_id: dict[str, dict]) -> FetchedPost:
         ),
         is_repost=bool(ref_types & _REPOST_TYPES),
         is_reply=bool(ref_types & _REPLY_TYPES),
-        raw={"tweet": tweet, "author": author},
+        raw=raw,
+        reposted_author_handle=original_author["username"] if original_author else None,
     )
 
 
-def _map_posts(tweets: list, users_by_id: dict[str, dict]) -> list[FetchedPost]:
+def _map_posts(
+    tweets: list, users_by_id: dict[str, dict], tweets_by_id: dict[str, dict]
+) -> list[FetchedPost]:
     page = []
     for tweet in tweets:
         try:
-            page.append(_to_post(tweet, users_by_id))
+            page.append(_to_post(tweet, users_by_id, tweets_by_id))
         except (KeyError, TypeError, ValueError, AttributeError) as exc:
             logger.warning("x_api: skipped a post that failed to map: %s", type(exc).__name__)
     return page
@@ -113,15 +134,15 @@ class XApiSource:
             if "data" not in body and body.get("errors"):
                 raise SourceUnavailableError("x_api: source reported an error")
             try:
-                users_by_id = {
-                    user["id"]: user for user in body.get("includes", {}).get("users", [])
-                }
+                includes = body.get("includes", {})
+                users_by_id = {user["id"]: user for user in includes.get("users", [])}
+                tweets_by_id = {item["id"]: item for item in includes.get("tweets", [])}
             except (KeyError, TypeError, AttributeError):
                 raise SourcePayloadError("x_api: malformed user payload") from None
             tweets = body.get("data", [])
             if not isinstance(tweets, list):
                 raise SourcePayloadError("x_api: malformed tweet payload")
-            page = _map_posts(tweets, users_by_id)
+            page = _map_posts(tweets, users_by_id, tweets_by_id)
 
             yield page
 

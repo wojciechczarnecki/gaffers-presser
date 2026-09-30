@@ -130,3 +130,20 @@ def test_posts_without_a_successful_extraction_are_absent(db_session):
 
     assert [r.tweet_x_id for r in current_extractions(db_session)] == [2]
     assert current_extractions(db_session, x_ids=[]) == []
+
+
+def test_a_repost_exposes_its_original_author(db_session):
+    _seed(db_session)
+    repost = _tweet(1, NOW)
+    repost.is_repost = True
+    repost.reposted_author_handle = "origin"
+    db_session.add(repost)
+    db_session.add(_tweet(2, NOW))
+    db_session.commit()
+    save_extraction(db_session, _record(1), [_event()])
+    save_extraction(db_session, _record(2), [_event()])
+
+    rows = {r.tweet_x_id: r for r in current_extractions(db_session)}
+
+    assert rows[1].is_repost and rows[1].reposted_author_handle == "origin"
+    assert rows[2].reposted_author_handle is None

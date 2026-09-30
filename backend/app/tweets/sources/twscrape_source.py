@@ -60,6 +60,9 @@ def _to_post(tweet) -> FetchedPost:
         is_repost=tweet.retweetedTweet is not None,
         is_reply=tweet.inReplyToTweetId is not None,
         raw=json.loads(tweet.json()),
+        reposted_author_handle=(
+            tweet.retweetedTweet.user.username if tweet.retweetedTweet is not None else None
+        ),
     )
 
 

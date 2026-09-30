@@ -29,6 +29,13 @@ def _retry_after(response: httpx.Response) -> float | None:
         return None
 
 
+def _reposted_author(tweet: dict) -> str | None:
+    retweeted = tweet.get("retweeted_tweet")
+    if retweeted is None:
+        return None
+    return (retweeted.get("author") or {}).get("userName")
+
+
 def _to_post(tweet: dict) -> FetchedPost:
     return FetchedPost(
         x_id=int(tweet["id"]),
@@ -38,6 +45,7 @@ def _to_post(tweet: dict) -> FetchedPost:
         is_repost=tweet.get("retweeted_tweet") is not None,
         is_reply=bool(tweet.get("isReply")),
         raw=tweet,
+        reposted_author_handle=_reposted_author(tweet),
     )
 
 

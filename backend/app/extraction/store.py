@@ -54,6 +54,7 @@ class CurrentExtraction:
     events: list[EventRecord]
     created_at: datetime
     text: str
+    reposted_author_handle: str | None = None
 
 
 @dataclass(frozen=True)
@@ -202,7 +203,7 @@ def current_extractions(
                 + _latest_per_post("id, tweet_x_id", latest_where)
                 + ") SELECT e.id, e.tweet_x_id, e.provider, e.model, e.prompt_version,"
                 " e.started_at, e.finished_at, t.author_handle, t.is_repost, t.is_reply,"
-                " t.text, t.created_at"
+                " t.text, t.created_at, t.reposted_author_handle"
                 " FROM latest l JOIN extraction e ON e.id = l.id"
                 " JOIN tweet t ON t.x_id = l.tweet_x_id " + where + " ORDER BY t.created_at, t.x_id"
             ),
@@ -254,6 +255,7 @@ def current_extractions(
             events=events[row["id"]],
             created_at=row["created_at"],
             text=row["text"],
+            reposted_author_handle=row["reposted_author_handle"],
         )
         for row in rows
     ]

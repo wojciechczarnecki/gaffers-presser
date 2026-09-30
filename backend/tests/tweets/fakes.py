@@ -63,6 +63,7 @@ def post(
     is_repost: bool = False,
     is_reply: bool = False,
     raw: dict | None = None,
+    reposted_author_handle: str | None = None,
 ) -> FetchedPost:
     from datetime import UTC, datetime
 
@@ -74,4 +75,5 @@ def post(
         is_repost=is_repost,
         is_reply=is_reply,
         raw=raw or {"id": x_id},
+        reposted_author_handle=reposted_author_handle,
     )

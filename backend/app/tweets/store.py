@@ -51,6 +51,7 @@ def store_posts(
             "source": source,
             "is_repost": post.is_repost,
             "is_reply": post.is_reply,
+            "reposted_author_handle": post.reposted_author_handle,
             "raw": post.raw,
         }
         for post in posts
