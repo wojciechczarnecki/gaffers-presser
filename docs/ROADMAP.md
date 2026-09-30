@@ -43,7 +43,8 @@ and each LLM step that produces data has an evaluation set with recorded results
 - [x] Hybrid retrieval on PostgreSQL (full-text + pgvector, rank fusion)
       (spec: [006](../specs/006-hybrid-retrieval/SPEC.md))
 - [ ] Corroboration of leaks across independent accounts: retrieval plus SQL over the linked
-      players; an LLM step, if the spec adds one, gets its own evaluation set (spec: TBD)
+      players; an LLM step, if the spec adds one, gets its own evaluation set
+      (spec: [007](../specs/007-leak-corroboration/SPEC.md))
 - [ ] E-mail delivery adapter behind an interface (ADR 0004), shared with the Stage 3 presser
       (spec: TBD)
 - [ ] Pre-deadline alert e-mails with cited sources for league-owned and widely owned

@@ -50,8 +50,10 @@ Grouped by roadmap stage (`docs/ROADMAP.md`).
 
 **Stage 2 — RAG v1 and alert e-mails**
 - FR-2.1 Index posts for hybrid retrieval (full-text + vectors).
-- FR-2.2 Corroborate a new leak against earlier posts about the same player and state how
-  many independent accounts agree.
+- FR-2.2 Corroborate the newest leak about a player against the other posts about him since
+  the last deadline: state how many independent accounts support or contradict it, flag a
+  reversal of earlier news, and grade its strength; earlier posts are context and never
+  outvote the newest leak.
 - FR-2.3 Before each deadline, e-mail alerts about players owned in the configured leagues
   and widely owned players; each alert cites its sources with links.
 - FR-2.4 An evaluation set for extraction and retrieval, run on demand, with results
