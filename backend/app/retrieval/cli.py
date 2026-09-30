@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
-from zoneinfo import ZoneInfo
 
 import typer
 from langchain_core.language_models import BaseChatModel
@@ -12,6 +11,7 @@ from sqlalchemy import Engine
 
 from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError, ConfigError
+from app.core.local_time import format_local, parse_local
 from app.core.settings import load_settings
 from app.db.engine import make_engine
 from app.llm.chat import build_chat_model, single_model_config, structured_kwargs_for
@@ -203,22 +203,14 @@ def status(
     typer.echo(f"total embedding cost: {state.total_cost_usd:.6f} USD")
 
 
-WARSAW = ZoneInfo("Europe/Warsaw")
 KEY_HINT = "OPENROUTER_API_KEY is not set; use --mode fulltext or set the key"
 
 
-def parse_warsaw(value: str, option: str) -> datetime:
+def parseformat_local(value: str, option: str) -> datetime:
     try:
-        parsed = datetime.fromisoformat(value)
+        return parse_local(value)
     except ValueError:
         raise fail(f"{option} must be YYYY-MM-DD or YYYY-MM-DDTHH:MM") from None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=WARSAW)
-    return parsed.astimezone(UTC)
-
-
-def _warsaw(moment: datetime) -> str:
-    return moment.astimezone(WARSAW).strftime("%Y-%m-%d %H:%M")
 
 
 def _rank(rank: int | None) -> str:
@@ -241,8 +233,8 @@ def search_command(
 ) -> None:
     deps = get_deps(ctx)
     filters = SearchFilters(
-        since=parse_warsaw(since, "--since") if since is not None else None,
-        until=parse_warsaw(until, "--until") if until is not None else None,
+        since=parseformat_local(since, "--since") if since is not None else None,
+        until=parseformat_local(until, "--until") if until is not None else None,
         exclude_reposts=exclude_reposts,
         exclude_replies=exclude_replies,
     )
@@ -276,9 +268,9 @@ def search_command(
 
     window = ""
     if filters.since is not None:
-        window += f"  since {_warsaw(filters.since)}"
+        window += f"  since {format_local(filters.since)}"
     if filters.until is not None:
-        window += f"  until {_warsaw(filters.until)}"
+        window += f"  until {format_local(filters.until)}"
     typer.echo(f"mode: {response.mode}  model: {response.model or '-'}{window} (Europe/Warsaw)")
     if response.failed_legs:
         typer.echo(f"vector leg failed ({response.failure}) — full-text only")
@@ -288,7 +280,7 @@ def search_command(
         typer.echo(
             f"{number}. {result.score:.4f}  fts={_rank(result.ranks['fulltext'])}"
             f"  vec={_rank(result.ranks['vector'])}  @{result.author_handle}"
-            f"  {_warsaw(result.created_at)}  {result.x_id}"
+            f"  {format_local(result.created_at)}  {result.x_id}"
         )
         typer.echo(f"    {' '.join(result.text.split())}")
 
@@ -496,7 +488,7 @@ def _render_judgement(
     if post is None:
         lines.append(f"post {judgement.x_id}: not in the corpus")
     else:
-        lines.append(f"@{post.author_handle}  {_warsaw(post.created_at)}  {post.x_id}")
+        lines.append(f"@{post.author_handle}  {format_local(post.created_at)}  {post.x_id}")
         lines.append(post.text)
     lines.append(f"{judgement.labelled_by} says: {label}")
     return "\n".join(lines)
