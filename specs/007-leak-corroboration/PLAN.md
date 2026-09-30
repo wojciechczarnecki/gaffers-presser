@@ -327,12 +327,12 @@ their imports or move with `git mv`. New tests go into new files, so that
 | AC16 | 14 | `tests/corroboration/test_cli.py`, `tests/core/test_local_time.py` | `cd backend && uv run pytest -q tests/corroboration/test_cli.py` (the command a no-op stub) → `assert ('Player: Saka' in '')` and `assert 0 == 1` (the ambiguous-name exit code); `uv run pytest -q tests/core/test_local_time.py` (stub returning `datetime.min`) → `assert datetime(1, 1, 1, 0, 0, tzinfo=utc) == datetime(2026, 9, 29, 16, 0, tzinfo=utc)` |
 | AC17 | 13 | `tests/corroboration/test_service.py::test_without_key_sql_only`, `::test_failed_judge_call_counts_unjudged` | `cd backend && uv run pytest -q tests/corroboration/test_service.py` (`corroborate` stubbed to return a fixed anchor) → `assert None == 'OPENROUTER_API_KEY is not set'` and `assert 0 == 2` (judged count) |
 | AC18 | 12, 13 | `tests/corroboration/test_tracing.py` | step 13: `cd backend && uv run pytest -q tests/corroboration/test_service.py` (`corroborate` stubbed to return a fixed anchor) → `ValueError: not enough values to unpack (expected 1, got 0)` at `(root,) = client.named("corroboration")` (`test_trace_holds_every_step`); step 12 (mutation: the tracer's `generation` returning early): `cd backend && uv run pytest -q tests/corroboration/test_tracing.py` → `ValueError: not enough values to unpack (expected 1, got 0)` at `(generation,) = client.named("corroboration-judge")` |
-| AC19 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_committed_set_composition` | step 18: `cd backend && uv run pytest -q tests/corroboration/evaluation/test_results_files.py` (no committed files) → `AssertionError: test-openai-gpt-6-luna.json is missing`; step 15 (`composition_problems` returning `[]`): `test_cases.py` → `assert False` at `any(... 'cases: 40' ...)`; step 18: filled in below |
+| AC19 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_committed_set_composition` | step 18 (recorded in the final review, `cases.jsonl` emptied, then restored): `cd backend && uv run pytest -q tests/corroboration/evaluation/test_eval_set.py` → `AssertionError: assert ['cases: 0, need 50-70', ...] == []`; step 15 (`composition_problems` returning `[]`): `test_cases.py` → `assert False` at `any(... 'cases: 40' ...)` |
 | AC20 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_prelabel_model_*`, `tests/corroboration/evaluation/test_building.py` | step 15 (`select_cases` returning its input, `assign_split` returning its input): `test_building.py` → `AssertionError: assert ['jc-001', ...] != ['jc-001', ...]` and `assert 0 == 5` (stratified dev count) |
 | AC21 | 16 | `tests/corroboration/evaluation/test_review_cli.py` | step 16 (review loop a no-op): `test_review_cli.py` → `assert False is True` (`reviewed` after accept) |
 | AC22 | 17 | `tests/corroboration/evaluation/test_metrics.py`, `tests/corroboration/evaluation/test_runner.py` | step 17 (`compute_metrics` returning zeros): `test_metrics.py` → `assert 0 == 8`; (judge never called): `test_runner.py` → `assert 0 == 1` |
-| AC23 | 18 | `tests/corroboration/evaluation/test_results_files.py` | |
-| AC24 | 19 | `tests/test_docs.py::test_backlog_18_closed_and_corroboration_entries_kept`, `tests/test_readme.py::test_corroboration_commands_documented` | |
+| AC23 | 18 | `tests/corroboration/evaluation/test_results_files.py` | step 18: `cd backend && uv run pytest -q tests/corroboration/evaluation/test_results_files.py` (no committed files) → `AssertionError: test-openai-gpt-6-luna.json is missing` |
+| AC24 | 19 | `tests/test_docs.py::test_backlog_18_closed_and_corroboration_entries_kept`, `tests/test_readme.py::test_corroboration_commands_documented` | step 19 (recorded in the final review, `docs/BACKLOG.md` and `README.md` from `origin/main`, then restored): `cd backend && uv run pytest -q tests/test_docs.py tests/test_readme.py` → `AssertionError: assert not ['\| 18 \| P2 \| Shorten the query-embedding timeout ...']` and `AssertionError: 'app.corroboration' missing from the README Development section`; DECISIONS, PROJECT and DEPLOYMENT: `manual` (prose checked in the final review) |
 | AC25 | all | n/a — the property of every step's tests; `<verify.command>` green in step 19 | |
 
 ## Steps
@@ -970,15 +970,29 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 - Step 18 (minor, an owner note): `build-cases` on the development database gave 177
   candidates, all pre-labelled by `anthropic/claude-haiku-4.5` (0 failed, $0.2768), and 51 selected
   cases (the composition rule asks 50-70; the plan aimed at about 60): supports 16, contradicts
-  1, related 10, unrelated 24; dev 15, test 36. All four labels are present, also in the test
-  split, so this is not the escalation the plan names, but `contradicts` has one case only:
-  every player in the development corpus has a single event type (19 of 25 events are `doubt`),
-  so the second-anchor pairing finds no other type, and the `contradicts` label comes from the
-  four `confirmed_starter` players alone. The corpus limits the set; BACKLOG #12 (the GW6
-  window) is when it grows. The first run (`evaluate --split test --include-unreviewed`, default
+  1, related 10, unrelated 24; dev 15, test 36. `contradicts` had one case only, and the final
+  review (F1) found it mislabelled: a `doubt` anchor (an international-break niggle) against a
+  report that Havertz could be out for four weeks is availability news against `doubt`, so
+  `related` by the AC10 table and the judge prompt, not a reversal. Every player in the
+  development corpus has a single event type (19 of 25 events are `doubt`), so the
+  second-anchor pairing finds no other type, and the corpus holds no genuine reversal. By the
+  owner's decision (2026-09-30, F1) the case is relabelled `related` (still `reviewed: false`,
+  `labelled_by` unchanged), set v1 has no `contradicts` case (supports 16, related 11,
+  unrelated 24), and the composition rule exempts `contradicts` (`LABELS_NOT_YET_REQUIRED`)
+  until BACKLOG #12 (the GW6 window) grows the set; this departs from AC19's "every label
+  present" by that decision. The first run (`evaluate --split test --include-unreviewed`, default
   model `openai/gpt-6-luna`, prompt `corroboration_judge@1`, $0.0030): accuracy 0.778, supports
   precision 0.700 / recall 0.636, related 0.500 / 0.571, unrelated 0.944 / 1.000, contradicts
-  recall 0.000 on its one case, false-support rate 0.120 (3/25), 0 errors.
+  recall 0.000 on its one case, false-support rate 0.120 (3/25), 0 errors. After the F1 relabel
+  the metrics in the result file were recomputed from the recorded predictions (no model call
+  repeated, a `note` key says so): accuracy 0.778, related 0.500 / 0.500 (8 expected), no
+  `contradicts` case, false-support rate 0.120 (3/25).
+- Step 7 (minor, final review F12): the X API branch of the `0006` backfill reads
+  `raw.retweeted_author`, which only the adapter changed in this spec writes, so X API reposts
+  stored before `0006` keep `reposted_author_handle` null and count as the list account. AC6's
+  "every stored repost of the three source shapes" holds for the twscrape and twitterapi.io
+  shapes and for X API reposts stored from now on. Production ingests through twscrape, and
+  `docs/DEPLOYMENT.md` documents the limit.
 - Steps 15-17 (minor): the evaluation package was written code-first and its tests right
   after, so the red records are mutations of the implementation (see the AC19-AC22 rows), and
   the three steps share `evaluation/cli.py`, so they went into one commit. `prelabel` and
@@ -1111,3 +1125,49 @@ clean, `1052 passed`.
   `nit`: the service test covers AC5's result record, and `account_of` is tested on reposts.
 
 Left out: 28 nit findings
+
+### 2026-09-30 — /pipeline:final-review (apply)
+
+Owner decisions (GATE 2): all of F1–F13 accepted, none rejected. What was fixed:
+
+- **F1** — case `jc-26-2104177542324273565-2104124182170566816` relabelled `contradicts` →
+  `related` in `evals/corroboration/v1/cases.jsonl`; the step 18 deviation corrected;
+  `LABELS_NOT_YET_REQUIRED = {"contradicts"}` in `evaluation/cases.py` exempts the label from
+  the composition rule with a reference to BACKLOG #12, which now also asks for the
+  `contradicts` cases and the removal of the exemption; the committed result file's metrics
+  recomputed from its recorded predictions (a `note` key says so). Tests:
+  `test_cases::test_a_missing_contradicts_label_is_tolerated_until_backlog_12`,
+  `test_eval_set::test_every_required_label_is_present_in_the_test_split_and_the_misses_are_kept`.
+- **F2** — `rules.count_accounts` leaves the anchor's account out of `contradicting`, so its own
+  older post sets neither `reversal` nor the grade lowering; a new DECISIONS row. Tests
+  `test_rules::test_accounts_the_anchor_account_never_contradicts` and
+  `::test_accounts_the_anchor_accounts_own_reversal_sets_no_flag_and_no_lowering` (red before
+  the change) replace `::test_accounts_the_anchor_accounts_older_contradiction_counts`.
+- **F3** — `StructuredCaller` prices a reply by `answered_model or self.model`. Tests
+  `test_structured::test_a_fallback_answer_is_priced_at_the_fallback_rate` and
+  `::test_an_answer_without_a_model_name_is_priced_at_the_requested_model`.
+- **F4** — the 2026-09-29 `model_settings.toml` row restored as on `main`; the 2026-09-30
+  `app/llm` row names it as superseded for the path.
+- **F5** — the AC → steps matrix: AC19 has `test_eval_set`'s red, AC23 the results-file red,
+  AC24 the `test_docs`/`test_readme` reds (measured now) and `manual` for the prose documents.
+- **F6** — `corroborate` parses `--at`, `--since` and `--new-since` before resolving the player
+  and building the runtime, and exits 1 with "--since must be earlier than --at" when
+  `since >= at`. Tests `test_cli::test_an_invalid_time_exits_1_before_the_runtime_is_built`
+  (one per option) and `::test_since_not_earlier_than_at_exits_1` (red before the change).
+- **F7** — `test_service::test_a_failed_retrieval_leaves_the_sql_only_result` (a `SearchError`
+  and a database `OperationalError`): SQL-only result, `retrieval failed: <Class>`, no judge call.
+- **F8** — the print-order test seeds a related claim and checks `Related` last;
+  `test_the_runtime_is_built_once_and_the_tracer_flushed` asserts one flush, and
+  `test_the_tracer_is_flushed_when_corroboration_raises` covers the `finally`.
+- **F9** — `parseformat_local` renamed `_parse_time_option` in `retrieval/cli.py`.
+- **F10** — the docstring on `_review_cases` removed.
+- **F11** — `evaluate` defaults to `LLM_MODEL` when set, else `DEFAULT_MODEL`; README says so.
+  Test `test_runner::test_evaluate_defaults_to_the_llm_model_the_judge_runs_on`.
+- **F12** — recorded in `## Deviations` (step 7).
+- **F13** — `current_extractions` narrows the window inside the `DISTINCT ON` subquery and takes
+  an optional `player` filter applied to the current extraction; `sql_claims` passes both.
+  Tests `test_current_extractions::test_player_filter_keeps_posts_whose_current_extraction_names_the_player`
+  and `::test_the_window_does_not_let_an_older_extraction_through`.
+
+BACKLOG: #12 extended (F1); no item delivered by this spec besides #18 (closed in step 19);
+no item's trigger has fired. Full verification: ruff clean, `1066 passed`.

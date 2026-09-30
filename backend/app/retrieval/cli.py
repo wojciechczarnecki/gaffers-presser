@@ -206,7 +206,7 @@ def status(
 KEY_HINT = "OPENROUTER_API_KEY is not set; use --mode fulltext or set the key"
 
 
-def parseformat_local(value: str, option: str) -> datetime:
+def _parse_time_option(value: str, option: str) -> datetime:
     try:
         return parse_local(value)
     except ValueError:
@@ -233,8 +233,8 @@ def search_command(
 ) -> None:
     deps = get_deps(ctx)
     filters = SearchFilters(
-        since=parseformat_local(since, "--since") if since is not None else None,
-        until=parseformat_local(until, "--until") if until is not None else None,
+        since=_parse_time_option(since, "--since") if since is not None else None,
+        until=_parse_time_option(until, "--until") if until is not None else None,
         exclude_reposts=exclude_reposts,
         exclude_replies=exclude_replies,
     )

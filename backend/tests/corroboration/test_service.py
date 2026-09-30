@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+from sqlalchemy.exc import OperationalError
 from sqlmodel import Session
 
 from app.corroboration.judge import JudgeOutput, build_judge
@@ -9,6 +10,7 @@ from app.corroboration.service import CorroborationRuntime, corroborate
 from app.corroboration.tracing import LangfuseCorroborationTracer
 from app.llm.pricing import Price
 from app.llm.structured import StructuredCaller
+from app.retrieval.search import SearchError
 from app.retrieval.store import save_embedded
 from tests.corroboration.fakes import FakeLangfuseClient, RecordingCorroborationTracer
 from tests.corroboration.helpers import ISAK, NOW, SAKA, SEASON, add_claim, seed_reference
@@ -213,6 +215,28 @@ def test_without_key_sql_only(db):
     result = _run(db, runtime)
     assert result.retrieval.status == "skipped"
     assert result.retrieval.skipped_reason == "OPENROUTER_API_KEY is not set"
+    assert [c.x_id for c in result.supporting] == [1]
+    assert result.grade is not None
+
+
+@pytest.mark.parametrize(
+    "error", [SearchError("search down"), OperationalError("select", {}, Exception("db down"))]
+)
+def test_a_failed_retrieval_leaves_the_sql_only_result(db, monkeypatch, error):
+    _claims(db)
+    add_tweet(db, 10, "Saka withdrawn injury", created_at=NOW - timedelta(hours=1), author="j1")
+
+    def failing(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr("app.corroboration.service.retrieval_candidates", failing)
+    judge, fake = _judge("supports")
+    result = _run(db, _runtime(judge))
+    assert result.retrieval.status == "ran"
+    assert result.retrieval.failure == f"retrieval failed: {type(error).__name__}"
+    assert (result.retrieval.judged, result.retrieval.unjudged) == (0, 0)
+    assert fake.received_messages == []
+    assert result.anchor is not None and result.anchor.post.x_id == 2
     assert [c.x_id for c in result.supporting] == [1]
     assert result.grade is not None
 

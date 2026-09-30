@@ -120,6 +120,52 @@ def test_window_is_half_open_and_ordered_by_created_at_then_id(db_session):
     assert [r.tweet_x_id for r in rows] == [1, 2, 3]
 
 
+def test_player_filter_keeps_posts_whose_current_extraction_names_the_player(db_session):
+    _seed(db_session)
+    db_session.add(
+        Player(
+            season=SEASON,
+            fpl_id=8,
+            web_name="Rice",
+            first_name="Declan",
+            second_name="Rice",
+            team_fpl_id=1,
+            position=3,
+        )
+    )
+    for x_id in (1, 2, 3, 4):
+        db_session.add(_tweet(x_id, NOW + timedelta(minutes=x_id)))
+    db_session.commit()
+    save_extraction(db_session, _record(1), [_event(fpl_id=7)])
+    save_extraction(db_session, _record(2), [_event(fpl_id=8, mention="Rice")])
+    # an older extraction named Saka, the current one does not
+    save_extraction(db_session, _record(3, finished=1), [_event(fpl_id=7)])
+    save_extraction(db_session, _record(3, finished=5), [_event(fpl_id=8, mention="Rice")])
+    save_extraction(db_session, _record(4), [_event(fpl_id=8, mention="Rice"), _event(fpl_id=7)])
+
+    rows = current_extractions(db_session, player=(SEASON, 7))
+
+    assert [r.tweet_x_id for r in rows] == [1, 4]
+    assert [e.player_fpl_id for e in rows[1].events] == [8, 7]
+
+
+def test_the_window_does_not_let_an_older_extraction_through(db_session):
+    _seed(db_session)
+    db_session.add(_tweet(1, NOW + timedelta(minutes=10)))
+    db_session.add(_tweet(2, NOW + timedelta(minutes=50)))
+    db_session.commit()
+    save_extraction(db_session, _record(1, finished=1), [_event("doubt")])
+    newest = save_extraction(db_session, _record(1, finished=5), [_event("out")])
+    save_extraction(db_session, _record(2), [_event()])
+
+    rows = current_extractions(
+        db_session, created_from=NOW, created_until=NOW + timedelta(minutes=30)
+    )
+
+    assert [(r.tweet_x_id, r.extraction_id) for r in rows] == [(1, newest)]
+    assert [e.event_type for e in rows[0].events] == ["out"]
+
+
 def test_posts_without_a_successful_extraction_are_absent(db_session):
     _seed(db_session)
     for x_id in (1, 2, 3):

@@ -12,7 +12,10 @@ from app.llm.structured import StructuredCaller, Usage, answer_from_raw, usage_f
 from tests.extraction.fakes import FakeChatModel
 from tests.retrieval.helpers import FixedClock
 
-PRICES = {"fake/model": Price(input_per_million=1.0, output_per_million=2.0, checked="x")}
+PRICES = {
+    "fake/model": Price(input_per_million=1.0, output_per_million=2.0, checked="x"),
+    "fake/fallback": Price(input_per_million=3.0, output_per_million=4.0, checked="x"),
+}
 ROW = ModelSettings(
     reasoning_effort="none", temperature=True, structured_method="json_schema", checked="x"
 )
@@ -22,8 +25,10 @@ class Verdict(BaseModel):
     label: str
 
 
-def _caller(*responses, prices=PRICES, **kwargs) -> tuple[StructuredCaller, FakeChatModel]:
-    fake = FakeChatModel(responses=list(responses), response_model="fake/answered")
+def _caller(
+    *responses, prices=PRICES, answered="fake/model", **kwargs
+) -> tuple[StructuredCaller, FakeChatModel]:
+    fake = FakeChatModel(responses=list(responses), response_model=answered)
     return StructuredCaller(fake, "fake/model", prices, FixedClock(), **kwargs), fake
 
 
@@ -32,6 +37,21 @@ def test_call_with_usage_returns_parsed_tokens_and_cost():
     reply = caller.call_with_usage(Verdict, "system", "human")
     assert reply.parsed == Verdict(label="supports")
     assert (reply.usage.input_tokens, reply.usage.output_tokens) == (10, 5)
+    assert reply.cost_usd == pytest.approx(10 / 1_000_000 * 1.0 + 5 / 1_000_000 * 2.0)
+
+
+def test_a_fallback_answer_is_priced_at_the_fallback_rate():
+    caller, _ = _caller(Verdict(label="supports"), answered="fake/fallback")
+    reply = caller.call_with_usage(Verdict, "system", "human")
+    assert reply.answered_model == "fake/fallback"
+    assert reply.cost_usd == pytest.approx(10 / 1_000_000 * 3.0 + 5 / 1_000_000 * 4.0)
+    assert caller.cost_usd == pytest.approx(reply.cost_usd)
+
+
+def test_an_answer_without_a_model_name_is_priced_at_the_requested_model():
+    caller, _ = _caller(Verdict(label="supports"), answered=None)
+    reply = caller.call_with_usage(Verdict, "system", "human")
+    assert reply.answered_model is None
     assert reply.cost_usd == pytest.approx(10 / 1_000_000 * 1.0 + 5 / 1_000_000 * 2.0)
 
 

@@ -100,7 +100,7 @@ def test_the_default_output_path_names_the_split_and_the_model():
     assert path == DEFAULT_RESULTS_DIR / "test-openai-gpt-6-luna.json"
 
 
-def _deps(judge=None, models=None):
+def _deps(judge=None, models=None, settings=None):
     models = models if models is not None else {}
 
     def make_judge(model: str):
@@ -112,7 +112,7 @@ def _deps(judge=None, models=None):
 
     return EvaluationCliDeps(
         engine=None,
-        settings=CorroborationSettings(_env_file=None),
+        settings=settings or CorroborationSettings(_env_file=None, llm_model=""),
         clock=FixedClock(NOW),
         make_embedder=lambda: FakeEmbedder(),
         make_judge=make_judge,
@@ -149,6 +149,15 @@ def test_evaluate_model_runs_the_judge_on_that_model(tmp_path):
     assert result.exit_code == 0, result.output
     assert list(models) == ["other/model"]
     assert json.loads((tmp_path / "result.json").read_text())["model"] == "other/model"
+
+
+def test_evaluate_defaults_to_the_llm_model_the_judge_runs_on(tmp_path):
+    models: dict = {}
+    settings = CorroborationSettings(_env_file=None, llm_model="env/model")
+    result = _invoke(tmp_path, _deps(models=models, settings=settings))
+    assert result.exit_code == 0, result.output
+    assert list(models) == ["env/model"]
+    assert json.loads((tmp_path / "result.json").read_text())["model"] == "env/model"
 
 
 def test_a_model_outside_the_catalogue_exits_1(tmp_path):

@@ -92,6 +92,7 @@ def _seed_saka(db) -> None:
 
 def test_prints_anchor_grade_flags_then_the_groups_in_order(db):
     _seed_saka(db)
+    add_claim(db, 4, SAKA, "doubt", "rumour", created_at=NOW - timedelta(hours=5), author="a4")
     result = _run(_deps(db), "Saka", "--new-since", "2026-09-29T16:00")
     assert result.exit_code == 0, result.output
     out = result.stdout
@@ -101,8 +102,12 @@ def test_prints_anchor_grade_flags_then_the_groups_in_order(db):
         out.index("Flags:"),
         out.index("Supporting"),
         out.index("Contradicting"),
+        out.index("Related"),
     ]
     assert positions == sorted(positions)
+    related = out[out.index("Related") :]
+    assert "Related (1):" in related
+    assert "https://x.com/a4/status/4" in related
     assert "@a2" in out
     assert "out (likely)" in out
     assert "reversal: yes" in out
@@ -184,11 +189,25 @@ def test_an_unknown_player_exits_1(db):
     assert "no player" in result.output.lower()
 
 
-def test_an_invalid_time_exits_1(db):
+@pytest.mark.parametrize("option", ["--at", "--since", "--new-since"])
+def test_an_invalid_time_exits_1_before_the_runtime_is_built(db, option):
     seed_reference(db)
-    result = _run(_deps(db), "Saka", "--at", "yesterday")
+    deps = _deps(db)
+    result = _run(deps, "Saka", option, "yesterday")
     assert result.exit_code == 1
-    assert "--at" in result.output
+    assert f"{option} must be" in result.output
+    assert deps.make_runtime.calls == 0
+
+
+@pytest.mark.parametrize("since", ["2026-09-30T12:00", "2026-09-30T13:00"])
+def test_since_not_earlier_than_at_exits_1(db, since):
+    _seed_saka(db)
+    deps = _deps(db)
+    result = _run(deps, "Saka", "--at", "2026-09-30T12:00", "--since", since)
+    assert result.exit_code == 1
+    assert "--since must be earlier than --at" in result.output
+    assert "No claim" not in result.output
+    assert deps.make_runtime.calls == 0
 
 
 def test_no_claim_message(db):
@@ -247,11 +266,36 @@ def test_a_repost_shows_its_original_author(db):
     assert "@lister (repost of @origin)" in result.stdout
 
 
+def _traced_deps(db) -> tuple[CorroborationCliDeps, FakeLangfuseClient]:
+    client = FakeLangfuseClient()
+    runtime = CorroborationRuntime(
+        embedder=FakeEmbedder(),
+        judge=_judge("supports"),
+        tracer=LangfuseCorroborationTracer(client),
+    )
+    return _deps(db, runtime), client
+
+
 def test_the_runtime_is_built_once_and_the_tracer_flushed(db):
     _seed_saka(db)
-    deps = _deps(db)
-    _run(deps, "Saka")
+    deps, client = _traced_deps(db)
+    result = _run(deps, "Saka")
+    assert result.exit_code == 0, result.output
     assert deps.make_runtime.calls == 1
+    assert client.flushed == 1
+
+
+def test_the_tracer_is_flushed_when_corroboration_raises(db, monkeypatch):
+    _seed_saka(db)
+    deps, client = _traced_deps(db)
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("app.corroboration.cli.corroborate", broken)
+    result = _run(deps, "Saka")
+    assert isinstance(result.exception, RuntimeError)
+    assert client.flushed == 1
 
 
 def test_the_default_runtime_without_a_key_skips_retrieval_and_the_judge():

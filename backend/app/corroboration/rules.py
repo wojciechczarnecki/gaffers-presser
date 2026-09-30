@@ -66,7 +66,8 @@ def count_accounts(labelled: Sequence[LabelledPost], anchor: PostRef) -> Account
             if account != anchor_account:
                 counts.supporting.append(item)
         elif item.label == "contradicts":
-            counts.contradicting.append(item)
+            if account != anchor_account:
+                counts.contradicting.append(item)
         else:
             counts.related.append(item)
     return counts

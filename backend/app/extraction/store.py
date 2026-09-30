@@ -180,21 +180,33 @@ def current_extractions(
     x_ids: Sequence[int] | None = None,
     created_from: datetime | None = None,
     created_until: datetime | None = None,
+    player: tuple[str, int] | None = None,
 ) -> list[CurrentExtraction]:
     if x_ids is not None and not x_ids:
         return []
     latest_where = "WHERE status = 'extracted'"
+    window: list[str] = []
     conditions: list[str] = []
     params: dict[str, object] = {}
     if x_ids is not None:
         latest_where += " AND tweet_x_id = ANY(:ids)"
         params["ids"] = list(x_ids)
     if created_from is not None:
-        conditions.append("t.created_at >= :created_from")
+        window.append("created_at >= :created_from")
         params["created_from"] = created_from
     if created_until is not None:
-        conditions.append("t.created_at < :created_until")
+        window.append("created_at < :created_until")
         params["created_until"] = created_until
+    if window:
+        # The window narrows the posts before DISTINCT ON, not after it.
+        latest_where += f" AND tweet_x_id IN (SELECT x_id FROM tweet WHERE {' AND '.join(window)})"
+    if player is not None:
+        # After DISTINCT ON: the current extraction itself must name the player.
+        conditions.append(
+            "EXISTS (SELECT 1 FROM extraction_event ev WHERE ev.extraction_id = l.id"
+            " AND ev.player_season = :player_season AND ev.player_fpl_id = :player_fpl_id)"
+        )
+        params["player_season"], params["player_fpl_id"] = player
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
     rows = (
         session.execute(

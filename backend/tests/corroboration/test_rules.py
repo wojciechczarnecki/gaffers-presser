@@ -104,9 +104,26 @@ def test_accounts_the_anchor_post_itself_is_left_out():
     assert [c.post.x_id for c in counts.supporting] == [2]
 
 
-def test_accounts_the_anchor_accounts_older_contradiction_counts():
+def test_accounts_the_anchor_account_never_contradicts():
+    counts = count_accounts(
+        [
+            _lab(1, "contradicts", "Anchor_Account", -30),
+            _lab(2, "contradicts", "anchor_account", 10, origin="judge"),
+            _lab(3, "contradicts", "other", -20),
+        ],
+        ANCHOR,
+    )
+    assert [c.post.x_id for c in counts.contradicting] == [3]
+
+
+def test_accounts_the_anchor_accounts_own_reversal_sets_no_flag_and_no_lowering():
     counts = count_accounts([_lab(1, "contradicts", "anchor_account", -30)], ANCHOR)
-    assert [c.post.x_id for c in counts.contradicting] == [1]
+    assert counts.contradicting == []
+    assert reversal(counts.contradicting, ANCHOR) is False
+    assert newer_contradiction(counts.contradicting, ANCHOR) is False
+    assert grade("confirmed", [], counts.contradicting, False, T0 - timedelta(hours=1)).level == (
+        "high"
+    )
 
 
 def test_accounts_unrelated_posts_do_not_count_or_hide_earlier_ones():

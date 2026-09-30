@@ -209,7 +209,6 @@ def _ask_label() -> str:
 def _review_cases(
     cases: list[JudgeCase], positions: list[int], cases_path: Path, counts: dict[str, int]
 ) -> None:
-    """Walks the selected cases; `cases` is saved whole after every change, in file order."""
     for done, i in enumerate(positions):
         show = True
         while True:
@@ -253,7 +252,7 @@ def evaluate(
     if split not in ("dev", "test"):
         raise fail("--split must be dev or test")
     deps = get_deps(ctx)
-    chosen_model = model or DEFAULT_MODEL
+    chosen_model = model or deps.settings.llm_model or DEFAULT_MODEL
     cases = load_cases(cases_path)
     try:
         judge = deps.make_judge(chosen_model)

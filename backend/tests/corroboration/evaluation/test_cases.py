@@ -4,6 +4,7 @@ import pytest
 
 from app.corroboration.evaluation.cases import (
     LABELS,
+    LABELS_NOT_YET_REQUIRED,
     CaseAnchor,
     CasePlayer,
     CasePost,
@@ -117,11 +118,23 @@ def test_a_label_missing_overall_and_in_the_test_split():
     problems = composition_problems(no_related + valid_set(12)[:0])
     assert any("no case with the label related" in p for p in problems)
     only_dev = [
-        c.model_copy(update={"split": "dev"}) if c.expected == "contradicts" else c
+        c.model_copy(update={"split": "dev"}) if c.expected == "supports" else c
         for c in valid_set()
     ]
     problems = composition_problems(only_dev)
-    assert any("test split has no case with the label contradicts" in p for p in problems)
+    assert any("test split has no case with the label supports" in p for p in problems)
+
+
+def test_a_missing_contradicts_label_is_tolerated_until_backlog_12():
+    assert LABELS_NOT_YET_REQUIRED == {"contradicts"}
+    base = valid_set()
+    count = sum(1 for c in base if c.expected == "contradicts")
+    relabelled = [
+        c.model_copy(update={"expected": "related"}) if c.expected == "contradicts" else c
+        for c in base
+    ]
+    assert count > 0
+    assert composition_problems(relabelled) == []
 
 
 def test_labelled_by_the_default_model_is_reported():

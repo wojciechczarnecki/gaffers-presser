@@ -87,7 +87,13 @@ def sql_claims(
     session: Session, player: PlayerRef, start: datetime, as_of: datetime
 ) -> list[Claim]:
     claims = []
-    for row in current_extractions(session, created_from=start, created_until=as_of):
+    rows = current_extractions(
+        session,
+        created_from=start,
+        created_until=as_of,
+        player=(player.season, player.fpl_id),
+    )
+    for row in rows:
         event = next(
             (
                 e

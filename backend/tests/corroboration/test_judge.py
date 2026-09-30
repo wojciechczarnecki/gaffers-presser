@@ -16,7 +16,10 @@ from app.llm.structured import StructuredCaller
 from tests.extraction.fakes import FakeChatModel
 from tests.retrieval.helpers import FixedClock
 
-PRICES = {"fake/model": Price(input_per_million=1.0, output_per_million=2.0, checked="x")}
+PRICES = {
+    "fake/model": Price(input_per_million=1.0, output_per_million=2.0, checked="x"),
+    "fake/answered": Price(input_per_million=1.0, output_per_million=2.0, checked="x"),
+}
 T = datetime(2026, 9, 29, 12, 0, tzinfo=UTC)
 
 PLAYER = PlayerRef("2026/27", 2, "Isak", "Newcastle")

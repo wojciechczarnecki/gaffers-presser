@@ -189,6 +189,10 @@ def corroborate_command(
     if deps.engine is None:
         raise fail("DATABASE_URL must be set")
     as_of = _parse(at, "--at") or deps.clock.now()
+    window_since = _parse(since, "--since")
+    new_since_at = _parse(new_since, "--new-since")
+    if window_since is not None and window_since >= as_of:
+        raise fail("--since must be earlier than --at")
     chosen = _choose_player(deps, deps.engine, player)
     try:
         runtime = deps.make_runtime()
@@ -199,8 +203,8 @@ def corroborate_command(
             deps.engine,
             chosen,
             as_of,
-            _parse(new_since, "--new-since"),
-            since=_parse(since, "--since"),
+            new_since_at,
+            since=window_since,
             runtime=runtime,
         )
     finally:

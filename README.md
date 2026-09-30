@@ -173,7 +173,8 @@ uv run python -m app.corroboration.evaluation evaluate --split test --model open
 
 `evaluate` reports accuracy, per-label precision and recall and the false-support rate, counts
 reviewed cases only unless `--include-unreviewed` is given, and writes
-`backend/evals/corroboration/results/<split>-<model>.json`.
+`backend/evals/corroboration/results/<split>-<model>.json`. Without `--model` it evaluates the
+model the judge runs on: `LLM_MODEL` when set, the default model otherwise.
 
 The project is built with a spec-driven agentic workflow
 ([agentic-pipeline](https://github.com/wojciechczarnecki/agentic-pipeline)): every feature

@@ -21,6 +21,11 @@ PRELABEL_MODEL = "anthropic/claude-haiku-4.5"
 
 LABELS: tuple[str, ...] = get_args(Label)
 
+# The development corpus holds no genuine reversal, so set v1 has no `contradicts` case
+# (final review F1 of spec 007). BACKLOG #12 (the GW6 deadline window) brings real line-up
+# leaks against availability news; once the set has such cases, this exemption goes.
+LABELS_NOT_YET_REQUIRED: frozenset[str] = frozenset({"contradicts"})
+
 MIN_CASES = 50
 MAX_CASES = 70
 DEV_SHARE_RANGE = (0.25, 0.35)
@@ -115,6 +120,8 @@ def composition_problems(cases: Sequence[JudgeCase]) -> list[str]:
     overall = Counter(case.expected for case in cases)
     in_test = Counter(case.expected for case in cases if case.split == "test")
     for label in LABELS:
+        if label in LABELS_NOT_YET_REQUIRED:
+            continue
         if overall[label] == 0:
             problems.append(f"no case with the label {label}")
         if in_test[label] == 0:

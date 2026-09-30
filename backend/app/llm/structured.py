@@ -105,7 +105,8 @@ class StructuredCaller:
                 raise ValueError("model output failed validation")
             usage = usage_from_raw(result["raw"])
             answered_model, _, _ = answer_from_raw(result["raw"])
-            cost = compute_cost(self.model, usage.input_tokens, usage.output_tokens, self.prices)
+            priced_model = answered_model or self.model
+            cost = compute_cost(priced_model, usage.input_tokens, usage.output_tokens, self.prices)
             return StructuredReply(result["parsed"], usage, cost, answered_model)
 
         outcome = with_retries(once, self.clock, self.stop_event, what="chat")
