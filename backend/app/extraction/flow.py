@@ -13,9 +13,9 @@ from app.extraction.schemas import (
     FlowResult,
     LinkedEvent,
     PostInput,
-    Usage,
 )
 from app.llm.chat import ChatModelSpec
+from app.llm.structured import Usage, answer_from_raw, usage_from_raw
 
 logger = logging.getLogger(__name__)
 
@@ -80,29 +80,6 @@ def _render_disambiguation(
     return "\n".join(lines)
 
 
-def _usage_from_raw(raw: Any) -> Usage:
-    usage_metadata = getattr(raw, "usage_metadata", None) or {}
-    response_metadata = getattr(raw, "response_metadata", None) or {}
-    output_details = usage_metadata.get("output_token_details") or {}
-    return Usage(
-        input_tokens=usage_metadata.get("input_tokens"),
-        output_tokens=usage_metadata.get("output_tokens"),
-        reasoning_tokens=output_details.get("reasoning"),
-        reported_cost_usd=response_metadata.get("cost"),
-    )
-
-
-def _answer_from_raw(raw: Any) -> tuple[str | None, str | None, str | None]:
-    response_metadata = getattr(raw, "response_metadata", None) or {}
-    # The pinned SDK's ChatResult drops `provider`, so the host comes from the generation lookup;
-    # the read stays so a client that keeps the field skips that lookup (runner._with_host).
-    return (
-        response_metadata.get("model_name"),
-        response_metadata.get("provider"),
-        response_metadata.get("id"),
-    )
-
-
 class Flow:
     def __init__(self, graph: Any) -> None:
         self._graph = graph
@@ -141,8 +118,8 @@ def build_flow(spec: ChatModelSpec, index: PlayerIndex) -> Flow:
             parsing_error = result["parsing_error"]
             reason = type(parsing_error).__name__ if parsing_error else "no parsed result"
             raise ExtractionOutputError(f"extraction output failed validation: {reason}")
-        usage = state["usage"] + _usage_from_raw(result["raw"])
-        answered_model, host, generation_id = _answer_from_raw(result["raw"])
+        usage = state["usage"] + usage_from_raw(result["raw"])
+        answered_model, host, generation_id = answer_from_raw(result["raw"])
         return {
             "extracted": result["parsed"],
             "usage": usage,
@@ -183,7 +160,7 @@ def build_flow(spec: ChatModelSpec, index: PlayerIndex) -> Flow:
                     llm_calls += 1
                     raw = result.get("raw")
                     if raw is not None:
-                        usage = usage + _usage_from_raw(raw)
+                        usage = usage + usage_from_raw(raw)
                     parsed = result.get("parsed")
                     if parsed is not None:
                         fpl_id = parsed.fpl_id

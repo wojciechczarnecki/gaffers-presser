@@ -14,8 +14,9 @@ from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError, ConfigError
 from app.core.settings import load_settings
 from app.db.engine import make_engine
-from app.llm.chat import build_chat_model, single_model_config
+from app.llm.chat import build_chat_model, single_model_config, structured_kwargs_for
 from app.llm.pricing import Price, load_prices
+from app.llm.structured import StructuredCaller
 from app.llm.tracing import resolve_tracing
 from app.retrieval.config import (
     DEFAULT_EMBEDDING_MODEL,
@@ -38,7 +39,7 @@ from app.retrieval.evaluation.dataset import (
     write_queries,
 )
 from app.retrieval.evaluation.labelling import prelabel
-from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL, StructuredCaller
+from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL
 from app.retrieval.evaluation.queries import (
     QueryCounts,
     build_queries,
@@ -340,7 +341,13 @@ def build_queries_command(
     except (CollectorError, OSError, ValueError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
     events = current_events(db_engine(deps), [post.x_id for post in posts])
-    caller = StructuredCaller(chat_model, chat_model_id, prices, deps.clock)
+    caller = StructuredCaller(
+        chat_model,
+        chat_model_id,
+        prices,
+        deps.clock,
+        structured_kwargs=structured_kwargs_for(chat_model_id),
+    )
     result = build_queries(
         posts,
         events,
@@ -381,7 +388,13 @@ def prelabel_command(
         raise fail(str(exc)) from None
     except (OSError, ValueError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
-    caller = StructuredCaller(chat_model, chat_model_id, prices, deps.clock)
+    caller = StructuredCaller(
+        chat_model,
+        chat_model_id,
+        prices,
+        deps.clock,
+        structured_kwargs=structured_kwargs_for(chat_model_id),
+    )
     tracer = deps.make_tracer()
     try:
         summary = prelabel(

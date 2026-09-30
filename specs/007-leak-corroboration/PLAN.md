@@ -385,7 +385,7 @@ AC writes its proving test first and runs it red before the product change.
     - update the `model_settings.toml` path mentioned in comments.
 
   Automatic verification: `cd backend && uv run pytest -q tests/test_shared_code.py tests/llm tests/extraction tests/worker/test_cli.py tests/test_env_example.py`
-- [ ] 3. **Structured call in `app/llm/structured.py`.**
+- [x] 3. **Structured call in `app/llm/structured.py`.**
   - Write `tests/llm/test_structured.py` (with `FakeChatModel`):
     - `call_with_usage` returns the parsed output, the tokens, and the cost from the
       `prices` dict;

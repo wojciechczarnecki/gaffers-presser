@@ -8,8 +8,9 @@ from pathlib import Path
 from sqlalchemy import Engine, text
 
 from app.content import PROMPTS_DIR, load_prompt
+from app.llm.structured import StructuredCaller
 from app.retrieval.evaluation.dataset import CorpusPost, Query, QueryEvent
-from app.retrieval.evaluation.llm import StructuredCaller, WrittenQuery
+from app.retrieval.evaluation.llm import WrittenQuery
 
 logger = logging.getLogger(__name__)
 

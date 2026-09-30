@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from collections.abc import Sequence
 from datetime import datetime
 
 from sqlalchemy import Engine, text
@@ -49,6 +50,16 @@ class CurrentExtraction:
     started_at: datetime
     finished_at: datetime
     events: list[EventRecord]
+
+
+def current_extractions(
+    session: Session,
+    *,
+    x_ids: Sequence[int] | None = None,
+    created_from: datetime | None = None,
+    created_until: datetime | None = None,
+) -> list[CurrentExtraction]:
+    return []
 
 
 @dataclass(frozen=True)
