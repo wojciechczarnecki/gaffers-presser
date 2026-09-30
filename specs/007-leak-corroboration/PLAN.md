@@ -708,7 +708,7 @@ AC writes its proving test first and runs it red before the product change.
     second-anchor pairing, stop: `RESULT: ESCALATE` (AC19 cannot be met from the corpus).
 
   Automatic verification: `cd backend && uv run pytest -q tests/corroboration/evaluation`
-- [ ] 19. **Documentation and hygiene.**
+- [x] 19. **Documentation and hygiene.**
   - Write `tests/test_docs.py::test_backlog_18_closed_and_corroboration_entries_kept`: no
     row mentions "query-embedding timeout", and the #19 (P2) and #20 (P3) rows have
     triggers.
@@ -810,13 +810,39 @@ Record the outputs of 1–6 (condensed) under the Definition of Done.
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
       fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md`, `docs/PROJECT.md`,
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md`, `docs/PROJECT.md`,
       `docs/DEPLOYMENT.md` and `README.md` as in step 19
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
+
+End-to-end results (automatic part, run on 2026-09-30 against the local development stack):
+
+1. `alembic upgrade head` ran `0005 -> 0006` (head `0006`); the query gave `missing = 0`,
+   `count = 42`.
+2. `python -m app.corroboration Isak --at 2026-09-29T18:00`, exit 0: window 2026-09-18 19:30 to
+   2026-09-29 18:00 (Warsaw); anchor `doubt (rumour)` by `@Pras_fpl`; grade `high` (4
+   independent supporting accounts, 2 from SQL and 2 judged: `@FFScout` and `@BenDinnery`,
+   whose withdrawal post is among the supporting posts); retrieval judged 10 posts, unjudged 0;
+   0 contradicting, 0 related; `trace: e3a905ffe38c35bd5f3fc50f009fc0ab`.
+3. `Gakpo` (anchor `doubt (likely)` by `@BenDinnery`, grade `high`, 2 judged supporting) and
+   `Palmer` by FPL ID 154 (anchor `doubt (confirmed)`, grade `high`, 1 related), exit 0. The
+   name `Palmer` is ambiguous in the database (two players), so the plan's `… Palmer` command
+   exits 1; the ID form is the one that exits 0.
+4. `Palmer` gave `error: 'Palmer' is ambiguous, pass the FPL ID:` with `154 Palmer (Chelsea)`
+   and `301 Palmer (Ipswich Town)`, exit 1.
+5. No key, from a directory with no `.env`: exit 0, `Retrieval and judge: skipped
+   (OPENROUTER_API_KEY is not set)`, the two SQL claims as the supporting posts, grade `high`.
+6. The trace: `langfuse.api.trace.get` is unavailable to this Langfuse organization (HTTP 410,
+   legacy API), so the check used `GET /api/public/v2/observations` through
+   `langfuse.api.observations.get_many(trace_id=...)`. One trace holds 13 observations: the root
+   `corroboration` (CHAIN), `retrieval-search` (RETRIEVER) and `embedding` (EMBEDDING), both
+   with the root as parent, and 10 `corroboration-judge` GENERATIONs with model
+   `openai/gpt-6-luna`, usage (for example 693 in / 20 out) and cost (for example `7.93e-05`).
+   The explicit `trace_context` fallback was not needed.
+7. Step 18's outputs are in `## Deviations`.
 
 ## Owner decisions
 
@@ -892,6 +918,22 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 **Approval:** the plan is ready. The one `major` finding (R1) was fixed in the plan, no
 blocker remains, and the only escalation trigger (the `0006` data migration) is already
 accepted by the owner, so the status is set to `plan-approved`.
+
+### Converge pass 1 — 2026-09-30
+
+A fresh reader compared the diff with the SPEC. Verdicts (all rejected, no step added):
+
+- `[partial] AC19` set v1 has 51 cases and one `contradicts` case (test split only) — rejected:
+  the composition rule (50-70 cases, every label in the set and in the test split) is met, and the
+  corpus limit is recorded in `## Deviations` (step 18).
+- `[partial] AC1` `extraction/generation.HostLookup` keeps a poll loop — rejected: it polls a 404
+  for the serving host, not a chat call; the plan names it as staying (step 1).
+- `[partial] AC8` the window end is exclusive — rejected: `[start, as_of)` is recorded in DECISIONS
+  and is the same interval on both legs.
+- `[unrequested]` README and docs tests, `app/core/local_time.py` — rejected: steps 14 and 19 of the
+  plan ask for them (AC16, AC24 and the DEPLOYMENT note).
+
+Real gaps: 0. Full verification: ruff clean, `1052 passed`.
 
 ## Chunk notes
 

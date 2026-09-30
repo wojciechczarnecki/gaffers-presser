@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-09-30"
   - "spec-ready — 2026-09-30"
   - "plan-draft — 2026-09-30"
   - "plan-approved — 2026-09-30"
+  - "implemented — 2026-09-30"
 metrics:
   started_at: 2026-09-30T14:45
   escalations: 0
@@ -12,6 +13,11 @@ metrics:
   plan_review_blockers: 0
   plan_review_majors: 1
   plan_changes: 6
+  implement_steps: 19
+  implement_iterations: 0
+  converge_gaps: 0
+  deviations_minor: 7
+  deviations_major: 0
 ---
 
 # SPEC 007 — Leak corroboration
