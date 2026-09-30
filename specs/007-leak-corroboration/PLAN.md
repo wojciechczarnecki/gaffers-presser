@@ -310,7 +310,7 @@ their imports or move with `git mv`. New tests go into new files, so that
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
 | AC1 | 1, 2, 3 | `tests/test_shared_code.py::test_no_chat_model_or_retry_loop_outside_app_llm`, `tests/llm/test_retry.py`, `tests/llm/test_structured.py` | `cd backend && uv run pytest -q tests/test_shared_code.py` → `AssertionError: assert ['extraction/...with_retries'] == []` (step 1); `tests/llm/test_retry.py` had no `app.llm.retry` yet (import error, then green with the module); `uv run pytest -q tests/test_shared_code.py::test_chat_model_factory_and_catalogue_live_in_app_llm` → `AssertionError: assert ['extraction/...on/llm.py:34'] == []` (step 2) |
-| AC2 | 4 | `tests/extraction/test_current_extractions.py`, `tests/test_shared_code.py::test_current_extraction_sql_lives_once` | |
+| AC2 | 4 | `tests/extraction/test_current_extractions.py`, `tests/test_shared_code.py::test_current_extraction_sql_lives_once` | `cd backend && uv run pytest -q tests/extraction/test_current_extractions.py` (stub `current_extractions` returning `[]`) → `assert [] == [1]`; `uv run pytest -q tests/test_shared_code.py::test_current_extraction_sql_lives_once` → `assert {'extraction/...ueries.py': 1} == {'extraction/store.py': 1}` |
 | AC3 | 5 | `tests/fpl/test_deadlines.py`, `tests/test_shared_code.py::test_schedules_use_fpl_deadline_helpers` | |
 | AC4 | 1–6 | n/a — kept behaviour: the existing suites stay green with import-only diffs (the check command in step 6) | |
 | AC5 | 6, 13 | `tests/retrieval/test_embed_timeout.py`, `tests/corroboration/test_service.py::test_slow_embedding_falls_back_to_fulltext` | |
@@ -417,7 +417,7 @@ AC writes its proving test first and runs it red before the product change.
     - update the imports in `tests/retrieval/evaluation/test_{queries,labelling}.py`.
 
   Automatic verification: `cd backend && uv run pytest -q tests/llm tests/test_shared_code.py tests/extraction/test_flow.py tests/retrieval/evaluation tests/retrieval/test_cli.py`
-- [ ] 4. **One current-extraction query.**
+- [x] 4. **One current-extraction query.**
   - Write `tests/extraction/test_current_extractions.py` (db):
     - the batch by `x_ids` returns the latest successful extraction per post, with its events
       (including `player_web_name`) and the post fields (`created_at`, `text`);

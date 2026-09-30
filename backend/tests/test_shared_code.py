@@ -1,4 +1,5 @@
 import ast
+import re
 from pathlib import Path
 
 APP = Path(__file__).resolve().parent.parent / "app"
@@ -64,3 +65,13 @@ def test_chat_model_factory_and_catalogue_live_in_app_llm():
     assert offenders == []
     assert (APP / "llm" / "model_settings.toml").is_file()
     assert not (APP / "extraction" / "model_settings.toml").exists()
+
+
+def test_current_extraction_sql_lives_once():
+    pattern = re.compile(r"DISTINCT ON \(tweet_x_id\)")
+    found = {
+        str(path.relative_to(APP)): len(pattern.findall(path.read_text()))
+        for path in sorted(APP.rglob("*.py"))
+        if pattern.search(path.read_text())
+    }
+    assert found == {"extraction/store.py": 1}
