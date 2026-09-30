@@ -319,14 +319,14 @@ their imports or move with `git mv`. New tests go into new files, so that
 | AC8 | 11, 13 | `tests/corroboration/test_sources.py::test_window_*`, `tests/corroboration/test_service.py::test_replay_ignores_posts_after_as_of` | step 11: `cd backend && uv run pytest -q tests/corroboration/test_sources.py` (sources stubbed) → `assert datetime(2026, 9, 29, 18, 0, tzinfo=utc) == datetime(2026, 9, 26, 18, 0, tzinfo=utc)` (`test_window_start_is_the_latest_deadline_at_or_before_as_of`) |
 | AC9 | 11, 13, 14 | `tests/corroboration/test_service.py::test_no_claim_makes_no_judge_call`, `tests/corroboration/test_cli.py::test_no_claim_message` | |
 | AC10 | 10 | `tests/corroboration/test_rules.py::test_label_table` | `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert 'unrelated' == 'supports'` |
-| AC11 | 11, 12, 13 | `tests/corroboration/test_sources.py::test_candidates_*`, `tests/corroboration/test_judge.py`, `tests/corroboration/test_service.py::test_judged_posts_*` | step 11: same command (stub `retrieval_candidates` returning no posts) → `assert [] == [2]` (`test_candidates_exclude_sql_claims_and_posts_outside_the_window`) |
+| AC11 | 11, 12, 13 | `tests/corroboration/test_sources.py::test_candidates_*`, `tests/corroboration/test_judge.py`, `tests/corroboration/test_service.py::test_judged_posts_*` | step 12 (mutation: `render_input` returning `""`, saved in scratch and restored): `cd backend && uv run pytest -q tests/corroboration/test_judge.py` → `assert 'Isak' in ''`; step 11: same command (stub `retrieval_candidates` returning no posts) → `assert [] == [2]` (`test_candidates_exclude_sql_claims_and_posts_outside_the_window`) |
 | AC12 | 9, 10 | `tests/corroboration/test_rules.py::test_accounts_*`, `tests/retrieval/test_search_repost_fields.py` | step 10: `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert [] == [2]` (`test_accounts_are_compared_case_insensitively`); step 9: `cd backend && uv run pytest -q tests/retrieval/test_search_repost_fields.py` → `assert (False, None) == (True, 'origin')` |
 | AC13 | 10, 13 | `tests/corroboration/test_rules.py::test_freshness_*`, `tests/corroboration/test_service.py::test_citations_carry_fields` | step 10: `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert 'context' == 'new'` |
 | AC14 | 10 | `tests/corroboration/test_rules.py::test_reversal_*`, `::test_newer_contradiction_*` | `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert False is True` (`test_reversal_an_older_contradicting_account_sets_it`) |
 | AC15 | 10 | `tests/corroboration/test_rules.py::test_grade_*` (one per branch) | `cd backend && uv run pytest -q tests/corroboration/test_rules.py` (rules stubbed with placeholder returns) → `assert 'low' == 'high'` (`test_grade_confirmed_is_high`) |
 | AC16 | 14 | `tests/corroboration/test_cli.py`, `tests/core/test_local_time.py` | |
 | AC17 | 13 | `tests/corroboration/test_service.py::test_without_key_sql_only`, `::test_failed_judge_call_counts_unjudged` | |
-| AC18 | 12, 13 | `tests/corroboration/test_tracing.py` | |
+| AC18 | 12, 13 | `tests/corroboration/test_tracing.py` | step 12 (mutation: the tracer's `generation` returning early): `cd backend && uv run pytest -q tests/corroboration/test_tracing.py` → `ValueError: not enough values to unpack (expected 1, got 0)` at `(generation,) = client.named("corroboration-judge")` |
 | AC19 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_committed_set_composition` | |
 | AC20 | 15, 18 | `tests/corroboration/evaluation/test_eval_set.py::test_prelabel_model_*`, `tests/corroboration/evaluation/test_building.py` | |
 | AC21 | 16 | `tests/corroboration/evaluation/test_review_cli.py` | |
@@ -573,7 +573,7 @@ AC writes its proving test first and runs it red before the product change.
       - the search uses `embed_timeout_seconds=5.0` and the window filters.
 
   Automatic verification: `cd backend && uv run pytest -q tests/corroboration/test_sources.py`
-- [ ] 12. **The judge and the tracer** — files: `app/content/prompts/corroboration_judge.md`,
+- [x] 12. **The judge and the tracer** — files: `app/content/prompts/corroboration_judge.md`,
   `app/corroboration/{judge,tracing}.py`.
   - Write the tests first:
     - `tests/corroboration/test_judge.py` (`FakeChatModel`):
@@ -904,6 +904,19 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
   step 3 into step 2, because the step 2 guard test (no `ChatOpenRouter` under `app/retrieval`)
   cannot go green while `retrieval/evaluation/llm.build_label_model` builds one. Step 3 keeps
   the rest (`StructuredCaller`, `Usage`, tests for the two helpers).
+- Step 7 (minor): two existing tests in `tests/db/test_migrations.py` changed beyond imports,
+  because the new head `0006` and the new `tweet` column break them by design:
+  `test_retrieval_migration_keeps_data_and_downgrades` now upgrades to `0005` (not `head`) so
+  its `downgrade -1` still undoes `0005`, and both it and the extraction migration test add
+  `reposted_author_handle` to the excluded columns of `table_contents` (the column does not
+  exist at `0004`).
+- Steps 6 and 9 (minor): `retrieval/search.py` carries the change of both steps (the
+  `embed_timeout_seconds` keyword and the `SearchResult` repost fields), so they went into one
+  commit (step 6). Step 4's proving test and stub were committed one commit early, with
+  step 3.
+- Step 12 (minor): the judge, the tracer and their tests were written in one go and the red
+  record was taken by mutating the implementation (see the AC11 and AC18 rows), because the
+  tests were written after the code in this step.
 
 ## Final review
 
