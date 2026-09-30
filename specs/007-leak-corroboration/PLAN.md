@@ -477,7 +477,7 @@ AC writes its proving test first and runs it red before the product change.
 
 ### Group 2 — Repost authors
 
-- [ ] 7. **Migration `0006` — `tweet.reposted_author_handle` with a backfill** (a data
+- [x] 7. **Migration `0006` — `tweet.reposted_author_handle` with a backfill** (a data
   migration, its own step).
   - Write `tests/db/test_migrations.py::test_repost_author_migration_backfills_and_downgrades`:
     - upgrade to `0005`;

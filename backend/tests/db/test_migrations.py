@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -177,7 +178,7 @@ def test_extraction_migration_adds_only_new_tables():
             "extraction_event",
             "post_embedding",
         }
-        excluded = DEFAULT_EXCLUDE | {"search_vector"}
+        excluded = DEFAULT_EXCLUDE | {"search_vector", "reposted_author_handle"}
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
 
@@ -233,11 +234,11 @@ def test_retrieval_migration_keeps_data_and_downgrades():
             )
 
         other_tables = set(SQLModel.metadata.tables.keys()) - {"post_embedding"}
-        excluded = DEFAULT_EXCLUDE | {"search_vector"}
+        excluded = DEFAULT_EXCLUDE | {"search_vector", "reposted_author_handle"}
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
 
-        run_alembic(url, "upgrade", "head")
+        run_alembic(url, "upgrade", "0005")
         with engine.connect() as conn:
             assert "post_embedding" in set(inspect(conn).get_table_names())
             vector = conn.execute(sa_text("SELECT search_vector::text FROM tweet")).scalar_one()
@@ -278,3 +279,60 @@ def test_alembic_cli_runs_from_backend(migration_url):
         text=True,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_repost_author_migration_backfills_and_downgrades():
+    def insert(conn, x_id: int, is_repost: bool, raw: dict) -> None:
+        conn.execute(
+            sa_text(
+                "INSERT INTO tweet (x_id, author_handle, text, created_at, first_fetched_at,"
+                " source, is_repost, is_reply, raw) VALUES (:x_id, 'lister', 'text', :now, :now,"
+                " 'list', :is_repost, false, CAST(:raw AS jsonb))"
+            ),
+            {"x_id": x_id, "now": NOW, "is_repost": is_repost, "raw": json.dumps(raw)},
+        )
+
+    def originals(conn) -> dict[int, str | None]:
+        rows = conn.execute(sa_text("SELECT x_id, reposted_author_handle FROM tweet ORDER BY x_id"))
+        return {row[0]: row[1] for row in rows}
+
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
+        url = container.get_connection_url()
+        run_alembic(url, "upgrade", "0005")
+        engine = make_engine(url)
+        with engine.begin() as conn:
+            insert(conn, 1, True, {"retweetedTweet": {"user": {"username": "TwscrapeOrigin"}}})
+            insert(conn, 2, True, {"retweeted_tweet": {"author": {"userName": "ApiIoOrigin"}}})
+            insert(conn, 3, True, {"retweeted_author": {"username": "XApiOrigin"}})
+            insert(conn, 4, False, {"text": "an original post"})
+            insert(conn, 5, True, {})
+            insert(conn, 6, False, {"retweetedTweet": {"user": {"username": "NotARepost"}}})
+
+        other_tables = set(SQLModel.metadata.tables.keys()) - {"tweet"}
+        with Session(engine) as session:
+            before = table_contents(session, exclude=DEFAULT_EXCLUDE, tables=other_tables)
+
+        run_alembic(url, "upgrade", "head")
+        with engine.connect() as conn:
+            assert originals(conn) == {
+                1: "TwscrapeOrigin",
+                2: "ApiIoOrigin",
+                3: "XApiOrigin",
+                4: None,
+                5: None,
+                6: None,
+            }
+        with Session(engine) as session:
+            assert table_contents(session, exclude=DEFAULT_EXCLUDE, tables=other_tables) == before
+
+        run_alembic(url, "downgrade", "-1")
+        with engine.connect() as conn:
+            columns = {column["name"] for column in inspect(conn).get_columns("tweet")}
+            assert conn.execute(sa_text("SELECT count(*) FROM tweet")).scalar_one() == 6
+        assert "reposted_author_handle" not in columns
+        with Session(engine) as session:
+            assert table_contents(session, exclude=DEFAULT_EXCLUDE, tables=other_tables) == before
+
+        run_alembic(url, "upgrade", "head")
+        with engine.connect() as conn:
+            assert originals(conn)[1] == "TwscrapeOrigin"
