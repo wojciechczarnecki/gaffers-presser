@@ -848,6 +848,17 @@ End-to-end results (automatic part, run on 2026-09-30 against the local developm
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- **2026-09-30, final review (GATE 2).** Which findings to fix? **Accepted: all — F1–F13**
+  (including every nit F9–F13). Rejected: none. The 28 nit findings left out of the report stay out.
+- **2026-09-30, final review, F1.** The only `contradicts` case in set v1 is mislabelled.
+  **Decision:** relabel the case to `related`, correct the step 18 deviation text, and let the
+  set composition rule (AC19) tolerate a missing `contradicts` label with a reference to
+  BACKLOG #12 until the set grows.
+- **2026-09-30, final review, F2 (plan review R6).** Does the anchor account's own older
+  contradicting post count as a contradiction? **Decision:** no — exclude the anchor's account
+  from `contradicting`, so it sets neither `reversal` nor the grade lowering (an account counts by
+  its newest post, AC12; AC14 speaks of independent accounts). Record it in DECISIONS.
+
 ## Review log
 
 ### 2026-09-30 — /pipeline:plan-review
