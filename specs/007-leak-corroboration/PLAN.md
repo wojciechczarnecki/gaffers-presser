@@ -309,7 +309,7 @@ their imports or move with `git mv`. New tests go into new files, so that
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 1, 2, 3 | `tests/test_shared_code.py::test_no_chat_model_or_retry_loop_outside_app_llm`, `tests/llm/test_retry.py`, `tests/llm/test_structured.py` | |
+| AC1 | 1, 2, 3 | `tests/test_shared_code.py::test_no_chat_model_or_retry_loop_outside_app_llm`, `tests/llm/test_retry.py`, `tests/llm/test_structured.py` | `cd backend && uv run pytest -q tests/test_shared_code.py` → `AssertionError: assert ['extraction/...with_retries'] == []` (step 1); `tests/llm/test_retry.py` had no `app.llm.retry` yet (import error, then green with the module) |
 | AC2 | 4 | `tests/extraction/test_current_extractions.py`, `tests/test_shared_code.py::test_current_extraction_sql_lives_once` | |
 | AC3 | 5 | `tests/fpl/test_deadlines.py`, `tests/test_shared_code.py::test_schedules_use_fpl_deadline_helpers` | |
 | AC4 | 1–6 | n/a — kept behaviour: the existing suites stay green with import-only diffs (the check command in step 6) | |
@@ -343,7 +343,7 @@ AC writes its proving test first and runs it red before the product change.
 
 ### Group 1 — Shared refactors (app/llm, current extraction, deadlines, embed timeout)
 
-- [ ] 1. **One retry helper in `app/llm/retry.py`.**
+- [x] 1. **One retry helper in `app/llm/retry.py`.**
   - Write `tests/llm/test_retry.py`:
     - success on the 2nd attempt, with the sleeps `[2.0]`;
     - exhaustion after 3 attempts, with the sleeps `[2.0, 4.0]` and the last error kept;

@@ -12,6 +12,7 @@ from sqlalchemy import Engine
 from app.core.clock import Clock
 from app.core.errors import CollectorError
 from app.llm.pricing import Price
+from app.llm.retry import with_retries
 from app.retrieval.embedder import Embedder, EmbeddingResult
 from app.retrieval.evaluation.dataset import CorpusPost, Query
 from app.retrieval.evaluation.metrics import (
@@ -22,7 +23,7 @@ from app.retrieval.evaluation.metrics import (
     aggregate,
 )
 from app.retrieval.evaluation.schema import load_eval_corpus
-from app.retrieval.indexing import IndexingRuntime, index_missing, traced_embed, with_retries
+from app.retrieval.indexing import IndexingRuntime, index_missing, traced_embed
 from app.retrieval.search import SearchError, search
 from app.retrieval.tracing import RetrievalTracer
 

@@ -10,7 +10,7 @@ from pydantic import BaseModel, SecretStr
 
 from app.core.clock import Clock
 from app.llm.pricing import Price, compute_cost
-from app.retrieval.indexing import with_retries
+from app.llm.retry import with_retries
 
 # The ADR 0006 default chat model (a test keeps this equal to the extraction default); its
 # request settings are those of its row in the extraction model settings.
