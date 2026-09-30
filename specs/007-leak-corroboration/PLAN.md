@@ -983,4 +983,120 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-30 — /pipeline:final-review (report)
+
+Three independent perspectives (compliance, quality, tests) read the diff
+`origin/main...HEAD`. Every finding below was checked in the code. Full verification: ruff
+clean, `1052 passed`.
+
+**AC → evidence**
+
+| AC | Evidence | Verdict |
+|----|----------|---------|
+| AC1 | `app/llm/{chat,models,structured,retry}.py`; `tests/test_shared_code.py`, `tests/llm/test_retry.py`, `tests/llm/test_structured.py` | ok |
+| AC2 | `extraction/store.current_extractions` (the only `DISTINCT ON (tweet_x_id)`); `tests/extraction/test_current_extractions.py`, `test_shared_code::test_current_extraction_sql_lives_once` | ok |
+| AC3 | `app/fpl/deadlines.py`, used by `tweets/{schedule,loop}.py`, `worker/{schedule,cli}.py`; `tests/fpl/test_deadlines.py`, `test_schedules_use_fpl_deadline_helpers` | ok |
+| AC4 | import-only diffs of the existing suites (allowed exceptions listed in the plan); `model_settings.toml` moved unchanged | ok |
+| AC5 | `Embedder.embed(timeout_seconds)`, `search(embed_timeout_seconds)`, `EMBED_TIMEOUT_SECONDS = 5.0`; `tests/retrieval/test_embed_timeout.py`, `test_service::test_slow_embedding_falls_back_to_fulltext` | ok |
+| AC6 | `migrations/versions/0006_repost_author.py`; `test_migrations::test_repost_author_migration_backfills_and_downgrades` | ok (F12) |
+| AC7 | the three adapters and `store_posts`; `tests/tweets/sources/test_repost_authors.py` | ok |
+| AC8 | `sources.window_start`, `[start, as_of)` on both legs; `test_sources::test_window_*`, `test_service::test_replay_ignores_posts_after_as_of` | ok |
+| AC9 | `service.corroborate` (no anchor, no search or judge call), CLI "No claim"; `test_no_claim_makes_no_judge_call`, `test_cli::test_no_claim_message` | ok |
+| AC10 | `rules.label_claim`; `test_rules::test_label_table` (16 pairs) | ok |
+| AC11 | `sources.retrieval_candidates`, `judge.py`, the prompt; `test_sources::test_candidates_*`, `test_judge.py`, `test_service::test_judged_posts_labelled_and_unrelated_dropped` | ok |
+| AC12 | `rules.account_of`, `count_accounts`; `test_rules::test_accounts_*` | partial (F2) |
+| AC13 | `service._citation`, `rules.freshness`; `test_service::test_citations_carry_fields`, `test_rules::test_freshness_*` | ok |
+| AC14 | `rules.reversal`, `newer_contradiction`; `test_rules::test_reversal_*`, `test_newer_contradiction_*` | ok (F2) |
+| AC15 | `rules.grade`, `GradeRules`; `test_rules::test_grade_*` | ok |
+| AC16 | `corroboration/cli.py`, `core/local_time.py`; `tests/corroboration/test_cli.py`, `tests/core/test_local_time.py` | ok (F6, F8) |
+| AC17 | CLI runtime without a key; unjudged count in `service._judge_candidates`; `test_without_key_sql_only`, `test_failed_judge_call_counts_unjudged` | ok (F7) |
+| AC18 | `corroboration/tracing.py`; `test_tracing.py`, `test_service::test_trace_holds_every_step`; the e2e trace above | ok (F3) |
+| AC19 | `evals/corroboration/v1/cases.jsonl` (51 cases); `test_eval_set.py` | partial (F1) |
+| AC20 | `PRELABEL_MODEL = anthropic/claude-haiku-4.5`, `reviewed = false`; `test_building.py`, `test_eval_set.py` | ok |
+| AC21 | `evaluation/cli.py review`; `test_review_cli.py` | ok |
+| AC22 | `evaluation/{metrics,runner}.py`; `test_metrics.py`, `test_runner.py` | ok (F11) |
+| AC23 | `evals/corroboration/results/test-openai-gpt-6-luna.json`; `test_results_files.py` | ok (F5) |
+| AC24 | DECISIONS, BACKLOG, PROJECT, README, DEPLOYMENT; `test_docs.py`, `test_readme.py` | partial (F4, F5) |
+| AC25 | fakes for chat models, embedders and Langfuse; testcontainers; verify green | ok |
+
+**Findings**
+
+- **F1** `worth-fixing` — `backend/evals/corroboration/v1/cases.jsonl` case
+  `jc-26-2104177542324273565-2104124182170566816` and `PLAN.md` → `## Deviations` (step 18).
+  The only `contradicts` case in set v1 is a `doubt` anchor (an international-break niggle)
+  against a post that Havertz could be out for four weeks. By the AC10 table and the judge
+  prompt, availability news against `doubt` is `related`, so the pre-label is wrong. AC19's
+  "every label present" and the test split's `contradicts` recall rest on it, and once the
+  owner corrects it in review, `test_eval_set::test_committed_set_composition` goes red. The
+  step 18 deviation also says the `contradicts` label came from the `confirmed_starter`
+  players, which is not true. Fix: correct the deviation text, and record the case as a known
+  mislabel with an owner decision on AC19's `contradicts` requirement until BACKLOG #12 grows
+  the set (for example, the composition rule tolerates a missing `contradicts` label with a
+  reference to #12).
+- **F2** `worth-fixing` — `backend/app/corroboration/rules.py:68`. `count_accounts` counts the
+  anchor's own account as contradicting when its older post contradicts the anchor. @X posts
+  "Saka starts" after `new_since`, then "Saka out" (the anchor) → @X is listed as a
+  contradicting account, `reversal` is yes, and the grade drops one step, although AC12 counts
+  an account "by its newest one" (here the anchor) and AC14 speaks of an "independent
+  account". Plan review R6 left this for the owner. Fix: owner decision; either exclude the
+  anchor's account from `contradicting` (and so from `reversal` and the lowering), or keep it
+  and record the reading in DECISIONS.
+- **F3** `worth-fixing` — `backend/app/llm/structured.py:108`. The cost is computed with
+  `self.model` even when `answered_model` is the fallback. The corroboration judge is built by
+  `resolve_llm` with a fallback, so a fallback answer is priced at the primary model's rate in
+  the Langfuse generation and the evaluation cost. Extraction prices by
+  `answered_model or model` (`extraction/service.py:139`). Fix: price with
+  `answered_model or self.model`, with a test.
+- **F4** `worth-fixing` — `docs/DECISIONS.md` (the 2026-09-29 `model_settings.toml` row). A row
+  already on `main` was edited in place (path changed to `app/llm`), which the table header
+  forbids ("a change is a new row that names the one it supersedes"). Fix: restore the row and
+  let the 2026-09-30 `app/llm` row name it as superseded.
+- **F5** `worth-fixing` — `PLAN.md` → `## AC → steps matrix`, rows AC19, AC23, AC24. AC19's
+  fourth column holds the placeholder "step 18: filled in below" and AC23's red record
+  (`test-openai-gpt-6-luna.json is missing`); AC23's and AC24's cells are empty with no `n/a`
+  or `manual` mark. Fix: move the record to AC23, record `test_eval_set`'s red for AC19, and
+  record the red of `test_docs`/`test_readme` for AC24 (or mark it with a reason).
+- **F6** `worth-fixing` — `backend/app/corroboration/cli.py:191-203`. `--since` and
+  `--new-since` are parsed only after `make_runtime()`, and nothing checks the window.
+  `--since` later than `--at` → an empty window and "No claim about this player in the
+  window.", exit 0, instead of an input error. Fix: parse every option up front and fail with
+  exit 1 when `since >= as_of`; a test for each invalid option.
+- **F7** `worth-fixing` — `backend/app/corroboration/service.py:230`. The path where
+  `retrieval_candidates` raises (a `SearchError` or a database error) is untested, so the
+  promise that retrieval never fails the whole corroboration is unproven. Fix: a service test
+  with a raising search or embedder that asserts the SQL-only result and
+  `retrieval.failure == "retrieval failed: <Class>"`.
+- **F8** `worth-fixing` — `backend/tests/corroboration/test_cli.py:95` and `:269`. The AC16
+  print-order test leaves `Related` out (the seed has no related post), and
+  `test_the_runtime_is_built_once_and_the_tracer_flushed` never asserts the flush (the
+  `finally: runtime.tracer.flush()`). Fix: seed a related claim and include `Related` in the
+  order; inject a recording tracer and assert one flush, also when `corroborate` raises.
+- **F9** `nit` — `backend/app/retrieval/cli.py:209`. `parseformat_local` is a botched rename of
+  `parse_warsaw`. Fix: rename it (for example `_parse_time_option`) at lines 209 and 236-237.
+- **F10** `nit` — `backend/app/corroboration/evaluation/cli.py:212`. A docstring on
+  `_review_cases`, against CONVENTIONS "No docstrings" (copied from `extraction/cli.py:554`).
+  Fix: remove it.
+- **F11** `nit` — `backend/app/corroboration/evaluation/cli.py:256`. `evaluate` defaults to
+  `DEFAULT_MODEL`, while the production judge honours `LLM_MODEL`; with `LLM_MODEL` set, the
+  evaluation measures another model than the one corroboration runs (the result file names
+  it, so nothing is mislabelled). Fix: default to `settings.llm_model or DEFAULT_MODEL`.
+- **F12** `nit` — `backend/migrations/versions/0006_repost_author.py:24-30`. The X API branch of
+  the backfill reads `raw.retweeted_author`, which only the new adapter writes, so X API
+  reposts stored before 0006 stay null. DEPLOYMENT documents it and production runs twscrape,
+  but AC6 says "every stored repost of the three source shapes". Fix: record it in
+  `## Deviations`.
+- **F13** `nit` — `backend/app/extraction/store.py` (`current_extractions`) with
+  `corroboration/sources.py:90`. `DISTINCT ON` runs over the whole `extraction` table before the
+  window filter, and `sql_claims` loads every post in the window and filters to one player in
+  Python. Fine at today's volume; the alert spec will call it per player several times per
+  deadline. Fix: filter `created_at` inside the `latest` subquery, or a BACKLOG entry with the
+  alert spec as its trigger.
+
+**Rejected / severity changed**
+
+- The tests perspective's `worth-fixing` on the X API backfill test → `nit` (F12): the
+  limitation is planned (Owner summary, main risks) and documented in DEPLOYMENT.
+- A CLI test for the failed-vector-leg line and a `count_accounts` test with a repost anchor →
+  `nit`: the service test covers AC5's result record, and `account_of` is tested on reposts.
+
+Left out: 28 nit findings
