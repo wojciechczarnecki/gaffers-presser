@@ -11,7 +11,7 @@ class RecordingChannel:
     def __init__(self) -> None:
         self.received: list[Message] = []
 
-    def send(self, message: Message) -> str | None:
+    def send(self, message: Message, idempotency_key: str) -> str | None:
         self.received.append(message)
         return None
 
@@ -25,7 +25,7 @@ def test_message_shape_and_channel_protocol():
     assert message.html is None
 
     channel: Channel = RecordingChannel()
-    assert channel.send(message) is None
+    assert channel.send(message, "test:k") is None
     assert channel.received[0] is message
 
 

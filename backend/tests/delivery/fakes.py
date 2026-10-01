@@ -34,9 +34,11 @@ class FakeChannel:
         self._gate = gate
         self._entered = entered
         self.calls: list[Message] = []
+        self.keys: list[str] = []
 
-    def send(self, message: Message) -> str | None:
+    def send(self, message: Message, idempotency_key: str) -> str | None:
         self.calls.append(message)
+        self.keys.append(idempotency_key)
         if self._entered is not None:
             self._entered.set()
         if self._gate is not None:

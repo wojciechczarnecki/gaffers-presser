@@ -48,7 +48,7 @@ class ResendChannel:
     def close(self) -> None:
         self._client.close()
 
-    def send(self, message: Message) -> str | None:
+    def send(self, message: Message, idempotency_key: str) -> str | None:
         payload = {
             "from": self._from,
             "to": [self._to],
@@ -58,7 +58,9 @@ class ResendChannel:
         if message.html is not None:
             payload["html"] = message.html
         try:
-            response = self._client.post("emails", json=payload)
+            response = self._client.post(
+                "emails", json=payload, headers={"Idempotency-Key": idempotency_key}
+            )
         except httpx.TransportError:
             raise ChannelUnavailableError("resend: request failed") from None
 

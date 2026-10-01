@@ -119,7 +119,7 @@ class DeliveryService:
             row.html_body = message.html
             row.requested_at = self._clock.now()
             outcome = with_retries(
-                lambda: channel.send(message),
+                lambda: channel.send(message, key),
                 self._clock,
                 self._stop_event,
                 what="delivery",

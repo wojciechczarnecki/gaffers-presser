@@ -20,7 +20,7 @@ class FileChannel:
     def close(self) -> None:
         pass
 
-    def send(self, message: Message) -> str | None:
+    def send(self, message: Message, idempotency_key: str) -> str | None:
         now = self._clock.now()
         mail = EmailMessage()
         mail["From"] = SENDER

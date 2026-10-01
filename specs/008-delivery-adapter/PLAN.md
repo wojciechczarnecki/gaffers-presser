@@ -511,6 +511,15 @@ downgrade and upgrade). `<verify.command>`: final full run: 1136 passed (ruff ch
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-10-01 — final review (GATE 2, /pipeline:ship): decisions on findings F1–F4.
+  - F1 (`worth-fixing`, a retry after a lost Resend reply sends a duplicate e-mail) —
+    accepted: the delivery idempotency key goes to the channel and to Resend as the
+    `Idempotency-Key` header; the AC1 wording change is accepted; a test against a recorded
+    request asserts the header.
+  - F2 (`nit`, `Retry-After` of `-1`/`nan`) — rejected.
+  - F3 (`nit`, no service test for a stop after a failed attempt) — rejected.
+  - F4 (`nit`, `deviations_minor` disagrees with `## Deviations`) — rejected.
+
 ## Review log
 
 ### 2026-10-01 — plan review (/pipeline:plan-review under /pipeline:ship)
@@ -693,3 +702,27 @@ Rejected:
   later specs' templates.
 
 Left out: 0 nit findings.
+
+### 2026-10-01 — apply (/pipeline:final-review under /pipeline:ship)
+
+Owner decisions: F1 accepted; F2, F3, F4 rejected (see `## Owner decisions`).
+
+Fixed:
+
+- **F1** → `Channel.send(message, idempotency_key)` in `app/delivery/channels/base.py`; the
+  service passes its key on every attempt (`service.py`); `ResendChannel` sends it as the
+  `Idempotency-Key` header (`channels/resend.py`); `FileChannel` accepts and ignores it (the
+  service log already deduplicates; a file write has no lost reply). AC1 in SPEC.md reworded;
+  the 2026-10-01 delivery row in `docs/DECISIONS.md` names the key in the interface. Tests:
+  `channels/test_resend.py::test_sends_one_post_and_returns_the_id` asserts the header on the
+  recorded 200 request, `::test_every_attempt_carries_the_same_idempotency_key` (read timeout,
+  then 200: both requests carry the same key and the same body),
+  `test_service.py::test_retry_after_a_lost_reply_reuses_the_idempotency_key` (service +
+  Resend adapter over `MockTransport`) and `::test_transient_errors_retried_three_times`
+  (the fake channel sees the same key on each attempt).
+  Residual, not verified against Resend: its idempotency keys expire after 24 hours, and a
+  re-try of a `failed` key with a changed message may be answered with a 4xx by Resend
+  (a different payload under one key) — that ends as `failed`, not a duplicate.
+
+`<verify.command>` after the fixes: ruff check and format clean; pytest 1138 passed.
+

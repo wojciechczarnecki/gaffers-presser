@@ -21,6 +21,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 1
   final_review_nits: 3
+  findings_accepted: 1
+  findings_rejected: 3
 ---
 
 # SPEC 008 — Delivery adapter (e-mail first)
@@ -113,9 +115,12 @@ Messenger channel is a new adapter with no change to its callers.
 Message and interface
 
 - [ ] AC1: A message has a title, a plain-text body and an optional HTML body; a channel adapter
-  receives exactly this and returns the provider's message ID (or `None` when the channel has
-  none). Nothing in the interface is e-mail specific: the recipient and the sender come from the
-  adapter's configuration, not from the caller.
+  receives exactly this plus the send's idempotency key (AC7) and returns the provider's message
+  ID (or `None` when the channel has none). An adapter whose provider deduplicates requests
+  passes the key on (Resend: the `Idempotency-Key` header, the same on every attempt), so a
+  retry after a lost reply cannot deliver the message twice. Nothing in the interface is e-mail
+  specific: the recipient and the sender come from the adapter's configuration, not from the
+  caller. (Wording changed at the final review, F1 — accepted by the owner 2026-10-01.)
 - [ ] AC2: A message with an empty title or an empty plain-text body is rejected with a
   validation error before any provider call and before any log row is written.
 

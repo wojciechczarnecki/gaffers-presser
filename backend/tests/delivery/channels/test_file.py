@@ -7,6 +7,7 @@ from app.delivery.channels.base import Message
 from app.delivery.channels.file import FileChannel
 
 START = datetime(2026, 10, 1, 12, 30, 15, 250000, tzinfo=UTC)
+KEY = "test:file:k"
 
 
 class FixedClock:
@@ -29,13 +30,13 @@ def parse(path: Path):
 
 def test_returns_no_provider_id(tmp_path):
     channel = FileChannel(tmp_path, FixedClock(START))
-    assert channel.send(Message(title="T", text="B")) is None
+    assert channel.send(Message(title="T", text="B"), KEY) is None
     assert len(list(tmp_path.glob("*.eml"))) == 1
 
 
 def test_writes_multipart_eml_with_text_part(tmp_path):
     message = Message(title="Konferencja po kolejce", text="Zażółć gęślą jaźń\nDruga linia")
-    FileChannel(tmp_path, FixedClock(START)).send(message)
+    FileChannel(tmp_path, FixedClock(START)).send(message, KEY)
 
     (path,) = tmp_path.glob("*.eml")
     parsed = parse(path)
@@ -50,7 +51,7 @@ def test_writes_multipart_eml_with_text_part(tmp_path):
 
 def test_html_part_when_present(tmp_path):
     message = Message(title="T", text="Tresc", html="<p>Tresc żółta</p>")
-    FileChannel(tmp_path, FixedClock(START)).send(message)
+    FileChannel(tmp_path, FixedClock(START)).send(message, KEY)
 
     (path,) = tmp_path.glob("*.eml")
     parsed = parse(path)
@@ -63,7 +64,7 @@ def test_files_sort_by_send_time(tmp_path):
     clock = FixedClock(START)
     channel = FileChannel(tmp_path, clock)
     for index in range(3):
-        channel.send(Message(title=f"Title {index}", text="Body"))
+        channel.send(Message(title=f"Title {index}", text="Body"), KEY)
         clock.advance(timedelta(seconds=1))
 
     names = sorted(path.name for path in tmp_path.glob("*.eml"))
@@ -77,12 +78,12 @@ def test_files_sort_by_send_time(tmp_path):
 
 def test_same_instant_sends_do_not_overwrite(tmp_path):
     channel = FileChannel(tmp_path, FixedClock(START))
-    channel.send(Message(title="A", text="B"))
-    channel.send(Message(title="A", text="B"))
+    channel.send(Message(title="A", text="B"), KEY)
+    channel.send(Message(title="A", text="B"), KEY)
     assert len(list(tmp_path.glob("*.eml"))) == 2
 
 
 def test_creates_missing_directory(tmp_path):
     target = tmp_path / "nested" / "outbox"
-    FileChannel(target, FixedClock(START)).send(Message(title="T", text="B"))
+    FileChannel(target, FixedClock(START)).send(Message(title="T", text="B"), KEY)
     assert len(list(target.glob("*.eml"))) == 1

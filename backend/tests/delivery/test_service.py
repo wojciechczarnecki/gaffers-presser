@@ -235,6 +235,7 @@ def test_transient_errors_retried_three_times(db):
     assert outcome.status == "sent"
     assert outcome.attempts == 2
     assert clock.sleeps == [2.0]
+    assert recovering.keys == ["alert:gw1:other", "alert:gw1:other"]
 
 
 @pytest.mark.parametrize(("retry_after", "expected"), [(3.0, 3.0), (60.0, 10.0), (None, 2.0)])
@@ -310,3 +311,25 @@ def test_logs_carry_no_addresses_title_body_or_key(db, caplog):
         f"kind=alert log_id={bad.log_id} channel=resend status=failed attempts=3"
         " error=ChannelUnavailableError" in lines[1]
     )
+
+
+def test_retry_after_a_lost_reply_reuses_the_idempotency_key(db):
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if len(requests) == 1:
+            raise httpx.ReadTimeout("accepted, reply lost", request=request)
+        return httpx.Response(200, json={"id": "provider-9"})
+
+    channel = ResendChannel(
+        "re_test_key_synthetic",
+        "presser@example.test",
+        "owner@example.test",
+        transport=httpx.MockTransport(handler),
+    )
+    outcome = make_service(db, channel).send("presser:gw7:league-a", "presser", MESSAGE)
+
+    assert outcome.status == "sent"
+    assert outcome.attempts == 2
+    assert [r.headers["Idempotency-Key"] for r in requests] == ["presser:gw7:league-a"] * 2

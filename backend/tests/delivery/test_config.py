@@ -89,5 +89,5 @@ def test_file_dir_defaults_to_outbox(tmp_path, monkeypatch):
     assert config is not None
     assert config.settings.delivery_file_dir == "./outbox"
     channel = build_channel(config, SystemClock())
-    channel.send(Message(title="T", text="B"))
+    channel.send(Message(title="T", text="B"), "test:k")
     assert len(list((tmp_path / "outbox").glob("*.eml"))) == 1
