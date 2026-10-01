@@ -24,7 +24,6 @@ Kind = Literal["alert", "presser", "test"]
 KINDS = ("alert", "presser", "test")
 
 MAX_WAIT_SECONDS = 10.0
-MAX_ATTEMPTS = 3
 
 _disabled_lock = threading.Lock()
 _disabled_noticed = False
@@ -123,7 +122,6 @@ class DeliveryService:
                 lambda: channel.send(message),
                 self._clock,
                 self._stop_event,
-                attempts=MAX_ATTEMPTS,
                 what="delivery",
                 retryable=_retryable,
                 wait=_wait,

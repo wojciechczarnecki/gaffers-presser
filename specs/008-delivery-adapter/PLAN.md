@@ -199,7 +199,7 @@ Design (signatures where precision matters):
 | AC17 | 10 | `tests/worker/test_cli.py::test_status_shows_delivery_line`, `::test_status_shows_delivery_disabled` | `uv run pytest -q tests/worker/test_cli.py -k delivery` (field added, no status line) → `assert 'Delivery: disabled' in [...]`, `assert 'Delivery: file  last sent: ...' in [...]` |
 | AC18 | 6 | `tests/db/test_migrations.py::test_delivery_migration_adds_only_new_table` (plus the existing `test_models_match_migration`) | `uv run pytest -q tests/db/test_migrations.py::test_delivery_migration_adds_only_new_table` (no-op `0007` stub) → `assert 'delivery_log' in [...]`; `test_models_match_migration` → `assert [('add_table', Table('delivery_log' ...)] == []` |
 | AC19 | 3 | `tests/delivery/test_synthetic_data.py::test_only_synthetic_addresses_and_keys` | n/a — guard over test files; nothing to be red against before they exist |
-| AC20 | 11 | `tests/test_env_example.py::test_every_delivery_variable_is_an_empty_placeholder`, `tests/test_readme.py::test_deployment_documents_delivery`, `tests/test_docs.py::test_backlog_has_delivery_webhooks_entry` | |
+| AC20 | 11 | `tests/test_env_example.py::test_every_delivery_variable_is_an_empty_placeholder`, `tests/test_readme.py::test_deployment_documents_delivery`, `tests/test_docs.py::test_backlog_has_delivery_webhooks_entry` | `uv run pytest -q tests/test_env_example.py tests/test_readme.py tests/test_docs.py` → `AssertionError: assert set() == {'DELIVERY_EM...SEND_API_KEY'}`, `AssertionError: 'DELIVERY_PROVIDER' missing from docs/DEPLOYMENT.md`, and `ValueError: not enough values to unpack (expected 1, got 0)` for the backlog row |
 
 ## Steps
 
@@ -371,7 +371,7 @@ Design (signatures where precision matters):
       slice the output by `"Extraction: disabled"` keep passing because the Delivery line comes
       after the Extraction block. Tests first, red.
       Automatic verification: `cd backend && uv run pytest -q tests/worker/test_cli.py`
-- [ ] 11. Documentation — files: `.gitignore` (`backend/outbox/`, so `.eml` files from local
+- [x] 11. Documentation — files: `.gitignore` (`backend/outbox/`, so `.eml` files from local
       `file`-adapter runs are never committed), `backend/.env.example` (a "Delivery — optional" block:
       `DELIVERY_PROVIDER=`, `RESEND_API_KEY=`, `DELIVERY_EMAIL_TO=`, `DELIVERY_EMAIL_FROM=`,
       `DELIVERY_FILE_DIR=` with comments: empty disables, allowed values, the testing-domain

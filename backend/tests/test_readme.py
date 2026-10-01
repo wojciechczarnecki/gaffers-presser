@@ -143,3 +143,19 @@ def test_corroboration_commands_documented():
         assert command.split(" ")[0] in deployment
     for term in ("build-cases", "review", "evaluate", "0006"):
         assert term in deployment, f"{term!r} missing from docs/DEPLOYMENT.md"
+
+
+def test_deployment_documents_delivery():
+    section = DEPLOYMENT.read_text(encoding="utf-8")
+    for term in (
+        "DELIVERY_PROVIDER",
+        "RESEND_API_KEY",
+        "DELIVERY_EMAIL_TO",
+        "DELIVERY_EMAIL_FROM",
+        "DELIVERY_FILE_DIR",
+        "python -m app.delivery send-test",
+        "python -m app.delivery status",
+        "onboarding@resend.dev",
+        "Delivery:",
+    ):
+        assert term in section, f"{term!r} missing from docs/DEPLOYMENT.md"
