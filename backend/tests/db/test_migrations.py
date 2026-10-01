@@ -13,6 +13,7 @@ from sqlalchemy import text as sa_text
 from sqlmodel import Session, SQLModel
 from testcontainers.postgres import PostgresContainer
 
+import app.delivery.models  # noqa: F401
 import app.extraction.models  # noqa: F401
 import app.fpl.models  # noqa: F401
 import app.retrieval.models  # noqa: F401
@@ -81,6 +82,7 @@ def test_job_run_migration_keeps_collector_data():
             "extraction",
             "extraction_event",
             "post_embedding",
+            "delivery_log",
         }
         with Session(engine) as session:
             before = table_contents(session, tables=collector_tables)
@@ -125,6 +127,7 @@ def test_tweet_migration_adds_only_new_tables():
             "extraction",
             "extraction_event",
             "post_embedding",
+            "delivery_log",
         }
         with Session(engine) as session:
             before = table_contents(session, tables=other_tables)
@@ -177,6 +180,7 @@ def test_extraction_migration_adds_only_new_tables():
             "extraction",
             "extraction_event",
             "post_embedding",
+            "delivery_log",
         }
         excluded = DEFAULT_EXCLUDE | {"search_vector", "reposted_author_handle"}
         with Session(engine) as session:
@@ -233,7 +237,7 @@ def test_retrieval_migration_keeps_data_and_downgrades():
                 {"now": NOW},
             )
 
-        other_tables = set(SQLModel.metadata.tables.keys()) - {"post_embedding"}
+        other_tables = set(SQLModel.metadata.tables.keys()) - {"post_embedding", "delivery_log"}
         excluded = DEFAULT_EXCLUDE | {"search_vector", "reposted_author_handle"}
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
@@ -308,11 +312,11 @@ def test_repost_author_migration_backfills_and_downgrades():
             insert(conn, 5, True, {})
             insert(conn, 6, False, {"retweetedTweet": {"user": {"username": "NotARepost"}}})
 
-        other_tables = set(SQLModel.metadata.tables.keys()) - {"tweet"}
+        other_tables = set(SQLModel.metadata.tables.keys()) - {"tweet", "delivery_log"}
         with Session(engine) as session:
             before = table_contents(session, exclude=DEFAULT_EXCLUDE, tables=other_tables)
 
-        run_alembic(url, "upgrade", "head")
+        run_alembic(url, "upgrade", "0006")
         with engine.connect() as conn:
             assert originals(conn) == {
                 1: "TwscrapeOrigin",
@@ -333,6 +337,58 @@ def test_repost_author_migration_backfills_and_downgrades():
         with Session(engine) as session:
             assert table_contents(session, exclude=DEFAULT_EXCLUDE, tables=other_tables) == before
 
-        run_alembic(url, "upgrade", "head")
+        run_alembic(url, "upgrade", "0006")
         with engine.connect() as conn:
             assert originals(conn)[1] == "TwscrapeOrigin"
+
+
+def test_delivery_migration_adds_only_new_table():
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
+        url = container.get_connection_url()
+        run_alembic(url, "upgrade", "0006")
+        engine = make_engine(url)
+
+        with engine.begin() as conn:
+            conn.execute(
+                sa_text(
+                    "INSERT INTO job_run (job, season, gameweek_fpl_id, started_at,"
+                    " finished_at, outcome) VALUES ('reference_sync', NULL, NULL,"
+                    " :now, :now, 'succeeded')"
+                ),
+                {"now": NOW},
+            )
+            conn.execute(
+                sa_text(
+                    "INSERT INTO tweet (x_id, author_handle, text, created_at,"
+                    " first_fetched_at, source, is_repost, is_reply, raw) VALUES"
+                    " (1, 'reporter', 'some text', :now, :now, 'list', false, false, '{}')"
+                ),
+                {"now": NOW},
+            )
+
+        other_tables = set(SQLModel.metadata.tables.keys()) - {"delivery_log"}
+        excluded = DEFAULT_EXCLUDE | {"search_vector"}
+        with Session(engine) as session:
+            before = table_contents(session, exclude=excluded, tables=other_tables)
+
+        run_alembic(url, "upgrade", "0007")
+        with engine.connect() as conn:
+            inspector = inspect(conn)
+            assert "delivery_log" in inspector.get_table_names()
+            unique = {
+                tuple(index["column_names"])
+                for index in inspector.get_indexes("delivery_log")
+                if index["unique"]
+            } | {
+                tuple(constraint["column_names"])
+                for constraint in inspector.get_unique_constraints("delivery_log")
+            }
+            assert ("idempotency_key",) in unique
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before
+
+        run_alembic(url, "downgrade", "-1")
+        with engine.connect() as conn:
+            assert "delivery_log" not in inspect(conn).get_table_names()
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before

@@ -197,7 +197,7 @@ Design (signatures where precision matters):
 | AC15 | 9 | `tests/delivery/test_cli.py::test_send_test_prints_outcome_and_provider_id`, `::test_send_test_disabled_exits_non_zero`, `tests/content/test_delivery_test_message.py::test_renders_with_time` | |
 | AC16 | 9 | `tests/delivery/test_cli.py::test_status_prints_channel_and_last_rows` | |
 | AC17 | 10 | `tests/worker/test_cli.py::test_status_shows_delivery_line`, `::test_status_shows_delivery_disabled` | |
-| AC18 | 6 | `tests/db/test_migrations.py::test_delivery_migration_adds_only_new_table` (plus the existing `test_models_match_migration`) | |
+| AC18 | 6 | `tests/db/test_migrations.py::test_delivery_migration_adds_only_new_table` (plus the existing `test_models_match_migration`) | `uv run pytest -q tests/db/test_migrations.py::test_delivery_migration_adds_only_new_table` (no-op `0007` stub) → `assert 'delivery_log' in [...]`; `test_models_match_migration` → `assert [('add_table', Table('delivery_log' ...)] == []` |
 | AC19 | 3 | `tests/delivery/test_synthetic_data.py::test_only_synthetic_addresses_and_keys` | n/a — guard over test files; nothing to be red against before they exist |
 | AC20 | 11 | `tests/test_env_example.py::test_every_delivery_variable_is_an_empty_placeholder`, `tests/test_readme.py::test_deployment_documents_delivery`, `tests/test_docs.py::test_backlog_has_delivery_webhooks_entry` | |
 
@@ -275,7 +275,7 @@ Design (signatures where precision matters):
 
 ### Group 2 — Delivery log and the service
 
-- [ ] 6. Data migration: the `delivery_log` table — files: `backend/app/delivery/models.py`,
+- [x] 6. Data migration: the `delivery_log` table — files: `backend/app/delivery/models.py`,
       `backend/migrations/versions/0007_delivery_log.py` (`revision = "0007"`,
       `down_revision = "0006"`, `create_table` with the unique constraint and the index;
       downgrade drops the table), `backend/migrations/env.py` (import `app.delivery.models`),
@@ -550,6 +550,10 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+
+- Step 6 (minor): `test_repost_author_migration_backfills_and_downgrades` upgraded to `head` and then
+  ran `downgrade -1`, assuming `0006` is the head; with `0007` that would undo the wrong
+  revision. The test now upgrades to `"0006"` explicitly. Its assertions are unchanged.
 
 ## Final review
 
