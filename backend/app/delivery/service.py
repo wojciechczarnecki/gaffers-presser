@@ -9,7 +9,12 @@ from sqlmodel import Session
 
 from app.core.clock import Clock
 from app.core.retry import with_retries
-from app.delivery.channels.base import Channel, Message
+from app.delivery.channels.base import (
+    Channel,
+    ChannelRateLimitedError,
+    ChannelUnavailableError,
+    Message,
+)
 from app.delivery.models import DeliveryLog
 from app.delivery.store import claim_row
 
@@ -17,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 Kind = Literal["alert", "presser", "test"]
 KINDS = ("alert", "presser", "test")
+
+MAX_WAIT_SECONDS = 10.0
+MAX_ATTEMPTS = 3
 
 _disabled_lock = threading.Lock()
 _disabled_noticed = False
@@ -41,6 +49,16 @@ class SendOutcome:
     accepted_at: datetime | None = None
     error_class: str | None = None
     http_status: int | None = None
+
+
+def _retryable(exc: Exception) -> bool:
+    return isinstance(exc, ChannelUnavailableError | ChannelRateLimitedError)
+
+
+def _wait(exc: Exception, default: float) -> float:
+    if isinstance(exc, ChannelRateLimitedError) and exc.retry_after is not None:
+        return min(exc.retry_after, MAX_WAIT_SECONDS)
+    return min(default, MAX_WAIT_SECONDS)
 
 
 def _outcome(status: Literal["sent", "already_sent", "failed"], row: DeliveryLog) -> SendOutcome:
@@ -91,7 +109,9 @@ class DeliveryService:
                 requested_at=self._clock.now(),
             )
             if row.status == "sent":
-                return _outcome("already_sent", row)
+                result = _outcome("already_sent", row)
+                self._log(kind, result, channel.name)
+                return result
 
             row.kind = kind
             row.channel = channel.name
@@ -103,8 +123,10 @@ class DeliveryService:
                 lambda: channel.send(message),
                 self._clock,
                 self._stop_event,
-                attempts=1,
+                attempts=MAX_ATTEMPTS,
                 what="delivery",
+                retryable=_retryable,
+                wait=_wait,
             )
             row.attempts += outcome.attempts
             if outcome.error is None and not outcome.stopped:
@@ -123,4 +145,18 @@ class DeliveryService:
                 row.http_status = getattr(outcome.error, "http_status", None)
             session.add(row)
             session.commit()
-            return _outcome("sent" if row.status == "sent" else "failed", row)
+            result = _outcome("sent" if row.status == "sent" else "failed", row)
+        self._log(kind, result, channel.name)
+        return result
+
+    @staticmethod
+    def _log(kind: str, outcome: SendOutcome, channel: str) -> None:
+        logger.info(
+            "delivery kind=%s log_id=%s channel=%s status=%s attempts=%s error=%s",
+            kind,
+            outcome.log_id,
+            channel,
+            outcome.status,
+            outcome.attempts,
+            outcome.error_class,
+        )
