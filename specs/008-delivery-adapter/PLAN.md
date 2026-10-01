@@ -182,9 +182,9 @@ Design (signatures where precision matters):
 |----|-------|--------------|-----------------------|
 | AC1 | 2, 3, 4 | `tests/delivery/test_message.py::test_message_shape_and_channel_protocol`, `tests/delivery/channels/test_resend.py::test_sends_one_post_and_returns_the_id`, `tests/delivery/channels/test_file.py::test_returns_no_provider_id` | `uv run pytest -q tests/delivery/test_message.py::test_message_shape_and_channel_protocol` → n/a for the shape test (new type, written with its stub-free definition; the empty-message rows above are its red); adapters in steps 3, 4 |
 | AC2 | 2, 7 | `tests/delivery/test_message.py::test_empty_title_or_text_is_rejected`, `tests/delivery/test_service.py::test_invalid_message_writes_no_row_and_calls_nothing` | `uv run pytest -q tests/delivery/test_message.py` → `Failed: DID NOT RAISE InvalidMessageError`; service test in step 7 |
-| AC3 | 5, 9, 10 | `tests/delivery/test_config.py::test_provider_selects_or_disables`, `::test_unknown_provider_names_the_variable`, `tests/delivery/test_cli.py::test_bad_provider_fails_on_start`, `tests/worker/test_cli.py::test_bad_delivery_provider_fails_worker_start` | |
-| AC4 | 5 | `tests/delivery/test_config.py::test_resend_requires_key_and_recipient`, `::test_resend_from_defaults_to_testing_domain` | |
-| AC5 | 4, 5 | `tests/delivery/test_config.py::test_file_dir_defaults_to_outbox`, `tests/delivery/channels/test_file.py::test_creates_missing_directory` | |
+| AC3 | 5, 9, 10 | `tests/delivery/test_config.py::test_provider_selects_or_disables`, `::test_unknown_provider_names_the_variable`, `tests/delivery/test_cli.py::test_bad_provider_fails_on_start`, `tests/worker/test_cli.py::test_bad_delivery_provider_fails_worker_start` | `uv run pytest -q tests/delivery/test_config.py` (stub `resolve_delivery` returning `None`) → `Failed: DID NOT RAISE ConfigError` (unknown provider), `assert None is not None` (file/resend selected); CLI and worker tests in steps 9–10 |
+| AC4 | 5 | `tests/delivery/test_config.py::test_resend_requires_key_and_recipient`, `::test_resend_from_defaults_to_testing_domain` | `uv run pytest -q tests/delivery/test_config.py` → `Failed: DID NOT RAISE ConfigError` (missing key / recipient), `assert None is not None` (from default) |
+| AC5 | 4, 5 | `tests/delivery/test_config.py::test_file_dir_defaults_to_outbox`, `tests/delivery/channels/test_file.py::test_creates_missing_directory` | `uv run pytest -q tests/delivery/test_config.py::test_file_dir_defaults_to_outbox` → `assert None is not None`; `tests/delivery/channels/test_file.py::test_creates_missing_directory` red as in AC13 |
 | AC6 | 7 | `tests/delivery/test_service.py::test_disabled_returns_disabled_writes_nothing_logs_once` | |
 | AC7 | 7 | `tests/delivery/test_service.py::test_key_and_kind_are_required_and_stored` | |
 | AC8 | 7 | `tests/delivery/test_service.py::test_first_send_writes_full_row`, `::test_file_channel_success_with_no_provider_id_is_sent` | |
@@ -260,7 +260,7 @@ Design (signatures where precision matters):
       only when `html` is given; two sends at later clock times sort by name in send order;
       a missing nested directory is created; `send` returns `None`. Tests first, red.
       Automatic verification: `cd backend && uv run pytest -q tests/delivery/channels/test_file.py`
-- [ ] 5. Configuration and the channel factory — files: `backend/app/delivery/config.py`,
+- [x] 5. Configuration and the channel factory — files: `backend/app/delivery/config.py`,
       `backend/app/delivery/channels/__init__.py` (`build_channel`),
       `backend/tests/delivery/test_config.py`. Tests build settings with explicit values and
       `_env_file=None`, and an autouse fixture deletes every `DELIVERY_*` / `RESEND_*` variable
