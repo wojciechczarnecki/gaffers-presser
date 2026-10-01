@@ -191,7 +191,7 @@ Design (signatures where precision matters):
 | AC9 | 7 | `tests/delivery/test_service.py::test_sent_key_is_not_sent_again` | |
 | AC10 | 7 | `tests/delivery/test_service.py::test_failed_key_is_retried_in_the_same_row`, `::test_concurrent_sends_make_one_provider_call` | |
 | AC11 | 1, 7, 8 | `tests/core/test_retry.py::test_non_retryable_error_stops_at_once`, `::test_wait_hook_overrides_the_delay`, `tests/delivery/test_service.py::test_transient_errors_retried_three_times`, `::test_rate_limit_waits_retry_after_capped`, `::test_other_4xx_not_retried`, `::test_unexpected_error_becomes_failed`, `::test_stop_event_ends_as_failed` | `uv run pytest -q tests/core/test_retry.py` → `assert 3 == 1` (non-retryable), `assert [2.0, 4.0] == [21.0, 41.0]` (wait hook); service tests in steps 7–8 |
-| AC12 | 3 | `tests/delivery/channels/test_resend.py` (200, 403, 422, 429 with `Retry-After`, 500, timeout) | |
+| AC12 | 3 | `tests/delivery/channels/test_resend.py` (200, 403, 422, 429 with `Retry-After`, 500, timeout) | `uv run pytest -q tests/delivery/channels/test_resend.py` (stub `send` returning `"stub"`) → `assert 'stub' == '49a3999c-0ce1-4ea6-ab68-afcd6dc2e794'`; `Failed: DID NOT RAISE ChannelRejectedError` (403/422), `ChannelRateLimitedError` (429), `ChannelUnavailableError` (500, timeout) |
 | AC13 | 4 | `tests/delivery/channels/test_file.py::test_writes_multipart_eml_with_text_part`, `::test_html_part_when_present`, `::test_files_sort_by_send_time` | |
 | AC14 | 8 | `tests/delivery/test_service.py::test_logs_carry_no_addresses_title_body_or_key` | |
 | AC15 | 9 | `tests/delivery/test_cli.py::test_send_test_prints_outcome_and_provider_id`, `::test_send_test_disabled_exits_non_zero`, `tests/content/test_delivery_test_message.py::test_renders_with_time` | |
@@ -231,7 +231,7 @@ Design (signatures where precision matters):
       satisfying `Channel` receives the same `Message` object; `test_empty_title_or_text_is_rejected`:
       `""` and whitespace-only for each raise `InvalidMessageError`). Tests first, red.
       Automatic verification: `cd backend && uv run pytest -q tests/delivery/test_message.py`
-- [ ] 3. Resend adapter against recorded responses — files:
+- [x] 3. Resend adapter against recorded responses — files:
       `backend/app/delivery/channels/resend.py`, `backend/tests/delivery/payloads/__init__.py`
       (`load(name)` reading plain `.json`), `backend/tests/delivery/payloads/resend-200.json`,
       `resend-403-testing-domain.json`, `resend-422.json`, `resend-429.json`, `resend-500.json`
