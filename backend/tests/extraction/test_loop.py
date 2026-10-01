@@ -6,9 +6,9 @@ from sqlmodel import Session, select
 
 from app.extraction.loop import ExtractionLoop
 from app.extraction.models import Extraction
-from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import ExtractionOutput
 from app.extraction.service import ExtractionRuntime
+from app.llm.chat import ChatModelSpec
 from app.tweets.models import Tweet
 from tests.extraction.fakes import FakeChatModel
 

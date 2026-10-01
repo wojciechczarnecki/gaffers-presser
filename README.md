@@ -107,7 +107,7 @@ linked to FPL player IDs. OpenRouter is the only LLM provider: extraction is dis
 above. Configuration (`backend/.env.example` has all of it): `OPENROUTER_API_KEY`, the optional
 `LLM_MODEL` (an OpenRouter model ID) and `LLM_FALLBACK_MODEL` (empty means the defaults from
 [ADR 0006](docs/adr/0006-default-extraction-model-openrouter.md): `openai/gpt-6-luna` with the
-fallback `google/gemini-3.1-flash-lite`; a model needs a row in `backend/app/extraction/model_settings.toml` and `prices.toml`),
+fallback `google/gemini-3.1-flash-lite`; a model needs a row in `backend/app/llm/model_settings.toml` and `prices.toml`),
 the optional Langfuse Cloud keys `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST`
 (without them extraction runs untraced) and `USD_PLN_RATE` (only `evaluate` reads it).
 `uv run python -m app.worker status` then also shows the model, the fallback, the posts waiting,
@@ -151,6 +151,30 @@ tokens (with reasoning tokens), cost, the serving hosts and the projected monthl
 the run is traced in Langfuse under the run name. Prices for the cost figures come from
 `backend/app/llm/prices.toml`; `uv run python -m app.extraction spend` sums the cost of
 every run file under `results/`, dev runs included.
+
+Corroboration — for a player and a moment, `python -m app.corroboration <player>` takes the
+newest extracted claim since the latest deadline as the anchor, labels every other post about
+the player as supporting, contradicting or related, counts the independent accounts (a repost
+counts as its original author), flags a reversal and grades the anchor `high`, `medium` or
+`low` with its reasons. Posts that only retrieval finds are labelled by an LLM judge, which needs
+`OPENROUTER_API_KEY`; without it the result uses the extracted claims only and says so. Times
+are `Europe/Warsaw`; `--at` replays a past moment and `--new-since` marks what is new to the
+reader. Each run is one Langfuse trace when the Langfuse keys are set. The judge has its own
+evaluation set in `backend/evals/corroboration/v1/`, pre-labelled by a model and reviewed by
+the owner (`review` needs no database or key); none of these commands is run by `pytest`:
+
+```bash
+uv run python -m app.corroboration Isak --at 2026-09-29T18:00       # a name or an FPL ID
+uv run python -m app.corroboration Isak --since 2026-09-25T00:00 --new-since 2026-09-29T12:00
+uv run python -m app.corroboration.evaluation build-cases           # set v1 from the stored posts
+uv run python -m app.corroboration.evaluation review --split test   # accept or change each label
+uv run python -m app.corroboration.evaluation evaluate --split test --model openai/gpt-6-luna
+```
+
+`evaluate` reports accuracy, per-label precision and recall and the false-support rate, counts
+reviewed cases only unless `--include-unreviewed` is given, and writes
+`backend/evals/corroboration/results/<split>-<model>.json`. Without `--model` it evaluates the
+model the judge runs on: `LLM_MODEL` when set, the default model otherwise.
 
 The project is built with a spec-driven agentic workflow
 ([agentic-pipeline](https://github.com/wojciechczarnecki/agentic-pipeline)): every feature

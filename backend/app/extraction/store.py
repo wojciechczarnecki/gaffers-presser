@@ -1,11 +1,13 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine, and_, text
 from sqlmodel import Session, select
 
 from app.extraction.models import Extraction, ExtractionEvent
 from app.extraction.schemas import LinkedEvent, PostInput
+from app.fpl.models.reference import Player
 from app.tweets.models import Tweet
 
 
@@ -34,6 +36,7 @@ class EventRecord:
     player_fpl_id: int | None
     event_type: str
     certainty: str
+    player_web_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -49,6 +52,9 @@ class CurrentExtraction:
     started_at: datetime
     finished_at: datetime
     events: list[EventRecord]
+    created_at: datetime
+    text: str
+    reposted_author_handle: str | None = None
 
 
 @dataclass(frozen=True)
@@ -64,6 +70,13 @@ class ExtractionStatus:
     waiting: int
     failed_posts: int
     latest: LatestExtraction | None
+
+
+def _latest_per_post(columns: str, where: str = "") -> str:
+    return (
+        f"SELECT DISTINCT ON (tweet_x_id) {columns} FROM extraction {where}"
+        " ORDER BY tweet_x_id, finished_at DESC, id DESC"
+    )
 
 
 def _post_from_tweet(tweet: Tweet) -> PostInput:
@@ -145,9 +158,8 @@ def posts_for_reextract(
         rows = session.execute(
             text(
                 "SELECT t.* FROM tweet t JOIN ("
-                " SELECT DISTINCT ON (tweet_x_id) tweet_x_id, status FROM extraction"
-                " ORDER BY tweet_x_id, finished_at DESC, id DESC"
-                ") latest ON latest.tweet_x_id = t.x_id"
+                + _latest_per_post("tweet_x_id, status")
+                + ") latest ON latest.tweet_x_id = t.x_id"
                 " WHERE latest.status = 'failed'"
                 " ORDER BY t.created_at, t.x_id"
             )
@@ -158,44 +170,107 @@ def posts_for_reextract(
 
 
 def current_extraction(session: Session, x_id: int) -> CurrentExtraction | None:
-    row = session.exec(
-        select(Extraction, Tweet.author_handle, Tweet.is_repost, Tweet.is_reply)
-        .join(Tweet, Tweet.x_id == Extraction.tweet_x_id)
-        .where(Extraction.tweet_x_id == x_id, Extraction.status == "extracted")
-        .order_by(Extraction.finished_at.desc(), Extraction.id.desc())
-        .limit(1)
-    ).first()
-    if row is None:
-        return None
-    extraction, author_handle, is_repost, is_reply = row
-    events = session.exec(
-        select(ExtractionEvent)
-        .where(ExtractionEvent.extraction_id == extraction.id)
+    rows = current_extractions(session, x_ids=[x_id])
+    return rows[0] if rows else None
+
+
+def current_extractions(
+    session: Session,
+    *,
+    x_ids: Sequence[int] | None = None,
+    created_from: datetime | None = None,
+    created_until: datetime | None = None,
+    player: tuple[str, int] | None = None,
+) -> list[CurrentExtraction]:
+    if x_ids is not None and not x_ids:
+        return []
+    latest_where = "WHERE status = 'extracted'"
+    window: list[str] = []
+    conditions: list[str] = []
+    params: dict[str, object] = {}
+    if x_ids is not None:
+        latest_where += " AND tweet_x_id = ANY(:ids)"
+        params["ids"] = list(x_ids)
+    if created_from is not None:
+        window.append("created_at >= :created_from")
+        params["created_from"] = created_from
+    if created_until is not None:
+        window.append("created_at < :created_until")
+        params["created_until"] = created_until
+    if window:
+        # The window narrows the posts before DISTINCT ON, not after it.
+        latest_where += f" AND tweet_x_id IN (SELECT x_id FROM tweet WHERE {' AND '.join(window)})"
+    if player is not None:
+        # After DISTINCT ON: the current extraction itself must name the player.
+        conditions.append(
+            "EXISTS (SELECT 1 FROM extraction_event ev WHERE ev.extraction_id = l.id"
+            " AND ev.player_season = :player_season AND ev.player_fpl_id = :player_fpl_id)"
+        )
+        params["player_season"], params["player_fpl_id"] = player
+    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    rows = (
+        session.execute(
+            text(
+                "WITH latest AS ("
+                + _latest_per_post("id, tweet_x_id", latest_where)
+                + ") SELECT e.id, e.tweet_x_id, e.provider, e.model, e.prompt_version,"
+                " e.started_at, e.finished_at, t.author_handle, t.is_repost, t.is_reply,"
+                " t.text, t.created_at, t.reposted_author_handle"
+                " FROM latest l JOIN extraction e ON e.id = l.id"
+                " JOIN tweet t ON t.x_id = l.tweet_x_id " + where + " ORDER BY t.created_at, t.x_id"
+            ),
+            params,
+        )
+        .mappings()
+        .all()
+    )
+    if not rows:
+        return []
+    events: dict[int, list[EventRecord]] = {row["id"]: [] for row in rows}
+    event_rows = session.exec(
+        select(ExtractionEvent, Player.web_name)
+        .join(
+            Player,
+            and_(
+                Player.season == ExtractionEvent.player_season,
+                Player.fpl_id == ExtractionEvent.player_fpl_id,
+            ),
+            isouter=True,
+        )
+        .where(ExtractionEvent.extraction_id.in_(list(events)))
         .order_by(ExtractionEvent.id)
     ).all()
-    return CurrentExtraction(
-        extraction_id=extraction.id,
-        tweet_x_id=x_id,
-        author_handle=author_handle,
-        is_repost=is_repost,
-        is_reply=is_reply,
-        provider=extraction.provider,
-        model=extraction.model,
-        prompt_version=extraction.prompt_version,
-        started_at=extraction.started_at,
-        finished_at=extraction.finished_at,
-        events=[
+    for event, web_name in event_rows:
+        events[event.extraction_id].append(
             EventRecord(
-                mention=e.mention,
-                team_mention=e.team_mention,
-                player_season=e.player_season,
-                player_fpl_id=e.player_fpl_id,
-                event_type=e.event_type,
-                certainty=e.certainty,
+                mention=event.mention,
+                team_mention=event.team_mention,
+                player_season=event.player_season,
+                player_fpl_id=event.player_fpl_id,
+                event_type=event.event_type,
+                certainty=event.certainty,
+                player_web_name=web_name,
             )
-            for e in events
-        ],
-    )
+        )
+    return [
+        CurrentExtraction(
+            extraction_id=row["id"],
+            tweet_x_id=row["tweet_x_id"],
+            author_handle=row["author_handle"],
+            is_repost=row["is_repost"],
+            is_reply=row["is_reply"],
+            provider=row["provider"],
+            model=row["model"],
+            prompt_version=row["prompt_version"],
+            started_at=row["started_at"],
+            finished_at=row["finished_at"],
+            events=events[row["id"]],
+            created_at=row["created_at"],
+            text=row["text"],
+            reposted_author_handle=row["reposted_author_handle"],
+        )
+        for row in rows
+    ]
 
 
 def extraction_status(engine: Engine) -> ExtractionStatus:
@@ -209,9 +284,8 @@ def extraction_status(engine: Engine) -> ExtractionStatus:
         failed_posts = conn.execute(
             text(
                 "SELECT count(*) FROM ("
-                " SELECT DISTINCT ON (tweet_x_id) tweet_x_id, status FROM extraction"
-                " ORDER BY tweet_x_id, finished_at DESC, id DESC"
-                ") latest WHERE latest.status = 'failed'"
+                + _latest_per_post("tweet_x_id, status")
+                + ") latest WHERE latest.status = 'failed'"
             )
         ).scalar_one()
         latest_row = (

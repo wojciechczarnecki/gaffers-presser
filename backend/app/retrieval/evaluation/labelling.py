@@ -9,9 +9,10 @@ from sqlalchemy import Engine
 from app.content import load_prompt
 from app.core.clock import Clock
 from app.llm.pricing import Price
+from app.llm.structured import StructuredCaller
 from app.retrieval.embedder import Embedder
 from app.retrieval.evaluation.dataset import CorpusPost, Judgement, Query, write_queries
-from app.retrieval.evaluation.llm import RelevanceLabel, StructuredCaller
+from app.retrieval.evaluation.llm import RelevanceLabel
 from app.retrieval.evaluation.runner import EvaluationError
 from app.retrieval.evaluation.schema import load_eval_corpus
 from app.retrieval.indexing import IndexingRuntime, index_missing

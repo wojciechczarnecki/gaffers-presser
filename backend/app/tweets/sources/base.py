@@ -15,6 +15,7 @@ class FetchedPost:
     is_repost: bool
     is_reply: bool
     raw: dict
+    reposted_author_handle: str | None = None
 
 
 class TweetSource(Protocol):

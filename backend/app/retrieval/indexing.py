@@ -2,24 +2,19 @@ import logging
 import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import TypeVar
 
 from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.clock import Clock
 from app.llm.pricing import Price, compute_cost
+from app.llm.retry import with_retries
 from app.llm.tracing import TracingConfig
 from app.retrieval.embedder import Embedder, EmbeddingResult
 from app.retrieval.store import PostToEmbed, posts_missing, save_embedded, save_failed
 from app.retrieval.tracing import RetrievalTracer
 
 logger = logging.getLogger(__name__)
-
-MAX_ATTEMPTS = 3
-RETRY_BACKOFF_SECONDS: tuple[float, ...] = (2.0, 4.0)
-
-T = TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -29,14 +24,6 @@ class IndexingRuntime:
     prices: dict[str, Price]
     tracing: TracingConfig | None
     clock: Clock | None = None
-
-
-@dataclass(frozen=True)
-class RetryOutcome:
-    result: object | None
-    attempts: int
-    error: Exception | None
-    stopped: bool = False
 
 
 @dataclass(frozen=True)
@@ -52,40 +39,17 @@ class IndexSummary:
     cost_usd: float | None
 
 
-def with_retries(
-    fn: Callable[[], T],
-    clock: Clock,
-    stop_event: threading.Event,
-    attempts: int = MAX_ATTEMPTS,
-    backoff: Sequence[float] = RETRY_BACKOFF_SECONDS,
-) -> RetryOutcome:
-    made = 0
-    last_exc: Exception | None = None
-    for attempt in range(1, attempts + 1):
-        if stop_event.is_set():
-            return RetryOutcome(None, made, last_exc, stopped=True)
-        made = attempt
-        try:
-            return RetryOutcome(fn(), made, None)
-        except Exception as exc:
-            last_exc = exc
-            logger.warning("embedding attempt failed: %s", type(exc).__name__)
-            if attempt >= attempts:
-                break
-            clock.sleep(backoff[min(attempt - 1, len(backoff) - 1)])
-            if stop_event.is_set():
-                return RetryOutcome(None, made, last_exc, stopped=True)
-    return RetryOutcome(None, made, last_exc)
-
-
 def traced_embed(
     embedder: Embedder,
     texts: Sequence[str],
     tracer: RetrievalTracer,
     prices: dict[str, Price],
+    timeout_seconds: float | None = None,
 ) -> tuple[EmbeddingResult, float | None]:
     try:
-        result = embedder.embed(texts)
+        # Forwarded only when set, so an embedder that predates the keyword keeps working.
+        options = {} if timeout_seconds is None else {"timeout_seconds": timeout_seconds}
+        result = embedder.embed(texts, **options)
     except Exception as exc:
         _trace_safely(
             tracer,
@@ -122,7 +86,10 @@ def embed_post(
     record_latency: bool,
 ) -> IndexOutcome | None:
     retry = with_retries(
-        lambda: traced_embed(embedder, [post.text], tracer, runtime.prices), clock, stop_event
+        lambda: traced_embed(embedder, [post.text], tracer, runtime.prices),
+        clock,
+        stop_event,
+        what="embedding",
     )
     if retry.stopped:
         return None

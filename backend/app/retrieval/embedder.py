@@ -23,7 +23,9 @@ class EmbeddingResult:
 class Embedder(Protocol):
     model: str
 
-    def embed(self, texts: Sequence[str]) -> EmbeddingResult: ...
+    def embed(
+        self, texts: Sequence[str], *, timeout_seconds: float | None = None
+    ) -> EmbeddingResult: ...
 
 
 class OpenRouterEmbedder:
@@ -38,9 +40,12 @@ class OpenRouterEmbedder:
         # attempts instead.
         self._client.sdk_configuration.retry_config = _NO_RETRIES
 
-    def embed(self, texts: Sequence[str]) -> EmbeddingResult:
+    def embed(
+        self, texts: Sequence[str], *, timeout_seconds: float | None = None
+    ) -> EmbeddingResult:
+        options = {} if timeout_seconds is None else {"timeout_ms": round(timeout_seconds * 1000)}
         response = self._client.embeddings.generate(
-            input=list(texts), model=self.model, encoding_format="float"
+            input=list(texts), model=self.model, encoding_format="float", **options
         )
         if not isinstance(response, CreateEmbeddingsResponseBody):
             raise ValueError("unexpected embeddings response")

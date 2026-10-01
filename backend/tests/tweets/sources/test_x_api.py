@@ -24,7 +24,7 @@ def _source(fake: FakeHttp, **kwargs) -> XApiSource:
 
 _PAGE1_QUERY = (
     "max_results=20&tweet.fields=created_at%2Cauthor_id%2Creferenced_tweets"
-    "&expansions=author_id&user.fields=username"
+    "&expansions=author_id%2Creferenced_tweets.id.author_id&user.fields=username"
 )
 _PAGE2_QUERY = _PAGE1_QUERY + "&pagination_token=token-2"
 

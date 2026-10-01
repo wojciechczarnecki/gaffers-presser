@@ -5,11 +5,14 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine
+from sqlmodel import Session
 
 from app.content import PROMPTS_DIR, load_prompt
+from app.extraction.store import current_extractions
+from app.llm.structured import StructuredCaller
 from app.retrieval.evaluation.dataset import CorpusPost, Query, QueryEvent
-from app.retrieval.evaluation.llm import StructuredCaller, WrittenQuery
+from app.retrieval.evaluation.llm import WrittenQuery
 
 logger = logging.getLogger(__name__)
 
@@ -17,20 +20,6 @@ TEMPLATES_PATH = PROMPTS_DIR.parent / "retrieval_query_templates.toml"
 MIN_POST_CHARACTERS = 40
 DEV_SHARE = 0.3
 LANGUAGE_NAMES = {"en": "English", "pl": "Polish"}
-
-_CURRENT_EVENTS_SQL = """
-WITH latest AS (
-    SELECT DISTINCT ON (tweet_x_id) id, tweet_x_id
-    FROM extraction
-    WHERE status = 'extracted' AND tweet_x_id = ANY(:ids)
-    ORDER BY tweet_x_id, finished_at DESC, id DESC
-)
-SELECT l.tweet_x_id, COALESCE(p.web_name, ev.mention) AS player, ev.event_type
-FROM latest l
-JOIN extraction_event ev ON ev.extraction_id = l.id
-LEFT JOIN player p ON p.season = ev.player_season AND p.fpl_id = ev.player_fpl_id
-ORDER BY l.tweet_x_id, ev.id
-"""
 
 
 @dataclass(frozen=True)
@@ -65,9 +54,17 @@ def load_templates(path: Path = TEMPLATES_PATH) -> dict[str, dict[str, str]]:
 
 
 def current_events(engine: Engine, x_ids: Sequence[int]) -> list[CurrentEvent]:
-    with engine.connect() as connection:
-        rows = connection.execute(text(_CURRENT_EVENTS_SQL), {"ids": list(x_ids)})
-        return [CurrentEvent(x_id=row[0], player=row[1], event_type=row[2]) for row in rows]
+    with Session(engine) as session:
+        rows = current_extractions(session, x_ids=list(x_ids))
+    return [
+        CurrentEvent(
+            x_id=row.tweet_x_id,
+            player=event.player_web_name or event.mention,
+            event_type=event.event_type,
+        )
+        for row in sorted(rows, key=lambda r: r.tweet_x_id)
+        for event in row.events
+    ]
 
 
 def make_query_writer(caller: StructuredCaller) -> WriteQuery:

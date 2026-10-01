@@ -2,10 +2,10 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from app.extraction import config
 from app.extraction.cli import DEFAULT_RESULTS_DIR
 from app.extraction.evaluation.selection import select_models, summaries_from_results
-from app.extraction.model_settings import load_model_settings, pair_compatible
+from app.llm import chat as config
+from app.llm.models import load_model_settings, pair_compatible
 from tests.extraction.candidates import CANDIDATES
 
 ADR_0006 = (

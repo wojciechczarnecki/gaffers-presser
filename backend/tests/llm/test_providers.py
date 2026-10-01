@@ -4,9 +4,8 @@ from langchain_core.messages import HumanMessage
 from langchain_openrouter import ChatOpenRouter
 from pydantic import SecretStr
 
-from app.extraction.config import LlmConfig
-from app.extraction.model_settings import ModelSettings
-from app.extraction.providers import build_chat_model
+from app.llm.chat import LlmConfig, build_chat_model
+from app.llm.models import ModelSettings
 
 DUMMY_KEY = SecretStr("dummy-key")
 

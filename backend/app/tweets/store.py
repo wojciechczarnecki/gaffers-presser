@@ -1,13 +1,12 @@
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from sqlalchemy import Engine, func, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, select
 
-from app.fpl.models import Gameweek
 from app.tweets.models import Tweet, TweetPoll
 from app.tweets.sources.base import FetchedPost
 
@@ -52,6 +51,7 @@ def store_posts(
             "source": source,
             "is_repost": post.is_repost,
             "is_reply": post.is_reply,
+            "reposted_author_handle": post.reposted_author_handle,
             "raw": post.raw,
         }
         for post in posts
@@ -107,10 +107,3 @@ def latest_success_by_source(engine: Engine) -> dict[str, PollRecord]:
             )
         ).mappings()
         return {row["source"]: _to_poll_record(TweetPoll(**dict(row))) for row in rows}
-
-
-def upcoming_deadlines(session: Session, now: datetime) -> list[datetime]:
-    rows = session.exec(
-        select(Gameweek.deadline_at).where(Gameweek.deadline_at > now - timedelta(days=1))
-    ).all()
-    return sorted(rows)

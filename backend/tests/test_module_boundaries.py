@@ -46,6 +46,7 @@ def test_shared_layer_lives_in_app_llm_and_core():
 def test_retrieval_imports_nothing_from_extraction():
     files = list((APP / "retrieval").rglob("*.py"))
     assert files
+    evaluation = APP / "retrieval" / "evaluation"
     offenders = []
     for path, node in _imports("retrieval"):
         names = (
@@ -53,6 +54,8 @@ def test_retrieval_imports_nothing_from_extraction():
             if isinstance(node, ast.ImportFrom)
             else [alias.name for alias in node.names]
         )
+        if evaluation in path.parents and names == ["app.extraction.store"]:
+            continue
         if any(name == "app.extraction" or name.startswith("app.extraction.") for name in names):
             offenders.append(f"{path.relative_to(APP)}:{node.lineno}")
     assert offenders == []

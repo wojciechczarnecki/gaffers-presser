@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import text
 
+from app.llm.structured import StructuredCaller
 from app.retrieval.evaluation.dataset import (
     CorpusPost,
     Judgement,
@@ -12,7 +13,7 @@ from app.retrieval.evaluation.dataset import (
     write_queries,
 )
 from app.retrieval.evaluation.labelling import pool, prelabel
-from app.retrieval.evaluation.llm import RelevanceLabel, StructuredCaller
+from app.retrieval.evaluation.llm import RelevanceLabel
 from app.retrieval.evaluation.schema import EVAL_SCHEMA, load_eval_corpus
 from app.retrieval.indexing import index_missing
 from app.retrieval.search import search

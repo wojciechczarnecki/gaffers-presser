@@ -45,6 +45,8 @@ class SearchResult:
     text: str
     score: float
     ranks: dict[str, int | None]
+    is_repost: bool = False
+    reposted_author_handle: str | None = None
 
 
 @dataclass(frozen=True)
@@ -170,6 +172,7 @@ def search(
     depth: int = 50,
     tracer: RetrievalTracer = NULL_TRACER,
     prices: dict[str, Price] | None = None,
+    embed_timeout_seconds: float | None = None,
 ) -> SearchResponse:
     if mode not in ("fulltext", "vector", "hybrid"):
         raise SearchError(f"unknown search mode: {mode}")
@@ -195,7 +198,9 @@ def search(
         else:
             # Embedded before any session opens: the HTTP call holds no pooled connection.
             try:
-                embedded, _ = traced_embed(embedder, [query], tracer, prices or {})
+                embedded, _ = traced_embed(
+                    embedder, [query], tracer, prices or {}, embed_timeout_seconds
+                )
             except Exception as exc:
                 failure = f"query embedding failed: {type(exc).__name__}"
                 if mode == "vector":
@@ -228,6 +233,8 @@ def search(
             text=rows[x_id].text,
             score=score,
             ranks={leg: legs.get(leg) for leg in LEGS},
+            is_repost=rows[x_id].is_repost,
+            reposted_author_handle=rows[x_id].reposted_author_handle,
         )
         for x_id, score, legs in fused
     ]

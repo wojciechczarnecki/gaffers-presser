@@ -128,3 +128,18 @@ def test_deployment_documents_embedding_model():
         "0005",
     ):
         assert term in section, f"{term!r} missing from docs/DEPLOYMENT.md"
+
+
+def test_corroboration_commands_documented():
+    section = _development_section()
+    deployment = DEPLOYMENT.read_text(encoding="utf-8")
+    for command in (
+        "app.corroboration",
+        "app.corroboration.evaluation build-cases",
+        "app.corroboration.evaluation review",
+        "app.corroboration.evaluation evaluate",
+    ):
+        assert command in section, f"{command!r} missing from the README Development section"
+        assert command.split(" ")[0] in deployment
+    for term in ("build-cases", "review", "evaluate", "0006"):
+        assert term in deployment, f"{term!r} missing from docs/DEPLOYMENT.md"

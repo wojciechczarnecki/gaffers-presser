@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
 
+from app.fpl.deadlines import latest_deadline_at_or_before, next_deadline_after
+
 
 class Job(StrEnum):
     reference_sync = "reference_sync"
@@ -54,23 +56,13 @@ class PlannedAction:
     season: str | None
 
 
-def _deadline_after(gameweeks: list[GameweekState], t: datetime) -> datetime | None:
-    deadlines = [gw.deadline_at for gw in gameweeks if gw.deadline_at > t]
-    return min(deadlines) if deadlines else None
+def _deadline_of(gameweek: GameweekState) -> datetime:
+    return gameweek.deadline_at
 
 
-def _gameweek_with_deadline_after(
-    gameweeks: list[GameweekState], t: datetime
-) -> GameweekState | None:
-    candidates = [gw for gw in gameweeks if gw.deadline_at > t]
-    return min(candidates, key=lambda g: g.deadline_at) if candidates else None
-
-
-def _gameweek_with_greatest_deadline_at_or_before(
-    gameweeks: list[GameweekState], t: datetime
-) -> GameweekState | None:
-    candidates = [gw for gw in gameweeks if gw.deadline_at <= t]
-    return max(candidates, key=lambda g: g.deadline_at) if candidates else None
+def _following_deadline(gameweeks: list[GameweekState], t: datetime) -> datetime | None:
+    gameweek = next_deadline_after(gameweeks, t, key=_deadline_of)
+    return gameweek.deadline_at if gameweek is not None else None
 
 
 def _next_reference_sync(state: ScheduleState, now: datetime) -> PlannedAction:
@@ -78,7 +70,7 @@ def _next_reference_sync(state: ScheduleState, now: datetime) -> PlannedAction:
     if last is None:
         at = now
     else:
-        deadline = _deadline_after(state.gameweeks, last.started_at)
+        deadline = _following_deadline(state.gameweeks, last.started_at)
         if deadline is None:
             at = last.started_at + REFERENCE_INTERVAL_NO_DEADLINE
         else:
@@ -95,7 +87,7 @@ def _next_reference_sync(state: ScheduleState, now: datetime) -> PlannedAction:
 
 
 def _next_deadline_snapshot(state: ScheduleState, now: datetime) -> PlannedAction | None:
-    gw = _gameweek_with_deadline_after(state.gameweeks, now)
+    gw = next_deadline_after(state.gameweeks, now, key=_deadline_of)
     if gw is None:
         return None
     deadline = gw.deadline_at
@@ -127,7 +119,7 @@ def _next_deadline_snapshot(state: ScheduleState, now: datetime) -> PlannedActio
 
 
 def missed_snapshot(state: ScheduleState, now: datetime) -> int | None:
-    gw = _gameweek_with_greatest_deadline_at_or_before(state.gameweeks, now)
+    gw = latest_deadline_at_or_before(state.gameweeks, now, key=_deadline_of)
     if gw is None:
         return None
     success = state.latest_success.get((Job.deadline_snapshot, gw.fpl_id))
@@ -167,7 +159,7 @@ def outlook(state: ScheduleState, now: datetime) -> list[PlannedAction]:
     snapshot = next((a for a in actions if a.job == Job.deadline_snapshot), None)
     if snapshot is None:
         return actions
-    gw = _gameweek_with_deadline_after(state.gameweeks, now)
+    gw = next_deadline_after(state.gameweeks, now, key=_deadline_of)
     later_slots = [
         slot
         for slot in (gw.deadline_at - SNAPSHOT_SLOT_T30, gw.deadline_at - SNAPSHOT_SLOT_T5)

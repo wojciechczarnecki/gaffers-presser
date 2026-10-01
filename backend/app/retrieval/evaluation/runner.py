@@ -12,6 +12,7 @@ from sqlalchemy import Engine
 from app.core.clock import Clock
 from app.core.errors import CollectorError
 from app.llm.pricing import Price
+from app.llm.retry import with_retries
 from app.retrieval.embedder import Embedder, EmbeddingResult
 from app.retrieval.evaluation.dataset import CorpusPost, Query
 from app.retrieval.evaluation.metrics import (
@@ -22,7 +23,7 @@ from app.retrieval.evaluation.metrics import (
     aggregate,
 )
 from app.retrieval.evaluation.schema import load_eval_corpus
-from app.retrieval.indexing import IndexingRuntime, index_missing, traced_embed, with_retries
+from app.retrieval.indexing import IndexingRuntime, index_missing, traced_embed
 from app.retrieval.search import SearchError, search
 from app.retrieval.tracing import RetrievalTracer
 
@@ -52,10 +53,14 @@ class _CachedQueryEmbedder:
         self._inner = inner
         self._cache = cache
 
-    def embed(self, texts: Sequence[str]) -> EmbeddingResult:
+    def embed(
+        self, texts: Sequence[str], *, timeout_seconds: float | None = None
+    ) -> EmbeddingResult:
         if all(text in self._cache for text in texts):
             return EmbeddingResult(vectors=[self._cache[text] for text in texts], input_tokens=None)
-        return self._inner.embed(texts)
+        if timeout_seconds is None:
+            return self._inner.embed(texts)
+        return self._inner.embed(texts, timeout_seconds=timeout_seconds)
 
 
 @dataclass(frozen=True)

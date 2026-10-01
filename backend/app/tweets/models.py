@@ -22,6 +22,7 @@ class Tweet(SQLModel, table=True):
     source: str
     is_repost: bool
     is_reply: bool
+    reposted_author_handle: str | None = None
     raw: dict = Field(sa_column=Column(JSONB, nullable=False))
     search_vector: str | None = Field(
         default=None,

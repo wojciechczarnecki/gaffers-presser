@@ -6,10 +6,11 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.clock import Clock, StopAwareClock
+from app.fpl.deadlines import upcoming_deadlines
 from app.tweets.ingest import poll_once
 from app.tweets.schedule import MAX_SLEEP, next_poll_at
 from app.tweets.sources.base import TweetSource
-from app.tweets.store import PollRecord, latest_poll, upcoming_deadlines
+from app.tweets.store import PollRecord, latest_poll
 from app.worker.jobs import Shutdown
 
 logger = logging.getLogger(__name__)

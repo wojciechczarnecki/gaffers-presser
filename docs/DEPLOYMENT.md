@@ -57,7 +57,7 @@ below; agents never touch production.
      The fallback must share the primary's structured-output method and reasoning effort: an
      explicit `LLM_FALLBACK_MODEL` that does not fails the worker on start, and the default
      fallback is dropped (no fallback) under an `LLM_MODEL` it cannot answer for. A model
-     outside `backend/app/extraction/model_settings.toml` fails the worker on start with a
+     outside `backend/app/llm/model_settings.toml` fails the worker on start with a
      message naming the variable, never a key; add a row there and in `backend/app/llm/prices.toml` first.
    - `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` from a Langfuse Cloud project in the EU
      region, and `LANGFUSE_HOST` (defaults to `https://cloud.langfuse.com`, the EU region).
@@ -94,3 +94,17 @@ below; agents never touch production.
      `python -m app.retrieval status` prints the embedded, missing and failed posts per model
      and the cost, and `python -m app.retrieval search "<query>" [--mode fulltext|vector|hybrid]`
      searches the stored posts (`--mode fulltext` needs no key).
+10. **Corroboration.** `python -m app.corroboration <player>` computes, on demand, what the
+    latest news about a player is and how well it is backed; it is not a worker loop and needs
+    no new variable. Run it from a Railway shell (`railway ssh`) or locally with the production
+    variables.
+    - Migration `0006` adds `tweet.reposted_author_handle` and backfills it from each post's
+      stored `raw` payload for the reposts already stored (twscrape, twitterapi.io and the X
+      API shapes). It runs through the pre-deploy like the others. X API reposts stored before
+      this migration keep an empty original author, so they count as their list account.
+    - The judge that labels posts only retrieval finds uses `OPENROUTER_API_KEY`, `LLM_MODEL`
+      and `LLM_FALLBACK_MODEL` (extraction's settings); without the key the command uses the
+      extracted claims only and prints `Retrieval and judge: skipped`. Langfuse keys, when set,
+      make each run one trace.
+    - The judge's evaluation set is reviewed and run locally, never by the worker:
+      `python -m app.corroboration.evaluation build-cases | review | evaluate`.

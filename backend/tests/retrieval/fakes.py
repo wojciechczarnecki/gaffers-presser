@@ -29,7 +29,9 @@ class FakeEmbedder:
         self.tokens_per_text = tokens_per_text
         self.calls: list[list[str]] = []
 
-    def embed(self, texts: Sequence[str]) -> EmbeddingResult:
+    def embed(
+        self, texts: Sequence[str], *, timeout_seconds: float | None = None
+    ) -> EmbeddingResult:
         self.calls.append(list(texts))
         if self.responses:
             scripted = self.responses.pop(0)
@@ -46,8 +48,26 @@ class FakeEmbedder:
         return EmbeddingResult(vectors=vectors, input_tokens=self.tokens_per_text * len(texts))
 
 
+class SlowEmbedder(FakeEmbedder):
+    def __init__(self, delay_seconds: float, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.delay_seconds = delay_seconds
+        self.timeouts: list[float | None] = []
+
+    def embed(
+        self, texts: Sequence[str], *, timeout_seconds: float | None = None
+    ) -> EmbeddingResult:
+        self.timeouts.append(timeout_seconds)
+        if timeout_seconds is not None and timeout_seconds < self.delay_seconds:
+            self.calls.append(list(texts))
+            raise TimeoutError("embedding timed out")
+        return super().embed(texts)
+
+
 class AlwaysFailingEmbedder(FakeEmbedder):
-    def embed(self, texts: Sequence[str]) -> EmbeddingResult:
+    def embed(
+        self, texts: Sequence[str], *, timeout_seconds: float | None = None
+    ) -> EmbeddingResult:
         self.calls.append(list(texts))
         raise RuntimeError("embedding backend down")
 

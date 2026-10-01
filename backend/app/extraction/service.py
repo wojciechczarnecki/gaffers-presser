@@ -19,18 +19,16 @@ from app.extraction.linking import (
     load_aliases,
     load_players,
 )
-from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import FlowResult, PostInput
 from app.extraction.store import ExtractionRecord, save_extraction
 from app.extraction.tracing import run_config
+from app.llm.chat import ChatModelSpec
 from app.llm.pricing import Price, compute_cost, load_prices
+from app.llm.retry import RetryOutcome, with_retries
 from app.llm.tracing import TracingConfig
 from app.tweets.models import Tweet
 
 logger = logging.getLogger(__name__)
-
-MAX_ATTEMPTS = 3
-RETRY_BACKOFF_SECONDS: tuple[float, ...] = (2.0, 4.0)
 
 Aliases = tuple[list[PlayerAlias], list[TeamAlias]]
 
@@ -55,41 +53,14 @@ class StoredOutcome:
     cost_usd: float | None
 
 
-@dataclass(frozen=True)
-class RetryOutcome:
-    result: FlowResult | None
-    attempts: int
-    error: Exception | None
-    stopped: bool = False
-
-
 def run_with_retries(
     flow: Flow,
     post: PostInput,
     config: RunnableConfig,
     clock: Clock,
     stop_event: threading.Event,
-) -> RetryOutcome:
-    attempts = 0
-    last_exc: Exception | None = None
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        if stop_event.is_set():
-            return RetryOutcome(None, attempts, last_exc, stopped=True)
-        attempts = attempt
-        try:
-            result = flow.run(post, config=config)
-            return RetryOutcome(result, attempts, None)
-        except Exception as exc:
-            last_exc = exc
-            logger.warning("extraction attempt failed: %s", type(exc).__name__)
-            if attempt >= MAX_ATTEMPTS:
-                break
-            if stop_event.is_set():
-                return RetryOutcome(None, attempts, last_exc, stopped=True)
-            clock.sleep(RETRY_BACKOFF_SECONDS[attempt - 1])
-            if stop_event.is_set():
-                return RetryOutcome(None, attempts, last_exc, stopped=True)
-    return RetryOutcome(None, attempts, last_exc)
+) -> RetryOutcome[FlowResult]:
+    return with_retries(lambda: flow.run(post, config=config), clock, stop_event, what="extraction")
 
 
 def load_reference_files() -> tuple[dict[str, Price], Aliases]:

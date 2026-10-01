@@ -12,11 +12,11 @@ from app.extraction.evaluation.cases import EvalCase, ExpectedEvent
 from app.extraction.evaluation.metrics import CaseResult, Metrics, compute_metrics
 from app.extraction.flow import PROMPT_VERSION, Flow, build_flow
 from app.extraction.linking import PlayerIndex
-from app.extraction.model_settings import ModelSettings
-from app.extraction.providers import ChatModelSpec
 from app.extraction.schemas import FlowResult, PostInput
 from app.extraction.service import run_with_retries
 from app.extraction.tracing import run_config
+from app.llm.chat import ChatModelSpec
+from app.llm.models import ModelSettings
 from app.llm.pricing import compute_cost, load_prices
 
 
