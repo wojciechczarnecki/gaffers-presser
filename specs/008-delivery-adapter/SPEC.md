@@ -1,11 +1,13 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-10-01"
   - "spec-ready — 2026-10-01"
+  - "plan-draft — 2026-10-01"
 metrics:
   started_at: 2026-10-01T20:55
   escalations: 0
+  plan_steps: 11
 ---
 
 # SPEC 008 — Delivery adapter (e-mail first)
