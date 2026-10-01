@@ -606,4 +606,90 @@ tests, all within AC15/AC16's behaviour. No steps added, so no second pass is re
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-10-01 — report (/pipeline:final-review under /pipeline:ship)
+
+Material: `git diff origin/main...HEAD` (55 files). The `Agent` tool is not available to this
+stage agent, so the three perspectives (SPEC/PLAN compliance, quality and maintainability,
+tests) were run by the reviewer one after another rather than as independent subagents.
+`<verify.command>`: ruff check and format clean; pytest 1135 passed, 1 failed, 1 error — the
+two were `tests/worker/test_cli.py::test_failing_embedder_does_not_stop_polls_or_extraction`
+and `::test_sigterm_with_embedder_blocked_in_a_call_exits_within_10_s`, timing tests this
+branch does not touch; they passed in three isolated reruns and in a run of the whole
+`tests/worker/test_cli.py` (48 passed), so this is load-dependent flakiness, not a defect of
+this feature (for the apply stage: watch them in CI, BACKLOG if they flake there).
+`workflow_metrics.py --check`: clean.
+
+AC → evidence:
+
+| AC | Code | Proving tests |
+|----|------|---------------|
+| AC1 | `app/delivery/channels/base.py` (`Message`, `Channel`) | `tests/delivery/test_message.py`, `channels/test_resend.py::test_sends_one_post_and_returns_the_id`, `channels/test_file.py::test_returns_no_provider_id` |
+| AC2 | `Message.__post_init__` | `test_message.py::test_empty_title_or_text_is_rejected`, `test_service.py::test_invalid_message_writes_no_row_and_calls_nothing` |
+| AC3 | `app/delivery/config.py`, `delivery/cli.py::_deps_from_settings`, `worker/cli.py::_deps_from_settings` | `test_config.py::test_provider_selects_or_disables`, `::test_unknown_provider_names_the_variable`, `test_cli.py::test_bad_provider_fails_on_start`, `worker/test_cli.py::test_bad_delivery_provider_fails_worker_start` |
+| AC4 | `resolve_delivery` | `test_config.py::test_resend_requires_key_and_recipient`, `::test_resend_from_defaults_to_testing_domain` |
+| AC5 | `DeliverySettings.delivery_file_dir`, `FileChannel` | `test_config.py::test_file_dir_defaults_to_outbox`, `channels/test_file.py::test_creates_missing_directory` |
+| AC6 | `service.py::_note_disabled` | `test_service.py::test_disabled_returns_disabled_writes_nothing_logs_once` |
+| AC7 | `DeliveryService.send` (key, kind checks) | `test_service.py::test_key_and_kind_are_required_and_stored` |
+| AC8 | `store.py::claim_row`, `service.py` | `test_service.py::test_first_send_writes_full_row`, `::test_file_channel_success_with_no_provider_id_is_sent` |
+| AC9 | `service.py` (`already_sent` path) | `test_service.py::test_sent_key_is_not_sent_again` |
+| AC10 | `claim_row` (`ON CONFLICT DO NOTHING` + `FOR UPDATE`) | `test_service.py::test_failed_key_is_retried_in_the_same_row`, `::test_concurrent_sends_make_one_provider_call` |
+| AC11 | `app/core/retry.py` hooks, `service.py::_retryable`/`_wait` | `core/test_retry.py::test_non_retryable_error_stops_at_once`, `::test_wait_hook_overrides_the_delay`, `test_service.py::test_transient_errors_retried_three_times`, `::test_rate_limit_waits_retry_after_capped`, `::test_other_4xx_not_retried`, `::test_unexpected_error_becomes_failed`, `::test_stop_event_ends_as_failed` |
+| AC12 | `channels/resend.py` | `channels/test_resend.py` (200, 403, 422, 429 ± `Retry-After`, 500, timeout, connection error, missing id) |
+| AC13 | `channels/file.py` | `channels/test_file.py` (multipart, text part, HTML part, sort order, same-instant, directory); opening in a mail client — manual scenario 2 |
+| AC14 | `DeliveryService._log`, `httpx`/`httpcore` at WARNING | `test_service.py::test_logs_carry_no_addresses_title_body_or_key` |
+| AC15 | `delivery/cli.py::send_test`, `app/content/delivery_test_message.toml` | `test_cli.py::test_send_test_prints_outcome_and_provider_id`, `::test_send_test_failed_exits_non_zero`, `::test_send_test_disabled_exits_non_zero`, `content/test_delivery_test_message.py::test_renders_with_time`; live Resend — manual scenario 1 |
+| AC16 | `delivery/cli.py::status`, `store.py::recent_rows` | `test_cli.py::test_status_prints_channel_and_last_rows`, `::test_status_disabled_and_empty_log` |
+| AC17 | `worker/cli.py::status`, `store.py::delivery_summary` | `worker/test_cli.py::test_status_shows_delivery_line`, `::test_status_shows_delivery_disabled`, `::test_status_shows_delivery_line_with_no_rows` |
+| AC18 | `migrations/versions/0007_delivery_log.py` | `db/test_migrations.py::test_delivery_migration_adds_only_new_table`, `::test_models_match_migration` |
+| AC19 | — | `test_synthetic_data.py::test_only_synthetic_addresses_and_keys` |
+| AC20 | `.env.example`, `docs/DEPLOYMENT.md` step 11, `docs/DECISIONS.md` (3 rows), `docs/BACKLOG.md` #21 | `test_env_example.py::test_every_delivery_variable_is_an_empty_placeholder`, `test_readme.py::test_deployment_documents_delivery`, `test_docs.py::test_backlog_has_delivery_webhooks_entry` |
+
+Plan steps 1–11 are ticked with the code and tests in the branch; the one recorded deviation
+(step 6, the repost migration test pinned to `0006`) is justified; nothing outside the scope
+got in (extra tests stay within AC12, AC13, AC15, AC16, AC3). Every row of the AC → steps
+matrix has its red record or an `n/a` with a reason.
+
+Findings:
+
+- **F1** `worth-fixing` — `backend/app/delivery/channels/resend.py:61` (and
+  `channels/base.py:27`). Resend accepts the `POST /emails`, the response is lost (read
+  timeout or a dropped connection) → `ChannelUnavailableError` → the retry sends a second,
+  identical e-mail; the delivery log, whose purpose is "a repeated send sends nothing", records
+  one `sent` row for two delivered e-mails. Flagged by the plan (Risks, review log item 7) as a
+  question for the owner at this review. Fix: pass the delivery idempotency key to the channel
+  (e.g. `Channel.send(message, key)`; the key is not e-mail specific, so the interface stays
+  channel-agnostic) and send it as Resend's `Idempotency-Key` header, with a test asserting the
+  header is the same on every attempt; this changes AC1's "receives exactly this", so it needs
+  the owner's acceptance. Alternative: defer to BACKLOG (P3, trigger: a duplicate alert or
+  presser e-mail is observed).
+- **F2** `nit` — `backend/app/delivery/channels/resend.py:17` and
+  `backend/app/delivery/service.py:58`. A 429 with `Retry-After: -1` or `nan` gives
+  `retry_after=-1.0`/`nan`, `_wait` passes it through `min(…, 10.0)`, and `SystemClock.sleep`
+  → `time.sleep` raises `ValueError` outside the `try` in `with_retries`, so `send()` raises to
+  the caller and the transaction rolls back — against AC11's "a `failed` outcome rather than an
+  exception". Unlikely with Resend's integer header. Fix: `_retry_after` returns a value only
+  when it is finite and `>= 0` (else `None`), and `_wait` clamps with `max(0.0, …)`; a
+  parametrised case in `test_resend.py`.
+- **F3** `nit` — `backend/tests/delivery/test_service.py:153`.
+  `test_stop_event_ends_as_failed` sets the stop event before the first attempt, so only the
+  `DeliveryStopped` branch is covered; the branch the plan describes, "stop set while the first
+  attempt fails → `failed` with the class of the last error" and the attempts counted, is not
+  tested at service level (a regression there would leave a row with `error_class` from the
+  wrong branch). Fix: a `FakeChannel` whose first result sets the stop event and raises
+  `ChannelUnavailableError` → outcome `failed`, `error_class == "ChannelUnavailableError"`,
+  `attempts == 1`, no sleep.
+- **F4** `nit` — `specs/008-delivery-adapter/SPEC.md` frontmatter `deviations_minor: 4`, while
+  `## Deviations` records one minor deviation (step 6). The metric and the record disagree, so
+  the workflow report over-counts deviations. Fix: set `deviations_minor: 1`, or record the
+  other three deviations in `## Deviations`.
+
+Rejected:
+
+- An e-mail sent but no log row when the database commit fails after the provider accepted
+  (connection lost during the up to ~50 s transaction) — the chosen and recorded design
+  (DECISIONS 2026-10-01, row lock held during the call); the residual risk was accepted there.
+- A title with a line break makes the `file` channel's `EmailMessage` raise `ValueError` — it
+  ends as a `failed` outcome with `error_class == "ValueError"`, not a crash; titles come from
+  later specs' templates.
+
+Left out: 0 nit findings.
