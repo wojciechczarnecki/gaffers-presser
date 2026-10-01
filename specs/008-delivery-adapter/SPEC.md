@@ -5,6 +5,7 @@ stage_history:
   - "spec-ready — 2026-10-01"
 metrics:
   started_at: 2026-10-01T20:55
+  escalations: 0
 ---
 
 # SPEC 008 — Delivery adapter (e-mail first)
