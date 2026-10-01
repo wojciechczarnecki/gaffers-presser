@@ -180,8 +180,8 @@ Design (signatures where precision matters):
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 2, 3, 4 | `tests/delivery/test_message.py::test_message_shape_and_channel_protocol`, `tests/delivery/channels/test_resend.py::test_sends_one_post_and_returns_the_id`, `tests/delivery/channels/test_file.py::test_returns_no_provider_id` | |
-| AC2 | 2, 7 | `tests/delivery/test_message.py::test_empty_title_or_text_is_rejected`, `tests/delivery/test_service.py::test_invalid_message_writes_no_row_and_calls_nothing` | |
+| AC1 | 2, 3, 4 | `tests/delivery/test_message.py::test_message_shape_and_channel_protocol`, `tests/delivery/channels/test_resend.py::test_sends_one_post_and_returns_the_id`, `tests/delivery/channels/test_file.py::test_returns_no_provider_id` | `uv run pytest -q tests/delivery/test_message.py::test_message_shape_and_channel_protocol` → n/a for the shape test (new type, written with its stub-free definition; the empty-message rows above are its red); adapters in steps 3, 4 |
+| AC2 | 2, 7 | `tests/delivery/test_message.py::test_empty_title_or_text_is_rejected`, `tests/delivery/test_service.py::test_invalid_message_writes_no_row_and_calls_nothing` | `uv run pytest -q tests/delivery/test_message.py` → `Failed: DID NOT RAISE InvalidMessageError`; service test in step 7 |
 | AC3 | 5, 9, 10 | `tests/delivery/test_config.py::test_provider_selects_or_disables`, `::test_unknown_provider_names_the_variable`, `tests/delivery/test_cli.py::test_bad_provider_fails_on_start`, `tests/worker/test_cli.py::test_bad_delivery_provider_fails_worker_start` | |
 | AC4 | 5 | `tests/delivery/test_config.py::test_resend_requires_key_and_recipient`, `::test_resend_from_defaults_to_testing_domain` | |
 | AC5 | 4, 5 | `tests/delivery/test_config.py::test_file_dir_defaults_to_outbox`, `tests/delivery/channels/test_file.py::test_creates_missing_directory` | |
@@ -190,7 +190,7 @@ Design (signatures where precision matters):
 | AC8 | 7 | `tests/delivery/test_service.py::test_first_send_writes_full_row`, `::test_file_channel_success_with_no_provider_id_is_sent` | |
 | AC9 | 7 | `tests/delivery/test_service.py::test_sent_key_is_not_sent_again` | |
 | AC10 | 7 | `tests/delivery/test_service.py::test_failed_key_is_retried_in_the_same_row`, `::test_concurrent_sends_make_one_provider_call` | |
-| AC11 | 1, 7, 8 | `tests/core/test_retry.py::test_non_retryable_error_stops_at_once`, `::test_wait_hook_overrides_the_delay`, `tests/delivery/test_service.py::test_transient_errors_retried_three_times`, `::test_rate_limit_waits_retry_after_capped`, `::test_other_4xx_not_retried`, `::test_unexpected_error_becomes_failed`, `::test_stop_event_ends_as_failed` | |
+| AC11 | 1, 7, 8 | `tests/core/test_retry.py::test_non_retryable_error_stops_at_once`, `::test_wait_hook_overrides_the_delay`, `tests/delivery/test_service.py::test_transient_errors_retried_three_times`, `::test_rate_limit_waits_retry_after_capped`, `::test_other_4xx_not_retried`, `::test_unexpected_error_becomes_failed`, `::test_stop_event_ends_as_failed` | `uv run pytest -q tests/core/test_retry.py` → `assert 3 == 1` (non-retryable), `assert [2.0, 4.0] == [21.0, 41.0]` (wait hook); service tests in steps 7–8 |
 | AC12 | 3 | `tests/delivery/channels/test_resend.py` (200, 403, 422, 429 with `Retry-After`, 500, timeout) | |
 | AC13 | 4 | `tests/delivery/channels/test_file.py::test_writes_multipart_eml_with_text_part`, `::test_html_part_when_present`, `::test_files_sort_by_send_time` | |
 | AC14 | 8 | `tests/delivery/test_service.py::test_logs_carry_no_addresses_title_body_or_key` | |
@@ -223,7 +223,7 @@ Design (signatures where precision matters):
       in the 2026-09-30 row). Write the two new tests first and run them red (import error /
       unexpected keyword).
       Automatic verification: `cd backend && uv run pytest -q tests/core/test_retry.py tests/test_module_boundaries.py tests/test_shared_code.py tests/extraction/test_service.py tests/llm tests/retrieval/test_indexing.py tests/retrieval/evaluation/test_runner.py && uv run ruff check . && uv run ruff format --check .`
-- [ ] 2. Message, channel protocol and errors — files: `backend/app/delivery/__init__.py`,
+- [x] 2. Message, channel protocol and errors — files: `backend/app/delivery/__init__.py`,
       `backend/app/delivery/channels/__init__.py` (empty for now),
       `backend/app/delivery/channels/base.py`, tests `backend/tests/delivery/__init__.py`,
       `backend/tests/delivery/test_message.py` (`test_message_shape_and_channel_protocol`:
