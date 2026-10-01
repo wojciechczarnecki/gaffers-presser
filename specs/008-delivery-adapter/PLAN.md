@@ -726,3 +726,6 @@ Fixed:
 
 `<verify.command>` after the fixes: ruff check and format clean; pytest 1138 passed.
 
+CI on PR #13 (https://github.com/wojciechczarnecki/gaffers-presser/pull/13): `backend`,
+`backend-audit` and `image` green on the first run (runs 36935566381 and 36935566426); no
+flaky test — the two worker timing tests flagged in the report passed in CI.
