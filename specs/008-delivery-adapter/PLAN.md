@@ -142,8 +142,14 @@ Design (signatures where precision matters):
   - Flow in one `Session` transaction: `INSERT … ON CONFLICT (idempotency_key) DO NOTHING
     RETURNING id` with status `sending`; then `SELECT … FOR UPDATE` the row; `sent` →
     `already_sent` from the row, nothing written; otherwise call
-    `with_retries(lambda: channel.send(message), clock, stop_event, what="delivery",
-    retryable=…, wait=…)` and update the row before commit.
+    `with_retries(lambda: channel.send(message), clock, stop_event or threading.Event(),
+    what="delivery", retryable=…, wait=…)` and update the row before commit. A re-tried
+    `failed` row also takes the channel, title, text and HTML of this send, so the row always
+    holds the message that was last attempted.
+  - Reading the `RetryOutcome`: success is `error is None and not stopped` — **never**
+    `result is not None`, because the `file` channel returns `None` on success. `stopped`
+    (the worker's stop event set between attempts) ends as `failed` with the class of the last
+    error, or `DeliveryStopped` when no attempt was made; `attempts` is the outcome's count.
   - Retry policy: 3 attempts; `retryable` = `ChannelUnavailableError | ChannelRateLimitedError`;
     `wait` = `min(retry_after, 10.0)` for a rate limit with `Retry-After`, else
     `min(default, 10.0)` (defaults 2 s, 4 s); any other exception, including an unexpected one,
@@ -161,9 +167,12 @@ Design (signatures where precision matters):
   `test:<UTC %Y%m%dT%H%M%SZ>-<8 hex>`, prints `status: <status>`, `provider id: <id or ->`,
   `log id: <id>`; exit 1 on `failed`. `status`: `channel: <name|disabled>`, then up to 10 rows
   `<requested_at UTC>  <kind>  <status>  attempts=<n>  provider_id=<id or ->` or `no sends yet`.
-  A bad configuration fails on start (`fail(str(exc))`).
+  A bad configuration fails on start (`fail(str(exc))`); the delivery configuration is
+  resolved before the engine is built, so the error names the delivery variable even with no
+  `DATABASE_URL`.
 - Worker: `WorkerDeps.delivery_channel: str | None = None`; `_deps_from_settings` calls
-  `resolve_delivery(DeliverySettings())` inside the existing `try` (AC3 on worker start);
+  `resolve_delivery(DeliverySettings())` inside the existing `try`, before `load_settings()`
+  (AC3 on worker start);
   `status` prints after the Extraction block either `Delivery: disabled` or
   `Delivery: <channel>  last sent: <UTC time> (<kind>)|never  failed in 24 h: <n>`.
 
@@ -178,10 +187,10 @@ Design (signatures where precision matters):
 | AC5 | 4, 5 | `tests/delivery/test_config.py::test_file_dir_defaults_to_outbox`, `tests/delivery/channels/test_file.py::test_creates_missing_directory` | |
 | AC6 | 7 | `tests/delivery/test_service.py::test_disabled_returns_disabled_writes_nothing_logs_once` | |
 | AC7 | 7 | `tests/delivery/test_service.py::test_key_and_kind_are_required_and_stored` | |
-| AC8 | 7 | `tests/delivery/test_service.py::test_first_send_writes_full_row` | |
+| AC8 | 7 | `tests/delivery/test_service.py::test_first_send_writes_full_row`, `::test_file_channel_success_with_no_provider_id_is_sent` | |
 | AC9 | 7 | `tests/delivery/test_service.py::test_sent_key_is_not_sent_again` | |
 | AC10 | 7 | `tests/delivery/test_service.py::test_failed_key_is_retried_in_the_same_row`, `::test_concurrent_sends_make_one_provider_call` | |
-| AC11 | 1, 8 | `tests/core/test_retry.py::test_non_retryable_error_stops_at_once`, `::test_wait_hook_overrides_the_delay`, `tests/delivery/test_service.py::test_transient_errors_retried_three_times`, `::test_rate_limit_waits_retry_after_capped`, `::test_other_4xx_not_retried`, `::test_unexpected_error_becomes_failed` | |
+| AC11 | 1, 7, 8 | `tests/core/test_retry.py::test_non_retryable_error_stops_at_once`, `::test_wait_hook_overrides_the_delay`, `tests/delivery/test_service.py::test_transient_errors_retried_three_times`, `::test_rate_limit_waits_retry_after_capped`, `::test_other_4xx_not_retried`, `::test_unexpected_error_becomes_failed`, `::test_stop_event_ends_as_failed` | |
 | AC12 | 3 | `tests/delivery/channels/test_resend.py` (200, 403, 422, 429 with `Retry-After`, 500, timeout) | |
 | AC13 | 4 | `tests/delivery/channels/test_file.py::test_writes_multipart_eml_with_text_part`, `::test_html_part_when_present`, `::test_files_sort_by_send_time` | |
 | AC14 | 8 | `tests/delivery/test_service.py::test_logs_carry_no_addresses_title_body_or_key` | |
@@ -235,9 +244,11 @@ Design (signatures where precision matters):
       `ChannelRateLimitedError(retry_after=3.0)`; 500 → `ChannelUnavailableError(http_status=500)`;
       `httpx.ReadTimeout` raised by the transport → `ChannelUnavailableError(http_status=None)`;
       200 without `id` → `ChannelPayloadError`. Also
-      `backend/tests/delivery/test_synthetic_data.py` (every e-mail address under
-      `tests/delivery/` has a domain in `{example.com, example.test, localhost.invalid,
-      resend.dev}`; no string matching `re_[A-Za-z0-9]{20,}` — the shape of a real Resend key).
+      `backend/tests/delivery/test_synthetic_data.py` (every e-mail address in the git-tracked
+      files under `backend/app/`, `backend/tests/`, `backend/.env.example` and `docs/` — today
+      there are none — has a domain in `{example.com, example.test, localhost.invalid,
+      resend.dev}`; no string matching `re_[A-Za-z0-9]{20,}` — the shape of a real Resend key —
+      in those files; AC19 speaks of the repository, not only `tests/delivery/`).
       Tests first, red.
       Automatic verification: `cd backend && uv run pytest -q tests/delivery/channels/test_resend.py tests/delivery/test_synthetic_data.py`
 - [ ] 4. File adapter — files: `backend/app/delivery/channels/file.py`,
@@ -292,8 +303,13 @@ Design (signatures where precision matters):
       `test_sent_key_is_not_sent_again` (second call: no channel call, row unchanged, outcome
       `already_sent` with the original ID and times);
       `test_failed_key_is_retried_in_the_same_row` (first call ends `failed` on a
-      `ChannelRejectedError`, second call sends: one row, status `sent`, `attempts` cumulative,
-      `error_class` / `http_status` cleared);
+      `ChannelRejectedError`, second call with a changed title sends: one row, status `sent`,
+      `attempts` cumulative, `error_class` / `http_status` cleared, the row holds the second
+      title);
+      `test_file_channel_success_with_no_provider_id_is_sent` (a channel returning `None` →
+      outcome and row `sent`, `provider_message_id` `None`);
+      `test_stop_event_ends_as_failed` (stop event set while the first attempt fails → `failed`,
+      no exception, the row committed as `failed`);
       `test_concurrent_sends_make_one_provider_call` (two threads, the channel's `send` blocks on
       a `threading.Event` until the test sees the second session waiting on a lock in
       `pg_stat_activity` (`wait_event_type = 'Lock'`, polled with a 10 s timeout), then releases;
@@ -336,7 +352,9 @@ Design (signatures where precision matters):
       time, kind, status, attempts, provider ID; no title, body or address in the output;
       `channel: disabled` when disabled; `no sends yet` on an empty log);
       `test_bad_provider_fails_on_start` (env `DELIVERY_PROVIDER=smtp`, no injected deps →
-      exit 1, message names `DELIVERY_PROVIDER`); plus a `subprocess` smoke run of
+      exit 1, message names `DELIVERY_PROVIDER`). Every test here runs under
+      `monkeypatch.chdir(tmp_path)` (no `backend/.env` read) with `DELIVERY_*` / `RESEND_*`
+      removed from the environment, as in step 5; plus a `subprocess` smoke run of
       `python -m app.delivery --help` (exit 0). Tests first, red.
       Automatic verification: `cd backend && uv run pytest -q tests/delivery/test_cli.py tests/content/test_delivery_test_message.py`
 - [ ] 10. Worker: start-up validation and the `Delivery:` status line — files:
@@ -348,11 +366,13 @@ Design (signatures where precision matters):
       <time> (presser)  failed in 24 h: 1`; with no rows → `last sent: never`);
       `test_bad_delivery_provider_fails_worker_start` (env `DELIVERY_PROVIDER=smtp`,
       `worker_cli._deps_from_settings()` → `typer.Exit` with the message naming the variable,
-      in the style of the existing `_deps_from_settings` tests). Existing status tests that
+      in the style of the existing `_deps_from_settings` tests, under
+      `monkeypatch.chdir(tmp_path)`). Existing status tests that
       slice the output by `"Extraction: disabled"` keep passing because the Delivery line comes
       after the Extraction block. Tests first, red.
       Automatic verification: `cd backend && uv run pytest -q tests/worker/test_cli.py`
-- [ ] 11. Documentation — files: `backend/.env.example` (a "Delivery — optional" block:
+- [ ] 11. Documentation — files: `.gitignore` (`backend/outbox/`, so `.eml` files from local
+      `file`-adapter runs are never committed), `backend/.env.example` (a "Delivery — optional" block:
       `DELIVERY_PROVIDER=`, `RESEND_API_KEY=`, `DELIVERY_EMAIL_TO=`, `DELIVERY_EMAIL_FROM=`,
       `DELIVERY_FILE_DIR=` with comments: empty disables, allowed values, the testing-domain
       default sender and its owner-only recipient limit, the `./outbox` default),
@@ -395,6 +415,13 @@ Design (signatures where precision matters):
 - **`.eml` text part.** The `email` package appends a trailing newline; compare accordingly
   rather than weakening the check.
 - **Times.** All stored times UTC-aware; Warsaw only in the test message text.
+- **`RetryOutcome.result` is not the success signal.** The `file` channel returns `None` on
+  success; decide by `error is None and not stopped` (see Design).
+- **Timeout after acceptance.** AC11 retries a timeout; when Resend accepted the request but
+  the response was lost, the retry sends a second e-mail. Accepted by the SPEC (retry on
+  timeout, the interface carries the message only); Resend's `Idempotency-Key` header would
+  close it but needs the key in the channel interface — a question for the owner at the final
+  review, not a change here.
 
 ## End-to-end verification
 
@@ -412,7 +439,7 @@ ls $OUT/*.eml | wc -l                                                           
 uv run python -c "import email,email.policy,glob,sys; m=email.message_from_bytes(open(glob.glob(sys.argv[1]+'/*.eml')[0],'rb').read(),policy=email.policy.default); print(m.get_content_type(), m['Subject'])" $OUT   # multipart/alternative <title>
 DELIVERY_PROVIDER=file DELIVERY_FILE_DIR=$OUT uv run python -m app.delivery status        # "channel: file", one row: test sent attempts=1
 DELIVERY_PROVIDER=file DELIVERY_FILE_DIR=$OUT uv run python -m app.worker status | grep '^Delivery:'   # "Delivery: file  last sent: … (test)  failed in 24 h: 0"
-uv run python -m app.delivery send-test; echo $?                                          # disabled message, 1
+env -u DELIVERY_PROVIDER uv run python -m app.delivery send-test; echo $?                 # disabled message, 1 (the session may set DELIVERY_PROVIDER)
 DELIVERY_PROVIDER=smtp uv run python -m app.delivery status; echo $?                      # error naming DELIVERY_PROVIDER, 1
 DELIVERY_PROVIDER=resend uv run python -m app.worker status; echo $?                      # error naming RESEND_API_KEY, 1
 uv run alembic downgrade -1 && uv run alembic upgrade head                                 # both succeed
@@ -446,7 +473,75 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-10-01 — plan review (/pipeline:plan-review under /pipeline:ship)
+
+Findings (severity counted before the fixes: 0 `blocker`, 1 `major`, 6 `minor`):
+
+1. `major` — the service design did not say how a `RetryOutcome` becomes `sent`/`failed`.
+   `with_retries` returns `result=None` both on failure and on a successful `file`-channel
+   send (no provider ID), and `stopped=True` with possibly no error when the stop event fires;
+   a `result is not None` check would record every `file` send as failed, and a stopped send
+   had no defined row state. Fixed: Design → "Reading the `RetryOutcome`" (success =
+   `error is None and not stopped`; stopped → `failed` with the last error class or
+   `DeliveryStopped`), `stop_event or threading.Event()` (the helper requires one), new tests
+   `test_file_channel_success_with_no_provider_id_is_sent` and `test_stop_event_ends_as_failed`
+   in step 7, matrix rows AC8 and AC11 updated, a Risks entry.
+2. `minor` — a re-tried `failed` row kept the first send's title and bodies, so the log could
+   hold a message different from the one delivered. Fixed: the re-try also writes channel,
+   title, text and HTML; `test_failed_key_is_retried_in_the_same_row` changes the title.
+3. `minor` — AC3 tests could report `DATABASE_URL` instead of `DELIVERY_PROVIDER` if the
+   engine/settings were built first, and the CLI/worker tests could read `backend/.env`.
+   Fixed: delivery configuration resolved before `load_settings()` / the engine; steps 9 and
+   10 run under `monkeypatch.chdir(tmp_path)` with the variables removed.
+4. `minor` — the AC19 guard scanned only `tests/delivery/`, while AC19 speaks of the
+   repository. Fixed: step 3 scans the tracked files under `backend/app/`, `backend/tests/`,
+   `backend/.env.example` and `docs/` (checked: no e-mail address in them today, so no false
+   positives).
+5. `minor` — local `file`-adapter runs (manual scenario 2) write `backend/outbox/`, which was
+   not ignored. Fixed: step 11 adds `backend/outbox/` to `.gitignore`.
+6. `minor` — the E2E "disabled" run assumed `DELIVERY_PROVIDER` unset in the session. Fixed:
+   `env -u DELIVERY_PROVIDER`.
+7. `minor` — not recorded: a timeout after Resend accepted the request leads to a second
+   e-mail on retry. It follows from AC11 and AC1 (the channel receives the message only), so
+   it is a Risks entry and a question for the final review (Resend `Idempotency-Key`), not a
+   plan change.
+
+Checked and found correct (later stages need not repeat it):
+
+- Coverage: every AC1–AC20 has steps and a proving test; the matrix matches the steps; the
+  fourth column is present (AC19 `n/a` justified; AC13 "opens in a mail client" and live
+  AC12/AC15 in the manual scenarios).
+- Compliance: CONVENTIONS (content in `app/content/` as TOML, no whole-text comparison,
+  recorded-payload `MockTransport` tests, UTC storage, no addresses/credentials in logs, tests
+  first). DECISIONS searched for retry, delivery, 0004, module, clock, advisory, refactor: the
+  2026-10-01 delivery row is already recorded; moving `with_retries` to `app/core/retry.py`
+  honours the 2026-09-30 "one retry helper" and "refactor in the feature's spec" rows, with a
+  superseding row planned; the row-lock idempotency gets its own row.
+- Retry move: the importers listed in step 1 are exactly the ones in the tree
+  (`extraction/service.py`, `llm/structured.py`, `retrieval/evaluation/runner.py`,
+  `retrieval/indexing.py`, `tests/extraction/test_service.py`, `tests/llm/test_retry.py`);
+  the test paths in its verification command exist; `test_shared_code.py` tolerates a missing
+  `app/delivery/` at step 1 (`rglob` yields nothing). The helper's own warning logs only the
+  class name — consistent with AC14.
+- Concurrency (AC10): `INSERT … ON CONFLICT DO NOTHING` blocks on the unique index until the
+  first transaction ends; the following `SELECT … FOR UPDATE` in READ COMMITTED sees the
+  committed row; a crashed sender's rollback frees the key. The `pg_stat_activity`
+  `wait_event_type = 'Lock'` probe matches a transaction-ID wait.
+- Migration (AC18): `0007` after `0006`; the five existing tests deriving `other_tables` from
+  the whole metadata are all listed; the change is a new table only and is accepted in SPEC →
+  Owner decisions. No new dependency (`httpx`, standard library `email`).
+- Worker: `status` ends with the Extraction block, so the `Delivery:` line after it does not
+  break the existing slicing; the autouse regex `.*_API_KEY` already covers `RESEND_API_KEY`.
+- Docs: BACKLOG highest number is 20 → #21; DEPLOYMENT steps end at 10 → step 11; ROADMAP
+  Stage 2 item at line 48 is the one to tick.
+- Groups: three groups, each ending with its work complete; `implement.chunked` is false.
+- E2E: the automatic part runs against a throw-away pgvector container and covers send, file
+  content, both status outputs, disabled, bad provider and missing key, downgrade/upgrade; the
+  manual part holds only what needs a real inbox or a mail client.
+- Owner summary: dependency "no" and migration "yes, accepted" match the plan; language `en`.
+
+Decision: the plan is ready — no blocker remains, the only new schema is the accepted
+migration, there is no new dependency, and every AC has a step and a proving test.
 
 ## Chunk notes
 

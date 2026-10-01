@@ -1,13 +1,17 @@
 ---
-status: plan-draft
+status: plan-approved
 stage_history:
   - "spec-draft — 2026-10-01"
   - "spec-ready — 2026-10-01"
   - "plan-draft — 2026-10-01"
+  - "plan-approved — 2026-10-01"
 metrics:
   started_at: 2026-10-01T20:55
   escalations: 0
   plan_steps: 11
+  plan_review_blockers: 0
+  plan_review_majors: 1
+  plan_changes: 9
 ---
 
 # SPEC 008 — Delivery adapter (e-mail first)
