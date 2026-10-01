@@ -4,6 +4,7 @@ from pathlib import Path
 
 APP = Path(__file__).resolve().parent.parent / "app"
 FEATURES = ("extraction", "retrieval")
+RETRY_PACKAGES = ("extraction", "retrieval", "delivery")
 RETRY_CONSTANTS = {"MAX_ATTEMPTS", "RETRY_BACKOFF_SECONDS"}
 
 
@@ -14,7 +15,7 @@ def _trees(package: str):
 
 def test_no_chat_model_or_retry_loop_outside_app_llm():
     offenders = []
-    for package in FEATURES:
+    for package in RETRY_PACKAGES:
         for path, tree in _trees(package):
             for node in ast.walk(tree):
                 if isinstance(node, ast.Assign):

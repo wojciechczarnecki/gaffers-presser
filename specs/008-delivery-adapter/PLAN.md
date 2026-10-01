@@ -205,7 +205,7 @@ Design (signatures where precision matters):
 
 ### Group 1 — Shared retry and the channels
 
-- [ ] 1. Move the retry helper to `app/core/retry.py` and add the hooks — files:
+- [x] 1. Move the retry helper to `app/core/retry.py` and add the hooks — files:
       `backend/app/core/retry.py` (new; content of `app/llm/retry.py` plus keyword-only
       `retryable: Callable[[Exception], bool] | None = None` — a `False` ends the loop at once
       with that error — and `wait: Callable[[Exception, float], float] | None = None` — the delay

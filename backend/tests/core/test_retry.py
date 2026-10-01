@@ -1,6 +1,6 @@
 import threading
 
-from app.llm.retry import with_retries
+from app.core.retry import with_retries
 
 
 class Clock:
@@ -94,3 +94,32 @@ def test_backoff_index_is_clamped():
     outcome = with_retries(fn, clock, threading.Event(), attempts=5, backoff=(1.0, 3.0))
     assert outcome.attempts == 5
     assert clock.sleeps == [1.0, 3.0, 3.0, 3.0]
+
+
+def test_non_retryable_error_stops_at_once():
+    clock = Clock()
+    calls = []
+
+    def fn():
+        calls.append(1)
+        raise KeyError("fatal")
+
+    outcome = with_retries(
+        fn, clock, threading.Event(), retryable=lambda exc: not isinstance(exc, KeyError)
+    )
+    assert outcome.attempts == 1
+    assert calls == [1]
+    assert isinstance(outcome.error, KeyError)
+    assert clock.sleeps == []
+    assert not outcome.stopped
+
+
+def test_wait_hook_overrides_the_delay():
+    clock = Clock()
+
+    def fn():
+        raise ValueError("boom")
+
+    outcome = with_retries(fn, clock, threading.Event(), wait=lambda exc, default: default * 10 + 1)
+    assert outcome.attempts == 3
+    assert clock.sleeps == [21.0, 41.0]

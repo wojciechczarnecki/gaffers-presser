@@ -7,8 +7,8 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.clock import Clock
+from app.core.retry import with_retries
 from app.llm.pricing import Price, compute_cost
-from app.llm.retry import with_retries
 from app.llm.tracing import TracingConfig
 from app.retrieval.embedder import Embedder, EmbeddingResult
 from app.retrieval.store import PostToEmbed, posts_missing, save_embedded, save_failed
