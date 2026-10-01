@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
+import typer
 from sqlalchemy import text
 from sqlmodel import Session, select
 from typer.testing import CliRunner
@@ -34,7 +35,9 @@ from tests.retrieval.helpers import runtime as indexing_runtime
 from tests.tweets.fakes import FakeSource
 from tests.worker.sim import FakeClock
 
-EXTRACTION_VARIABLE = re.compile(r"(LLM_.*|LANGFUSE_.*|.*_API_KEY|USD_PLN_RATE|EMBEDDING_MODEL)")
+EXTRACTION_VARIABLE = re.compile(
+    r"(LLM_.*|LANGFUSE_.*|.*_API_KEY|USD_PLN_RATE|EMBEDDING_MODEL|DELIVERY_.*)"
+)
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 D6 = datetime(2026, 10, 10, 10, 0, tzinfo=UTC)
 
@@ -102,6 +105,7 @@ def cli(db):
         tweet_ingest=None,
         extraction=None,
         indexing=None,
+        delivery_channel=None,
     ):
         deps = WorkerDeps(
             engine=db,
@@ -111,6 +115,7 @@ def cli(db):
             tweet_ingest=tweet_ingest,
             extraction=extraction,
             indexing=indexing,
+            delivery_channel=delivery_channel,
         )
         return CliRunner().invoke(app, list(args), obj=deps)
 
@@ -1244,3 +1249,93 @@ def test_worker_help():
         cwd=str(BACKEND_DIR),
     )
     assert result.returncode == 0
+
+
+def _delivery_row(db, key, kind, status, requested_at, accepted_at=None):
+    from app.delivery.models import DeliveryLog
+
+    with Session(db) as session:
+        session.add(
+            DeliveryLog(
+                idempotency_key=key,
+                kind=kind,
+                channel="file",
+                title="t",
+                text_body="b",
+                status=status,
+                attempts=1,
+                requested_at=requested_at,
+                accepted_at=accepted_at,
+            )
+        )
+        session.commit()
+
+
+def test_status_shows_delivery_disabled(cli):
+    result = cli("status")
+    assert result.exit_code == 0
+    assert "Delivery: disabled" in result.stdout.splitlines()
+
+
+def test_status_shows_delivery_line(cli, db):
+    sent_at = NOW - timedelta(hours=2)
+    _delivery_row(db, "presser:1", "presser", "sent", sent_at, sent_at)
+    _delivery_row(db, "alert:1", "alert", "failed", NOW - timedelta(hours=1))
+    _delivery_row(db, "alert:0", "alert", "failed", NOW - timedelta(hours=25))
+
+    result = cli("status", delivery_channel="file")
+
+    assert result.exit_code == 0
+    lines = result.stdout.splitlines()
+    assert "Delivery: file  last sent: 2026-09-25T22:00:00Z (presser)  failed in 24 h: 1" in lines
+    assert lines.index("Extraction: disabled") < lines.index(
+        "Delivery: file  last sent: 2026-09-25T22:00:00Z (presser)  failed in 24 h: 1"
+    )
+
+
+def test_status_shows_delivery_line_with_no_rows(cli):
+    result = cli("status", delivery_channel="resend")
+    assert "Delivery: resend  last sent: never  failed in 24 h: 0" in result.stdout.splitlines()
+
+
+def test_bad_delivery_provider_fails_worker_start(monkeypatch, tmp_path):
+    from app.core.settings import Settings
+    from app.worker import cli as worker_cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DELIVERY_PROVIDER", "smtp")
+    monkeypatch.setattr(
+        worker_cli,
+        "load_settings",
+        lambda: Settings(_env_file=None, database_url="postgresql+psycopg://u@localhost/x"),
+    )
+
+    with pytest.raises(typer.Exit) as info:
+        worker_cli._deps_from_settings()
+
+    assert info.value.exit_code == 1
+
+
+def test_worker_reports_bad_delivery_provider_naming_the_variable(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DELIVERY_PROVIDER", "resend")
+
+    result = CliRunner().invoke(app, ["status"])
+
+    assert result.exit_code == 1
+    assert "RESEND_API_KEY" in result.stderr
+
+
+def test_deps_carry_the_delivery_channel_name(monkeypatch, tmp_path):
+    from app.core.settings import Settings
+    from app.worker import cli as worker_cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        worker_cli,
+        "load_settings",
+        lambda: Settings(_env_file=None, database_url="postgresql+psycopg://u@localhost/x"),
+    )
+    assert worker_cli._deps_from_settings().delivery_channel is None
+    monkeypatch.setenv("DELIVERY_PROVIDER", "file")
+    assert worker_cli._deps_from_settings().delivery_channel == "file"

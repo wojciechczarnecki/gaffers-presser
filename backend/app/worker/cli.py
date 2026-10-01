@@ -19,6 +19,8 @@ from app.core.settings import (
 )
 from app.db.engine import make_engine
 from app.db.locks import try_schedule_lock
+from app.delivery.config import DeliverySettings, resolve_delivery
+from app.delivery.store import delivery_summary
 from app.extraction.config import load_extraction_settings
 from app.extraction.loop import start_extractor
 from app.extraction.service import ExtractionRuntime, load_reference_files
@@ -65,6 +67,7 @@ class WorkerDeps:
     tweet_ingest: TweetIngest | None = None
     extraction: ExtractionRuntime | None = None
     indexing: IndexingRuntime | None = None
+    delivery_channel: str | None = None
 
 
 app = typer.Typer(
@@ -115,6 +118,7 @@ def _deps_from_settings() -> WorkerDeps:
         prices, aliases = load_reference_files() if llm_config is not None else ({}, ([], []))
         retrieval_settings = load_retrieval_settings()
         embedding_config = resolve_embedding(retrieval_settings)
+        delivery_config = resolve_delivery(DeliverySettings())
         settings = load_settings()
     except CollectorError as exc:
         raise fail(str(exc)) from None
@@ -152,6 +156,7 @@ def _deps_from_settings() -> WorkerDeps:
         tweet_ingest=tweet_ingest,
         extraction=extraction,
         indexing=indexing,
+        delivery_channel=delivery_config.provider if delivery_config else None,
     )
 
 
@@ -321,6 +326,19 @@ def status(ctx: typer.Context) -> None:
                 f" x_id={latest_extraction.tweet_x_id} status={latest_extraction.status}"
                 f" latency={latency_str}"
             )
+
+    if deps.delivery_channel is None:
+        typer.echo("Delivery: disabled")
+    else:
+        summary = delivery_summary(deps.engine, now)
+        if summary.last_sent_at is None:
+            last_sent = "never"
+        else:
+            last_sent = f"{_fmt(summary.last_sent_at)} ({summary.last_sent_kind})"
+        typer.echo(
+            f"Delivery: {deps.delivery_channel}  last sent: {last_sent}"
+            f"  failed in 24 h: {summary.failed_last_24h}"
+        )
 
 
 def main() -> None:

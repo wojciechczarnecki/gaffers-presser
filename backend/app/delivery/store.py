@@ -1,6 +1,7 @@
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlmodel import Session, col, select
 
@@ -50,3 +51,31 @@ def recent_rows(engine: Engine, limit: int = 10) -> list[DeliveryLog]:
                 .limit(limit)
             ).all()
         )
+
+
+@dataclass(frozen=True)
+class DeliverySummary:
+    last_sent_at: datetime | None
+    last_sent_kind: str | None
+    failed_last_24h: int
+
+
+def delivery_summary(engine: Engine, now: datetime) -> DeliverySummary:
+    with Session(engine) as session:
+        last = session.exec(
+            select(DeliveryLog)
+            .where(DeliveryLog.status == "sent")
+            .order_by(col(DeliveryLog.accepted_at).desc(), col(DeliveryLog.id).desc())
+            .limit(1)
+        ).first()
+        failed = session.exec(
+            select(func.count())
+            .select_from(DeliveryLog)
+            .where(DeliveryLog.status == "failed")
+            .where(DeliveryLog.requested_at >= now - timedelta(hours=24))
+        ).one()
+    return DeliverySummary(
+        last_sent_at=last.accepted_at if last else None,
+        last_sent_kind=last.kind if last else None,
+        failed_last_24h=failed,
+    )
