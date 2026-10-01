@@ -1,0 +1,7 @@
+# The message `python -m app.delivery send-test` sends (spec 008).
+# `{time}` is replaced with the current Warsaw time.
+
+title = "Konferencja prasowa: wiadomość testowa"
+text = """Trener melduje: kanał dostawy działa.
+Ta wiadomość poszła z konferencji prasowej o {time} czasu warszawskiego.
+Jeśli ją czytasz, alerty i konferencja trafią w to samo miejsce."""

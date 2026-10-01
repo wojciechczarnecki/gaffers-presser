@@ -194,8 +194,8 @@ Design (signatures where precision matters):
 | AC12 | 3 | `tests/delivery/channels/test_resend.py` (200, 403, 422, 429 with `Retry-After`, 500, timeout) | `uv run pytest -q tests/delivery/channels/test_resend.py` (stub `send` returning `"stub"`) → `assert 'stub' == '49a3999c-0ce1-4ea6-ab68-afcd6dc2e794'`; `Failed: DID NOT RAISE ChannelRejectedError` (403/422), `ChannelRateLimitedError` (429), `ChannelUnavailableError` (500, timeout) |
 | AC13 | 4 | `tests/delivery/channels/test_file.py::test_writes_multipart_eml_with_text_part`, `::test_html_part_when_present`, `::test_files_sort_by_send_time` | `uv run pytest -q tests/delivery/channels/test_file.py` (stub writing nothing) → `assert 0 == 1` (one .eml expected); `assert [] == ['Title 0', 'Title 1', 'Title 2']` |
 | AC14 | 8 | `tests/delivery/test_service.py::test_logs_carry_no_addresses_title_body_or_key` | `uv run pytest -q tests/delivery/test_service.py::test_logs_carry_no_addresses_title_body_or_key` → `assert 0 == 2` (no per-send log line yet) |
-| AC15 | 9 | `tests/delivery/test_cli.py::test_send_test_prints_outcome_and_provider_id`, `::test_send_test_disabled_exits_non_zero`, `tests/content/test_delivery_test_message.py::test_renders_with_time` | |
-| AC16 | 9 | `tests/delivery/test_cli.py::test_status_prints_channel_and_last_rows` | |
+| AC15 | 9 | `tests/delivery/test_cli.py::test_send_test_prints_outcome_and_provider_id`, `::test_send_test_disabled_exits_non_zero`, `tests/content/test_delivery_test_message.py::test_renders_with_time` | `uv run pytest -q tests/delivery/test_cli.py tests/content/test_delivery_test_message.py` (stub commands, stub loader) → `assert 'status: sent' in ''`, `assert 0 == 1` (disabled / failed exit codes), `assert '2026-10-01 12:30' in 'stub'` |
+| AC16 | 9 | `tests/delivery/test_cli.py::test_status_prints_channel_and_last_rows` | `uv run pytest -q tests/delivery/test_cli.py::test_status_prints_channel_and_last_rows` (stub) → `IndexError: list index out of range` |
 | AC17 | 10 | `tests/worker/test_cli.py::test_status_shows_delivery_line`, `::test_status_shows_delivery_disabled` | |
 | AC18 | 6 | `tests/db/test_migrations.py::test_delivery_migration_adds_only_new_table` (plus the existing `test_models_match_migration`) | `uv run pytest -q tests/db/test_migrations.py::test_delivery_migration_adds_only_new_table` (no-op `0007` stub) → `assert 'delivery_log' in [...]`; `test_models_match_migration` → `assert [('add_table', Table('delivery_log' ...)] == []` |
 | AC19 | 3 | `tests/delivery/test_synthetic_data.py::test_only_synthetic_addresses_and_keys` | n/a — guard over test files; nothing to be red against before they exist |
@@ -336,7 +336,7 @@ Design (signatures where precision matters):
 
 ### Group 3 — CLI, worker status and documentation
 
-- [ ] 9. Test message content and the delivery CLI — files:
+- [x] 9. Test message content and the delivery CLI — files:
       `backend/app/content/delivery_test_message.toml` (Polish `title` and `text` with `{time}`),
       `backend/app/delivery/content.py`, `backend/app/delivery/store.py` (`recent_rows`,
       `delivery_summary`), `backend/app/delivery/cli.py`, `backend/app/delivery/__main__.py`,

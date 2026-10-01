@@ -1,7 +1,8 @@
 from datetime import datetime
 
+from sqlalchemy import Engine
 from sqlalchemy.dialects.postgresql import insert
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.delivery.models import DeliveryLog
 
@@ -38,3 +39,14 @@ def claim_row(
         .with_for_update()
         .execution_options(populate_existing=True)
     ).one()
+
+
+def recent_rows(engine: Engine, limit: int = 10) -> list[DeliveryLog]:
+    with Session(engine) as session:
+        return list(
+            session.exec(
+                select(DeliveryLog)
+                .order_by(col(DeliveryLog.requested_at).desc(), col(DeliveryLog.id).desc())
+                .limit(limit)
+            ).all()
+        )
