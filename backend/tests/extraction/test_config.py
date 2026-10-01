@@ -33,6 +33,8 @@ def _no_configured_defaults(monkeypatch):
     # These tests use a fake catalogue; the real defaults are checked in the last test.
     monkeypatch.setattr(config_module, "DEFAULT_MODEL", "")
     monkeypatch.setattr(config_module, "DEFAULT_FALLBACK_MODEL", "")
+    for field in ExtractionSettings.model_fields:
+        monkeypatch.delenv(field.upper(), raising=False)
 
 
 def _settings(monkeypatch, **env: str) -> ExtractionSettings:
