@@ -1,13 +1,17 @@
 ---
-status: plan-draft
+status: plan-approved
 stage_history:
   - "spec-draft — 2026-10-02"
   - "spec-ready — 2026-10-02"
   - "plan-draft — 2026-10-02"
+  - "plan-approved — 2026-10-02"
 metrics:
   started_at: 2026-10-02T09:43
   escalations: 0
   plan_steps: 18
+  plan_review_blockers: 0
+  plan_review_majors: 3
+  plan_changes: 9
 ---
 
 # SPEC 009 — Pre-deadline alert e-mails

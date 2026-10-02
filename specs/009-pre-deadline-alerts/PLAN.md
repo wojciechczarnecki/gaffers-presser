@@ -103,8 +103,14 @@ Design choices:
    reported player an alert includes all of his claim posts in the window up to `as_of` (also
    the older posts of an account that corroboration collapses to its newest) plus every judged
    citation shown, so the next news slot does not report a player for a post the owner already
-   had in front of him. A post is "already included" when its `x_id` or its original's `x_id`
-   (for a repost) equals the `x_id` or the original's `x_id` of an included post.
+   had in front of him. A **breaking** alert records its trigger post as `new` and every other
+   post it shows as `context`, and only its `new` rows count as included: a post shown as
+   support in another post's breaking e-mail (two posts extracted in the same tick) still gets
+   its own breaking e-mail (AC12, owner decision "one e-mail per new post"). So: included =
+   every `alert_post` row of `sent`/`failed` digest and news alerts plus the `new` rows of
+   `sent`/`failed` breaking alerts. A post is "already included" when its `x_id` or its
+   original's `x_id` (for a repost) equals the `x_id` or the original's `x_id` of an included
+   post.
 5. **The original of a repost** is read from the stored raw payload by a new pure function
    `app/tweets/reposts.py: reposted_x_id(raw: dict) -> int | None` (twscrape
    `raw["retweetedTweet"]["id"]`, twitterapi.io `raw["retweeted_tweet"]["id"]`, X API
@@ -155,7 +161,7 @@ Design choices:
 | AC9 | 5, 6 | `tests/alerts/test_render.py::test_player_section_fields`, `tests/alerts/test_players.py::test_order_by_ownership_nulls_last` | |
 | AC10 | 5 | `tests/alerts/test_render.py::test_times_are_warsaw`, `tests/content/test_alert_email.py::test_template_has_every_key_and_renders`, `tests/alerts/test_render.py::test_alerts_code_has_no_polish_literals` | |
 | AC11 | 10 | `tests/alerts/test_slots.py::test_news_reports_only_players_with_unincluded_posts_and_marks_new`, `::test_news_with_nothing_new_is_skipped` | |
-| AC12 | 7, 11 | `tests/corroboration/test_service.py::test_given_anchor_is_the_anchor`, `tests/alerts/test_breaking.py::test_breaking_anchor_is_the_post_sql_only` | |
+| AC12 | 7, 9, 11 | `tests/corroboration/test_service.py::test_given_anchor_is_the_anchor`, `tests/alerts/test_breaking.py::test_breaking_anchor_is_the_post_sql_only`, `::test_two_posts_extracted_in_one_tick_each_break`, `tests/alerts/test_store.py::test_breaking_context_rows_are_not_included` | |
 | AC13 | 9, 11 | `tests/tweets/test_reposts.py::test_reposted_x_id_per_source`, `tests/alerts/test_breaking.py::test_included_post_or_its_repost_never_breaks` | |
 | AC14 | 12 | `tests/alerts/test_loop.py::test_breaking_sent_within_15_s_of_extraction` | |
 | AC15 | 3, 10, 11, 12 | `tests/alerts/test_slots.py::test_repeated_run_sends_once`, `::test_lost_record_after_send_is_recovered_without_resend`, `tests/alerts/test_breaking.py::test_breaking_repeated_tick_sends_once` | |
@@ -169,7 +175,7 @@ Design choices:
 | AC23 | 10 | `tests/alerts/test_slots.py::test_rehearsal_alerts_do_not_count_for_the_real_deadline` | |
 | AC24 | 8, 14 | `tests/alerts/test_schedule.py::test_rehearsal_past_ignored_and_overlap_rejected`, `tests/worker/test_cli.py::test_worker_rejects_overlapping_rehearsal_naming_the_variable` | |
 | AC25 | 18 | `tests/test_env_example.py::test_every_alert_variable_is_an_empty_placeholder`, `tests/test_readme.py::test_deployment_describes_rehearsal_variable` | |
-| AC26 | 15, 14 | `tests/alerts/test_cli.py::test_status_shows_next_slot_last_alert_and_failures`, `tests/worker/test_cli.py::test_status_shows_alerts_line` | |
+| AC26 | 14, 15 | `tests/alerts/test_status.py::test_alert_status_next_slot_last_alert_and_failures`, `tests/worker/test_cli.py::test_status_shows_alerts_line`, `tests/alerts/test_cli.py::test_status_shows_next_slot_last_alert_and_failures` | |
 | AC27 | 5, 6, 8, 10, 11, 17 | the step tests above and `tests/alerts/test_end_to_end.py` | n/a — the AC is delivered by the tests themselves |
 | AC28 | 12 | `tests/alerts/test_loop.py::test_logs_carry_no_bodies_addresses_or_texts` | |
 
@@ -190,6 +196,13 @@ Design choices:
       nullable=True))`. The older migration tests select every model column of `player` at
       revisions without it: add `"selected_by_percent"` to their `exclude` sets (it also hides the
       same-named column of `deadline_snapshot_player`, which these tests never change).
+      The older migration tests also seed with `apply_bootstrap` at revisions `0001`–`0007`, and
+      after step 2 its `Player` upsert writes `selected_by_percent`, a column those revisions do
+      not have. Add a test helper `_apply_bootstrap_at_revision(session)` in
+      `tests/db/test_migrations.py` that runs `apply_bootstrap` with `app.fpl.reference.upsert`
+      patched (`unittest.mock.patch`) to drop every row key that is not a column of the live table
+      (`inspect(session.connection()).get_columns(...)`), and use it for every `apply_bootstrap`
+      call made before `0008` (the new test included). Product code is not changed for this.
       Automatic verification: `cd backend && uv run pytest -q tests/db/test_migrations.py`
 - [ ] 2. **Reference sync writes ownership** — files: `backend/app/fpl/reference.py`,
       `backend/tests/fpl/test_reference_sync.py`.
@@ -198,7 +211,8 @@ Design choices:
       element's value changed → that row holds the new value. Then add
       `"selected_by_percent": el.selected_by_percent` to the `Player` upsert in `apply_bootstrap`.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_reference_sync.py
-      tests/fpl/test_deadline_snapshot.py`
+      tests/fpl/test_deadline_snapshot.py tests/db/test_migrations.py` (the migration tests prove
+      the step 1 helper keeps the older revisions seedable).
 - [ ] 3. **Migration `0009`: alert log tables** — files:
       `backend/migrations/versions/0009_alert_log.py`, `backend/app/alerts/__init__.py`
       (registers the models, like `app/worker/__init__.py`), `backend/app/alerts/models.py`,
@@ -342,7 +356,8 @@ Design choices:
       `test_polling_window` (`max(90, first slot + 10)` minutes: 130 for the defaults, 90 for
       `(60, 30)`); `test_rehearsal_past_ignored_and_overlap_rejected` (a past rehearsal → no
       deadline and no error; a rehearsal whose `[R − (first slot + 10 min), R]` overlaps
-      `[D − (first slot + 10 min), D]` of a future real deadline → `ConfigError` naming
+      `[D − (first slot + 10 min), D]` of any real deadline of the season (a just-passed one
+      included, as AC24 says "a real deadline's alert window") → `ConfigError` naming
       `ALERT_REHEARSAL_DEADLINE`; adjacent but not overlapping → fine).
       ```python
       def alert_deadlines(season: str | None, gameweeks: list[GameweekState],
@@ -365,7 +380,9 @@ Design choices:
       malformed raw gives `None`; if a page holds no repost, a synthetic raw of that source's
       shape); `test_included_is_scoped_to_the_deadline_key` (posts of `sent` and `failed`
       alerts count, of another key do not, `skipped` alerts have none);
-      `test_included_origins_cover_reposts`; `test_record_is_unique_per_key` (a second record
+      `test_included_origins_cover_reposts`; `test_breaking_context_rows_are_not_included` (a
+      breaking alert's `new` row counts, its `context` rows do not; every row of a digest or news
+      alert counts); `test_record_is_unique_per_key` (a second record
       with the same key does not add a row); `test_done_slots_and_last_alert`.
       ```python
       def record_alert(engine, *, key, deadline: AlertDeadline, kind, slot_minutes, trigger_x_id,
@@ -376,7 +393,8 @@ Design choices:
       def included_origins(session, deadline_key: str, before: datetime | None = None) -> set[int]
       def status_rows(session, deadline_key: str) -> (last AlertRow | None, failed count)
       ```
-      `included_origins` returns, for every included post, its `x_id` and
+      `included_origins` returns, for every included post (design choice 4: all rows of
+      digest/news alerts, `new` rows of breaking alerts, statuses `sent`/`failed`), its `x_id` and
       `reposted_x_id(raw)`; `before` limits it to alerts with `as_of < before` (for `preview`).
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_reposts.py
       tests/alerts/test_store.py`
@@ -427,8 +445,11 @@ Design choices:
       `backend/tests/alerts/test_breaking.py`.
       Write first: `test_breaking_anchor_is_the_post_sql_only` (an older post extracted after the
       news → its e-mail anchors on it, other claims in the window as support/contradiction, no
-      embedder or judge call; key `alert:<key>:breaking:<x_id>`; `alert_post` rows: the post
-      `new`, the rest `context` unless not yet included); `test_included_post_or_its_repost_never_breaks`
+      embedder or judge call; key `alert:<key>:breaking:<x_id>`; `alert_post` rows: the trigger
+      post `new`, every other post shown `context`);
+      `test_two_posts_extracted_in_one_tick_each_break` (P1 and P2 about the same listed player,
+      both extracted before one tick → two e-mails, P2 shown as support in P1's and having its
+      own); `test_included_post_or_its_repost_never_breaks`
       (a post in the news, a later repost of it, a repost of a post in the news → none sends;
       a post and its repost in the same tick → one e-mail); `test_unlisted_player_does_not_break`;
       `test_extracted_before_last_slot_is_not_breaking`; `test_breaking_repeated_tick_sends_once`;
@@ -480,9 +501,14 @@ Design choices:
       are off).
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_schedule.py
       tests/tweets/test_loop.py`
-- [ ] 14. **Worker integration** — files: `backend/app/worker/cli.py`,
+- [ ] 14. **Worker integration** — files: `backend/app/alerts/status.py`,
+      `backend/tests/alerts/test_status.py`, `backend/app/worker/cli.py`,
       `backend/tests/worker/test_cli.py`.
-      Write first: `test_status_shows_alerts_disabled_with_reason` (`Alerts: disabled (delivery
+      Write first: `tests/alerts/test_status.py::test_alert_status_next_slot_last_alert_and_failures`
+      (`alert_status(engine, config, now) -> AlertStatus`: the current alert deadline, the next
+      slot or the breaking window's end, the last alert's kind, time and outcome or none, and the
+      failed count of the current deadline key; built on `schedule` (step 8) and `store.status_rows`
+      (step 9)); `test_status_shows_alerts_disabled_with_reason` (`Alerts: disabled (delivery
       disabled)` etc.); `test_status_shows_alerts_line` (`Alerts: next slot: digest
       <UTC time>  last alert: news <UTC time> sent  failed: 1`, and `breaking until <time>` inside
       the breaking window); `test_run_starts_alerts_only_when_enabled` (thread `alerts` alive with
@@ -499,10 +525,10 @@ Design choices:
       start the poller with `polling_window(config)` and the rehearsal as an extra deadline, start
       the alerts thread after the indexer, join it on shutdown, close the channel. `status`: the
       tweet mode uses the same window; a final `Alerts:` line from
-      `app.alerts.status.alert_status(...)`.
-      Automatic verification: `cd backend && uv run pytest -q tests/worker/`
-- [ ] 15. **Alerts CLI: `status` and `latency`** — files: `backend/app/alerts/status.py`,
-      `backend/app/alerts/latency.py`, `backend/app/alerts/cli.py`, `backend/app/alerts/__main__.py`,
+      `app.alerts.status.alert_status(...)` (created in this step; step 15 reuses it).
+      Automatic verification: `cd backend && uv run pytest -q tests/alerts/test_status.py
+      tests/worker/`
+- [ ] 15. **Alerts CLI: `status` and `latency`** — files: `backend/app/alerts/latency.py`, `backend/app/alerts/cli.py`, `backend/app/alerts/__main__.py`,
       `backend/tests/alerts/test_latency.py`, `backend/tests/alerts/test_cli.py`.
       Write first: `test_percentiles_and_legs` (nearest-rank p50 / p95 / max over fixed rows;
       legs post → first fetch, fetch → extraction done, extraction → accepted; empty → count 0
@@ -513,8 +539,9 @@ Design choices:
       `test_cli_rejects_invalid_alert_variable` (exit 1, stderr names the variable).
       Latency per post: `tweet.created_at`, `tweet.first_fetched_at`, the earliest `finished_at`
       of its `extracted` extractions, the `accepted_at` of the first sent alert including it.
-      `status` prints the current alert deadline (key and Warsaw time), the next slot (or
-      `breaking until …`), the last alert (kind, Warsaw time, outcome) and the failed count.
+      `status` prints, from `alert_status` (step 14), the current alert deadline (key and Warsaw
+      time), the next slot (or `breaking until …`), the last alert (kind, Warsaw time, outcome)
+      and the failed count.
       Automatic verification: `cd backend && uv run pytest -q tests/alerts/test_latency.py
       tests/alerts/test_cli.py`
 - [ ] 16. **Alerts CLI: `preview`** — files: `backend/app/alerts/cli.py`,
@@ -576,7 +603,9 @@ Design choices:
   stated here so the reviewer does not "fix" it with a pre-send claim row.
 - **Migration tests.** `table_contents` selects every model column; the new `player` column and
   the two new tables must be excluded in every older-revision test, or they fail with
-  "column does not exist". `test_models_match_migration` catches a model/migration mismatch
+  "column does not exist"; and every `apply_bootstrap` seed before `0008` goes through the
+  step 1 helper, because after step 2 the `Player` upsert writes the new column.
+  `test_models_match_migration` catches a model/migration mismatch
   (index names, `Numeric(5, 1)`, BigInteger FKs to `tweet.x_id`).
 - **Season and keys.** The current season is the latest `season.label`; a rehearsal key has no
   season. Keys contain `/` and `:` — fine for `delivery_log.idempotency_key` and Resend's
@@ -639,7 +668,30 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-10-02 — /pipeline:plan-review
+
+Findings (severity counted before the fixes):
+
+| # | Severity | Finding | Change |
+|---|----------|---------|--------|
+| R1 | `major` | Step 2 makes `apply_bootstrap` write `player.selected_by_percent`, but `tests/db/test_migrations.py` seeds with `apply_bootstrap` at revisions `0001`–`0007` (job run, tweet, extraction, retrieval, repost, delivery tests and the new step 1 test), where the column does not exist → "column does not exist"; step 2's verification did not run the migration tests, so the break would surface only in the full run. | Step 1 adds the test helper `_apply_bootstrap_at_revision` (patches `app.fpl.reference.upsert` to drop keys the live table lacks) and routes every pre-`0008` seed through it; step 2's verification runs `tests/db/test_migrations.py`; risk noted. |
+| R2 | `major` | Forward dependency: step 14 (worker `Alerts:` status line) calls `app.alerts.status.alert_status`, which step 15 created. | `app/alerts/status.py` and `tests/alerts/test_status.py` move to step 14; step 15's CLI reuses it; AC26 row updated. |
+| R3 | `major` | Breaking: an alert recorded every post it showed as included, so of two posts about one listed player extracted before the same tick, the second (shown as support in the first's e-mail) never got its own breaking e-mail — against AC12 and the owner decision "one e-mail per new post about a listed player". Step 11's "the rest `context` unless not yet included" was also ambiguous. | Design choice 4: a breaking alert records its trigger post `new` and the others `context`; only `new` rows of breaking alerts count as included (all rows of digest/news alerts still do). Tests `test_breaking_context_rows_are_not_included` (step 9) and `test_two_posts_extracted_in_one_tick_each_break` (step 11); AC12 row updated. |
+| R4 | `minor` | Step 8 checked the rehearsal overlap only against future real deadlines; AC24 says "a real deadline's alert window". | The check runs against every real deadline of the season, a just-passed one included. |
+
+Checked and found correct (later stages need not repeat it):
+
+- Coverage: every AC1–AC28 has steps and a proving test; the matrix matches the steps (AC27 `n/a` with a reason; the fourth column present).
+- Code facts the plan rests on: `corroborate(...)` returns early with no claim and skips search/judge when `embedder`/`judge` is `None` (so `sql_only_runtime` gives AC12's SQL-only path); `window_start` uses the gameweek table, so a rehearsal's window starts at the previous real deadline (AC22); `current_extractions` returns `finished_at` and takes `created_from`/`created_until`; `DeliveryService.send` returns `already_sent` for a `sent` key (send-then-record heals a lost record) and kind `alert` exists; `_runtime_from_settings` exists in `app/corroboration/cli.py`; `Element.selected_by_percent` is in the bootstrap schema; `account_of` counts a repost as its original author; the repost original ID paths match the stored raw payloads (twscrape `retweetedTweet`, twitterapi.io `retweeted_tweet`, X API `tweet.referenced_tweets`); league sync writes picks in one job transaction, so the max `gameweek_fpl_id` in `manager_pick` is a fully synced gameweek; `load_state` and `next_deadline_after` exist; corroboration writes nothing to the database (preview stays read-only).
+- Compliance: CONVENTIONS (Polish text only in `app/content/`, UTC inside and `Europe/Warsaw` at rendering, no names/addresses/texts in logs, synthetic test data, tests before code) and DECISIONS 2026-09-26 (module `alerts`, no FPL flags), 2026-09-30 (one current-extraction query, deadline helpers, refactor in the feature), 2026-10-01 (delivery idempotency and row lock), 2026-10-02 (spec 009 row) — not broken.
+- Minimality: reuses delivery, corroboration, extraction store, deadlines and test fakes; the single alerts thread (design choice 1) is simpler than two threads with a lock; no extra column for repost origin.
+- Feasibility: no other forward dependency after R2; both migrations accepted in SPEC → Owner decisions; no new dependency; time zones and the deadline cut-off before `send` covered.
+- E2E: the automatic part runs on the development database and the CLIs; the manual part keeps only real e-mails and the real deadline.
+- Groups: three groups, no boundary leaves work half done; `implement.chunked` is false.
+- Owner summary consistent (no new dependency; migrations `0008`/`0009` flagged as accepted). Language: English throughout.
+- Accepted as is: news reports a player only for an unincluded *claim* post (a new judge-found post alone does not trigger news) — the AC6 rule that a reported player must have a claim makes this consistent.
+
+Decision: the plan is ready for implementation — every finding was fixable in the plan and fixed, no blocker remains, and the only migrations are the two the owner accepted.
 
 ## Chunk notes
 
