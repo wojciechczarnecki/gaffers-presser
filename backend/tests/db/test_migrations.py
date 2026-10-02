@@ -15,6 +15,7 @@ from sqlalchemy import text as sa_text
 from sqlmodel import Session, SQLModel
 from testcontainers.postgres import PostgresContainer
 
+import app.alerts.models  # noqa: F401
 import app.delivery.models  # noqa: F401
 import app.extraction.models  # noqa: F401
 import app.fpl.models  # noqa: F401
@@ -33,6 +34,8 @@ from tests.fpl.payloads import load
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 BEFORE_OWNERSHIP = DEFAULT_EXCLUDE | {"selected_by_percent"}
+ALERT_TABLES = {"alert", "alert_post"}
+ALL_TABLES = set(SQLModel.metadata.tables.keys())
 
 
 def _apply_bootstrap_at_revision(session: Session) -> None:
@@ -94,15 +97,19 @@ def test_job_run_migration_keeps_collector_data():
             _apply_bootstrap_at_revision(session)
             session.commit()
 
-        collector_tables = set(SQLModel.metadata.tables.keys()) - {
-            "job_run",
-            "tweet",
-            "tweet_poll",
-            "extraction",
-            "extraction_event",
-            "post_embedding",
-            "delivery_log",
-        }
+        collector_tables = (
+            set(SQLModel.metadata.tables.keys())
+            - ALERT_TABLES
+            - {
+                "job_run",
+                "tweet",
+                "tweet_poll",
+                "extraction",
+                "extraction_event",
+                "post_embedding",
+                "delivery_log",
+            }
+        )
         with Session(engine) as session:
             before = table_contents(session, exclude=BEFORE_OWNERSHIP, tables=collector_tables)
 
@@ -144,14 +151,18 @@ def test_tweet_migration_adds_only_new_tables():
                 {"now": NOW},
             )
 
-        other_tables = set(SQLModel.metadata.tables.keys()) - {
-            "tweet",
-            "tweet_poll",
-            "extraction",
-            "extraction_event",
-            "post_embedding",
-            "delivery_log",
-        }
+        other_tables = (
+            set(SQLModel.metadata.tables.keys())
+            - ALERT_TABLES
+            - {
+                "tweet",
+                "tweet_poll",
+                "extraction",
+                "extraction_event",
+                "post_embedding",
+                "delivery_log",
+            }
+        )
         with Session(engine) as session:
             before = table_contents(session, exclude=BEFORE_OWNERSHIP, tables=other_tables)
 
@@ -199,12 +210,16 @@ def test_extraction_migration_adds_only_new_tables():
                 {"now": NOW},
             )
 
-        other_tables = set(SQLModel.metadata.tables.keys()) - {
-            "extraction",
-            "extraction_event",
-            "post_embedding",
-            "delivery_log",
-        }
+        other_tables = (
+            set(SQLModel.metadata.tables.keys())
+            - ALERT_TABLES
+            - {
+                "extraction",
+                "extraction_event",
+                "post_embedding",
+                "delivery_log",
+            }
+        )
         excluded = BEFORE_OWNERSHIP | {"search_vector", "reposted_author_handle"}
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
@@ -260,7 +275,7 @@ def test_retrieval_migration_keeps_data_and_downgrades():
                 {"now": NOW},
             )
 
-        other_tables = set(SQLModel.metadata.tables.keys()) - {"post_embedding", "delivery_log"}
+        other_tables = ALL_TABLES - ALERT_TABLES - {"post_embedding", "delivery_log"}
         excluded = BEFORE_OWNERSHIP | {"search_vector", "reposted_author_handle"}
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
@@ -335,7 +350,7 @@ def test_repost_author_migration_backfills_and_downgrades():
             insert(conn, 5, True, {})
             insert(conn, 6, False, {"retweetedTweet": {"user": {"username": "NotARepost"}}})
 
-        other_tables = set(SQLModel.metadata.tables.keys()) - {"tweet", "delivery_log"}
+        other_tables = ALL_TABLES - ALERT_TABLES - {"tweet", "delivery_log"}
         with Session(engine) as session:
             before = table_contents(session, exclude=BEFORE_OWNERSHIP, tables=other_tables)
 
@@ -389,7 +404,7 @@ def test_delivery_migration_adds_only_new_table():
                 {"now": NOW},
             )
 
-        other_tables = set(SQLModel.metadata.tables.keys()) - {"delivery_log"}
+        other_tables = ALL_TABLES - ALERT_TABLES - {"delivery_log"}
         excluded = BEFORE_OWNERSHIP | {"search_vector"}
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
@@ -427,7 +442,9 @@ def test_ownership_migration_keeps_rows_and_downgrades():
             _apply_bootstrap_at_revision(session)
             session.commit()
         with Session(engine) as session:
-            before = table_contents(session, exclude=BEFORE_OWNERSHIP)
+            before = table_contents(
+                session, exclude=BEFORE_OWNERSHIP, tables=ALL_TABLES - ALERT_TABLES
+            )
             players = session.execute(sa_text("SELECT count(*) FROM player")).scalar_one()
         assert players > 0
 
@@ -441,11 +458,73 @@ def test_ownership_migration_keeps_rows_and_downgrades():
         assert columns["selected_by_percent"]["nullable"] is True
         assert filled == 0
         with Session(engine) as session:
-            assert table_contents(session, exclude=BEFORE_OWNERSHIP) == before
+            assert (
+                table_contents(session, exclude=BEFORE_OWNERSHIP, tables=ALL_TABLES - ALERT_TABLES)
+                == before
+            )
 
         run_alembic(url, "downgrade", "-1")
         with engine.connect() as conn:
             columns = {column["name"] for column in inspect(conn).get_columns("player")}
         assert "selected_by_percent" not in columns
         with Session(engine) as session:
-            assert table_contents(session, exclude=BEFORE_OWNERSHIP) == before
+            assert (
+                table_contents(session, exclude=BEFORE_OWNERSHIP, tables=ALL_TABLES - ALERT_TABLES)
+                == before
+            )
+
+
+def test_alert_log_migration_adds_only_new_tables():
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
+        url = container.get_connection_url()
+        run_alembic(url, "upgrade", "0008")
+        engine = make_engine(url)
+
+        with engine.begin() as conn:
+            conn.execute(
+                sa_text(
+                    "INSERT INTO job_run (job, season, gameweek_fpl_id, started_at,"
+                    " finished_at, outcome) VALUES ('reference_sync', NULL, NULL,"
+                    " :now, :now, 'succeeded')"
+                ),
+                {"now": NOW},
+            )
+            conn.execute(
+                sa_text(
+                    "INSERT INTO tweet (x_id, author_handle, text, created_at,"
+                    " first_fetched_at, source, is_repost, is_reply, raw) VALUES"
+                    " (1, 'reporter', 'some text', :now, :now, 'list', false, false, '{}')"
+                ),
+                {"now": NOW},
+            )
+            conn.execute(
+                sa_text(
+                    "INSERT INTO delivery_log (idempotency_key, kind, channel, title, text_body,"
+                    " status, attempts, requested_at) VALUES ('k', 'test', 'resend', 't', 'b',"
+                    " 'sent', 1, :now)"
+                ),
+                {"now": NOW},
+            )
+
+        other_tables = ALL_TABLES - ALERT_TABLES
+        excluded = DEFAULT_EXCLUDE | {"search_vector"}
+        with Session(engine) as session:
+            before = table_contents(session, exclude=excluded, tables=other_tables)
+
+        run_alembic(url, "upgrade", "0009")
+        with engine.connect() as conn:
+            inspector = inspect(conn)
+            assert ALERT_TABLES <= set(inspector.get_table_names())
+            unique = {
+                tuple(constraint["column_names"])
+                for constraint in inspector.get_unique_constraints("alert")
+            }
+            assert ("key",) in unique
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before
+
+        run_alembic(url, "downgrade", "-1")
+        with engine.connect() as conn:
+            assert not ALERT_TABLES & set(inspect(conn).get_table_names())
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before

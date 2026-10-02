@@ -167,7 +167,7 @@ Design choices:
 | AC15 | 3, 10, 11, 12 | `tests/alerts/test_slots.py::test_repeated_run_sends_once`, `::test_lost_record_after_send_is_recovered_without_resend`, `tests/alerts/test_breaking.py::test_breaking_repeated_tick_sends_once` | |
 | AC16 | 8, 10 | `tests/alerts/test_schedule.py::test_missed_slots_due_in_order_until_deadline`, `tests/alerts/test_slots.py::test_restart_sends_missed_slot_up_to_send_time`, `::test_no_send_at_or_after_deadline` | |
 | AC17 | 10, 12 | `tests/alerts/test_slots.py::test_failed_delivery_recorded_and_not_retried`, `::test_failed_corroboration_falls_back_to_sql_with_note`, `tests/alerts/test_loop.py::test_tick_error_does_not_stop_the_loop` | |
-| AC18 | 3, 8, 9 | `tests/db/test_migrations.py::test_alert_log_migration_adds_only_new_tables`, `tests/alerts/test_schedule.py::test_deadline_keys`, `tests/alerts/test_store.py::test_included_is_scoped_to_the_deadline_key` | |
+| AC18 | 3, 8, 9 | `tests/db/test_migrations.py::test_alert_log_migration_adds_only_new_tables`, `tests/alerts/test_schedule.py::test_deadline_keys`, `tests/alerts/test_store.py::test_included_is_scoped_to_the_deadline_key` | `uv run pytest -q tests/db/test_migrations.py -k alert_log` (stub migration 0009) → `assert ALERT_TABLES <= set(inspector.get_table_names())` |
 | AC19 | 15 | `tests/alerts/test_latency.py::test_percentiles_and_legs`, `tests/alerts/test_cli.py::test_latency_default_gameweek_and_rehearsal` | |
 | AC20 | 8, 13 | `tests/alerts/test_schedule.py::test_polling_window`, `tests/tweets/test_schedule.py::test_custom_window_and_extra_deadline` | |
 | AC21 | 16 | `tests/alerts/test_cli.py::test_preview_prints_and_writes_nothing` | |
@@ -213,7 +213,7 @@ Design choices:
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_reference_sync.py
       tests/fpl/test_deadline_snapshot.py tests/db/test_migrations.py` (the migration tests prove
       the step 1 helper keeps the older revisions seedable).
-- [ ] 3. **Migration `0009`: alert log tables** — files:
+- [x] 3. **Migration `0009`: alert log tables** — files:
       `backend/migrations/versions/0009_alert_log.py`, `backend/app/alerts/__init__.py`
       (registers the models, like `app/worker/__init__.py`), `backend/app/alerts/models.py`,
       `backend/migrations/env.py` (import `app.alerts.models`), `backend/tests/db/test_migrations.py`
