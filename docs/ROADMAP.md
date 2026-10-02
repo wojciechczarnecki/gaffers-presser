@@ -51,7 +51,7 @@ and each LLM step that produces data has an evaluation set with recorded results
       players, with post → inbox latency measured; whether the alert text is LLM-generated
       from the retrieved posts (with a faithfulness evaluation) is decided in its spec.
       Preconditions: the production deployment (Stage 0) and BACKLOG #11 settled
-      (spec: TBD) — **first functional MVP**
+      (spec: [009](../specs/009-pre-deadline-alerts/SPEC.md)) — **first functional MVP**
 - [ ] Retrieval evaluation report after the GW6 window: the owner's review of set v1, the
       comparison of modes and embedding models, the default-model ADR, a results section in
       the README (tooling and set v1 come with spec 006) (spec: TBD) — **portfolio MVP**

@@ -1,7 +1,8 @@
 ---
-status: spec-draft
+status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-02"
+  - "spec-ready — 2026-10-02"
 ---
 
 # SPEC 009 — Pre-deadline alert e-mails
@@ -87,7 +88,8 @@ gameweek.
 - Fast tweet polling starting from the first alert slot instead of a fixed 90 minutes.
 - A Polish alert template in `app/content/`.
 - A rehearsal deadline (`ALERT_REHEARSAL_DEADLINE`) that runs the whole alert cycle against
-  a made-up deadline, with real e-mails marked as a rehearsal.
+  made-up deadline, with real e-mails, isolated from real deadlines by the alert log's
+  deadline key.
 - CLI `python -m app.alerts`: `preview`, `latency`, `status`; a line in
   `python -m app.worker status`.
 - Configuration by environment variables with start-up validation; documentation
@@ -116,14 +118,12 @@ Configuration
 - [ ] AC1: Alerts run in the worker only when delivery, tweet ingest and extraction are all
   enabled; otherwise `python -m app.worker status` shows `Alerts: disabled (<reason>)` and
   the worker runs as before. Setting `ALERTS_ENABLED=false` turns them off explicitly.
-  (assumption)
 - [ ] AC2: `ALERT_SLOTS_MINUTES` (default `120,30`) sets the slots in minutes before the
   deadline; the first slot is the digest, the others are news slots, and breaking alerts run
   from the last slot to the deadline. `ALERT_TRENDING_MIN_ACCOUNTS` (default `3`) and
   `ALERT_WIDELY_OWNED_PERCENT` (default `15`) set the thresholds. An invalid value (not
   positive integers, not strictly decreasing, a percentage outside 0–100) fails start-up of
-  the worker and the CLI with a message naming the variable. (`ALERT_WIDELY_OWNED_PERCENT`
-  being configurable: assumption)
+  the worker and the CLI with a message naming the variable.
 
 Players
 
@@ -164,7 +164,7 @@ News slots
 
 - [ ] AC11: At each later slot the worker sends one news e-mail, with full corroboration,
   reporting only listed players with at least one post not included in any earlier alert of
-  this gameweek; the new posts are marked as new. With nothing new no e-mail is sent and the
+  the same alert deadline (AC18); the new posts are marked as new. With nothing new no e-mail is sent and the
   slot is recorded as skipped.
 
 Breaking
@@ -173,16 +173,15 @@ Breaking
   a listed player produces one breaking e-mail about that player, built from SQL rules only
   (no retrieval, no judge call), with the post as the anchor and the player's other
   extracted posts in the window as support or contradiction.
-- [ ] AC13: A post already included in an earlier alert of the gameweek, or a repost of one,
-  never triggers a breaking e-mail. (assumption)
+- [ ] AC13: A post already included in an earlier alert of the same alert deadline, or a repost of one,
+  never triggers a breaking e-mail.
 - [ ] AC14: A breaking e-mail is sent within 15 s of the post's extraction finishing when
   delivery succeeds on the first attempt, measured in a test with a fake channel and clock.
-  (assumption)
 
 Timing and idempotency
 
-- [ ] AC15: Each alert has a deterministic idempotency key (gameweek, slot, or the post for a
-  breaking alert); a repeated run, a second worker or a restart never sends the same alert
+- [ ] AC15: Each alert has a deterministic idempotency key (the alert deadline key, the slot,
+  or the post for a breaking alert); a repeated run, a second worker or a restart never sends the same alert
   twice.
 - [ ] AC16: After a worker restart, a slot whose time has passed but whose deadline has not is
   sent at once, covering the window up to the actual send time; no alert of any kind is sent
@@ -194,19 +193,23 @@ Timing and idempotency
 
 Alert log and latency
 
-- [ ] AC18: Migration adds the alert log tables (each alert: gameweek, kind, slot, as-of time,
-  status, delivery log row; each included post: alert, player, post, new or context); new
-  tables only, no change to existing data; the migration downgrades cleanly.
-- [ ] AC19: `python -m app.alerts latency [--gameweek N]` prints, for posts that triggered or
+- [ ] AC18: Migration adds the alert log tables (each alert: alert deadline key, kind, slot,
+  as-of time, status, delivery log row; each included post: alert, player, post, new or context); new
+  tables only, no change to existing data; the migration downgrades cleanly. The alert
+  deadline key is the season and gameweek for a real deadline (so a deadline FPL moves does
+  not send the slots again) and the deadline time for a rehearsal deadline (AC22); "earlier
+  alert" and "new since" in AC11 and AC13 are always within one alert deadline key.
+- [ ] AC19: `python -m app.alerts latency [--gameweek N | --rehearsal]` prints, for the latest alert
+  deadline by default, for posts that triggered or
   were first reported in an alert, the count and the p50 / p95 / max of post creation →
   e-mail accepted by the provider, split into post → first fetch, fetch → extraction done and
-  extraction → accepted. (split: assumption)
+  extraction → accepted.
 
 Tweet polling window
 
 - [ ] AC20: Fast tweet polling starts at the first alert slot plus 10 minutes before the
   deadline (130 minutes with the defaults) and at least 90 minutes before it; with alerts
-  disabled the window stays 90 minutes. (10-minute margin: assumption)
+  disabled the window stays 90 minutes.
 
 CLI and status
 
@@ -216,19 +219,21 @@ CLI and status
 Rehearsal
 
 - [ ] AC22: With `ALERT_REHEARSAL_DEADLINE=<Warsaw time>` set, the worker treats that moment as
-  an extra deadline for alerts and tweet polling only: fast polling from the first slot plus
-  the margin, the digest, the news slots and breaking alerts up to it, all sent for real.
-  FPL jobs, snapshots and the corroboration window start ignore it.
-- [ ] AC23: Every rehearsal alert is recorded as a rehearsal, its subject starts with
-  `[PRÓBA]`, and its idempotency key differs from any real alert's; rehearsal alerts never
-  count as "already included" for a real deadline, so the real digest and news report the
-  same posts again.
-- [ ] AC24: A rehearsal deadline in the past does nothing; one that falls inside a real
-  deadline's alert window (from the first slot plus the margin to the deadline) fails
-  start-up of the worker with a message naming the variable.
-- [ ] AC25: `latency` and `status` show rehearsal alerts separately from real ones.
+  one extra alert deadline: fast tweet polling, the digest, the news slots and breaking alerts
+  run for it and are sent for real, in any environment. It is not written to the gameweek
+  table, so FPL jobs, snapshots, gameweek numbering and the corroboration window (which
+  starts at the previous real deadline) ignore it.
+- [ ] AC23: Rehearsal alerts never affect a real deadline: after a rehearsal, the next real
+  digest still covers the whole window since the previous real deadline, including the posts
+  the rehearsal already reported, and the real news and breaking alerts treat them as not yet
+  included.
+- [ ] AC24: A rehearsal deadline in the past does nothing; one whose alert window (from the
+  first slot plus the polling margin to the deadline) overlaps a real deadline's alert window
+  fails start-up of the worker with a message naming the variable.
+- [ ] AC25: `docs/DEPLOYMENT.md` and `.env.example` describe `ALERT_REHEARSAL_DEADLINE` as an
+  optional variable for testing, to be removed after use.
 - [ ] AC26: `python -m app.alerts status` and the worker status line show the next slot, the
-  last alert (kind, time, outcome) and the number of failed alerts in the current gameweek.
+  last alert (kind, time, outcome) and the number of failed alerts for the current alert deadline.
 
 Quality
 
@@ -253,7 +258,7 @@ Quality
 | `player.selected_by_percent` refreshed by reference sync | ownership from the last deadline snapshot | the snapshot is a week old at T-120; reference sync runs every 15 min before a deadline (the owner) |
 | Alert log tables with per-post inclusion | deriving "new" from slot times and latency from `delivery_log` | exact "new since the previous alert" and per-post latency (the owner) |
 | Fast tweet polling from the first slot | keeping 90 minutes; one extra poll before the digest | the digest must see recent posts; the window follows the slot configuration (the owner) |
-| `preview` for any past moment and a rehearsal deadline that runs the whole cycle with real e-mails | a manual `send` of one alert; waiting for a real deadline | the owner tests digest, news and breaking end to end, and measures latency, before GW6 (the owner) |
+| `preview` for any past moment and a rehearsal deadline that runs the whole cycle with real e-mails; the alert log is keyed by alert deadline, which isolates a rehearsal with no flag | a manual `send` of one alert; a `rehearsal` flag filtered in every query; local-only rehearsals; waiting for a real deadline | the owner tests digest, news and breaking end to end, and measures latency, before GW6 (the owner) |
 | Players ordered by overall ownership, highest first | league-owned first, then by grade | the most widely owned players matter most; a player one league manager owns comes near the end (the owner) |
 
 ## Owner decisions
@@ -271,9 +276,10 @@ Quality
 - 2026-10-02 — data migrations accepted: `player.selected_by_percent`; the alert log tables
   (new tables only).
 - 2026-10-02 — fast tweet polling starts from the first alert slot.
-- 2026-10-02 — local testing: `preview` for any past moment and a rehearsal deadline
-  (`ALERT_REHEARSAL_DEADLINE`) running the whole cycle with real e-mails marked `[PRÓBA]`;
-  no manual `send`.
+- 2026-10-02 — testing: `preview` for any past moment and a rehearsal deadline
+  (`ALERT_REHEARSAL_DEADLINE`) running the whole cycle with real e-mails, allowed in any
+  environment, isolated by the alert deadline key; no manual `send`.
+- 2026-10-02 — the assumptions in AC1, AC2, AC13, AC14, AC19 and AC20 are confirmed.
 - 2026-10-02 — players in an alert are ordered by `selected_by_percent`, highest first.
 - New dependency: none expected.
 
