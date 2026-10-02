@@ -8,18 +8,21 @@ from sqlmodel import Session
 
 from app.alerts.config import AlertConfig, AlertSettings, parse_alert_config
 from app.alerts.latency import format_report, has_alerts, latest_deadline_key, post_latencies
-from app.alerts.schedule import deadline_key
-from app.alerts.service import current_season
+from app.alerts.schedule import alert_deadlines, deadline_key, next_alert_deadline
+from app.alerts.service import AlertsRuntime, build_slot_alert, current_season
 from app.alerts.status import alert_status
+from app.alerts.store import included_origins, last_alert_as_of
 from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError
-from app.core.local_time import format_local
-from app.core.settings import load_settings
+from app.core.local_time import format_local, parse_local
+from app.core.settings import load_settings, parse_league_ids
 from app.corroboration.config import CorroborationSettings
 from app.corroboration.runtime import build_runtime
 from app.corroboration.service import CorroborationRuntime
 from app.db.engine import make_engine
+from app.delivery.service import DeliveryService
 from app.llm.settings import load_llm_settings
+from app.worker.store import load_state
 
 app = typer.Typer(
     add_completion=False,
@@ -126,6 +129,68 @@ def latency(
         latencies = post_latencies(session, key)
     for line in format_report(key, latencies):
         typer.echo(line)
+
+
+@app.command(help="Render the alert the worker would send at a moment; sends and writes nothing.")
+def preview(
+    ctx: typer.Context,
+    at: Annotated[str, typer.Option("--at", help="Europe/Warsaw time, YYYY-MM-DDTHH:MM.")],
+    kind: Annotated[str, typer.Option("--kind", help="digest or news.")] = "digest",
+) -> None:
+    deps = get_deps(ctx)
+    engine = db_engine(deps)
+    if kind not in ("digest", "news"):
+        raise fail("--kind must be digest or news")
+    try:
+        moment = parse_local(at)
+    except ValueError:
+        raise fail("--at must be a Europe/Warsaw time like 2026-10-04T18:00") from None
+    slots = deps.config.slots
+    if kind == "news" and len(slots) < 2:
+        raise fail("ALERT_SLOTS_MINUTES has no news slot")
+    try:
+        league_ids = parse_league_ids(deps.league_ids_raw)
+    except CollectorError as exc:
+        raise fail(str(exc)) from None
+    state = load_state(engine)
+    deadlines = alert_deadlines(state.season, state.gameweeks, deps.config.rehearsal_deadline)
+    deadline = next_alert_deadline(deadlines, moment)
+    if deadline is None:
+        raise fail("no deadline after that time")
+    with Session(engine) as session:
+        included = (
+            included_origins(session, deadline.key, before=moment) if kind == "news" else set()
+        )
+        previous = (
+            last_alert_as_of(session, deadline.key, before=moment) if kind == "news" else None
+        )
+    try:
+        corroboration = deps.make_runtime()
+    except CollectorError as exc:
+        raise fail(str(exc)) from None
+    runtime = AlertsRuntime(
+        deps.config, league_ids, DeliveryService(engine, None, deps.clock), corroboration
+    )
+    try:
+        draft = build_slot_alert(
+            engine,
+            runtime,
+            deadline,
+            kind,
+            slots[0] if kind == "digest" else slots[1],
+            moment,
+            included,
+            new_since=previous,
+        )
+    finally:
+        corroboration.tracer.flush()
+    typer.echo(f"Alert deadline: {deadline.key}  {format_local(deadline.deadline_at)}")
+    if draft.message is None:
+        typer.echo("The news slot would be skipped: nothing new since the previous alert.")
+        return
+    typer.echo(f"Title: {draft.message.title}")
+    typer.echo("")
+    typer.echo(draft.message.text)
 
 
 def main() -> None:

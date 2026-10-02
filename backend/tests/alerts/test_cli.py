@@ -192,3 +192,98 @@ def test_cli_rejects_invalid_alert_variable(monkeypatch, tmp_path):
 
     assert result.exit_code == 1
     assert "ALERT_SLOTS_MINUTES" in result.stderr
+
+
+def row_counts(db) -> dict[str, int]:
+    with db.connect() as conn:
+        tables = conn.execute(
+            text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+        ).scalars()
+        return {
+            name: conn.execute(text(f'SELECT count(*) FROM "{name}"')).scalar_one()
+            for name in tables
+        }
+
+
+def preview_world(db):
+    from tests.alerts.helpers import seed_league
+
+    seed(db)
+    seed_league(db, 1, {10: ("Jan Kowalski", "Kowalski FC")}, {10: {5: [SAKA]}})
+    add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="a1")
+
+
+def test_preview_prints_and_writes_nothing(db):
+    from app.alerts.render import load_template
+
+    preview_world(db)
+    template = load_template()
+    before = row_counts(db)
+
+    digest = invoke(db, "preview", "--at", "2026-09-29 20:00")
+
+    assert digest.exit_code == 0, digest.stderr
+    assert "Alert deadline: 2026/27:gw6" in digest.stdout
+    assert "Title: " in digest.stdout
+    assert "Saka" in digest.stdout and "Jan Kowalski" in digest.stdout
+    assert "https://x.com/a1/status/1" in digest.stdout
+    assert template["link"]["new_marker"] in digest.stdout
+
+    # the digest is already in the log; the news at a later moment has nothing new
+    from app.alerts.store import record_alert
+    from tests.alerts.helpers import deadline as alert_deadline
+
+    real = alert_deadline()
+    record_alert(
+        db,
+        key="alert:2026/27:gw6:digest:120",
+        deadline=real.__class__(real.key, DEADLINE_AT, False, "2026/27", 6),
+        kind="digest",
+        slot_minutes=120,
+        trigger_x_id=None,
+        as_of=NOW,
+        status="sent",
+        delivery_log_id=None,
+        posts=[post(1)],
+        recorded_at=NOW,
+    )
+    after_digest = row_counts(db)
+    skipped = invoke(db, "preview", "--at", "2026-09-29T21:30", "--kind", "news")
+    assert skipped.exit_code == 0
+    assert "would be skipped" in skipped.stdout
+
+    add_claim(db, 2, SAKA, "out", created_at=NOW + timedelta(minutes=30), author="a2")
+    after_claim = row_counts(db)
+    news = invoke(db, "preview", "--at", "2026-09-29T21:30", "--kind", "news")
+    assert news.exit_code == 0
+    assert "status/2" in news.stdout
+    marked = [line for line in news.stdout.splitlines() if template["link"]["new_marker"] in line]
+    assert len(marked) == 1 and "status/2" in marked[0]
+
+    assert before["alert"] == 0 and before["delivery_log"] == 0
+    assert row_counts(db)["alert"] == after_digest["alert"] == 1
+    assert row_counts(db) == after_claim
+
+
+def test_preview_rejects_bad_input(db):
+    preview_world(db)
+
+    bad_time = invoke(db, "preview", "--at", "tomorrow")
+    assert bad_time.exit_code == 1 and "2026-10-04T18:00" in bad_time.stderr
+
+    bad_kind = invoke(db, "preview", "--at", "2026-09-29 20:00", "--kind", "breaking")
+    assert bad_kind.exit_code == 1 and "digest or news" in bad_kind.stderr
+
+    past_deadline = invoke(db, "preview", "--at", "2026-09-30 20:00")
+    assert past_deadline.exit_code == 1 and "no deadline" in past_deadline.stderr
+
+    no_news = invoke(
+        db,
+        "preview",
+        "--at",
+        "2026-09-29 20:00",
+        "--kind",
+        "news",
+        config=AlertConfig((120,), 3, Decimal("15"), None),
+    )
+    assert no_news.exit_code == 1 and "no news slot" in no_news.stderr
