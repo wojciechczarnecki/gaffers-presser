@@ -161,7 +161,7 @@ Design choices:
 | AC9 | 5, 6 | `tests/alerts/test_render.py::test_player_section_fields`, `tests/alerts/test_players.py::test_order_by_ownership_nulls_last` | `uv run pytest -q tests/alerts/test_render.py` (stub `render_alert`) → `assert ('Saka' in 'x')`; `uv run pytest -q tests/alerts/test_players.py` (stub) → `assert [] == ['Isak', 'Saka', 'Gabriel', 'Jesus']` |
 | AC10 | 5 | `tests/alerts/test_render.py::test_times_are_warsaw`, `tests/content/test_alert_email.py::test_template_has_every_key_and_renders`, `tests/alerts/test_render.py::test_alerts_code_has_no_polish_literals` | `uv run pytest -q tests/alerts/test_render.py tests/content/test_alert_email.py` (stub `render_alert`) → `assert '2026-10-04 16:00' in 'x'`; `assert set() == {('category', ...), ...}` |
 | AC11 | 10 | `tests/alerts/test_slots.py::test_news_reports_only_players_with_unincluded_posts_and_marks_new`, `::test_news_with_nothing_new_is_skipped` | |
-| AC12 | 7, 9, 11 | `tests/corroboration/test_service.py::test_given_anchor_is_the_anchor`, `tests/alerts/test_breaking.py::test_breaking_anchor_is_the_post_sql_only`, `::test_two_posts_extracted_in_one_tick_each_break`, `tests/alerts/test_store.py::test_breaking_context_rows_are_not_included` | |
+| AC12 | 7, 9, 11 | `tests/corroboration/test_service.py::test_given_anchor_is_the_anchor`, `tests/alerts/test_breaking.py::test_breaking_anchor_is_the_post_sql_only`, `::test_two_posts_extracted_in_one_tick_each_break`, `tests/alerts/test_store.py::test_breaking_context_rows_are_not_included` | `uv run pytest -q tests/corroboration/test_service.py -k given_anchor` (param accepted, ignored) → `assert result.anchor is not None and result.anchor.post.x_id == 1` (got 3) |
 | AC13 | 9, 11 | `tests/tweets/test_reposts.py::test_reposted_x_id_per_source`, `tests/alerts/test_breaking.py::test_included_post_or_its_repost_never_breaks` | |
 | AC14 | 12 | `tests/alerts/test_loop.py::test_breaking_sent_within_15_s_of_extraction` | |
 | AC15 | 3, 10, 11, 12 | `tests/alerts/test_slots.py::test_repeated_run_sends_once`, `::test_lost_record_after_send_is_recovered_without_resend`, `tests/alerts/test_breaking.py::test_breaking_repeated_tick_sends_once` | |
@@ -335,7 +335,7 @@ Design choices:
       `gameweek_fpl_id` in `manager_pick` among `league_membership` rows of `league_ids` and
       `season`. The count of listed players without a claim feeds the digest's "no news" line.
       Automatic verification: `cd backend && uv run pytest -q tests/alerts/test_players.py`
-- [ ] 7. **Corroboration: given anchor and shared runtime builder** — files:
+- [x] 7. **Corroboration: given anchor and shared runtime builder** — files:
       `backend/app/corroboration/service.py`, `backend/app/corroboration/runtime.py` (new; the
       moved `_runtime_from_settings` as `build_runtime(settings, clock)` plus
       `sql_only_runtime(reason: str, tracer=NULL_CORROBORATION_TRACER) -> CorroborationRuntime`),

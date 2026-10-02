@@ -12,25 +12,16 @@ from app.core.errors import ConfigError
 from app.core.local_time import format_local, parse_local
 from app.core.settings import load_settings
 from app.corroboration.config import CorroborationSettings
-from app.corroboration.judge import build_judge
+from app.corroboration.runtime import build_runtime
 from app.corroboration.schemas import Citation, Corroboration, PlayerRef
 from app.corroboration.service import CorroborationRuntime, corroborate
 from app.corroboration.sources import Aliases, resolve_player
-from app.corroboration.tracing import make_corroboration_tracer
 from app.db.engine import make_engine
-from app.llm.chat import build_chat_model, resolve_llm
-from app.llm.pricing import load_prices
-from app.llm.structured import StructuredCaller
-from app.llm.tracing import resolve_tracing
-from app.retrieval.config import resolve_embedding
-from app.retrieval.embedder import build_embedder
 
 app = typer.Typer(
     add_completion=False,
     help="Corroborate the latest news about one player, at any past moment.",
 )
-
-NOT_CONFIGURED = "OPENROUTER_API_KEY is not set"
 
 
 @dataclass(frozen=True)
@@ -47,23 +38,6 @@ def fail(message: str) -> typer.Exit:
     return typer.Exit(1)
 
 
-def _runtime_from_settings(settings: CorroborationSettings, clock: Clock) -> CorroborationRuntime:
-    tracer = make_corroboration_tracer(resolve_tracing(settings))
-    if settings.openrouter_api_key is None:
-        return CorroborationRuntime(
-            embedder=None, judge=None, tracer=tracer, skipped_reason=NOT_CONFIGURED
-        )
-    prices = load_prices()
-    embedding = resolve_embedding(settings, prices=prices)
-    llm = resolve_llm(settings)
-    assert embedding is not None and llm is not None
-    spec = build_chat_model(llm)
-    judge = build_judge(StructuredCaller.from_spec(spec, prices, clock))
-    return CorroborationRuntime(
-        embedder=build_embedder(embedding), judge=judge, tracer=tracer, prices=prices
-    )
-
-
 def _deps_from_settings() -> CorroborationCliDeps:
     from app.llm.settings import load_llm_settings
 
@@ -77,7 +51,7 @@ def _deps_from_settings() -> CorroborationCliDeps:
         engine=engine,
         settings=settings,
         clock=clock,
-        make_runtime=lambda: _runtime_from_settings(settings, clock),
+        make_runtime=lambda: build_runtime(settings, clock),
     )
 
 

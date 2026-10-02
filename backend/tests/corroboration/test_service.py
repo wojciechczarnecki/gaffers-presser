@@ -301,3 +301,21 @@ def test_the_grade_follows_the_anchor_certainty(db, certainty):
     assert (
         result.grade.level == {"confirmed": "high", "likely": "medium", "rumour": "low"}[certainty]
     )
+
+
+def test_given_anchor_is_the_anchor(db):
+    seed_reference(db, {6: DEADLINE})
+    add_claim(db, 1, SAKA, "out", "likely", created_at=NOW - timedelta(hours=5), author="a1")
+    add_claim(db, 2, SAKA, "doubt", "likely", created_at=NOW - timedelta(hours=4), author="a2")
+    add_claim(db, 3, SAKA, "out", "rumour", created_at=NOW - timedelta(hours=3), author="a3")
+
+    result = _run(db, _runtime(), anchor_x_id=1)
+
+    assert result.anchor is not None and result.anchor.post.x_id == 1
+    assert result.anchor.certainty == "likely"
+    assert [c.x_id for c in result.supporting] == [3]
+    assert [c.x_id for c in result.related] == [2]
+
+    newest = _run(db, _runtime(), anchor_x_id=999)
+    assert newest.anchor is not None and newest.anchor.post.x_id == 3
+    assert _run(db, _runtime()).anchor.post.x_id == 3
