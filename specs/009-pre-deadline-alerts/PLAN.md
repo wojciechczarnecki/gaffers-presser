@@ -158,8 +158,8 @@ Design choices:
 | AC6 | 6, 10 | `tests/alerts/test_players.py::test_only_players_with_a_claim_are_reported_once_with_all_categories`, `tests/alerts/test_slots.py::test_digest_without_claims_says_no_news` | |
 | AC7 | 1, 2 | `tests/db/test_migrations.py::test_ownership_migration_keeps_rows_and_downgrades`, `tests/fpl/test_reference_sync.py::test_selected_by_percent_written_and_refreshed` | `uv run pytest -q tests/db/test_migrations.py -k ownership` (stub migration 0008) → `assert "selected_by_percent" in columns`; `uv run pytest -q tests/fpl/test_reference_sync.py -k selected` (column added, sync not yet writing it) → `assert rows == {el["id"]: Decimal(el["selected_by_percent"]) ...}` |
 | AC8 | 10 | `tests/alerts/test_slots.py::test_digest_covers_previous_deadline_to_slot_with_full_corroboration`, `::test_digest_without_claims_says_no_news` | |
-| AC9 | 5, 6 | `tests/alerts/test_render.py::test_player_section_fields`, `tests/alerts/test_players.py::test_order_by_ownership_nulls_last` | |
-| AC10 | 5 | `tests/alerts/test_render.py::test_times_are_warsaw`, `tests/content/test_alert_email.py::test_template_has_every_key_and_renders`, `tests/alerts/test_render.py::test_alerts_code_has_no_polish_literals` | |
+| AC9 | 5, 6 | `tests/alerts/test_render.py::test_player_section_fields`, `tests/alerts/test_players.py::test_order_by_ownership_nulls_last` | `uv run pytest -q tests/alerts/test_render.py` (stub `render_alert`) → `assert ('Saka' in 'x')`; ordering by ownership: _pending step 6_ |
+| AC10 | 5 | `tests/alerts/test_render.py::test_times_are_warsaw`, `tests/content/test_alert_email.py::test_template_has_every_key_and_renders`, `tests/alerts/test_render.py::test_alerts_code_has_no_polish_literals` | `uv run pytest -q tests/alerts/test_render.py tests/content/test_alert_email.py` (stub `render_alert`) → `assert '2026-10-04 16:00' in 'x'`; `assert set() == {('category', ...), ...}` |
 | AC11 | 10 | `tests/alerts/test_slots.py::test_news_reports_only_players_with_unincluded_posts_and_marks_new`, `::test_news_with_nothing_new_is_skipped` | |
 | AC12 | 7, 9, 11 | `tests/corroboration/test_service.py::test_given_anchor_is_the_anchor`, `tests/alerts/test_breaking.py::test_breaking_anchor_is_the_post_sql_only`, `::test_two_posts_extracted_in_one_tick_each_break`, `tests/alerts/test_store.py::test_breaking_context_rows_are_not_included` | |
 | AC13 | 9, 11 | `tests/tweets/test_reposts.py::test_reposted_x_id_per_source`, `tests/alerts/test_breaking.py::test_included_post_or_its_repost_never_breaks` | |
@@ -268,7 +268,7 @@ Design choices:
 
 ### Group 2 — The alert engine
 
-- [ ] 5. **Template and rendering** — files: `backend/app/content/alert_email.toml`,
+- [x] 5. **Template and rendering** — files: `backend/app/content/alert_email.toml`,
       `backend/app/alerts/schemas.py`, `backend/app/alerts/render.py`,
       `backend/tests/alerts/helpers.py` (builders of `ListedPlayer` / `PlayerReport` /
       `Corroboration` values for render tests), `backend/tests/alerts/test_render.py`,

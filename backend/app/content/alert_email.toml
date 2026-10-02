@@ -1,0 +1,68 @@
+# Alert e-mails sent before a deadline (spec 009): digest, news and breaking.
+# Placeholders in {braces} are filled by app/alerts/render.py.
+
+[title]
+digest = "Konferencja prasowa: zapowiedź przed {deadline_label}"
+news = "Konferencja prasowa: nowe wieści przed {deadline_label}"
+breaking = "Pilne przed {deadline_label}: {players}"
+
+[deadline_label]
+gameweek = "deadline'em GW{gameweek}"
+rehearsal = "próbnym deadline'em ({time})"
+
+[intro]
+digest = "Trener melduje: oto stan wiadomości o zawodnikach, którzy się liczą w Twojej lidze."
+news = "Trener melduje: od poprzedniego komunikatu pojawiły się nowe wieści."
+breaking = "Trener melduje: pilna wiadomość tuż przed deadline'em."
+
+[header]
+as_of = "Stan na: {as_of} (czas warszawski)"
+deadline = "Deadline: {deadline} (czas warszawski)"
+
+[section]
+categories = "Dlaczego ten zawodnik: {categories}"
+news = "Wiadomość: {event}, pewność: {certainty}"
+grade = "Ocena wiarygodności: {grade}"
+accounts = "Niezależne konta: {supporting} potwierdza, {contradicting} zaprzecza"
+links = "Linki:"
+no_anchor = "Brak wiadomości do pokazania."
+
+[category]
+league_owned = "w lidze ma go: {managers}"
+manager = "{manager} ({team})"
+widely_owned = "posiada go {percent}% graczy"
+trending = "pisze o nim {count} niezależnych kont"
+separator = "; "
+
+[event]
+out = "wypada ze składu"
+doubt = "wątpliwy"
+benched = "na ławce"
+confirmed_starter = "wychodzi w pierwszym składzie"
+
+[certainty]
+confirmed = "potwierdzone"
+likely = "prawdopodobne"
+rumour = "plotka"
+
+[grade]
+high = "wysoka"
+medium = "średnia"
+low = "niska"
+
+[note]
+reversal = "Uwaga: wcześniejszy post zaprzecza tej wiadomości, doniesienia się odwracają."
+search_failed = "Uwaga: wyszukiwanie dodatkowych źródeł nie powiodło się, ocena opiera się tylko na znanych postach."
+
+[link]
+anchor = "{marker}Główny post: {account}, {time}: {url}"
+supporting = "{marker}Potwierdza: {account}, {time}: {url}"
+contradicting = "{marker}Zaprzecza: {account}, {time}: {url}"
+account = "@{author}"
+repost = "@{author} (podanie dalej od @{original})"
+new_marker = "[NOWE] "
+anchor_url = "https://x.com/{author}/status/{x_id}"
+
+[digest]
+empty = "Brak wiadomości o zawodnikach z Twojej listy. Trener śpi spokojnie."
+no_news = "Bez wiadomości: {count} zawodników z Twojej listy."
