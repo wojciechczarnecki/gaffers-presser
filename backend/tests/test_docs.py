@@ -26,3 +26,9 @@ def test_backlog_18_closed_and_corroboration_entries_kept():
         (row,) = [row for row in rows if row.startswith(f"| {number} |")]
         assert f" {priority} " in row
         assert row.rstrip().rstrip("|").rsplit("|", 1)[-1].strip(), "an entry needs a trigger"
+
+
+def test_backlog_has_delivery_webhooks_entry():
+    (row,) = [row for row in _rows() if "webhook" in row.lower()]
+    assert " P3 " in row
+    assert row.rstrip().rstrip("|").rsplit("|", 1)[-1].strip(), "an entry needs a trigger"

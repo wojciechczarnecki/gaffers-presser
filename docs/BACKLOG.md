@@ -26,3 +26,4 @@ require one.
 | 17 | P3 | Approximate-nearest-neighbour index (HNSW or IVFFlat) on `post_embedding`; vector search is exact today | vector search over the stored posts exceeds 200 ms p95 |
 | 19 | P2 | Detect a shared cited source ("per club statement", "via @journalist") and aggregator accounts, so posts repeating one source count as one independent account in corroboration (spec 007 counts original authors only) | the judge evaluation or the alert review shows confirmations inflated by aggregators |
 | 20 | P3 | Corroborate players with no extracted claim whom only retrieval finds (spec 007 needs an extracted claim as the anchor) | the judge evaluation shows extraction missing a player entirely in more than a few windows |
+| 21 | P3 | Resend delivery webhooks (delivered, bounced, opened) to record what happened after the provider accepted a message; the worker exposes no HTTP endpoint today (spec 008) | alerts reported as sent never reach the inbox |

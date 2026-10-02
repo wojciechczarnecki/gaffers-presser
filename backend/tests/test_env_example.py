@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from app.core.settings import TweetSettings
+from app.delivery.config import DeliverySettings
 from app.extraction.config import ExtractionSettings
 from app.retrieval.config import RetrievalSettings
 
@@ -34,6 +35,14 @@ _RETRIEVAL_FIELD_TO_VARIABLE = {
     "langfuse_secret_key": "LANGFUSE_SECRET_KEY",
     "langfuse_host": "LANGFUSE_HOST",
     "usd_pln_rate": "USD_PLN_RATE",
+}
+
+
+_DELIVERY_FIELD_TO_VARIABLE = {
+    "delivery_provider": "DELIVERY_PROVIDER",
+    "resend_api_key": "RESEND_API_KEY",
+    "delivery_email_to": "DELIVERY_EMAIL_TO",
+    "delivery_email_from": "DELIVERY_EMAIL_FROM",
 }
 
 
@@ -105,3 +114,21 @@ def test_every_retrieval_setting_is_an_empty_placeholder():
             seen.add(name)
             assert value == "", f"{name} must be an empty placeholder in .env.example"
     assert seen == retrieval_variables
+
+
+def test_every_delivery_setting_field_has_its_variable_covered():
+    assert set(DeliverySettings.model_fields) == set(_DELIVERY_FIELD_TO_VARIABLE)
+
+
+def test_every_delivery_variable_is_an_empty_placeholder():
+    delivery_variables = set(_DELIVERY_FIELD_TO_VARIABLE.values())
+    seen = set()
+    for line in _lines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        name, _, value = stripped.partition("=")
+        if name in delivery_variables:
+            seen.add(name)
+            assert value == "", f"{name} must be an empty placeholder in .env.example"
+    assert seen == delivery_variables

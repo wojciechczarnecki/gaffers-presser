@@ -11,6 +11,7 @@ from sqlmodel import Session
 
 from app.core.clock import Clock
 from app.core.errors import ConfigError
+from app.core.retry import RetryOutcome, with_retries
 from app.extraction.flow import PROMPT_VERSION, Flow, build_flow
 from app.extraction.linking import (
     PlayerAlias,
@@ -24,7 +25,6 @@ from app.extraction.store import ExtractionRecord, save_extraction
 from app.extraction.tracing import run_config
 from app.llm.chat import ChatModelSpec
 from app.llm.pricing import Price, compute_cost, load_prices
-from app.llm.retry import RetryOutcome, with_retries
 from app.llm.tracing import TracingConfig
 from app.tweets.models import Tweet
 

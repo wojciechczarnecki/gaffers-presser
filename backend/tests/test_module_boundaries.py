@@ -29,10 +29,12 @@ def test_extraction_takes_no_clock_from_tweets_or_worker():
 
 def test_shared_layer_lives_in_app_llm_and_core():
     from app.core.clock import Clock, StopAwareClock, SystemClock
+    from app.core.retry import with_retries
     from app.llm.settings import LlmSettings
     from app.llm.tracing import TracingConfig, flush, make_handler, resolve_tracing
 
-    assert Clock and StopAwareClock and SystemClock
+    assert Clock and StopAwareClock and SystemClock and with_retries
+    assert not (APP / "llm" / "retry.py").exists()
     assert TracingConfig and flush and make_handler and resolve_tracing
     assert set(LlmSettings.model_fields) == {
         "openrouter_api_key",

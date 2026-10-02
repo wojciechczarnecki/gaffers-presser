@@ -5,6 +5,7 @@ import pytest
 from sqlmodel import Session, select
 
 from app.core.errors import ConfigError
+from app.core.retry import RETRY_BACKOFF_SECONDS
 from app.extraction.flow import PROMPT_VERSION
 from app.extraction.models import Extraction
 from app.extraction.schemas import ExtractedEvent, ExtractionOutput, PostInput
@@ -16,7 +17,6 @@ from app.extraction.service import (
 from app.extraction.store import current_extraction
 from app.llm.chat import ChatModelSpec
 from app.llm.pricing import Price, load_prices
-from app.llm.retry import RETRY_BACKOFF_SECONDS
 from app.tweets.models import Tweet
 from tests.extraction.fakes import FakeChatModel, RecordingHandler
 

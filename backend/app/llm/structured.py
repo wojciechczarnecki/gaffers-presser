@@ -7,9 +7,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel
 
 from app.core.clock import Clock
+from app.core.retry import with_retries
 from app.llm.chat import ChatModelSpec
 from app.llm.pricing import Price, compute_cost
-from app.llm.retry import with_retries
 
 T = TypeVar("T", bound=BaseModel)
 

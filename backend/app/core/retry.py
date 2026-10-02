@@ -30,6 +30,8 @@ def with_retries(
     attempts: int = MAX_ATTEMPTS,
     backoff: Sequence[float] = RETRY_BACKOFF_SECONDS,
     what: str = "call",
+    retryable: Callable[[Exception], bool] | None = None,
+    wait: Callable[[Exception, float], float] | None = None,
 ) -> RetryOutcome[T]:
     made = 0
     last_exc: Exception | None = None
@@ -42,11 +44,12 @@ def with_retries(
         except Exception as exc:
             last_exc = exc
             logger.warning("%s attempt failed: %s", what, type(exc).__name__)
-            if attempt >= attempts:
+            if attempt >= attempts or (retryable is not None and not retryable(exc)):
                 break
             if stop_event.is_set():
                 return RetryOutcome(None, made, last_exc, stopped=True)
-            clock.sleep(backoff[min(attempt - 1, len(backoff) - 1)])
+            delay = backoff[min(attempt - 1, len(backoff) - 1)]
+            clock.sleep(wait(exc, delay) if wait is not None else delay)
             if stop_event.is_set():
                 return RetryOutcome(None, made, last_exc, stopped=True)
     return RetryOutcome(None, made, last_exc)

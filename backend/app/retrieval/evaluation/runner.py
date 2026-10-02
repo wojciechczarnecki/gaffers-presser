@@ -11,8 +11,8 @@ from sqlalchemy import Engine
 
 from app.core.clock import Clock
 from app.core.errors import CollectorError
+from app.core.retry import with_retries
 from app.llm.pricing import Price
-from app.llm.retry import with_retries
 from app.retrieval.embedder import Embedder, EmbeddingResult
 from app.retrieval.evaluation.dataset import CorpusPost, Query
 from app.retrieval.evaluation.metrics import (

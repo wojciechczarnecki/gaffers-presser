@@ -45,8 +45,8 @@ and each LLM step that produces data has an evaluation set with recorded results
 - [x] Corroboration of leaks across independent accounts: retrieval plus SQL over the linked
       players; an LLM step, if the spec adds one, gets its own evaluation set
       (spec: [007](../specs/007-leak-corroboration/SPEC.md))
-- [ ] E-mail delivery adapter behind an interface (ADR 0004), shared with the Stage 3 presser
-      (spec: TBD)
+- [x] E-mail delivery adapter behind an interface (ADR 0004), shared with the Stage 3 presser
+      (spec: [008](../specs/008-delivery-adapter/SPEC.md))
 - [ ] Pre-deadline alert e-mails with cited sources for league-owned and widely owned
       players, with post → inbox latency measured; whether the alert text is LLM-generated
       from the retrieved posts (with a faithfulness evaluation) is decided in its spec.
