@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from app.alerts.config import AlertSettings
 from app.core.settings import TweetSettings
 from app.delivery.config import DeliverySettings
 from app.extraction.config import ExtractionSettings
@@ -43,6 +44,15 @@ _DELIVERY_FIELD_TO_VARIABLE = {
     "resend_api_key": "RESEND_API_KEY",
     "delivery_email_to": "DELIVERY_EMAIL_TO",
     "delivery_email_from": "DELIVERY_EMAIL_FROM",
+}
+
+
+_ALERT_FIELD_TO_VARIABLE = {
+    "alerts_enabled": "ALERTS_ENABLED",
+    "alert_slots_minutes": "ALERT_SLOTS_MINUTES",
+    "alert_trending_min_accounts": "ALERT_TRENDING_MIN_ACCOUNTS",
+    "alert_widely_owned_percent": "ALERT_WIDELY_OWNED_PERCENT",
+    "alert_rehearsal_deadline": "ALERT_REHEARSAL_DEADLINE",
 }
 
 
@@ -132,3 +142,21 @@ def test_every_delivery_variable_is_an_empty_placeholder():
             seen.add(name)
             assert value == "", f"{name} must be an empty placeholder in .env.example"
     assert seen == delivery_variables
+
+
+def test_every_alert_setting_field_has_its_variable_covered():
+    assert set(AlertSettings.model_fields) == set(_ALERT_FIELD_TO_VARIABLE)
+
+
+def test_every_alert_variable_is_an_empty_placeholder():
+    alert_variables = set(_ALERT_FIELD_TO_VARIABLE.values())
+    seen = set()
+    for line in _lines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        name, _, value = stripped.partition("=")
+        if name in alert_variables:
+            seen.add(name)
+            assert value == "", f"{name} must be an empty placeholder in .env.example"
+    assert seen == alert_variables

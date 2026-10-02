@@ -176,6 +176,22 @@ reviewed cases only unless `--include-unreviewed` is given, and writes
 `backend/evals/corroboration/results/<split>-<model>.json`. Without `--model` it evaluates the
 model the judge runs on: `LLM_MODEL` when set, the default model otherwise.
 
+Alerts — before each deadline the worker e-mails team news for the players that matter to the
+league (league-owned, widely owned or trending): a digest at T-120, news at T-30 and a breaking
+e-mail per new post until the deadline, each with graded, linked sources; they run when delivery,
+tweet ingest and extraction are enabled. The alert text is a deterministic Polish template.
+`python -m app.alerts` shows the state, measures post → inbox latency and previews an alert at
+any past moment; none of these is run by `pytest`:
+
+```bash
+uv run python -m app.alerts status                              # next slot, last alert, failures
+uv run python -m app.alerts latency --gameweek 6                # or --rehearsal
+uv run python -m app.alerts preview --at 2026-10-04T16:00 --kind digest
+```
+
+`ALERT_REHEARSAL_DEADLINE` (a Warsaw time) runs the whole cycle for a made-up deadline with real
+e-mails for testing; remove it after use (see `docs/DEPLOYMENT.md`, step 12).
+
 The project is built with a spec-driven agentic workflow
 ([agentic-pipeline](https://github.com/wojciechczarnecki/agentic-pipeline)): every feature
 goes from an approved spec through a reviewed plan and implementation to a pull request.

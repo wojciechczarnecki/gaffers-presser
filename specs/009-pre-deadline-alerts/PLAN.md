@@ -174,7 +174,7 @@ Design choices:
 | AC22 | 8, 13, 14 | `tests/alerts/test_schedule.py::test_rehearsal_is_an_extra_alert_deadline`, `tests/worker/test_cli.py::test_rehearsal_not_written_to_gameweek_and_polls_fast` | `uv run pytest -q tests/alerts/test_schedule.py` (stub schedule) → `assert [] == [True]`; `uv run pytest -q tests/worker/test_cli.py -k alert` (worker wiring stubbed out) → `test_rehearsal_not_written_to_gameweek_and_polls_fast` failed (poller got the default 90-minute window) |
 | AC23 | 10 | `tests/alerts/test_slots.py::test_rehearsal_alerts_do_not_count_for_the_real_deadline` | `uv run pytest -q tests/alerts/test_slots.py` (stub `run_slot`) → `assert 'stub' == 'sent'` |
 | AC24 | 8, 14 | `tests/alerts/test_schedule.py::test_rehearsal_past_ignored_and_overlap_rejected`, `tests/worker/test_cli.py::test_worker_rejects_overlapping_rehearsal_naming_the_variable` | `uv run pytest -q tests/alerts/test_schedule.py` (stub schedule) → `Failed: DID NOT RAISE ConfigError`; `uv run pytest -q tests/worker/test_cli.py -k alert` (worker wiring stubbed out) → `assert 0 == 1` (`test_worker_rejects_overlapping_rehearsal_naming_the_variable`, check stubbed to a clean exit) |
-| AC25 | 18 | `tests/test_env_example.py::test_every_alert_variable_is_an_empty_placeholder`, `tests/test_readme.py::test_deployment_describes_rehearsal_variable` | |
+| AC25 | 18 | `tests/test_env_example.py::test_every_alert_variable_is_an_empty_placeholder`, `tests/test_readme.py::test_deployment_describes_rehearsal_variable` | `uv run pytest -q tests/test_env_example.py tests/test_readme.py` (docs not yet written) → `assert set() == {'ALERTS_ENABLED', ...}`; `assert 'ALERT_REHEARSAL_DEADLINE' in '# Deployment ...'` |
 | AC26 | 14, 15 | `tests/alerts/test_status.py::test_alert_status_next_slot_last_alert_and_failures`, `tests/worker/test_cli.py::test_status_shows_alerts_line`, `tests/alerts/test_cli.py::test_status_shows_next_slot_last_alert_and_failures` | `uv run pytest -q tests/alerts/test_status.py` (stub `alert_status`) → `assert (None is not None)`; `uv run pytest -q tests/worker/test_cli.py -k alert` (worker wiring stubbed out) → `assert 'Alerts: next slot: digest 2026-10-10T08:00:00Z  last alert: never  failed: 0' in [...]`; `uv run pytest -q tests/alerts/test_latency.py tests/alerts/test_cli.py` (stubbed `summarize`/`percentile`/status) → `assert 'Alert deadline: 2026/27:gw6 (real)  2026-09-29 22:00 Europe/Warsaw' in 'Alert deadline: none upcoming...'` (`test_status_shows_next_slot_last_alert_and_failures`) |
 | AC27 | 5, 6, 8, 10, 11, 17 | the step tests above and `tests/alerts/test_end_to_end.py` | n/a — the AC is delivered by the tests themselves |
 | AC28 | 12 | `tests/alerts/test_loop.py::test_logs_carry_no_bodies_addresses_or_texts` | `uv run pytest -q tests/alerts/test_loop.py` (stub `tick`) → `assert 0 == 2` (`test_logs_carry_no_bodies_addresses_or_texts`) |
@@ -563,7 +563,7 @@ Design choices:
       and a check that the real deadline's included set is unchanged. Assertions on the channel's
       keys, the `alert` rows and the `alert_post` freshness.
       Automatic verification: `cd backend && uv run pytest -q tests/alerts/test_end_to_end.py`
-- [ ] 18. **Documentation and roadmap** — files: `backend/.env.example`,
+- [x] 18. **Documentation and roadmap** — files: `backend/.env.example`,
       `backend/tests/test_env_example.py`, `backend/tests/test_readme.py`, `docs/DEPLOYMENT.md`,
       `README.md`, `docs/ROADMAP.md`, `docs/DECISIONS.md`.
       Write first: `test_every_alert_setting_field_has_its_variable_covered` and
