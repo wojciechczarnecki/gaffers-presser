@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-02"
   - "spec-ready — 2026-10-02"
   - "plan-draft — 2026-10-02"
   - "plan-approved — 2026-10-02"
   - "implemented — 2026-10-02"
+  - "done — 2026-10-02"
 metrics:
   started_at: 2026-10-02T09:43
   escalations: 0
@@ -23,6 +24,7 @@ metrics:
   final_review_nits: 4
   findings_accepted: 5
   findings_rejected: 0
+  finished_at: 2026-10-02T11:22
 ---
 
 # SPEC 009 — Pre-deadline alert e-mails

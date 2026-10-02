@@ -849,3 +849,5 @@ Owner decision (see Owner decisions): F1-F5 accepted, none rejected.
 Verification after the fixes: `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` — ruff clean, 322 files formatted, 1245 passed.
 
 Backlog: #22 added (the timing test seen erroring once in the report run). Item #11's trigger ("before the ingest feeds alerts") has fired; by the owner decision of 2026-10-02 it is checked after this spec and before the production deployment.
+
+PR: https://github.com/wojciechczarnecki/gaffers-presser/pull/14 — CI green on 7af3b28 (run 37000374722, CI and Security, first attempt, no retried test; no visual artifacts: the project has no UI scope).
