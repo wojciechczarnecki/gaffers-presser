@@ -700,6 +700,8 @@ Record the outcomes under "Definition of Done".
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-10-02 — final review gate — Which findings of the final review to fix? — Accept all: F1, F2, F3, F4, F5 accepted; none rejected (the 3 nits the report left out carry no id and are not part of this decision).
+
 ## Review log
 
 ### 2026-10-02 — /pipeline:plan-review
