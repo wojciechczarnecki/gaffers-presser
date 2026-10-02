@@ -158,3 +158,27 @@ def status_rows(session: Session, deadline_key: str) -> tuple[AlertRow | None, i
         {"deadline_key": deadline_key},
     ).scalar_one()
     return (_row(last) if last is not None else None, failed)
+
+
+def post_origin_sets(session: Session, x_ids: list[int]) -> dict[int, set[int]]:
+    if not x_ids:
+        return {}
+    rows = session.execute(
+        text("SELECT x_id, raw FROM tweet WHERE x_id = ANY(:ids)"), {"ids": list(x_ids)}
+    )
+    return {x_id: origin_ids(x_id, raw) for x_id, raw in rows}
+
+
+def last_alert_as_of(session: Session, deadline_key: str, before: datetime | None = None):
+    query = (
+        "SELECT max(as_of) FROM alert WHERE deadline_key = :deadline_key"
+        " AND status = ANY(:statuses)"
+    )
+    params: dict[str, object] = {
+        "deadline_key": deadline_key,
+        "statuses": list(COUNTED_STATUSES),
+    }
+    if before is not None:
+        query += " AND as_of < :before"
+        params["before"] = before
+    return session.execute(text(query), params).scalar_one()

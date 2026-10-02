@@ -216,3 +216,57 @@ def set_raw(engine, x_id: int, raw: dict) -> None:
             text("UPDATE tweet SET raw = CAST(:raw AS jsonb) WHERE x_id = :x_id"),
             {"raw": json.dumps(raw), "x_id": x_id},
         )
+
+
+JUDGE_MODEL = "fake/model"
+
+
+def scripted_corroboration(*labels):
+    from app.corroboration.judge import JudgeOutput, build_judge
+    from app.corroboration.service import CorroborationRuntime
+    from app.llm.pricing import Price
+    from app.llm.structured import StructuredCaller
+    from tests.extraction.fakes import FakeChatModel
+    from tests.retrieval.fakes import FakeEmbedder
+    from tests.retrieval.helpers import FixedClock as RetrievalClock
+
+    prices = {JUDGE_MODEL: Price(input_per_million=1.0, output_per_million=2.0, checked="x")}
+    responses = [JudgeOutput(label=label) for label in labels]
+    fake = FakeChatModel(responses=responses, response_model=JUDGE_MODEL)
+    judge = build_judge(StructuredCaller(fake, JUDGE_MODEL, prices, RetrievalClock()))
+    runtime = CorroborationRuntime(embedder=FakeEmbedder(), judge=judge, prices=prices)
+    return runtime, fake
+
+
+def alerts_runtime(db, channel, clock, corroboration=None, league_ids=(1,), config=None):
+    from app.alerts.config import AlertConfig
+    from app.alerts.service import AlertsRuntime
+    from app.corroboration.runtime import sql_only_runtime
+    from app.delivery.service import DeliveryService
+
+    return AlertsRuntime(
+        config=config or AlertConfig((120, 30), 3, Decimal("15"), None),
+        league_ids=list(league_ids),
+        delivery=DeliveryService(db, channel, clock),
+        corroboration=corroboration or sql_only_runtime("test"),
+    )
+
+
+def embed_tweet(engine, x_id: int) -> None:
+    from sqlmodel import Session
+
+    from app.retrieval.store import save_embedded
+    from tests.retrieval.helpers import MODEL, NOW
+
+    with Session(engine) as session, session.begin():
+        save_embedded(
+            session,
+            x_id=x_id,
+            model=MODEL,
+            vector=[1.0, 0.0, 0.0],
+            input_tokens=5,
+            cost_usd=None,
+            latency_seconds=None,
+            attempts=1,
+            now=NOW,
+        )
