@@ -150,8 +150,8 @@ Design choices:
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 4, 14 | `tests/alerts/test_config.py::test_alerts_disabled_reasons`, `tests/worker/test_cli.py::test_status_shows_alerts_disabled_with_reason`, `::test_run_starts_alerts_only_when_enabled` | |
-| AC2 | 4, 14, 15 | `tests/alerts/test_config.py::test_invalid_values_name_the_variable` (parametrised), `tests/worker/test_cli.py::test_worker_rejects_invalid_alert_slots_naming_the_variable`, `tests/alerts/test_cli.py::test_cli_rejects_invalid_alert_variable` | |
+| AC1 | 4, 14 | `tests/alerts/test_config.py::test_alerts_disabled_reasons`, `tests/worker/test_cli.py::test_status_shows_alerts_disabled_with_reason`, `::test_run_starts_alerts_only_when_enabled` | `uv run pytest -q tests/alerts/test_config.py` (stub config) → `assert None == 'delivery disabled'` |
+| AC2 | 4, 14, 15 | `tests/alerts/test_config.py::test_invalid_values_name_the_variable` (parametrised), `tests/worker/test_cli.py::test_worker_rejects_invalid_alert_slots_naming_the_variable`, `tests/alerts/test_cli.py::test_cli_rejects_invalid_alert_variable` | `uv run pytest -q tests/alerts/test_config.py` (stub config) → `Failed: DID NOT RAISE ConfigError` |
 | AC3 | 6 | `tests/alerts/test_players.py::test_league_owned_uses_latest_synced_picks_with_managers` | |
 | AC4 | 6 | `tests/alerts/test_players.py::test_widely_owned_at_threshold` | |
 | AC5 | 6 | `tests/alerts/test_players.py::test_trending_counts_independent_accounts_with_reposts` | |
@@ -234,7 +234,7 @@ Design choices:
         `tweet_x_id`); FK (`player_season`, `player_fpl_id`) → `player`; `tweet_x_id` BigInteger FK
         `tweet.x_id`; `freshness` str (`new` | `context`); index `ix_alert_post_tweet_x_id`.
       Automatic verification: `cd backend && uv run pytest -q tests/db/test_migrations.py`
-- [ ] 4. **Alert configuration** — files: `backend/app/alerts/config.py`,
+- [x] 4. **Alert configuration** — files: `backend/app/alerts/config.py`,
       `backend/tests/alerts/test_config.py`.
       Write first the tests: defaults (`(120, 30)`, `3`, `Decimal("15")`, no rehearsal);
       `test_invalid_values_name_the_variable` parametrised over `ALERT_SLOTS_MINUTES` = `abc`,
