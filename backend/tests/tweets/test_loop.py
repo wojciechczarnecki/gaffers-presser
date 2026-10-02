@@ -247,3 +247,39 @@ def test_stop_event_ends_loop_promptly(db):
 
     assert not thread.is_alive()
     assert elapsed < 1
+
+
+def test_poller_uses_window_and_extra_deadlines(db):
+    rehearsal = DEADLINE + timedelta(days=2)
+    start = rehearsal - timedelta(minutes=120)
+    clock = FakeClock(start, start + timedelta(seconds=61))
+    source = FakeSource(pages=[[]])
+    poller = TweetPoller(
+        db,
+        lambda: source,
+        list_id=123,
+        clock=clock,
+        stop_event=threading.Event(),
+        window=timedelta(minutes=130),
+        extra_deadlines=(rehearsal,),
+    )
+
+    with pytest.raises(Shutdown):
+        poller.run()
+
+    assert [t for t, _ in _poll_times(db)] == [
+        start + timedelta(seconds=n) for n in (0, 20, 40, 60)
+    ]
+
+
+def test_poller_without_a_custom_window_stays_sparse_at_two_hours(db):
+    rehearsal = DEADLINE + timedelta(days=2)
+    start = rehearsal - timedelta(minutes=120)
+    clock = FakeClock(start, start + timedelta(seconds=61))
+    source = FakeSource(pages=[[]])
+    poller = TweetPoller(db, lambda: source, list_id=123, clock=clock, stop_event=threading.Event())
+
+    with pytest.raises(Shutdown):
+        poller.run()
+
+    assert [t for t, _ in _poll_times(db)] == [start]

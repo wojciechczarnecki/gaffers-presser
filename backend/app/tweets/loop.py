@@ -1,6 +1,7 @@
 import logging
 import threading
 from collections.abc import Callable
+from datetime import datetime, timedelta
 
 from sqlalchemy import Engine
 from sqlmodel import Session
@@ -8,7 +9,7 @@ from sqlmodel import Session
 from app.core.clock import Clock, StopAwareClock
 from app.fpl.deadlines import upcoming_deadlines
 from app.tweets.ingest import poll_once
-from app.tweets.schedule import MAX_SLEEP, next_poll_at
+from app.tweets.schedule import MAX_SLEEP, WINDOW, next_poll_at
 from app.tweets.sources.base import TweetSource
 from app.tweets.store import PollRecord, latest_poll
 from app.worker.jobs import Shutdown
@@ -30,12 +31,16 @@ class TweetPoller:
         list_id: int,
         clock: Clock,
         stop_event: threading.Event,
+        window: timedelta = WINDOW,
+        extra_deadlines: tuple[datetime, ...] = (),
     ) -> None:
         self._engine = engine
         self._make_source = make_source
         self._list_id = list_id
         self._clock = clock
         self._stop_event = stop_event
+        self._window = window
+        self._extra_deadlines = list(extra_deadlines)
         # The poll log write may fail while reads still work; the in-memory record keeps
         # the schedule from treating an unrecorded poll as never having happened.
         self._last_record: PollRecord | None = None
@@ -48,10 +53,15 @@ class TweetPoller:
                     if source is None:
                         source = self._make_source()
                     with Session(self._engine) as session:
-                        deadlines = upcoming_deadlines(session, self._clock.now())
+                        deadlines = sorted(
+                            [
+                                *upcoming_deadlines(session, self._clock.now()),
+                                *self._extra_deadlines,
+                            ]
+                        )
                     last = _later(latest_poll(self._engine, source.name), self._last_record)
                     now = self._clock.now()
-                    next_at = next_poll_at(deadlines, last, now)
+                    next_at = next_poll_at(deadlines, last, now, self._window)
                     if next_at <= now:
                         self._last_record = poll_once(
                             self._engine, source, self._list_id, self._clock.now
@@ -75,9 +85,17 @@ def start_poller(
     list_id: int,
     stop_event: threading.Event,
     clock: Clock | None = None,
+    window: timedelta = WINDOW,
+    extra_deadlines: tuple[datetime, ...] = (),
 ) -> threading.Thread:
     poller = TweetPoller(
-        engine, make_source, list_id, clock or StopAwareClock(stop_event), stop_event
+        engine,
+        make_source,
+        list_id,
+        clock or StopAwareClock(stop_event),
+        stop_event,
+        window,
+        extra_deadlines,
     )
 
     def target() -> None:

@@ -169,7 +169,7 @@ Design choices:
 | AC17 | 10, 12 | `tests/alerts/test_slots.py::test_failed_delivery_recorded_and_not_retried`, `::test_failed_corroboration_falls_back_to_sql_with_note`, `tests/alerts/test_loop.py::test_tick_error_does_not_stop_the_loop` | `uv run pytest -q tests/alerts/test_slots.py` (stub `run_slot`) → `assert 'stub' == 'failed'` (`test_failed_delivery_recorded_and_not_retried`); `uv run pytest -q tests/alerts/test_loop.py` (stub `tick`) → `assert 0 >= 2` (`test_tick_error_does_not_stop_the_loop`) |
 | AC18 | 3, 8, 9 | `tests/db/test_migrations.py::test_alert_log_migration_adds_only_new_tables`, `tests/alerts/test_schedule.py::test_deadline_keys`, `tests/alerts/test_store.py::test_included_is_scoped_to_the_deadline_key` | `uv run pytest -q tests/db/test_migrations.py -k alert_log` (stub migration 0009) → `assert ALERT_TABLES <= set(inspector.get_table_names())`; `uv run pytest -q tests/alerts/test_schedule.py` (stub schedule) → `assert '' == '2026/27:gw6'`; `uv run pytest -q tests/alerts/test_store.py` (stub) → `assert set() == {1, 2}` |
 | AC19 | 15 | `tests/alerts/test_latency.py::test_percentiles_and_legs`, `tests/alerts/test_cli.py::test_latency_default_gameweek_and_rehearsal` | |
-| AC20 | 8, 13 | `tests/alerts/test_schedule.py::test_polling_window`, `tests/tweets/test_schedule.py::test_custom_window_and_extra_deadline` | `uv run pytest -q tests/alerts/test_schedule.py` (stub schedule) → `assert datetime.timedelta(0) == datetime.timedelta(seconds=5400)`; the tweets part: _pending step 13_ |
+| AC20 | 8, 13 | `tests/alerts/test_schedule.py::test_polling_window`, `tests/tweets/test_schedule.py::test_custom_window_and_extra_deadline` | `uv run pytest -q tests/alerts/test_schedule.py` (stub schedule) → `assert datetime.timedelta(0) == datetime.timedelta(seconds=5400)`; `uv run pytest -q tests/tweets/test_schedule.py tests/tweets/test_loop.py` (window parameters accepted, ignored) → `assert 'sparse' == 'window'`; `assert [datetime...] == [datetime...]` (`test_poller_uses_window_and_extra_deadlines`) |
 | AC21 | 16 | `tests/alerts/test_cli.py::test_preview_prints_and_writes_nothing` | |
 | AC22 | 8, 13, 14 | `tests/alerts/test_schedule.py::test_rehearsal_is_an_extra_alert_deadline`, `tests/worker/test_cli.py::test_rehearsal_not_written_to_gameweek_and_polls_fast` | `uv run pytest -q tests/alerts/test_schedule.py` (stub schedule) → `assert [] == [True]`; the worker part: _pending step 14_ |
 | AC23 | 10 | `tests/alerts/test_slots.py::test_rehearsal_alerts_do_not_count_for_the_real_deadline` | `uv run pytest -q tests/alerts/test_slots.py` (stub `run_slot`) → `assert 'stub' == 'sent'` |
@@ -488,7 +488,7 @@ Design choices:
 
 ### Group 3 — Worker, CLI and documentation
 
-- [ ] 13. **Tweet polling window from the alert config** — files: `backend/app/tweets/schedule.py`,
+- [x] 13. **Tweet polling window from the alert config** — files: `backend/app/tweets/schedule.py`,
       `backend/app/tweets/loop.py`, `backend/tests/tweets/test_schedule.py`,
       `backend/tests/tweets/test_loop.py`.
       Write first `test_custom_window_and_extra_deadline` (with `window=130 min` the mode is
