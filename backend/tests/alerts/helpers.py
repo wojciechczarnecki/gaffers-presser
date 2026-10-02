@@ -13,6 +13,7 @@ from app.corroboration.schemas import (
 )
 
 SEASON = "2026/27"
+GABRIEL_ID = 4
 DEADLINE_AT = datetime(2026, 10, 4, 16, 0, tzinfo=UTC)
 AS_OF = datetime(2026, 10, 4, 14, 0, tzinfo=UTC)
 POST_TIME = datetime(2026, 10, 4, 12, 30, tzinfo=UTC)
