@@ -156,7 +156,7 @@ Design choices:
 | AC4 | 6 | `tests/alerts/test_players.py::test_widely_owned_at_threshold` | |
 | AC5 | 6 | `tests/alerts/test_players.py::test_trending_counts_independent_accounts_with_reposts` | |
 | AC6 | 6, 10 | `tests/alerts/test_players.py::test_only_players_with_a_claim_are_reported_once_with_all_categories`, `tests/alerts/test_slots.py::test_digest_without_claims_says_no_news` | |
-| AC7 | 1, 2 | `tests/db/test_migrations.py::test_ownership_migration_keeps_rows_and_downgrades`, `tests/fpl/test_reference_sync.py::test_selected_by_percent_written_and_refreshed` | |
+| AC7 | 1, 2 | `tests/db/test_migrations.py::test_ownership_migration_keeps_rows_and_downgrades`, `tests/fpl/test_reference_sync.py::test_selected_by_percent_written_and_refreshed` | `uv run pytest -q tests/db/test_migrations.py -k ownership` (stub migration 0008) → `assert "selected_by_percent" in columns` |
 | AC8 | 10 | `tests/alerts/test_slots.py::test_digest_covers_previous_deadline_to_slot_with_full_corroboration`, `::test_digest_without_claims_says_no_news` | |
 | AC9 | 5, 6 | `tests/alerts/test_render.py::test_player_section_fields`, `tests/alerts/test_players.py::test_order_by_ownership_nulls_last` | |
 | AC10 | 5 | `tests/alerts/test_render.py::test_times_are_warsaw`, `tests/content/test_alert_email.py::test_template_has_every_key_and_renders`, `tests/alerts/test_render.py::test_alerts_code_has_no_polish_literals` | |
@@ -183,7 +183,7 @@ Design choices:
 
 ### Group 1 — Ownership column, alert log schema, configuration
 
-- [ ] 1. **Migration `0008`: `player.selected_by_percent`** — files:
+- [x] 1. **Migration `0008`: `player.selected_by_percent`** — files:
       `backend/migrations/versions/0008_player_ownership.py`, `backend/app/fpl/models/reference.py`,
       `backend/tests/db/test_migrations.py`.
       Write first `test_ownership_migration_keeps_rows_and_downgrades`: upgrade to `0007`, apply
