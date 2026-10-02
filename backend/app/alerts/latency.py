@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlmodel import Session
 
 LEGS = ("post -> first fetch", "fetch -> extraction done", "extraction -> accepted", "total")
+KINDS = ("digest", "news", "breaking")
 
 
 @dataclass(frozen=True)
@@ -15,6 +16,7 @@ class PostLatency:
     first_fetched_at: datetime
     extracted_at: datetime
     accepted_at: datetime
+    kind: str = "breaking"
 
     def legs(self) -> tuple[float, float, float, float]:
         return (
@@ -51,7 +53,7 @@ def post_latencies(session: Session, deadline_key: str) -> list[PostLatency]:
             "SELECT DISTINCT ON (t.x_id) t.x_id, t.created_at, t.first_fetched_at,"
             " (SELECT min(e.finished_at) FROM extraction e"
             "  WHERE e.tweet_x_id = t.x_id AND e.status = 'extracted') AS extracted_at,"
-            " d.accepted_at"
+            " d.accepted_at, a.kind"
             " FROM alert a JOIN alert_post ap ON ap.alert_id = a.id"
             " JOIN tweet t ON t.x_id = ap.tweet_x_id"
             " JOIN delivery_log d ON d.id = a.delivery_log_id"
@@ -63,7 +65,12 @@ def post_latencies(session: Session, deadline_key: str) -> list[PostLatency]:
     )
     return [
         PostLatency(
-            row.x_id, row.created_at, row.first_fetched_at, row.extracted_at, row.accepted_at
+            row.x_id,
+            row.created_at,
+            row.first_fetched_at,
+            row.extracted_at,
+            row.accepted_at,
+            row.kind,
         )
         for row in rows
         if row.extracted_at is not None
@@ -86,18 +93,28 @@ def has_alerts(session: Session, deadline_key: str) -> bool:
     return row is not None
 
 
-def format_report(deadline_key: str, latencies: list[PostLatency]) -> list[str]:
-    lines = [f"Alert deadline: {deadline_key}", f"Posts: {len(latencies)}"]
+def _leg_table(latencies: list[PostLatency]) -> list[str]:
     summary = summarize(latencies)
 
     def cell(value: float | None) -> str:
         return "-" if value is None else f"{value:.1f} s"
 
-    lines.append(f"{'':26}{'p50':>10}{'p95':>10}{'max':>10}")
+    lines = [f"{'':26}{'p50':>10}{'p95':>10}{'max':>10}"]
     for index, leg in enumerate(LEGS):
         stats = summary[index] if summary else None
         lines.append(
             f"{leg:26}{cell(stats.p50 if stats else None):>10}"
             f"{cell(stats.p95 if stats else None):>10}{cell(stats.maximum if stats else None):>10}"
         )
+    return lines
+
+
+def format_report(deadline_key: str, latencies: list[PostLatency]) -> list[str]:
+    lines = [f"Alert deadline: {deadline_key}", f"Posts: {len(latencies)}"]
+    lines.extend(_leg_table(latencies))
+    for kind in KINDS:
+        of_kind = [item for item in latencies if item.kind == kind]
+        if of_kind:
+            lines.extend(["", f"Kind: {kind}  posts: {len(of_kind)}"])
+            lines.extend(_leg_table(of_kind))
     return lines

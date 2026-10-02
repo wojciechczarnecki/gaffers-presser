@@ -250,6 +250,9 @@ def run(ctx: typer.Context) -> None:
             )
         except CollectorError as exc:
             raise fail(str(exc)) from None
+        except Exception as exc:
+            logger.error("worker failed: %s", type(exc).__name__)
+            raise typer.Exit(1) from None
 
     def handle_signal(signum: int, frame: object) -> None:
         stop_event.set()

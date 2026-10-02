@@ -1,10 +1,11 @@
 import logging
 import threading
+from datetime import datetime
 
 from sqlalchemy import Engine
 from sqlmodel import Session
 
-from app.alerts.breaking import run_breaking
+from app.alerts.breaking import newest_extraction, run_breaking
 from app.alerts.schedule import (
     MAX_WAKE_SECONDS,
     alert_deadlines,
@@ -36,6 +37,8 @@ class AlertLoop:
         self._runtime = runtime
         self._clock = clock
         self._stop_event = stop_event
+        # deadline key -> newest extraction a completed breaking pass has seen
+        self._processed_until: dict[str, datetime] = {}
 
     def tick(self) -> float:
         slots = self._runtime.config.slots
@@ -54,9 +57,18 @@ class AlertLoop:
             with Session(self._engine) as session:
                 done = done_slots(session, deadline.key)
             if slots[-1] in done and breaking_open(deadline, True, self._clock.now()):
+                with Session(self._engine) as session:
+                    newest = newest_extraction(session)
                 run_breaking(
-                    self._engine, self._runtime, deadline, done[slots[-1]].as_of, self._clock
+                    self._engine,
+                    self._runtime,
+                    deadline,
+                    done[slots[-1]].as_of,
+                    self._clock,
+                    processed_until=self._processed_until.get(deadline.key),
                 )
+                if newest is not None:
+                    self._processed_until[deadline.key] = newest
         finally:
             self._runtime.corroboration.tracer.flush()
         return next_wake(deadline, slots, set(done), self._clock.now())

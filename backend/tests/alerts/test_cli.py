@@ -158,11 +158,13 @@ def test_latency_default_gameweek_and_rehearsal(db):
     assert gw.exit_code == 0, gw.stderr
     assert "Alert deadline: 2026/27:gw6" in gw.stdout
     assert "Posts: 3" in gw.stdout
-    lines = {line.split("  ")[0].strip(): line.split() for line in gw.stdout.splitlines()[3:]}
+    lines = {line.split("  ")[0].strip(): line.split() for line in gw.stdout.splitlines()[3:7]}
     assert lines["post -> first fetch"][-6:] == ["20.0", "s", "30.0", "s", "30.0", "s"]
     assert lines["fetch -> extraction done"][-6:] == ["15.0", "s", "30.0", "s", "30.0", "s"]
     assert lines["extraction -> accepted"][-6:] == ["20.0", "s", "51.0", "s", "51.0", "s"]
     assert lines["total"][-6:] == ["60.0", "s", "101.0", "s", "101.0", "s"]
+    assert "Kind: breaking  posts: 3" in gw.stdout
+    assert "Kind: digest" not in gw.stdout
 
     default = invoke(db, "latency")
     assert f"Alert deadline: {rehearsal.key}" in default.stdout
@@ -175,6 +177,24 @@ def test_latency_default_gameweek_and_rehearsal(db):
     assert invoke(db, "latency", "--gameweek", "9").exit_code == 1
     both = invoke(db, "latency", "--gameweek", "6", "--rehearsal")
     assert both.exit_code == 1 and "exclude each other" in both.stderr
+
+
+def test_latency_reports_digest_and_breaking_posts_separately(db):
+    seed(db)
+    latency_post(db, 1, 600, 300)
+    latency_post(db, 2, 10, 15)
+    sent_alert(db, "alert:2026/27:gw6:digest:120", 1, 8100, REAL, kind="digest")
+    sent_alert(db, "alert:2026/27:gw6:breaking:2", 2, 31, REAL, at=NOW + timedelta(minutes=1))
+
+    result = invoke(db, "latency", "--gameweek", "6")
+
+    assert result.exit_code == 0, result.stderr
+    out = result.stdout.splitlines()
+    assert "Posts: 2" in out
+    digest_at = out.index("Kind: digest  posts: 1")
+    breaking_at = out.index("Kind: breaking  posts: 1")
+    assert out[digest_at + 5].split()[-6:] == ["8100.0", "s", "8100.0", "s", "8100.0", "s"]
+    assert out[breaking_at + 5].split()[-6:] == ["31.0", "s", "31.0", "s", "31.0", "s"]
 
 
 def test_latency_without_alerts_fails_clearly(db):

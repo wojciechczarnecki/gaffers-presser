@@ -18,6 +18,18 @@ def load_template() -> Mapping[str, Any]:
     return tomllib.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
 
 
+def plural_form(count: int) -> str:
+    if count == 1:
+        return "one"
+    if count % 10 in (2, 3, 4) and count % 100 not in (12, 13, 14):
+        return "few"
+    return "many"
+
+
+def _counted(texts: Mapping[str, Any], base: str, count: int) -> str:
+    return texts[f"{base}_{plural_form(count)}"].format(count=count)
+
+
 def _account(template: Mapping[str, Any], author: str, original: str | None) -> str:
     if original:
         return template["link"]["repost"].format(author=author, original=original)
@@ -36,7 +48,7 @@ def _categories(template: Mapping[str, Any], listed: ListedPlayer) -> str:
     if listed.widely_owned and listed.selected_by_percent is not None:
         parts.append(texts["widely_owned"].format(percent=listed.selected_by_percent))
     if listed.trending_accounts is not None:
-        parts.append(texts["trending"].format(count=listed.trending_accounts))
+        parts.append(_counted(texts, "trending", listed.trending_accounts))
     return texts["separator"].join(parts)
 
 
@@ -140,5 +152,5 @@ def render_alert(
         if not reports:
             lines.append(template["digest"]["empty"])
         if listed_without_news:
-            lines.append(template["digest"]["no_news"].format(count=listed_without_news))
+            lines.append(_counted(template["digest"], "no_news", listed_without_news))
     return Message(title=title, text="\n".join(lines))

@@ -31,7 +31,10 @@ no_anchor = "Brak wiadomości do pokazania."
 league_owned = "w lidze ma go: {managers}"
 manager = "{manager} ({team})"
 widely_owned = "posiada go {percent}% graczy"
-trending = "pisze o nim {count} niezależnych kont"
+# Polish plural forms: _one for 1; _few for numbers ending in 2-4 except 12-14; _many otherwise.
+trending_one = "pisze o nim {count} niezależne konto"
+trending_few = "pisze o nim {count} niezależne konta"
+trending_many = "pisze o nim {count} niezależnych kont"
 separator = "; "
 
 [event]
@@ -65,4 +68,6 @@ anchor_url = "https://x.com/{author}/status/{x_id}"
 
 [digest]
 empty = "Brak wiadomości o zawodnikach z Twojej listy. Trener śpi spokojnie."
-no_news = "Bez wiadomości: {count} zawodników z Twojej listy."
+no_news_one = "Bez wiadomości: {count} zawodnik z Twojej listy."
+no_news_few = "Bez wiadomości: {count} zawodników z Twojej listy."
+no_news_many = "Bez wiadomości: {count} zawodników z Twojej listy."

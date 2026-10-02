@@ -21,6 +21,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 1
   final_review_nits: 4
+  findings_accepted: 5
+  findings_rejected: 0
 ---
 
 # SPEC 009 — Pre-deadline alert e-mails

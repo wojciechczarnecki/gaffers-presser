@@ -243,3 +243,37 @@ def test_no_breaking_at_or_after_deadline(db):
     runtime = alerts_runtime(db, channel, jumping)
     assert run_breaking(db, runtime, REAL, NEWS_AT, jumping) == 0
     assert channel.calls == []
+
+
+def test_processed_until_skips_the_window_query_until_a_new_extraction(db, monkeypatch):
+    from app.alerts import breaking
+
+    runtime, channel, clock = world(db)
+    add_late(db, 2, at=95, finished=97)
+    clock.advance(minutes(8))
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 1
+    with Session(db) as session:
+        processed = breaking.newest_extraction(session)
+    real = breaking.listed_players
+    window_queries = []
+
+    def counting(*args, **kwargs):
+        window_queries.append(1)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(breaking, "listed_players", counting)
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock, processed_until=processed) == 0
+    assert window_queries == []
+    # after a restart there is no mark: the last slot's as_of gates, nothing is sent twice
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 0
+    assert window_queries == [1]
+
+    add_late(db, 3, at=99, finished=101)
+    clock.advance(minutes(5))
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock, processed_until=processed) == 1
+    assert window_queries == [1, 1]
+    assert breaking_keys(channel) == [
+        "alert:2026/27:gw6:breaking:2",
+        "alert:2026/27:gw6:breaking:3",
+    ]

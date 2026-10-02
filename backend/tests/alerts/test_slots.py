@@ -103,7 +103,7 @@ def test_digest_without_claims_says_no_news(db):
     assert len(channel.calls) == 1
     text = channel.calls[0].text
     assert TEMPLATE["digest"]["empty"] in text
-    assert TEMPLATE["digest"]["no_news"].format(count=2) in text
+    assert TEMPLATE["digest"]["no_news_few"].format(count=2) in text
     assert alert_posts(db, DIGEST_KEY) == {}
 
 

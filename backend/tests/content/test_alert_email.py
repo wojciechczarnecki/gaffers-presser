@@ -67,6 +67,8 @@ def test_template_has_every_key_and_renders():
     seen: set[tuple] = set()
     recorder = Recorder(TEMPLATE, seen)
     plain = report(listed(ISAK, percent=None, trending=3, claims=(200,)))
+    single = report(listed(ISAK, percent=None, trending=1, claims=(200,)))
+    many = report(listed(ISAK, percent=None, trending=5, claims=(200,)))
     vocabulary = [
         report(
             listed(ISAK, claims=(200,)),
@@ -84,6 +86,8 @@ def test_template_has_every_key_and_renders():
         render_alert("digest", deadline(), AS_OF, [full_report(), plain], 7, recorder),
         render_alert("digest", deadline(rehearsal=True), AS_OF, [], 0, recorder),
         render_alert("digest", deadline(), AS_OF, [], 5, recorder),
+        render_alert("digest", deadline(), AS_OF, [single], 1, recorder),
+        render_alert("digest", deadline(), AS_OF, [many], 2, recorder),
         render_alert("news", deadline(), AS_OF, [full_report()], 0, recorder),
         render_alert("breaking", deadline(), AS_OF, [full_report(), plain], 0, recorder),
         render_alert("news", deadline(), AS_OF, [*vocabulary, anchorless], 0, recorder),

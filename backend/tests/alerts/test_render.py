@@ -28,7 +28,7 @@ def test_player_section_fields():
     for name in ("Jan Kowalski", "Kowalski FC", "Ewa Nowak", "Nowak XI"):
         assert name in text
     assert "23.4" in text
-    assert TEMPLATE["category"]["trending"].format(count=4) in text
+    assert TEMPLATE["category"]["trending_few"].format(count=4) in text
     assert TEMPLATE["event"]["out"] in text
     assert TEMPLATE["certainty"]["likely"] in text
     assert TEMPLATE["grade"]["medium"] in text
@@ -76,10 +76,46 @@ def test_digest_empty_and_no_news_line():
     empty = render_alert("digest", deadline(), AS_OF, [], 0).text
     assert TEMPLATE["digest"]["empty"] in empty
     with_count = render_alert("digest", deadline(), AS_OF, [full_report()], 12).text
-    assert TEMPLATE["digest"]["no_news"].format(count=12) in with_count
+    assert TEMPLATE["digest"]["no_news_many"].format(count=12) in with_count
     assert TEMPLATE["digest"]["empty"] not in with_count
     news = render_alert("news", deadline(), AS_OF, [full_report()], 12).text
-    assert TEMPLATE["digest"]["no_news"].format(count=12) not in news
+    assert TEMPLATE["digest"]["no_news_many"].format(count=12) not in news
+
+
+def test_plural_forms_follow_polish_rules():
+    from app.alerts.render import plural_form
+
+    forms = {count: plural_form(count) for count in (1, 2, 3, 4, 5, 11, 12, 14, 21, 22, 25, 104)}
+    assert forms == {
+        1: "one",
+        2: "few",
+        3: "few",
+        4: "few",
+        5: "many",
+        11: "many",
+        12: "many",
+        14: "many",
+        21: "many",
+        22: "few",
+        25: "many",
+        104: "few",
+    }
+
+
+def test_counted_lines_use_the_matching_plural_form():
+    def digest_text(trending: int, without_news: int) -> str:
+        player = listed(ISAK, percent=None, trending=trending, claims=(200,))
+        return render_alert("digest", deadline(), AS_OF, [report(player)], without_news).text
+
+    one = digest_text(1, 1)
+    assert TEMPLATE["category"]["trending_one"].format(count=1) in one
+    assert TEMPLATE["digest"]["no_news_one"].format(count=1) in one
+    few = digest_text(3, 2)
+    assert TEMPLATE["category"]["trending_few"].format(count=3) in few
+    assert TEMPLATE["digest"]["no_news_few"].format(count=2) in few
+    many = digest_text(5, 12)
+    assert TEMPLATE["category"]["trending_many"].format(count=5) in many
+    assert TEMPLATE["digest"]["no_news_many"].format(count=12) in many
 
 
 def test_times_are_warsaw():

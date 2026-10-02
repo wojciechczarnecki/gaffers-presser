@@ -199,3 +199,56 @@ def test_stop_event_ends_loop_promptly(db):
     thread.join(timeout=5)
 
     assert not thread.is_alive()
+
+
+def test_quiet_breaking_ticks_skip_the_window_query(db, monkeypatch):
+    from app.alerts import breaking
+
+    seed(db)
+    add_claim(db, 1, SAKA, "out", created_at=NOW - minutes(60), author="a1")
+    clock = FixedClock(DEADLINE_AT - minutes(20))
+    channel = FakeChannel(["msg-1"])
+    loop = AlertLoop(db, alerts_runtime(db, channel, clock), clock, threading.Event())
+    loop.tick()
+    add_claim(
+        db,
+        2,
+        SAKA,
+        "out",
+        created_at=clock.now() - minutes(1),
+        author="late2",
+        finished=int(minutes(101).total_seconds()),
+    )
+    clock.advance(timedelta(seconds=5))
+    loop.tick()
+    assert channel.keys[-1] == "alert:2026/27:gw6:breaking:2"
+    real = breaking.listed_players
+    window_queries = []
+
+    def counting(*args, **kwargs):
+        window_queries.append(1)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(breaking, "listed_players", counting)
+
+    for _ in range(3):
+        clock.advance(timedelta(seconds=5))
+        loop.tick()
+
+    assert window_queries == []
+    sent = len(channel.calls)
+    add_claim(
+        db,
+        3,
+        SAKA,
+        "out",
+        created_at=clock.now() - minutes(1),
+        author="late3",
+        finished=int(minutes(102).total_seconds()),
+    )
+    clock.advance(timedelta(seconds=5))
+    loop.tick()
+
+    assert window_queries == [1]
+    assert len(channel.calls) == sent + 1
+    assert channel.keys[-1] == "alert:2026/27:gw6:breaking:3"

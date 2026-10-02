@@ -32,14 +32,23 @@ logger = logging.getLogger(__name__)
 BREAKING_SKIPPED_REASON = "breaking alerts use the SQL rules only"
 
 
-def _extracted_since(session: Session, since: datetime) -> bool:
-    row = session.execute(
-        text(
-            "SELECT 1 FROM extraction WHERE status = 'extracted' AND finished_at >= :since LIMIT 1"
-        ),
-        {"since": since},
-    ).first()
-    return row is not None
+_EXTRACTED_FROM = (
+    "SELECT 1 FROM extraction WHERE status = 'extracted' AND finished_at >= :since LIMIT 1"
+)
+_EXTRACTED_AFTER = (
+    "SELECT 1 FROM extraction WHERE status = 'extracted' AND finished_at > :since LIMIT 1"
+)
+
+
+def _extracted_since(session: Session, since: datetime, *, strictly_after: bool) -> bool:
+    query = _EXTRACTED_AFTER if strictly_after else _EXTRACTED_FROM
+    return session.execute(text(query), {"since": since}).first() is not None
+
+
+def newest_extraction(session: Session) -> datetime | None:
+    return session.execute(
+        text("SELECT max(finished_at) FROM extraction WHERE status = 'extracted'")
+    ).scalar_one_or_none()
 
 
 def _candidates(
@@ -82,12 +91,18 @@ def run_breaking(
     deadline: AlertDeadline,
     since_extracted: datetime,
     clock: Clock,
+    *,
+    processed_until: datetime | None = None,
 ) -> int:
     now = clock.now()
     if now >= deadline.deadline_at:
         return 0
     with Session(engine) as session:
-        if not _extracted_since(session, since_extracted):
+        if processed_until is not None and processed_until >= since_extracted:
+            gate = _extracted_since(session, processed_until, strictly_after=True)
+        else:
+            gate = _extracted_since(session, since_extracted, strictly_after=False)
+        if not gate:
             return 0
         season = current_season(session)
         if season is None:

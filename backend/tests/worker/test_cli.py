@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 import os
 import re
@@ -1477,6 +1478,41 @@ def test_worker_rejects_overlapping_rehearsal_naming_the_variable(cli, db):
 
     assert result.exit_code == 1
     assert "ALERT_REHEARSAL_DEADLINE" in result.stderr
+
+
+def test_unreachable_database_with_alerts_exits_1_with_error_class(caplog):
+    engine = make_engine("postgresql+psycopg://nobody:secret@127.0.0.1:1/none")
+    deps = WorkerDeps(
+        engine=engine,
+        client=FakeFpl({}).client(sleep=lambda _: None),
+        league_ids_raw="1",
+        clock=FixedClock(NOW),
+        alerts=_alerts_setup(),
+    )
+    with caplog.at_level(logging.INFO):
+        result = CliRunner().invoke(app, ["run"], obj=deps)
+
+    assert result.exit_code == 1
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert "worker failed: OperationalError" in caplog.text
+    assert "secret" not in caplog.text
+    assert "nobody" not in caplog.text
+
+
+def test_alerts_channel_build_error_exits_1_with_error_class(cli, db, caplog):
+    def broken_channel():
+        raise RuntimeError("detail that must not be logged")
+
+    setup = _alerts_setup()
+    setup = dataclasses.replace(setup, make_channel=broken_channel)
+
+    with caplog.at_level(logging.INFO):
+        result = cli("run", clock=FixedClock(NOW), alerts=setup)
+
+    assert result.exit_code == 1
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert "worker failed: RuntimeError" in caplog.text
+    assert "detail that must not be logged" not in caplog.text
 
 
 def test_rehearsal_not_written_to_gameweek_and_polls_fast(cli, db, monkeypatch):

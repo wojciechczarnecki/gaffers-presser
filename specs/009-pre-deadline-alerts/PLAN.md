@@ -833,3 +833,19 @@ Rejected after checking the code:
 - "a failed breaking delivery is retried by the next tick" — `alert_exists` stops it, as the recorded `failed` row has the key.
 
 Left out: 3 nit findings
+
+### 2026-10-02 — /pipeline:final-review (apply)
+
+Owner decision (see Owner decisions): F1-F5 accepted, none rejected.
+
+| id | outcome | change |
+|----|---------|--------|
+| F1 | fixed | `app/alerts/latency.py`: `PostLatency` carries the kind of the first alert that included the post; `format_report` prints the all-posts table and then one table per alert kind present (`Kind: digest|news|breaking  posts: N`), so the breaking path is read apart from the digest. Tests: `tests/alerts/test_latency.py::test_report_splits_legs_per_alert_kind`, `tests/alerts/test_cli.py::test_latency_reports_digest_and_breaking_posts_separately`; `docs/DEPLOYMENT.md` step 12 names the split. |
+| F2 | fixed | `app/alerts/loop.py` keeps, per alert deadline key, the newest extraction `finished_at` a completed breaking pass has seen and passes it to `run_breaking(..., processed_until=...)`; the gate in `app/alerts/breaking.py` then asks for an extraction strictly after it, falling back to the last slot's `as_of` after a restart. Candidates are still taken from the whole window, so a post skipped in one pass is picked up by the next one. Tests: `tests/alerts/test_breaking.py::test_processed_until_skips_the_window_query_until_a_new_extraction`, `tests/alerts/test_loop.py::test_quiet_breaking_ticks_skip_the_window_query` (red without the loop change: `assert [1, 1, 1] == []`). |
+| F3 | fixed | `app/worker/cli.py::run` catches any other exception from `_alerts_runtime` and exits 1 with `worker failed: <class>`. Tests: `tests/worker/test_cli.py::test_unreachable_database_with_alerts_exits_1_with_error_class`, `::test_alerts_channel_build_error_exits_1_with_error_class` (both red before the change). |
+| F4 | fixed | `app/content/alert_email.toml`: `trending_one|few|many` and `no_news_one|few|many`; `app/alerts/render.py::plural_form` (1 / ending in 2-4 except 12-14 / the rest) picks the variant. Tests: `tests/alerts/test_render.py::test_plural_forms_follow_polish_rules`, `::test_counted_lines_use_the_matching_plural_form`; `tests/content/test_alert_email.py` renders every variant. |
+| F5 | no change needed | `tests/alerts/test_loop.py:201` already asserts `not thread.is_alive()` after the join (it was there at the report commit); the finding misread the test. |
+
+Verification after the fixes: `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` — ruff clean, 322 files formatted, 1245 passed.
+
+Backlog: #22 added (the timing test seen erroring once in the report run). Item #11's trigger ("before the ingest feeds alerts") has fired; by the owner decision of 2026-10-02 it is checked after this spec and before the production deployment.

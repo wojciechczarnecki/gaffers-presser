@@ -146,7 +146,8 @@ below; agents never touch production.
     - Inspect from a Railway shell (`railway ssh`): `python -m app.alerts status` (the current
       alert deadline, the next slot, the last alert and the number of failed alerts),
       `python -m app.alerts latency [--gameweek N | --rehearsal]` (post to inbox latency, split
-      into post to first fetch, fetch to extraction and extraction to accepted by the provider),
+      into post to first fetch, fetch to extraction and extraction to accepted by the provider,
+      for all posts and again per alert kind, so the breaking path is read apart from the digest),
       and `python -m app.alerts preview --at <Warsaw time> [--kind digest|news]` (renders the
       alert the worker would send at that moment; sends and writes nothing).
     - `python -m app.worker status` ends with an `Alerts:` line: the next slot (or the breaking
