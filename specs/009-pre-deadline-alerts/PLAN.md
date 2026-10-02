@@ -554,7 +554,7 @@ Design choices:
       with the expected format). Preview uses `build_runtime` (full corroboration with the key,
       SQL-only with a skipped reason without it) and needs no delivery configuration.
       Automatic verification: `cd backend && uv run pytest -q tests/alerts/test_cli.py`
-- [ ] 17. **End-to-end test** — files: `backend/tests/alerts/test_end_to_end.py`.
+- [x] 17. **End-to-end test** — files: `backend/tests/alerts/test_end_to_end.py`.
       One simulated real deadline driven through `AlertLoop.tick()` with a fake clock, the fake
       channel and the fake corroboration runtime: seed league picks, ownership and claims; T-120
       digest; a new post → T-30 news marking it new; two new posts after T-30 → two breaking
