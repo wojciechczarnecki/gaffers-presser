@@ -56,6 +56,7 @@ def apply_bootstrap(session: Session, payload: Bootstrap, now: datetime) -> str:
                 "second_name": el.second_name,
                 "team_fpl_id": el.team,
                 "position": el.element_type,
+                "selected_by_percent": el.selected_by_percent,
             }
             for el in payload.elements
         ],
