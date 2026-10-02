@@ -25,6 +25,9 @@ metrics:
   findings_accepted: 5
   findings_rejected: 0
   finished_at: 2026-10-02T11:22
+  cost_plan_cents: 212
+  cost_plan_review_cents: 105
+  cost_final_review_cents: 444
 ---
 
 # SPEC 009 — Pre-deadline alert e-mails
