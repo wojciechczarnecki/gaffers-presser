@@ -204,3 +204,15 @@ def seed_league(
                             is_vice_captain=False,
                         )
                     )
+
+
+def set_raw(engine, x_id: int, raw: dict) -> None:
+    import json
+
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        conn.execute(
+            text("UPDATE tweet SET raw = CAST(:raw AS jsonb) WHERE x_id = :x_id"),
+            {"raw": json.dumps(raw), "x_id": x_id},
+        )
