@@ -3,6 +3,9 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-02"
   - "spec-ready — 2026-10-02"
+metrics:
+  started_at: 2026-10-02T09:43
+  escalations: 0
 ---
 
 # SPEC 009 — Pre-deadline alert e-mails
