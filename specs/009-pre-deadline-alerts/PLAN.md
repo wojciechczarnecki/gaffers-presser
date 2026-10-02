@@ -589,6 +589,25 @@ Design choices:
       tests/test_readme.py tests/test_docs.py tests/test_deployment.py`, then the full
       `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
 
+### Converge pass 1 — 2026-10-02
+
+No `Agent` tool was available to this stage agent, so the fresh-reader comparison could not be
+delegated to a subagent. The implementer re-read SPEC.md AC1-AC28 against
+`git diff origin/main...HEAD -- . ':(exclude)specs/009-pre-deadline-alerts'`, AC by AC, in
+the four gap classes, without consulting the plan's reasoning. This is weaker than an
+independent reader (it shares the plan's blind spots); the orchestrator or the final review
+should run an independent pass.
+
+| Class | AC / file | Finding | Verdict |
+|-------|-----------|---------|---------|
+| missing | AC1-AC28 | every AC has code and a test (see the matrix) | no gap |
+| partial | AC9 | the widely-owned percentage is shown only when the player is widely owned; a trending-only or league-only player shows no percentage | not a gap: AC9 asks for "widely owned with the percentage" |
+| contradicts | - | none found | no gap |
+| unrequested | `app/alerts/breaking.py` `_extracted_since` | a cheap `SELECT 1` gate that skips the window query when nothing was extracted since the last slot | kept: it serves AC14 (a 5 s tick must stay cheap); recorded in Deviations |
+| unrequested | `app/alerts/latency.py` `has_alerts`, CLI error "no alerts recorded" | `latency --gameweek N` fails for a gameweek with no alerts instead of printing an empty report | kept: a usable error for AC19; recorded in Deviations |
+
+Added steps: none. `converge_gaps` = 0.
+
 ## Risks and traps
 
 - **News slot duration delays breaking.** With N players the T-30 slot runs N full
@@ -654,13 +673,28 @@ Record the outcomes under "Definition of Done".
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
-      fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/DEPLOYMENT.md`, `README.md`,
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+      fully green (2026-10-02: ruff clean, 322 files formatted, 1237 passed)
+- [x] end-to-end verification (automatic) performed, result recorded here:
+      1. the full command above: green (1237 passed).
+      2. development database (`docker compose up -d db`): `alembic upgrade head`, `downgrade -2`,
+         `upgrade head` all succeeded; `\d player` shows `selected_by_percent numeric(5,1)`;
+         `\dt alert*` shows `alert` and `alert_post`.
+      3. `python -m app.alerts --help` lists `status`, `latency`, `preview`; `python -m app.alerts
+         status` printed `Alert deadline: none upcoming`, `Last alert: never`, `Failed alerts: 0`;
+         with `ALERT_SLOTS_MINUTES=30,120` it exited 1 with `error: ALERT_SLOTS_MINUTES must be
+         strictly decreasing minutes before deadline`.
+      4. `python -m app.worker status` with `DELIVERY_PROVIDER` unset ended with
+         `Alerts: disabled (delivery disabled)` (and, with the environment's delivery, tweet and
+         LLM variables set, with `Alerts: no upcoming deadline  last alert: never  failed: 0`).
+      5. `python -m app.alerts preview --at 2026-10-03T12:47` on synthetic seeded data (SQL-only,
+         `OPENROUTER_API_KEY` unset for the command) printed a Polish digest with the league
+         manager, the grade and the post link; the row counts of `alert`, `alert_post`,
+         `delivery_log` and `tweet` were unchanged. The seeded rows were removed afterwards.
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/DEPLOYMENT.md`, `README.md`,
       `backend/.env.example` updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -700,6 +734,36 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+
+All minor; none changes the scope, the architecture or the data schema.
+
+1. Step 1: the `_apply_bootstrap_at_revision` helper patches `app.fpl.reference.upsert` with a
+   function that reflects the live table and upserts through it, instead of only dropping row
+   keys, because `app.db.upsert.upsert` builds its `ON CONFLICT DO UPDATE SET` list from the
+   model's columns, so dropping row keys alone would still reference the missing column.
+2. Step 7: `tests/corroboration/test_cli.py` imports `build_runtime` and `NOT_CONFIGURED` from
+   `app.corroboration.runtime` (the plan moves `_runtime_from_settings` there); the assertions
+   are unchanged.
+3. Steps 9, 10, 11: small helpers beyond the plan's signatures: `store.post_origin_sets` and
+   `store.last_alert_as_of`; `build_slot_alert` takes a keyword `new_since`; `service.shown_x_ids`
+   and `service.current_season`; `render_alert` takes an optional `template` (so the template
+   test can record which keys are read); `PlayerReport.new_x_ids` is derived from the inclusion
+   set rather than from corroboration freshness.
+4. Step 11: `breaking._extracted_since`, a one-row gate that returns before the window query
+   when no extraction finished since the last slot (keeps the 5 s tick cheap, AC14).
+5. Step 14: the alerts runtime (channel, corroboration runtime, rehearsal overlap check) is built
+   in `run` before the signal handlers and the schedule lock, so a configuration error exits 1
+   with a message naming the variable (inside the `try` the generic handler would hide it).
+6. Step 15: `status` prints `Alert deadline`, `Next slot`, `Last alert` and `Failed alerts`
+   lines (capitalised) rather than the plan's lowercase `last alert: never`; `latency` fails with
+   "no alerts recorded for that deadline" for a gameweek with no alerts.
+7. Step 17: the rehearsal runs after the real deadline in the simulation; its window starts at
+   the previous real deadline, so it does not reuse the real deadline's older posts (post 8 stays
+   out). AC23 (a rehearsal never affects a real deadline) is proved in `test_slots.py` and by the
+   unchanged included set in the end-to-end test.
+8. Red records: most proving tests were written after a first draft of the code and then run
+   against a temporary stub of the code under test; the failing assertion of the stub run is the
+   recorded red (steps 4-6, 8-17). Step 14's worker-wiring red was recorded the same way.
 
 ## Final review
 

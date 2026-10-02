@@ -47,7 +47,7 @@ and each LLM step that produces data has an evaluation set with recorded results
       (spec: [007](../specs/007-leak-corroboration/SPEC.md))
 - [x] E-mail delivery adapter behind an interface (ADR 0004), shared with the Stage 3 presser
       (spec: [008](../specs/008-delivery-adapter/SPEC.md))
-- [ ] Pre-deadline alert e-mails with cited sources for league-owned and widely owned
+- [x] Pre-deadline alert e-mails with cited sources for league-owned and widely owned
       players, with post → inbox latency measured; whether the alert text is LLM-generated
       from the retrieved posts (with a faithfulness evaluation) is decided in its spec.
       The owner builds and tests it locally first (a rehearsal deadline with real e-mails);
