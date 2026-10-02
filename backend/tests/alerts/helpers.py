@@ -138,3 +138,69 @@ def full_report():
         value,
         new_x_ids=frozenset({100, 102}),
     )
+
+
+def set_ownership(engine, percents: dict[int, str | None]) -> None:
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        for fpl_id, percent in percents.items():
+            conn.execute(
+                text(
+                    "UPDATE player SET selected_by_percent = :percent"
+                    " WHERE season = :season AND fpl_id = :fpl_id"
+                ),
+                {"percent": percent, "season": SEASON, "fpl_id": fpl_id},
+            )
+
+
+def seed_league(
+    engine,
+    league_id: int,
+    managers: dict[int, tuple[str, str]],
+    picks: dict[int, dict[int, list[int] | dict[int, int]]],
+) -> None:
+    from sqlmodel import Session
+
+    from app.fpl.models.leagues import (
+        League,
+        LeagueMembership,
+        Manager,
+        ManagerGameweek,
+        ManagerPick,
+    )
+
+    with Session(engine) as session, session.begin():
+        session.add(League(season=SEASON, fpl_id=league_id, name=f"League {league_id}"))
+        session.flush()
+        for entry_id, (manager_name, team_name) in managers.items():
+            session.add(
+                Manager(
+                    season=SEASON, entry_id=entry_id, team_name=team_name, manager_name=manager_name
+                )
+            )
+            session.flush()
+            session.add(LeagueMembership(season=SEASON, league_fpl_id=league_id, entry_id=entry_id))
+        session.flush()
+        for entry_id, by_gameweek in picks.items():
+            for gameweek, players in by_gameweek.items():
+                session.add(
+                    ManagerGameweek(
+                        season=SEASON, entry_id=entry_id, gameweek_fpl_id=gameweek, has_team=True
+                    )
+                )
+                session.flush()
+                numbered = players if isinstance(players, dict) else dict(enumerate(players, 1))
+                for position, fpl_id in numbered.items():
+                    session.add(
+                        ManagerPick(
+                            season=SEASON,
+                            entry_id=entry_id,
+                            gameweek_fpl_id=gameweek,
+                            position=position,
+                            player_fpl_id=fpl_id,
+                            multiplier=1,
+                            is_captain=False,
+                            is_vice_captain=False,
+                        )
+                    )

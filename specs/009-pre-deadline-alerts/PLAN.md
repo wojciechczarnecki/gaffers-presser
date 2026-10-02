@@ -152,13 +152,13 @@ Design choices:
 |----|-------|--------------|-----------------------|
 | AC1 | 4, 14 | `tests/alerts/test_config.py::test_alerts_disabled_reasons`, `tests/worker/test_cli.py::test_status_shows_alerts_disabled_with_reason`, `::test_run_starts_alerts_only_when_enabled` | `uv run pytest -q tests/alerts/test_config.py` (stub config) → `assert None == 'delivery disabled'` |
 | AC2 | 4, 14, 15 | `tests/alerts/test_config.py::test_invalid_values_name_the_variable` (parametrised), `tests/worker/test_cli.py::test_worker_rejects_invalid_alert_slots_naming_the_variable`, `tests/alerts/test_cli.py::test_cli_rejects_invalid_alert_variable` | `uv run pytest -q tests/alerts/test_config.py` (stub config) → `Failed: DID NOT RAISE ConfigError` |
-| AC3 | 6 | `tests/alerts/test_players.py::test_league_owned_uses_latest_synced_picks_with_managers` | |
-| AC4 | 6 | `tests/alerts/test_players.py::test_widely_owned_at_threshold` | |
-| AC5 | 6 | `tests/alerts/test_players.py::test_trending_counts_independent_accounts_with_reposts` | |
-| AC6 | 6, 10 | `tests/alerts/test_players.py::test_only_players_with_a_claim_are_reported_once_with_all_categories`, `tests/alerts/test_slots.py::test_digest_without_claims_says_no_news` | |
+| AC3 | 6 | `tests/alerts/test_players.py::test_league_owned_uses_latest_synced_picks_with_managers` | `uv run pytest -q tests/alerts/test_players.py -k league_owned` (stub `listed_players`) → `assert set() == {2, 3}` |
+| AC4 | 6 | `tests/alerts/test_players.py::test_widely_owned_at_threshold` | `uv run pytest -q tests/alerts/test_players.py` (stub) → `assert set() == {2}` |
+| AC5 | 6 | `tests/alerts/test_players.py::test_trending_counts_independent_accounts_with_reposts` | `uv run pytest -q tests/alerts/test_players.py` (stub) → `assert [] == [(1, 3)]` |
+| AC6 | 6, 10 | `tests/alerts/test_players.py::test_only_players_with_a_claim_are_reported_once_with_all_categories`, `tests/alerts/test_slots.py::test_digest_without_claims_says_no_news` | `uv run pytest -q tests/alerts/test_players.py` (stub) → `assert [] == [1]` |
 | AC7 | 1, 2 | `tests/db/test_migrations.py::test_ownership_migration_keeps_rows_and_downgrades`, `tests/fpl/test_reference_sync.py::test_selected_by_percent_written_and_refreshed` | `uv run pytest -q tests/db/test_migrations.py -k ownership` (stub migration 0008) → `assert "selected_by_percent" in columns`; `uv run pytest -q tests/fpl/test_reference_sync.py -k selected` (column added, sync not yet writing it) → `assert rows == {el["id"]: Decimal(el["selected_by_percent"]) ...}` |
 | AC8 | 10 | `tests/alerts/test_slots.py::test_digest_covers_previous_deadline_to_slot_with_full_corroboration`, `::test_digest_without_claims_says_no_news` | |
-| AC9 | 5, 6 | `tests/alerts/test_render.py::test_player_section_fields`, `tests/alerts/test_players.py::test_order_by_ownership_nulls_last` | `uv run pytest -q tests/alerts/test_render.py` (stub `render_alert`) → `assert ('Saka' in 'x')`; ordering by ownership: _pending step 6_ |
+| AC9 | 5, 6 | `tests/alerts/test_render.py::test_player_section_fields`, `tests/alerts/test_players.py::test_order_by_ownership_nulls_last` | `uv run pytest -q tests/alerts/test_render.py` (stub `render_alert`) → `assert ('Saka' in 'x')`; `uv run pytest -q tests/alerts/test_players.py` (stub) → `assert [] == ['Isak', 'Saka', 'Gabriel', 'Jesus']` |
 | AC10 | 5 | `tests/alerts/test_render.py::test_times_are_warsaw`, `tests/content/test_alert_email.py::test_template_has_every_key_and_renders`, `tests/alerts/test_render.py::test_alerts_code_has_no_polish_literals` | `uv run pytest -q tests/alerts/test_render.py tests/content/test_alert_email.py` (stub `render_alert`) → `assert '2026-10-04 16:00' in 'x'`; `assert set() == {('category', ...), ...}` |
 | AC11 | 10 | `tests/alerts/test_slots.py::test_news_reports_only_players_with_unincluded_posts_and_marks_new`, `::test_news_with_nothing_new_is_skipped` | |
 | AC12 | 7, 9, 11 | `tests/corroboration/test_service.py::test_given_anchor_is_the_anchor`, `tests/alerts/test_breaking.py::test_breaking_anchor_is_the_post_sql_only`, `::test_two_posts_extracted_in_one_tick_each_break`, `tests/alerts/test_store.py::test_breaking_context_rows_are_not_included` | |
@@ -312,7 +312,7 @@ Design choices:
       `search_failed` or `corroboration.retrieval.failure is not None`.
       Automatic verification: `cd backend && uv run pytest -q tests/alerts/test_render.py
       tests/content/test_alert_email.py`
-- [ ] 6. **Players in scope** — files: `backend/app/alerts/players.py`,
+- [x] 6. **Players in scope** — files: `backend/app/alerts/players.py`,
       `backend/tests/alerts/test_players.py` (synthetic managers, leagues and picks; the
       `seed_reference` / `add_claim` helpers from `tests/corroboration/helpers.py`).
       Write first: `test_league_owned_uses_latest_synced_picks_with_managers` (picks for GW4 and
