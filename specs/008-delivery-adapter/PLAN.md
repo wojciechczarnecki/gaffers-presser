@@ -3,7 +3,7 @@
 ## Owner summary
 
 - **Approach:** a new `app/delivery/` module: a channel-agnostic `Message` and `Channel`
-  protocol, a Resend adapter over `httpx` and a `file` adapter writing `.eml` files, chosen by
+  protocol and a Resend adapter over `httpx` (a `file` adapter was dropped 2026-10-02), chosen by
   `DELIVERY_PROVIDER` with start-up validation. One `DeliveryService.send(key, kind, message)`
   writes a `delivery_log` row per idempotency key and holds that row's lock during the provider
   call, so a repeated or concurrent send with the same key never sends twice. The existing
@@ -19,8 +19,8 @@
   decisions").
 - **Data migration:** yes — `0007` adds the `delivery_log` table (new table only, no change to
   existing data); accepted in SPEC → "Owner decisions".
-- **Manual scenarios for the owner:** 2 — a real `send-test` through Resend from Railway
-  (`railway ssh`) landing in the inbox, and opening a `file`-adapter `.eml` in a mail client.
+- **Manual scenarios for the owner:** 1 — a real `send-test` through Resend from Railway
+  (`railway ssh`) landing in the inbox.
 
 ## Approach
 
@@ -494,8 +494,6 @@ downgrade and upgrade). `<verify.command>`: final full run: 1136 passed (ruff ch
    account owner's address); after deploy, `railway ssh` → `python -m app.delivery send-test`:
    the e-mail arrives in the inbox with the Polish test text and the Warsaw time;
    `python -m app.delivery status` shows the row with a provider ID (AC15, AC12 live).
-2. Locally, run `send-test` with `DELIVERY_PROVIDER=file` and open the `.eml` from `./outbox`
-   in a mail client: subject and Polish text display correctly (AC13 "opens in a mail client").
 
 ## Definition of Done
 
@@ -519,6 +517,12 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
   - F2 (`nit`, `Retry-After` of `-1`/`nan`) — rejected.
   - F3 (`nit`, no service test for a stop after a failed attempt) — rejected.
   - F4 (`nit`, `deviations_minor` disagrees with `## Deviations`) — rejected.
+- 2026-10-02 — after the final review, before merge (fast path): the owner reverses the
+  `file` adapter decision — they will not open `.eml` files and `delivery_log` already holds
+  every message. Removed: `channels/file.py` and its tests, the `file` provider and
+  `DELIVERY_FILE_DIR`, `backend/outbox/` in `.gitignore`, the docs mentions, AC5, AC13 and
+  manual scenario 2. With no channel returning no ID left, `Channel.send` now returns `str`
+  (the provider message ID), and the two tests of a `None` ID are gone.
 
 ## Review log
 

@@ -1259,7 +1259,7 @@ def _delivery_row(db, key, kind, status, requested_at, accepted_at=None):
             DeliveryLog(
                 idempotency_key=key,
                 kind=kind,
-                channel="file",
+                channel="resend",
                 title="t",
                 text_body="b",
                 status=status,
@@ -1283,13 +1283,13 @@ def test_status_shows_delivery_line(cli, db):
     _delivery_row(db, "alert:1", "alert", "failed", NOW - timedelta(hours=1))
     _delivery_row(db, "alert:0", "alert", "failed", NOW - timedelta(hours=25))
 
-    result = cli("status", delivery_channel="file")
+    result = cli("status", delivery_channel="resend")
 
     assert result.exit_code == 0
     lines = result.stdout.splitlines()
-    assert "Delivery: file  last sent: 2026-09-25T22:00:00Z (presser)  failed in 24 h: 1" in lines
+    assert "Delivery: resend  last sent: 2026-09-25T22:00:00Z (presser)  failed in 24 h: 1" in lines
     assert lines.index("Extraction: disabled") < lines.index(
-        "Delivery: file  last sent: 2026-09-25T22:00:00Z (presser)  failed in 24 h: 1"
+        "Delivery: resend  last sent: 2026-09-25T22:00:00Z (presser)  failed in 24 h: 1"
     )
 
 
@@ -1337,5 +1337,7 @@ def test_deps_carry_the_delivery_channel_name(monkeypatch, tmp_path):
         lambda: Settings(_env_file=None, database_url="postgresql+psycopg://u@localhost/x"),
     )
     assert worker_cli._deps_from_settings().delivery_channel is None
-    monkeypatch.setenv("DELIVERY_PROVIDER", "file")
-    assert worker_cli._deps_from_settings().delivery_channel == "file"
+    monkeypatch.setenv("DELIVERY_PROVIDER", "resend")
+    monkeypatch.setenv("RESEND_API_KEY", "re_synthetic_key")
+    monkeypatch.setenv("DELIVERY_EMAIL_TO", "owner@example.test")
+    assert worker_cli._deps_from_settings().delivery_channel == "resend"

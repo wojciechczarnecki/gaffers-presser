@@ -24,7 +24,7 @@ class FixedClock:
 class FakeChannel:
     def __init__(
         self,
-        results: list[str | None | Exception] | None = None,
+        results: list[str | Exception] | None = None,
         name: str = "fake",
         gate: threading.Event | None = None,
         entered: threading.Event | None = None,
@@ -36,7 +36,7 @@ class FakeChannel:
         self.calls: list[Message] = []
         self.keys: list[str] = []
 
-    def send(self, message: Message, idempotency_key: str) -> str | None:
+    def send(self, message: Message, idempotency_key: str) -> str:
         self.calls.append(message)
         self.keys.append(idempotency_key)
         if self._entered is not None:

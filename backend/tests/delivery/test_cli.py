@@ -62,12 +62,6 @@ def test_send_test_prints_outcome_and_provider_id(db):
     assert len(keys) == 2 and len(set(keys)) == 2
 
 
-def test_send_test_without_provider_id_prints_dash(db):
-    result = runner.invoke(app, ["send-test"], obj=deps(db, FakeChannel([None]), "file"))
-    assert result.exit_code == 0, result.output
-    assert "provider id: -" in result.output
-
-
 def test_send_test_failed_exits_non_zero(db):
     channel = FakeChannel([ChannelRejectedError("no", 403)])
     result = runner.invoke(app, ["send-test"], obj=deps(db, channel))

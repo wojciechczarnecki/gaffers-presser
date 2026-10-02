@@ -94,16 +94,6 @@ def test_first_send_writes_full_row(db):
     assert channel.calls == [MESSAGE]
 
 
-def test_file_channel_success_with_no_provider_id_is_sent(db):
-    service = make_service(db, FakeChannel([None], name="file"))
-    outcome = service.send("test:1", "test", MESSAGE)
-    (row,) = rows(db)
-    assert outcome.status == "sent"
-    assert row.status == "sent"
-    assert row.provider_message_id is None
-    assert row.accepted_at is not None
-
-
 def test_sent_key_is_not_sent_again(db):
     clock = FixedClock()
     channel = FakeChannel(["provider-1", "provider-2"])

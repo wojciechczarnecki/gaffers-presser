@@ -24,9 +24,9 @@ class Message:
 class Channel(Protocol):
     name: str
 
-    def send(self, message: Message, idempotency_key: str) -> str | None:
-        """Deliver the message; the same key on a repeated call must not deliver it twice
-        when the provider supports deduplication (a lost reply followed by a retry)."""
+    def send(self, message: Message, idempotency_key: str) -> str:
+        """Deliver the message and return the provider's message ID; the same key on a repeated
+        call must not deliver it twice (a lost reply followed by a retry)."""
         ...
 
     def close(self) -> None: ...

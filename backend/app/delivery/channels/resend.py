@@ -48,7 +48,7 @@ class ResendChannel:
     def close(self) -> None:
         self._client.close()
 
-    def send(self, message: Message, idempotency_key: str) -> str | None:
+    def send(self, message: Message, idempotency_key: str) -> str:
         payload = {
             "from": self._from,
             "to": [self._to],

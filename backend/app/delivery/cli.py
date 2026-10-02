@@ -74,7 +74,7 @@ def _deps_from_settings() -> DeliveryCliDeps:
 
     def make_channel() -> Channel:
         assert config is not None
-        return build_channel(config, clock)
+        return build_channel(config)
 
     return DeliveryCliDeps(
         engine=_engine_from_env(), config=config, make_channel=make_channel, clock=clock

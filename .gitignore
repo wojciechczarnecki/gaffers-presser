@@ -16,9 +16,6 @@ ENV/
 # Tweet ingest latency measurements (owner's local runs)
 backend/measurements/
 
-# Delivery file adapter output (local runs)
-backend/outbox/
-
 # IDE
 .idea/
 .vscode/

@@ -152,7 +152,6 @@ def test_deployment_documents_delivery():
         "RESEND_API_KEY",
         "DELIVERY_EMAIL_TO",
         "DELIVERY_EMAIL_FROM",
-        "DELIVERY_FILE_DIR",
         "python -m app.delivery send-test",
         "python -m app.delivery status",
         "onboarding@resend.dev",

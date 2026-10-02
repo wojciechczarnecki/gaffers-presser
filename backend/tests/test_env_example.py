@@ -43,7 +43,6 @@ _DELIVERY_FIELD_TO_VARIABLE = {
     "resend_api_key": "RESEND_API_KEY",
     "delivery_email_to": "DELIVERY_EMAIL_TO",
     "delivery_email_from": "DELIVERY_EMAIL_FROM",
-    "delivery_file_dir": "DELIVERY_FILE_DIR",
 }
 
 

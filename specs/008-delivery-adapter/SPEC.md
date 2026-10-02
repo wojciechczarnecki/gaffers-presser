@@ -32,8 +32,7 @@ metrics:
 ## Goal
 
 Alerts (Stage 2) and the presser (Stage 3) need one way to put a message in front of the owner.
-This spec delivers a channel-agnostic delivery interface with a Resend e-mail adapter and a
-file adapter for development, plus a delivery log that makes every send idempotent and
+This spec delivers a channel-agnostic delivery interface with a Resend e-mail adapter, plus a delivery log that makes every send idempotent and
 observable. It works when `python -m app.delivery send-test` lands a message in the owner's
 inbox from production, a repeated send with the same key sends nothing, and a later WhatsApp or
 Messenger channel is a new adapter with no change to its callers.
@@ -89,7 +88,6 @@ Messenger channel is a new adapter with no change to its callers.
 - A `delivery` module with a channel-agnostic message (title, plain-text body, optional HTML
   body) and a channel interface; callers send through one service and never see the provider.
 - A Resend adapter over its HTTP API (`httpx`, no new dependency).
-- A file adapter that writes each message to a directory as a `.eml` file instead of sending.
 - Configuration by environment variables with start-up validation; an empty provider disables
   delivery.
 - A delivery log table with an idempotency key and the full message, and an Alembic migration.
@@ -128,14 +126,13 @@ Message and interface
 
 Configuration
 
-- [ ] AC3: `DELIVERY_PROVIDER` selects the adapter: `resend` or `file`; empty or unset disables
+- [ ] AC3: `DELIVERY_PROVIDER` selects the adapter: `resend` (the only one); empty or unset disables
   delivery. Any other value fails start-up (worker and CLI) with a message naming the variable
   and the allowed values.
 - [ ] AC4: `resend` requires `RESEND_API_KEY` and `DELIVERY_EMAIL_TO`; `DELIVERY_EMAIL_FROM` is
   optional and defaults to `onboarding@resend.dev`. A missing required variable fails start-up
   with a message naming the variable, never its value.
-- [ ] AC5: `file` writes to `DELIVERY_FILE_DIR`, default `./outbox` relative to the working
-  directory, created if missing.
+- ~~AC5: `file` writes to `DELIVERY_FILE_DIR`, default `./outbox`.~~ (Removed by the owner 2026-10-02, before merge: the `file` adapter is dropped.)
 - [ ] AC6: With delivery disabled, sending through the service returns a `disabled` outcome,
   writes no log row and logs one line per process saying delivery is disabled; the worker and
   every other loop run exactly as before.
@@ -160,10 +157,7 @@ Sending and the log
   configured from and to addresses, the title as the subject, the text body and, when present,
   the HTML body; it reads the message ID from the response. Tested against recorded responses:
   200, 403 (testing-domain recipient), 422, 429 with `Retry-After`, 500 and a timeout.
-- [ ] AC13: The file adapter writes one RFC 5322 `.eml` file per message, multipart with a text
-  part and, when present, an HTML part, named so files sort by send time, and returns no
-  provider ID; the file opens in a mail client and its text part equals the message's text
-  body.
+- ~~AC13: The file adapter writes one RFC 5322 `.eml` file per message.~~ (Removed by the owner 2026-10-02, before merge: the `file` adapter is dropped.)
 - [ ] AC14: Application logs for a send carry only the key's kind, the log row ID, the channel,
   the status, the attempts and the error class — never the recipient, the sender, the title,
   the body or the API key. A test captures the logs of a successful and a failed send and finds
@@ -203,7 +197,7 @@ Documentation
 | A channel-agnostic interface (title, text, optional HTML; recipient in the adapter's configuration) | an e-mail-shaped interface (to, from, subject) | e-mail is temporary; WhatsApp or Messenger must be a new adapter only (the owner) |
 | A delivery log with a unique idempotency key and the full message | a stateless adapter with deduplication left to each caller | the worker's catch-up after a restart could send a presser or an alert twice; the log gives alerts the provider-accepted time for latency and keeps sent pressers as history (the owner) |
 | Short in-call retries on transient errors, then `failed` | a re-send loop in the worker; no retries | an alert loses its value within minutes; a 4xx will not fix itself (the owner) |
-| A `file` adapter writing `.eml` files | a fake only inside `pytest` | messages can be inspected locally and in agent sessions with no key and no send (the owner) |
+| A fake channel only inside `pytest`; no `file` adapter (changed 2026-10-02) | a `file` adapter writing `.eml` files (built, then dropped before merge) | the owner never opens `.eml` files; `delivery_log` already keeps every message's full title and bodies (the owner) |
 | One recipient, `DELIVERY_EMAIL_TO` | a comma-separated list | ADR 0004 delivers to the owner; Resend without a domain sends only to the account owner (the owner) |
 | The full message is stored in the database; logs carry none of it | metadata only | the database already holds manager names; the presser history is reusable; logs stay clean (the owner) |
 | `send-test` and `status` CLI plus a worker status line | `send-test` only | the owner verifies production credentials before the first real alert (the owner) |

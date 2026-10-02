@@ -110,7 +110,7 @@ below; agents never touch production.
       `python -m app.corroboration.evaluation build-cases | review | evaluate`.
 11. **Delivery (optional).** Alerts and the presser leave through one delivery interface; this
     step sets its channel. With no `DELIVERY_PROVIDER` set, delivery is disabled: the worker and
-    every loop run exactly as before and sending returns `disabled`. One of `resend` or `file`;
+    every loop run exactly as before and sending returns `disabled`. The only channel is `resend`;
     any other value stops the worker and the CLI at start with a message naming the variable.
     - `resend` sends e-mail over the Resend HTTP API and requires `RESEND_API_KEY` and
       `DELIVERY_EMAIL_TO` (one recipient). `DELIVERY_EMAIL_FROM` is optional and defaults to
@@ -118,8 +118,6 @@ below; agents never touch production.
       `onboarding@resend.dev` and only to the address of the Resend account owner; any other
       recipient gets HTTP 403, and the send is recorded as `failed`. The free plan allows 100
       e-mails a day and 3,000 a month and pauses sending at the limit, with no charge.
-    - `file` writes every message as an `.eml` file to `DELIVERY_FILE_DIR` (default `./outbox`,
-      created if missing) and sends nothing; use it locally.
     - Migration `0007` adds the `delivery_log` table (a unique idempotency key and the full
       message of every send). It runs through the pre-deploy like the others.
     - Check the credentials before the first real alert: from a Railway shell (`railway ssh`)
