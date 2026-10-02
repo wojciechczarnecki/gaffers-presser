@@ -18,6 +18,9 @@ metrics:
   converge_gaps: 0
   deviations_minor: 8
   deviations_major: 0
+  final_review_blockers: 0
+  final_review_worth_fixing: 1
+  final_review_nits: 4
 ---
 
 # SPEC 009 — Pre-deadline alert e-mails

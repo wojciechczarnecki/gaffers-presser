@@ -767,4 +767,67 @@ All minor; none changes the scope, the architecture or the data schema.
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-10-02 — /pipeline:final-review (report)
+
+Method: no `Agent` tool was available to this stage agent, so the three perspectives
+(compliance with SPEC/PLAN, quality and maintainability, tests) were run by the reviewer one
+after another over `git diff origin/main...HEAD`, each reading the code and tests afresh. Full
+verification on the branch: ruff clean, 322 files formatted, 1237 passed (one earlier run showed
+a single error in the pre-existing timing test
+`tests/worker/test_cli.py::test_sigterm_with_embedder_blocked_in_a_call_exits_within_10_s`;
+it passed in isolation and in the rerun, and the branch does not touch it).
+
+AC → evidence:
+
+| AC | Evidence |
+|----|----------|
+| AC1 | `app/alerts/config.py::alerts_disabled_reason`, `app/worker/cli.py` (`_deps_from_settings`, `status`); `tests/alerts/test_config.py::test_alerts_disabled_reasons`, `tests/worker/test_cli.py::test_status_shows_alerts_disabled_with_reason`, `::test_run_starts_alerts_only_when_enabled` |
+| AC2 | `config.py::_slots`/`_positive_int`/`_percent`; `test_config.py::test_invalid_values_name_the_variable`, `tests/worker/test_cli.py::test_worker_rejects_invalid_alert_slots_naming_the_variable`, `tests/alerts/test_cli.py::test_cli_rejects_invalid_alert_variable` |
+| AC3 | `app/alerts/players.py::_league_owned`; `test_players.py::test_league_owned_uses_latest_synced_picks_with_managers` |
+| AC4 | `players.py::_widely_owned`; `test_players.py::test_widely_owned_at_threshold` |
+| AC5 | `players.py::_claims` (`account_of`); `test_players.py::test_trending_counts_independent_accounts_with_reposts` |
+| AC6 | `players.py::listed_players`; `test_players.py::test_only_players_with_a_claim_are_reported_once_with_all_categories`, `test_slots.py::test_digest_without_claims_says_no_news` |
+| AC7 | `migrations/versions/0008_player_ownership.py`, `app/fpl/reference.py`; `tests/db/test_migrations.py::test_ownership_migration_keeps_rows_and_downgrades`, `tests/fpl/test_reference_sync.py::test_selected_by_percent_written_and_refreshed` |
+| AC8 | `app/alerts/service.py::run_slot`/`build_slot_alert`; `test_slots.py::test_digest_covers_previous_deadline_to_slot_with_full_corroboration`, `::test_digest_without_claims_says_no_news` |
+| AC9 | `app/alerts/render.py::_section`, `players.py` ordering; `test_render.py::test_player_section_fields`, `test_players.py::test_order_by_ownership_nulls_last` |
+| AC10 | `app/content/alert_email.toml`, `render.py` (`format_local`); `test_render.py::test_times_are_warsaw`, `::test_alerts_code_has_no_polish_literals`, `tests/content/test_alert_email.py` |
+| AC11 | `service.py::build_slot_alert` (news filter); `test_slots.py::test_news_reports_only_players_with_unincluded_posts_and_marks_new`, `::test_news_with_nothing_new_is_skipped` |
+| AC12 | `app/alerts/breaking.py::run_breaking`, `corroborate(..., anchor_x_id)`; `test_breaking.py::test_breaking_anchor_is_the_post_sql_only`, `::test_two_posts_extracted_in_one_tick_each_break`, `tests/corroboration/test_service.py::test_given_anchor_is_the_anchor` |
+| AC13 | `app/tweets/reposts.py`, `store.py::included_origins`; `test_breaking.py::test_included_post_or_its_repost_never_breaks`, `tests/tweets/test_reposts.py` |
+| AC14 | `app/alerts/loop.py` (5 s wake); `test_loop.py::test_breaking_sent_within_15_s_of_extraction` |
+| AC15 | `store.py::record_alert` (unique key), delivery key; `test_slots.py::test_repeated_run_sends_once`, `::test_lost_record_after_send_is_recovered_without_resend`, `test_breaking.py::test_breaking_repeated_tick_sends_once` |
+| AC16 | `schedule.py::due_slots`, cut-off checks in `run_slot`/`run_breaking`; `test_schedule.py::test_missed_slots_due_in_order_until_deadline`, `test_slots.py::test_restart_sends_missed_slot_up_to_send_time`, `::test_no_send_at_or_after_deadline` |
+| AC17 | `service.py::corroborate_player` fallback, `loop.py::run`; `test_slots.py::test_failed_delivery_recorded_and_not_retried`, `::test_failed_corroboration_falls_back_to_sql_with_note`, `test_loop.py::test_tick_error_does_not_stop_the_loop` |
+| AC18 | `migrations/versions/0009_alert_log.py`, `schedule.py::deadline_key`/`rehearsal_key`; `test_migrations.py::test_alert_log_migration_adds_only_new_tables`, `test_schedule.py::test_deadline_keys`, `test_store.py::test_included_is_scoped_to_the_deadline_key` |
+| AC19 | `app/alerts/latency.py`, `cli.py::latency`; `test_latency.py::test_percentiles_and_legs`, `test_cli.py::test_latency_default_gameweek_and_rehearsal` (see F1) |
+| AC20 | `schedule.py::polling_window`, `app/tweets/schedule.py` `window`; `test_schedule.py::test_polling_window`, `tests/tweets/test_schedule.py::test_custom_window_and_extra_deadline`, `tests/worker/test_cli.py::test_status_tweet_window_follows_the_alert_slots` |
+| AC21 | `cli.py::preview`; `test_cli.py::test_preview_prints_and_writes_nothing` |
+| AC22 | `schedule.py::alert_deadlines`, worker `_polling`; `test_schedule.py::test_rehearsal_is_an_extra_alert_deadline`, `tests/worker/test_cli.py::test_rehearsal_not_written_to_gameweek_and_polls_fast` |
+| AC23 | deadline-key scoping in `store.py`; `test_slots.py::test_rehearsal_alerts_do_not_count_for_the_real_deadline`, `test_end_to_end.py` (unchanged real included set) |
+| AC24 | `schedule.py::check_rehearsal`; `test_schedule.py::test_rehearsal_past_ignored_and_overlap_rejected`, `tests/worker/test_cli.py::test_worker_rejects_overlapping_rehearsal_naming_the_variable` |
+| AC25 | `backend/.env.example`, `docs/DEPLOYMENT.md` step 12; `tests/test_env_example.py::test_every_alert_variable_is_an_empty_placeholder`, `tests/test_readme.py::test_deployment_describes_rehearsal_variable` |
+| AC26 | `app/alerts/status.py`, `cli.py::status`; `test_status.py::test_alert_status_next_slot_last_alert_and_failures`, `tests/worker/test_cli.py::test_status_shows_alerts_line`, `test_cli.py::test_status_shows_next_slot_last_alert_and_failures` |
+| AC27 | the tests above and `tests/alerts/test_end_to_end.py::test_one_simulated_deadline_and_one_rehearsal` |
+| AC28 | log calls in `service.py`, `breaking.py`, `loop.py` (key, kind, counts, outcome, exception class); `test_loop.py::test_logs_carry_no_bodies_addresses_or_texts` |
+
+Compliance: all 18 steps ticked with evidence; the 8 deviations are minor and justified; nothing
+outside the scope; every AC row of the AC → steps matrix has its red record (AC27 `n/a` with a
+reason).
+
+Findings:
+
+| id | severity | file:line | scenario | fix |
+|----|----------|-----------|----------|-----|
+| F1 | `worth-fixing` | `backend/app/alerts/latency.py:48` | `post_latencies` takes every `new` row of every sent alert, so the T-120 digest contributes all posts since the previous deadline (hours to days old); on the rehearsal or GW6 run the "extraction -> accepted" and "total" p50/p95/max are dominated by them and the breaking-path latency the owner wants to read (manual scenario 2, PROJECT 60 s target) is not visible | report the legs per alert kind (breaking separately from digest/news), keeping all posts AC19 asks for; a test with one digest post and one breaking post asserting both rows |
+| F2 | `nit` | `backend/app/alerts/breaking.py:90` | `_extracted_since` is gated on the last slot's `as_of`, which never moves; after the first post extracted in the breaking window every 5 s tick runs `listed_players`, `current_extractions` over the whole window since the previous deadline and `included_origins` (loading tweet raw payloads) — deviation 4's "keeps the 5 s tick cheap" holds only until the first extraction | keep an in-memory high-water mark of the last processed `finished_at` for the gate (falling back to the slot's `as_of` after a restart) |
+| F3 | `nit` | `backend/app/worker/cli.py:244` | `_alerts_runtime` runs before the `try` and catches only `CollectorError`; with the database down at start (`load_state` → `OperationalError`) or a channel/runtime build error the worker exits with a raw traceback instead of the established `worker failed: <class>` line | catch `Exception` there, log the class only, exit 1 |
+| F4 | `nit` | `backend/app/content/alert_email.toml:34` | Polish plural forms are fixed: with the default threshold the trending line reads "pisze o nim 3 niezależnych kont" (should be "3 niezależne konta"); `no_news` (line 68) gives "1 zawodników" | plural variants (one / few / many) in the template and a small chooser in `render.py` |
+| F5 | `nit` | `backend/tests/alerts/test_loop.py:192` | `test_stop_event_ends_loop_promptly` joins the thread with a timeout but never asserts it stopped, so it passes even if the loop ignores the stop event | `assert not thread.is_alive()` after the join |
+
+Rejected after checking the code:
+
+- "`corroborate_player`'s `except Exception` swallows `Shutdown`" — `Shutdown` is a `BaseException` (`app/worker/jobs.py:22`).
+- "`DISTINCT ON` without `ORDER BY` in `included_origins` is invalid" — PostgreSQL accepts it; any row per `x_id` serves (the raw payload is per post).
+- "a failed breaking delivery is retried by the next tick" — `alert_exists` stops it, as the recorded `failed` row has the key.
+
+Left out: 3 nit findings
