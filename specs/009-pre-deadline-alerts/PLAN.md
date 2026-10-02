@@ -165,15 +165,15 @@ Design choices:
 | AC13 | 9, 11 | `tests/tweets/test_reposts.py::test_reposted_x_id_per_source`, `tests/alerts/test_breaking.py::test_included_post_or_its_repost_never_breaks` | |
 | AC14 | 12 | `tests/alerts/test_loop.py::test_breaking_sent_within_15_s_of_extraction` | |
 | AC15 | 3, 10, 11, 12 | `tests/alerts/test_slots.py::test_repeated_run_sends_once`, `::test_lost_record_after_send_is_recovered_without_resend`, `tests/alerts/test_breaking.py::test_breaking_repeated_tick_sends_once` | |
-| AC16 | 8, 10 | `tests/alerts/test_schedule.py::test_missed_slots_due_in_order_until_deadline`, `tests/alerts/test_slots.py::test_restart_sends_missed_slot_up_to_send_time`, `::test_no_send_at_or_after_deadline` | |
+| AC16 | 8, 10 | `tests/alerts/test_schedule.py::test_missed_slots_due_in_order_until_deadline`, `tests/alerts/test_slots.py::test_restart_sends_missed_slot_up_to_send_time`, `::test_no_send_at_or_after_deadline` | `uv run pytest -q tests/alerts/test_schedule.py` (stub schedule) → `assert [] == [120]` (`test_missed_slots_due_in_order_until_deadline`); slots part: _pending step 10_ |
 | AC17 | 10, 12 | `tests/alerts/test_slots.py::test_failed_delivery_recorded_and_not_retried`, `::test_failed_corroboration_falls_back_to_sql_with_note`, `tests/alerts/test_loop.py::test_tick_error_does_not_stop_the_loop` | |
-| AC18 | 3, 8, 9 | `tests/db/test_migrations.py::test_alert_log_migration_adds_only_new_tables`, `tests/alerts/test_schedule.py::test_deadline_keys`, `tests/alerts/test_store.py::test_included_is_scoped_to_the_deadline_key` | `uv run pytest -q tests/db/test_migrations.py -k alert_log` (stub migration 0009) → `assert ALERT_TABLES <= set(inspector.get_table_names())` |
+| AC18 | 3, 8, 9 | `tests/db/test_migrations.py::test_alert_log_migration_adds_only_new_tables`, `tests/alerts/test_schedule.py::test_deadline_keys`, `tests/alerts/test_store.py::test_included_is_scoped_to_the_deadline_key` | `uv run pytest -q tests/db/test_migrations.py -k alert_log` (stub migration 0009) → `assert ALERT_TABLES <= set(inspector.get_table_names())`; `uv run pytest -q tests/alerts/test_schedule.py` (stub schedule) → `assert '' == '2026/27:gw6'` |
 | AC19 | 15 | `tests/alerts/test_latency.py::test_percentiles_and_legs`, `tests/alerts/test_cli.py::test_latency_default_gameweek_and_rehearsal` | |
-| AC20 | 8, 13 | `tests/alerts/test_schedule.py::test_polling_window`, `tests/tweets/test_schedule.py::test_custom_window_and_extra_deadline` | |
+| AC20 | 8, 13 | `tests/alerts/test_schedule.py::test_polling_window`, `tests/tweets/test_schedule.py::test_custom_window_and_extra_deadline` | `uv run pytest -q tests/alerts/test_schedule.py` (stub schedule) → `assert datetime.timedelta(0) == datetime.timedelta(seconds=5400)`; the tweets part: _pending step 13_ |
 | AC21 | 16 | `tests/alerts/test_cli.py::test_preview_prints_and_writes_nothing` | |
-| AC22 | 8, 13, 14 | `tests/alerts/test_schedule.py::test_rehearsal_is_an_extra_alert_deadline`, `tests/worker/test_cli.py::test_rehearsal_not_written_to_gameweek_and_polls_fast` | |
+| AC22 | 8, 13, 14 | `tests/alerts/test_schedule.py::test_rehearsal_is_an_extra_alert_deadline`, `tests/worker/test_cli.py::test_rehearsal_not_written_to_gameweek_and_polls_fast` | `uv run pytest -q tests/alerts/test_schedule.py` (stub schedule) → `assert [] == [True]`; the worker part: _pending step 14_ |
 | AC23 | 10 | `tests/alerts/test_slots.py::test_rehearsal_alerts_do_not_count_for_the_real_deadline` | |
-| AC24 | 8, 14 | `tests/alerts/test_schedule.py::test_rehearsal_past_ignored_and_overlap_rejected`, `tests/worker/test_cli.py::test_worker_rejects_overlapping_rehearsal_naming_the_variable` | |
+| AC24 | 8, 14 | `tests/alerts/test_schedule.py::test_rehearsal_past_ignored_and_overlap_rejected`, `tests/worker/test_cli.py::test_worker_rejects_overlapping_rehearsal_naming_the_variable` | `uv run pytest -q tests/alerts/test_schedule.py` (stub schedule) → `Failed: DID NOT RAISE ConfigError`; the worker part: _pending step 14_ |
 | AC25 | 18 | `tests/test_env_example.py::test_every_alert_variable_is_an_empty_placeholder`, `tests/test_readme.py::test_deployment_describes_rehearsal_variable` | |
 | AC26 | 14, 15 | `tests/alerts/test_status.py::test_alert_status_next_slot_last_alert_and_failures`, `tests/worker/test_cli.py::test_status_shows_alerts_line`, `tests/alerts/test_cli.py::test_status_shows_next_slot_last_alert_and_failures` | |
 | AC27 | 5, 6, 8, 10, 11, 17 | the step tests above and `tests/alerts/test_end_to_end.py` | n/a — the AC is delivered by the tests themselves |
@@ -344,7 +344,7 @@ Design choices:
       it is the anchor, the others labelled against it; an `anchor_x_id` with no claim → the
       newest, as today). Then the keyword `anchor_x_id: int | None = None` in `corroborate`.
       Automatic verification: `cd backend && uv run pytest -q tests/corroboration/`
-- [ ] 8. **Slot planning** — files: `backend/app/alerts/schedule.py`,
+- [x] 8. **Slot planning** — files: `backend/app/alerts/schedule.py`,
       `backend/tests/alerts/test_schedule.py`.
       Write first: `test_deadline_keys` (`"2026/27:gw6"`, `"rehearsal:2026-10-04T16:00Z"`);
       `test_rehearsal_is_an_extra_alert_deadline` (real deadlines plus the rehearsal, sorted; the
