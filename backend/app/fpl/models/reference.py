@@ -1,6 +1,7 @@
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import ForeignKeyConstraint, Index
+from sqlalchemy import Column, ForeignKeyConstraint, Index, Numeric
 from sqlmodel import Field, SQLModel
 
 from app.fpl.models.columns import utc_column
@@ -45,6 +46,9 @@ class Player(SQLModel, table=True):
     second_name: str
     team_fpl_id: int
     position: int
+    selected_by_percent: Decimal | None = Field(
+        default=None, sa_column=Column(Numeric(5, 1), nullable=True)
+    )
 
 
 class Fixture(SQLModel, table=True):

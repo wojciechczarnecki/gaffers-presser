@@ -128,3 +128,35 @@ below; agents never touch production.
     - `python -m app.worker status` ends with a `Delivery:` line: the channel (or `disabled`),
       the time and kind of the last successful send and the number of failed sends in the last
       24 hours.
+12. **Alerts (optional).** Before each deadline the worker e-mails team news about the players
+    that matter to the league: a digest at the first slot, news at the later slots and a breaking
+    e-mail for every new post from the last slot to the deadline. Alerts run only when delivery
+    (step 11), tweet ingest (step 7) and extraction (step 8) are all enabled; otherwise
+    `python -m app.worker status` ends with `Alerts: disabled (<reason>)` and the worker runs as
+    before. The player scope uses the league IDs from `FPL_LEAGUE_IDS`.
+    - Variables (all optional; an invalid value stops the worker and the CLI at start with a
+      message naming it): `ALERTS_ENABLED=false` turns alerts off explicitly;
+      `ALERT_SLOTS_MINUTES` (default `120,30`, strictly decreasing positive integers);
+      `ALERT_TRENDING_MIN_ACCOUNTS` (default `3`); `ALERT_WIDELY_OWNED_PERCENT` (default `15`,
+      0-100). Fast tweet polling starts at the first slot plus 10 minutes before the deadline
+      (130 minutes with the defaults) and at least 90 minutes before it.
+    - Migrations `0008` (adds `player.selected_by_percent`, refreshed by every reference sync)
+      and `0009` (the alert log tables `alert` and `alert_post`) run through the pre-deploy like
+      the others. Existing data is unchanged and both migrations downgrade cleanly.
+    - Inspect from a Railway shell (`railway ssh`): `python -m app.alerts status` (the current
+      alert deadline, the next slot, the last alert and the number of failed alerts),
+      `python -m app.alerts latency [--gameweek N | --rehearsal]` (post to inbox latency, split
+      into post to first fetch, fetch to extraction and extraction to accepted by the provider,
+      for all posts and again per alert kind, so the breaking path is read apart from the digest),
+      and `python -m app.alerts preview --at <Warsaw time> [--kind digest|news]` (renders the
+      alert the worker would send at that moment; sends and writes nothing).
+    - `python -m app.worker status` ends with an `Alerts:` line: the next slot (or the breaking
+      window's end), the last alert and the failed alerts of the current deadline.
+    - **Rehearsal (optional, for testing).** `ALERT_REHEARSAL_DEADLINE=<Warsaw time>` is an optional
+      variable for testing: it makes the worker treat that moment as one extra alert deadline: fast tweet polling, the digest, the
+      news slots and breaking e-mails run for it and are sent for real, in any environment. It is
+      not written to the gameweek table, so FPL jobs, snapshots and gameweek numbering ignore it,
+      and its alerts never affect a real deadline (the alert log is keyed by deadline). A moment
+      in the past does nothing; one whose alert window overlaps a real deadline's alert window
+      stops the worker at start with a message naming the variable. Remove the variable after
+      the test.

@@ -9,24 +9,29 @@ SPARSE_INTERVAL = timedelta(minutes=30)
 MAX_SLEEP = timedelta(seconds=60)
 
 
-def mode(deadlines: list[datetime], t: datetime) -> str:
+def mode(deadlines: list[datetime], t: datetime, window: timedelta = WINDOW) -> str:
     deadline = next_deadline_after(deadlines, t)
-    if deadline is not None and deadline - WINDOW <= t < deadline:
+    if deadline is not None and deadline - window <= t < deadline:
         return "window"
     return "sparse"
 
 
-def interval(deadlines: list[datetime], t: datetime) -> timedelta:
-    return WINDOW_INTERVAL if mode(deadlines, t) == "window" else SPARSE_INTERVAL
+def interval(deadlines: list[datetime], t: datetime, window: timedelta = WINDOW) -> timedelta:
+    return WINDOW_INTERVAL if mode(deadlines, t, window) == "window" else SPARSE_INTERVAL
 
 
-def next_poll_at(deadlines: list[datetime], last: PollRecord | None, now: datetime) -> datetime:
+def next_poll_at(
+    deadlines: list[datetime],
+    last: PollRecord | None,
+    now: datetime,
+    window: timedelta = WINDOW,
+) -> datetime:
     if last is None:
         return now
-    candidate = last.started_at + interval(deadlines, last.started_at)
+    candidate = last.started_at + interval(deadlines, last.started_at, window)
     deadline = next_deadline_after(deadlines, last.started_at)
     if deadline is not None:
-        window_start = deadline - WINDOW
+        window_start = deadline - window
         if last.started_at < window_start < candidate:
             candidate = window_start
     if last.outcome == "rate_limited" and last.retry_after_seconds is not None:

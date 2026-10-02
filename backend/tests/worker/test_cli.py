@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 import os
 import re
@@ -22,7 +23,7 @@ from app.extraction.service import ExtractionRuntime
 from app.fpl.models import Gameweek, Season
 from app.llm.chat import ChatModelSpec
 from app.tweets.models import TweetPoll
-from app.worker.cli import TweetIngest, WorkerDeps, app
+from app.worker.cli import AlertsSetup, TweetIngest, WorkerDeps, app
 from app.worker.jobs import Shutdown
 from app.worker.models import JobRun
 from app.worker.schedule import Job
@@ -36,7 +37,7 @@ from tests.tweets.fakes import FakeSource
 from tests.worker.sim import FakeClock
 
 EXTRACTION_VARIABLE = re.compile(
-    r"(LLM_.*|LANGFUSE_.*|.*_API_KEY|USD_PLN_RATE|EMBEDDING_MODEL|DELIVERY_.*)"
+    r"(LLM_.*|LANGFUSE_.*|.*_API_KEY|USD_PLN_RATE|EMBEDDING_MODEL|DELIVERY_.*|ALERT.*)"
 )
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 D6 = datetime(2026, 10, 10, 10, 0, tzinfo=UTC)
@@ -106,6 +107,8 @@ def cli(db):
         extraction=None,
         indexing=None,
         delivery_channel=None,
+        alerts=None,
+        alerts_disabled_reason=None,
     ):
         deps = WorkerDeps(
             engine=db,
@@ -116,6 +119,8 @@ def cli(db):
             extraction=extraction,
             indexing=indexing,
             delivery_channel=delivery_channel,
+            alerts=alerts,
+            alerts_disabled_reason=alerts_disabled_reason,
         )
         return CliRunner().invoke(app, list(args), obj=deps)
 
@@ -1341,3 +1346,257 @@ def test_deps_carry_the_delivery_channel_name(monkeypatch, tmp_path):
     monkeypatch.setenv("RESEND_API_KEY", "re_synthetic_key")
     monkeypatch.setenv("DELIVERY_EMAIL_TO", "owner@example.test")
     assert worker_cli._deps_from_settings().delivery_channel == "resend"
+
+
+def _alerts_setup(rehearsal=None, slots=(120, 30)) -> AlertsSetup:
+    from decimal import Decimal
+
+    from app.alerts.config import AlertConfig
+    from app.corroboration.runtime import sql_only_runtime
+    from tests.delivery.fakes import FakeChannel
+
+    return AlertsSetup(
+        config=AlertConfig(slots, 3, Decimal("15"), rehearsal),
+        make_channel=lambda: FakeChannel(["msg-1"]),
+        make_corroboration=lambda: sql_only_runtime("test"),
+    )
+
+
+def test_status_shows_alerts_disabled_with_reason(cli):
+    result = cli("status", alerts_disabled_reason="delivery disabled")
+
+    assert result.exit_code == 0
+    lines = result.stdout.splitlines()
+    assert "Alerts: disabled (delivery disabled)" in lines
+    assert lines.index("Delivery: disabled") < lines.index("Alerts: disabled (delivery disabled)")
+
+
+def test_status_shows_alerts_line(cli, db):
+    from app.alerts.store import record_alert
+    from tests.alerts.helpers import deadline as alert_deadline
+
+    _seed_d6(db)
+    setup = _alerts_setup()
+
+    first = cli("status", clock=FixedClock(D6 - timedelta(hours=5)), alerts=setup)
+    assert "Alerts: next slot: digest 2026-10-10T08:00:00Z  last alert: never  failed: 0" in (
+        first.stdout.splitlines()
+    )
+
+    real = alert_deadline()
+    sent_at = D6 - timedelta(minutes=30)
+    for key, kind, slot, status, at in (
+        ("alert:2026/27:gw6:digest:120", "digest", 120, "sent", D6 - timedelta(hours=2)),
+        ("alert:2026/27:gw6:news:30", "news", 30, "failed", sent_at),
+    ):
+        record_alert(
+            db,
+            key=key,
+            deadline=real.__class__(real.key, D6, False, "2026/27", 6),
+            kind=kind,
+            slot_minutes=slot,
+            trigger_x_id=None,
+            as_of=at,
+            status=status,
+            delivery_log_id=None,
+            posts=[],
+            recorded_at=at,
+        )
+    later = cli("status", clock=FixedClock(D6 - timedelta(minutes=20)), alerts=setup)
+    assert (
+        "Alerts: breaking until 2026-10-10T10:00:00Z  last alert: news 2026-10-10T09:30:00Z"
+        " failed  failed: 1"
+    ) in later.stdout.splitlines()
+
+
+def test_status_tweet_window_follows_the_alert_slots(cli, db):
+    _seed_d6(db)
+    tweet_ingest = TweetIngest(source_name="twitterapi_io", list_id=1, make_source=lambda: None)
+    now = D6 - timedelta(minutes=120)
+
+    with_alerts = cli(
+        "status", clock=FixedClock(now), tweet_ingest=tweet_ingest, alerts=_alerts_setup()
+    )
+    without = cli("status", clock=FixedClock(now), tweet_ingest=tweet_ingest)
+
+    assert "  mode: window" in with_alerts.stdout.splitlines()
+    assert "  mode: sparse" in without.stdout.splitlines()
+
+
+def test_run_starts_alerts_only_when_enabled(cli, db):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    seen: list[set[str]] = []
+
+    def run_with(alerts):
+        names: set[str] = set()
+        timer_started = threading.Event()
+
+        def watch() -> None:
+            timer_started.set()
+            _wait_until(lambda: any(t.name == "alerts" for t in threading.enumerate()), 1.5)
+            names.update(t.name for t in threading.enumerate())
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        watcher = threading.Thread(target=watch, daemon=True)
+        watcher.start()
+        result = cli(
+            "run",
+            client=fake.client(sleep=lambda _: None),
+            clock=RealClock(far_future),
+            alerts=alerts,
+            alerts_disabled_reason=None if alerts else "ALERTS_ENABLED=false",
+        )
+        watcher.join(5)
+        seen.append(names)
+        return result
+
+    enabled = run_with(_alerts_setup())
+    disabled = run_with(None)
+
+    assert enabled.exit_code == 0 and disabled.exit_code == 0
+    assert "alerts" in seen[0]
+    assert "alerts" not in seen[1]
+    assert not any(t.name == "alerts" and t.is_alive() for t in threading.enumerate())
+
+
+def test_worker_rejects_invalid_alert_slots_naming_the_variable(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ALERT_SLOTS_MINUTES", "30,120")
+
+    result = CliRunner().invoke(app, ["status"])
+
+    assert result.exit_code == 1
+    assert "ALERT_SLOTS_MINUTES" in result.stderr
+
+
+def test_worker_rejects_overlapping_rehearsal_naming_the_variable(cli, db):
+    _seed_d6(db)
+    setup = _alerts_setup(rehearsal=D6 - timedelta(minutes=60))
+
+    result = cli("run", clock=FixedClock(NOW), alerts=setup)
+
+    assert result.exit_code == 1
+    assert "ALERT_REHEARSAL_DEADLINE" in result.stderr
+
+
+def test_unreachable_database_with_alerts_exits_1_with_error_class(caplog):
+    engine = make_engine("postgresql+psycopg://nobody:secret@127.0.0.1:1/none")
+    deps = WorkerDeps(
+        engine=engine,
+        client=FakeFpl({}).client(sleep=lambda _: None),
+        league_ids_raw="1",
+        clock=FixedClock(NOW),
+        alerts=_alerts_setup(),
+    )
+    with caplog.at_level(logging.INFO):
+        result = CliRunner().invoke(app, ["run"], obj=deps)
+
+    assert result.exit_code == 1
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert "worker failed: OperationalError" in caplog.text
+    assert "secret" not in caplog.text
+    assert "nobody" not in caplog.text
+
+
+def test_alerts_channel_build_error_exits_1_with_error_class(cli, db, caplog):
+    def broken_channel():
+        raise RuntimeError("detail that must not be logged")
+
+    setup = _alerts_setup()
+    setup = dataclasses.replace(setup, make_channel=broken_channel)
+
+    with caplog.at_level(logging.INFO):
+        result = cli("run", clock=FixedClock(NOW), alerts=setup)
+
+    assert result.exit_code == 1
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert "worker failed: RuntimeError" in caplog.text
+    assert "detail that must not be logged" not in caplog.text
+
+
+def test_rehearsal_not_written_to_gameweek_and_polls_fast(cli, db, monkeypatch):
+    from app.worker import cli as worker_cli
+
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    rehearsal = far_future + timedelta(days=1)
+    _seed_d6(db)
+    with Session(db) as session:
+        before = [(g.fpl_id, g.deadline_at) for g in session.exec(select(Gameweek)).all()]
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+    captured = {}
+    real_start = worker_cli.start_poller
+
+    def spy(*args, **kwargs):
+        captured.update(kwargs)
+        return real_start(*args, **kwargs)
+
+    monkeypatch.setattr(worker_cli, "start_poller", spy)
+    tweet_ingest = TweetIngest(
+        source_name="fake", list_id=1, make_source=lambda: FakeSource(pages=[[]])
+    )
+    timer = threading.Timer(1, os.kill, args=(os.getpid(), signal.SIGTERM))
+    timer.start()
+    try:
+        result = cli(
+            "run",
+            client=fake.client(sleep=lambda _: None),
+            clock=RealClock(far_future),
+            tweet_ingest=tweet_ingest,
+            alerts=_alerts_setup(rehearsal=rehearsal),
+        )
+    finally:
+        timer.cancel()
+
+    assert result.exit_code == 0
+    assert captured["window"] == timedelta(minutes=130)
+    assert captured["extra_deadlines"] == (rehearsal,)
+    with Session(db) as session:
+        gameweeks = [(g.fpl_id, g.deadline_at) for g in session.exec(select(Gameweek)).all()]
+    assert all(row in gameweeks for row in before)
+    assert rehearsal not in [deadline for _, deadline in gameweeks]
+
+
+def _alert_environment(monkeypatch, tmp_path, **extra):
+    from app.core.settings import Settings
+    from app.worker import cli as worker_cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        worker_cli,
+        "load_settings",
+        lambda: Settings(_env_file=None, database_url="postgresql+psycopg://u@localhost/x"),
+    )
+    for name, value in extra.items():
+        monkeypatch.setenv(name, value)
+    return worker_cli
+
+
+def _all_features(monkeypatch) -> None:
+    for name, value in {
+        "TWEET_SOURCE": "twitterapi_io",
+        "TWITTERAPI_IO_KEY": "synthetic-key",
+        "X_LIST_ID": "1",
+        "OPENROUTER_API_KEY": "sk-sentinel-value",
+        "LLM_MODEL": "openai/gpt-6-luna",
+        "DELIVERY_PROVIDER": "resend",
+        "RESEND_API_KEY": "re_synthetic_key",
+        "DELIVERY_EMAIL_TO": "owner@example.test",
+    }.items():
+        monkeypatch.setenv(name, value)
+
+
+def test_deps_carry_the_alert_setup_or_the_reason(monkeypatch, tmp_path):
+    worker_cli = _alert_environment(monkeypatch, tmp_path)
+
+    deps = worker_cli._deps_from_settings()
+    assert deps.alerts is None and deps.alerts_disabled_reason == "delivery disabled"
+
+    _all_features(monkeypatch)
+    enabled = worker_cli._deps_from_settings()
+    assert enabled.alerts is not None and enabled.alerts_disabled_reason is None
+    assert enabled.alerts.config.slots == (120, 30)
+
+    monkeypatch.setenv("ALERTS_ENABLED", "false")
+    off = worker_cli._deps_from_settings()
+    assert off.alerts is None and off.alerts_disabled_reason == "ALERTS_ENABLED=false"

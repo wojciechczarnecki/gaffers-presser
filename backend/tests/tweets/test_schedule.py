@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from app.tweets.schedule import mode, next_poll_at
+from app.tweets.schedule import interval, mode, next_poll_at
 from app.tweets.store import PollRecord
 
 DEADLINE = datetime(2026, 10, 10, 18, 30, 0, tzinfo=UTC)
@@ -79,3 +79,23 @@ def test_no_future_deadline_is_sparse():
     started = DEADLINE + timedelta(days=1)
     last = _poll(started)
     assert next_poll_at([DEADLINE], last, started) == started + timedelta(minutes=30)
+
+
+def test_custom_window_and_extra_deadline():
+    window = timedelta(minutes=130)
+    deadlines = [DEADLINE]
+    assert mode(deadlines, DEADLINE - timedelta(minutes=130), window) == "window"
+    assert mode(deadlines, DEADLINE - timedelta(minutes=130, seconds=1), window) == "sparse"
+    assert mode(deadlines, DEADLINE - timedelta(minutes=100)) == "sparse"
+    assert mode(deadlines, DEADLINE - timedelta(minutes=100), window) == "window"
+
+    last = _poll(DEADLINE - timedelta(minutes=140))
+    assert next_poll_at(
+        deadlines, last, DEADLINE - timedelta(minutes=140), window
+    ) == DEADLINE - timedelta(minutes=130)
+
+    extra = DEADLINE + timedelta(days=3)
+    assert mode([DEADLINE, extra], extra - timedelta(minutes=125), window) == "window"
+    assert interval([DEADLINE, extra], extra - timedelta(minutes=125), window) == timedelta(
+        seconds=20
+    )

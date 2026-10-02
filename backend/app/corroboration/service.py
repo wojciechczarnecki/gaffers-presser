@@ -142,6 +142,7 @@ def corroborate(
     new_since: datetime | None = None,
     *,
     since: datetime | None = None,
+    anchor_x_id: int | None = None,
     runtime: CorroborationRuntime,
 ) -> Corroboration:
     with Session(engine) as session:
@@ -169,7 +170,9 @@ def corroborate(
             span.update(output={"anchor": None})
             return result
 
-        anchor = max(claims, key=lambda c: (c.post.created_at, c.post.x_id))
+        anchor = next((c for c in claims if c.post.x_id == anchor_x_id), None) or max(
+            claims, key=lambda c: (c.post.created_at, c.post.x_id)
+        )
         labelled = [
             LabelledPost(
                 post=claim.post,

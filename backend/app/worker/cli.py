@@ -4,12 +4,22 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import typer
 from sqlalchemy import Connection, Engine, text
 from sqlmodel import Session
 
+from app.alerts.config import (
+    AlertConfig,
+    AlertSettings,
+    alerts_disabled_reason,
+    parse_alert_config,
+)
+from app.alerts.loop import start_alerts
+from app.alerts.schedule import check_rehearsal, polling_window
+from app.alerts.service import AlertsRuntime
+from app.alerts.status import alert_status, status_line
 from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError
 from app.core.settings import (
@@ -17,9 +27,15 @@ from app.core.settings import (
     load_settings,
     parse_league_ids,
 )
+from app.corroboration.config import CorroborationSettings
+from app.corroboration.runtime import build_runtime
+from app.corroboration.service import CorroborationRuntime
 from app.db.engine import make_engine
 from app.db.locks import try_schedule_lock
+from app.delivery.channels import build_channel
+from app.delivery.channels.base import Channel
 from app.delivery.config import DeliverySettings, resolve_delivery
+from app.delivery.service import DeliveryService
 from app.delivery.store import delivery_summary
 from app.extraction.config import load_extraction_settings
 from app.extraction.loop import start_extractor
@@ -28,6 +44,7 @@ from app.extraction.store import extraction_status
 from app.fpl.client import FplClient
 from app.fpl.deadlines import upcoming_deadlines
 from app.llm.chat import PROVIDER, build_chat_model, resolve_llm
+from app.llm.settings import load_llm_settings
 from app.llm.tracing import resolve_tracing
 from app.retrieval.config import load_retrieval_settings, resolve_embedding
 from app.retrieval.embedder import build_embedder
@@ -35,7 +52,7 @@ from app.retrieval.indexing import IndexingRuntime
 from app.retrieval.loop import start_indexer
 from app.tweets.config import resolve_ingest
 from app.tweets.loop import start_poller
-from app.tweets.schedule import mode, next_poll_at
+from app.tweets.schedule import WINDOW, mode, next_poll_at
 from app.tweets.sources import build_source
 from app.tweets.sources.base import TweetSource
 from app.tweets.store import latest_poll, latest_success_by_source
@@ -59,6 +76,14 @@ class TweetIngest:
 
 
 @dataclass(frozen=True)
+class AlertsSetup:
+    config: AlertConfig
+    make_channel: Callable[[], Channel]
+    make_corroboration: Callable[[], CorroborationRuntime]
+    clock: Clock | None = None
+
+
+@dataclass(frozen=True)
 class WorkerDeps:
     engine: Engine
     client: FplClient
@@ -68,6 +93,8 @@ class WorkerDeps:
     extraction: ExtractionRuntime | None = None
     indexing: IndexingRuntime | None = None
     delivery_channel: str | None = None
+    alerts: AlertsSetup | None = None
+    alerts_disabled_reason: str | None = None
 
 
 app = typer.Typer(
@@ -119,6 +146,17 @@ def _deps_from_settings() -> WorkerDeps:
         retrieval_settings = load_retrieval_settings()
         embedding_config = resolve_embedding(retrieval_settings)
         delivery_config = resolve_delivery(DeliverySettings())
+        alert_settings = AlertSettings()
+        alert_config = parse_alert_config(alert_settings)
+        disabled_reason = alerts_disabled_reason(
+            alert_settings,
+            delivery=delivery_config is not None,
+            tweet_ingest=ingest_config is not None,
+            extraction=llm_config is not None,
+        )
+        corroboration_settings = (
+            load_llm_settings(CorroborationSettings) if disabled_reason is None else None
+        )
         settings = load_settings()
     except CollectorError as exc:
         raise fail(str(exc)) from None
@@ -148,6 +186,14 @@ def _deps_from_settings() -> WorkerDeps:
             prices=embedding_config.prices,
             tracing=resolve_tracing(retrieval_settings),
         )
+    alerts = None
+    if disabled_reason is None:
+        assert delivery_config is not None and corroboration_settings is not None
+        alerts = AlertsSetup(
+            config=alert_config,
+            make_channel=lambda: build_channel(delivery_config),
+            make_corroboration=lambda: build_runtime(corroboration_settings, SystemClock()),
+        )
     return WorkerDeps(
         engine=make_engine(settings.database_url),
         client=FplClient(),
@@ -157,7 +203,28 @@ def _deps_from_settings() -> WorkerDeps:
         extraction=extraction,
         indexing=indexing,
         delivery_channel=delivery_config.provider if delivery_config else None,
+        alerts=alerts,
+        alerts_disabled_reason=disabled_reason,
     )
+
+
+def _alerts_runtime(
+    deps: WorkerDeps, setup: AlertsSetup, league_ids: list[int], stop_event: threading.Event
+) -> tuple[AlertsRuntime, Channel]:
+    now = deps.clock.now()
+    real_deadlines = [g.deadline_at for g in load_state(deps.engine).gameweeks]
+    check_rehearsal(setup.config, real_deadlines, now)
+    corroboration = setup.make_corroboration()
+    channel = setup.make_channel()
+    delivery = DeliveryService(deps.engine, channel, setup.clock or SystemClock(), stop_event)
+    return AlertsRuntime(setup.config, league_ids, delivery, corroboration), channel
+
+
+def _polling(deps: WorkerDeps) -> tuple[timedelta, tuple[datetime, ...]]:
+    if deps.alerts is None:
+        return WINDOW, ()
+    rehearsal = deps.alerts.config.rehearsal_deadline
+    return polling_window(deps.alerts.config), (rehearsal,) if rehearsal is not None else ()
 
 
 def _fmt(dt: datetime) -> str:
@@ -174,6 +241,18 @@ def run(ctx: typer.Context) -> None:
 
     stop_event = threading.Event()
     signalled = threading.Event()
+    alerts_runtime: AlertsRuntime | None = None
+    alerts_channel: Channel | None = None
+    if deps.alerts is not None:
+        try:
+            alerts_runtime, alerts_channel = _alerts_runtime(
+                deps, deps.alerts, league_ids, stop_event
+            )
+        except CollectorError as exc:
+            raise fail(str(exc)) from None
+        except Exception as exc:
+            logger.error("worker failed: %s", type(exc).__name__)
+            raise typer.Exit(1) from None
 
     def handle_signal(signum: int, frame: object) -> None:
         stop_event.set()
@@ -189,6 +268,7 @@ def run(ctx: typer.Context) -> None:
 
     lock_connection: Connection | None = None
     tweet_thread: threading.Thread | None = None
+    alerts_thread: threading.Thread | None = None
     extraction_thread: threading.Thread | None = None
     indexing_thread: threading.Thread | None = None
     try:
@@ -203,12 +283,15 @@ def run(ctx: typer.Context) -> None:
         if deps.tweet_ingest is None:
             logger.info("tweet ingest disabled")
         else:
+            window, extra_deadlines = _polling(deps)
             tweet_thread = start_poller(
                 deps.engine,
                 deps.tweet_ingest.make_source,
                 deps.tweet_ingest.list_id,
                 stop_event,
                 clock=deps.tweet_ingest.clock,
+                window=window,
+                extra_deadlines=extra_deadlines,
             )
 
         if deps.extraction is None:
@@ -230,6 +313,15 @@ def run(ctx: typer.Context) -> None:
             )
             logger.info("retrieval indexing started: model=%s", deps.indexing.model)
 
+        if alerts_runtime is None:
+            logger.info("alerts disabled: %s", deps.alerts_disabled_reason)
+        else:
+            assert deps.alerts is not None
+            alerts_thread = start_alerts(
+                deps.engine, alerts_runtime, stop_event, clock=deps.alerts.clock
+            )
+            logger.info("alerts started: slots=%s", ",".join(map(str, deps.alerts.config.slots)))
+
         def heartbeat() -> None:
             lock_connection.execute(text("SELECT 1"))
 
@@ -248,13 +340,15 @@ def run(ctx: typer.Context) -> None:
         logger.error("worker failed: %s", type(exc).__name__)
         raise typer.Exit(1) from None
     finally:
-        threads = [tweet_thread, extraction_thread, indexing_thread]
+        threads = [tweet_thread, extraction_thread, indexing_thread, alerts_thread]
         if any(thread is not None for thread in threads):
             stop_event.set()
             deadline = time.monotonic() + 5
             for thread in threads:
                 if thread is not None:
                     thread.join(timeout=max(0.0, deadline - time.monotonic()))
+        if alerts_channel is not None:
+            alerts_channel.close()
         signal.signal(signal.SIGTERM, previous_sigterm)
         signal.signal(signal.SIGINT, previous_sigint)
         if lock_connection is not None:
@@ -290,18 +384,19 @@ def status(ctx: typer.Context) -> None:
         typer.echo("Tweet ingest: disabled")
     else:
         source_name = deps.tweet_ingest.source_name
+        window, extra_deadlines = _polling(deps)
         with Session(deps.engine) as session:
-            deadlines = upcoming_deadlines(session, now)
+            deadlines = sorted([*upcoming_deadlines(session, now), *extra_deadlines])
         last_success = latest_success_by_source(deps.engine).get(source_name)
         last = latest_poll(deps.engine, source_name)
-        next_at = next_poll_at(deadlines, last, now)
+        next_at = next_poll_at(deadlines, last, now, window)
         typer.echo("Tweet ingest:")
         typer.echo(f"  source: {source_name}")
         last_success_str = "never" if last_success is None else _fmt(last_success.started_at)
         typer.echo(f"  last successful poll: {last_success_str}")
         next_str = "due now" if next_at <= now else _fmt(next_at)
         typer.echo(f"  next poll: {next_str}")
-        typer.echo(f"  mode: {mode(deadlines, now)}")
+        typer.echo(f"  mode: {mode(deadlines, now, window)}")
 
     if deps.extraction is None:
         typer.echo("Extraction: disabled")
@@ -339,6 +434,11 @@ def status(ctx: typer.Context) -> None:
             f"Delivery: {deps.delivery_channel}  last sent: {last_sent}"
             f"  failed in 24 h: {summary.failed_last_24h}"
         )
+
+    if deps.alerts is None:
+        typer.echo(f"Alerts: disabled ({deps.alerts_disabled_reason or 'not configured'})")
+    else:
+        typer.echo(status_line(alert_status(deps.engine, deps.alerts.config, now), _fmt))
 
 
 def main() -> None:

@@ -1,5 +1,6 @@
 import copy
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 from sqlmodel import select
 
@@ -243,3 +244,26 @@ def test_rerun_is_idempotent(db_session):
     after = table_contents(db_session)
 
     assert before == after
+
+
+def test_selected_by_percent_written_and_refreshed(db_session):
+    payload = load("bootstrap-static")
+    apply_bootstrap(db_session, Bootstrap.model_validate(payload), NOW)
+    db_session.commit()
+
+    rows = {p.fpl_id: p.selected_by_percent for p in db_session.exec(select(Player)).all()}
+    assert rows == {el["id"]: Decimal(el["selected_by_percent"]) for el in payload["elements"]}
+
+    changed = copy.deepcopy(payload)
+    changed["elements"][0]["selected_by_percent"] = "99.9"
+    apply_bootstrap(db_session, Bootstrap.model_validate(changed), NOW + timedelta(minutes=15))
+    db_session.commit()
+
+    db_session.expire_all()
+    first = db_session.exec(select(Player).where(Player.fpl_id == changed["elements"][0]["id"]))
+    assert first.one().selected_by_percent == Decimal("99.9")
+    others = {p.fpl_id: p.selected_by_percent for p in db_session.exec(select(Player)).all()}
+    del others[changed["elements"][0]["id"]]
+    assert others == {
+        el["id"]: Decimal(el["selected_by_percent"]) for el in payload["elements"][1:]
+    }

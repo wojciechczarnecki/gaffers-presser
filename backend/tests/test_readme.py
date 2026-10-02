@@ -158,3 +158,45 @@ def test_deployment_documents_delivery():
         "Delivery:",
     ):
         assert term in section, f"{term!r} missing from docs/DEPLOYMENT.md"
+
+
+ALERT_VARIABLES = [
+    "ALERTS_ENABLED",
+    "ALERT_SLOTS_MINUTES",
+    "ALERT_TRENDING_MIN_ACCOUNTS",
+    "ALERT_WIDELY_OWNED_PERCENT",
+    "ALERT_REHEARSAL_DEADLINE",
+]
+
+
+def test_alert_commands_documented():
+    section = _development_section()
+    for command in ("app.alerts status", "app.alerts latency", "app.alerts preview"):
+        assert command in section, f"{command!r} missing from the README Development section"
+
+
+def test_deployment_documents_alerts():
+    section = DEPLOYMENT.read_text(encoding="utf-8")
+    for variable in ALERT_VARIABLES:
+        assert variable in section, f"{variable!r} missing from docs/DEPLOYMENT.md"
+    for term in (
+        "0008",
+        "0009",
+        "python -m app.alerts status",
+        "python -m app.alerts latency",
+        "python -m app.alerts preview",
+        "Alerts:",
+    ):
+        assert term in section, f"{term!r} missing from docs/DEPLOYMENT.md"
+
+
+def test_deployment_describes_rehearsal_variable():
+    section = DEPLOYMENT.read_text(encoding="utf-8")
+    assert "ALERT_REHEARSAL_DEADLINE" in section
+    paragraph = section[section.index("ALERT_REHEARSAL_DEADLINE") :][:1500].lower()
+    for term in ("optional", "testing", "remove"):
+        assert term in paragraph, f"{term!r} missing near ALERT_REHEARSAL_DEADLINE"
+    example = ENV_EXAMPLE.read_text(encoding="utf-8")
+    assert "ALERT_REHEARSAL_DEADLINE" in example
+    comment = example[: example.index("ALERT_REHEARSAL_DEADLINE")][-600:].lower()
+    assert "remov" in comment and "test" in comment

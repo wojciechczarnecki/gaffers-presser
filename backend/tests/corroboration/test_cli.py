@@ -299,20 +299,20 @@ def test_the_tracer_is_flushed_when_corroboration_raises(db, monkeypatch):
 
 
 def test_the_default_runtime_without_a_key_skips_retrieval_and_the_judge():
-    from app.corroboration.cli import NOT_CONFIGURED, _runtime_from_settings
+    from app.corroboration.runtime import NOT_CONFIGURED, build_runtime
 
-    runtime = _runtime_from_settings(CorroborationSettings(_env_file=None), FixedClock())
+    runtime = build_runtime(CorroborationSettings(_env_file=None), FixedClock())
     assert runtime.embedder is None and runtime.judge is None
     assert runtime.skipped_reason == NOT_CONFIGURED
 
 
 def test_the_default_runtime_with_a_key_builds_the_embedder_and_the_judge():
-    from app.corroboration.cli import _runtime_from_settings
+    from app.corroboration.runtime import build_runtime
     from app.llm.chat import DEFAULT_MODEL
     from app.retrieval.config import DEFAULT_EMBEDDING_MODEL
 
     settings = CorroborationSettings(_env_file=None, openrouter_api_key="dummy-key")
-    runtime = _runtime_from_settings(settings, FixedClock())
+    runtime = build_runtime(settings, FixedClock())
     assert runtime.embedder is not None and runtime.embedder.model == DEFAULT_EMBEDDING_MODEL
     assert runtime.judge is not None and runtime.judge.model == DEFAULT_MODEL
     assert DEFAULT_MODEL in runtime.prices
