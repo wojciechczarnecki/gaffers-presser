@@ -1,73 +1,149 @@
-# Alert e-mails sent before a deadline (spec 009): digest, news and breaking.
-# Placeholders in {braces} are filled by app/alerts/render.py.
+# Alert e-mails sent before a deadline (spec 009, layout revised after the first rehearsal):
+# digest, news and breaking. Placeholders in {braces} are filled by app/alerts/render.py.
+# Every e-mail has a plain-text part ([text]) and an HTML part ([html]); values put into the
+# HTML are escaped by the renderer.
 
 [title]
-digest = "Konferencja prasowa: zapowiedź przed {deadline_label}"
-news = "Konferencja prasowa: nowe wieści przed {deadline_label}"
+digest = "Zapowiedź przed {deadline_label}"
+news = "Nowe wieści przed {deadline_label}"
 breaking = "Pilne przed {deadline_label}: {players}"
 
 [deadline_label]
 gameweek = "deadline'em GW{gameweek}"
 rehearsal = "próbnym deadline'em ({time})"
 
-[intro]
-digest = "Trener melduje: oto stan wiadomości o zawodnikach, którzy się liczą w Twojej lidze."
-news = "Trener melduje: od poprzedniego komunikatu pojawiły się nowe wieści."
-breaking = "Trener melduje: pilna wiadomość tuż przed deadline'em."
+[kind]
+digest = "zapowiedź"
+news = "nowe wieści"
+breaking = "pilne"
 
 [header]
-as_of = "Stan na: {as_of} (czas warszawski)"
-deadline = "Deadline: {deadline} (czas warszawski)"
+headline = "Przed {deadline_label}"
+moment = "Stan na {as_of} · deadline {weekday} {date}, {time}"
+# Monday first, as Python's datetime.weekday().
+weekdays = ["pon", "wt", "śr", "czw", "pt", "sob", "nd"]
 
-[section]
-categories = "Dlaczego ten zawodnik: {categories}"
-news = "Wiadomość: {event}, pewność: {certainty}"
-grade = "Ocena wiarygodności: {grade}"
-accounts = "Niezależne konta: {supporting} potwierdza, {contradicting} zaprzecza"
-links = "Linki:"
-no_anchor = "Brak wiadomości do pokazania."
+[group]
+out = "🔴 Nie zagra"
+doubt = "🟠 Pod znakiem zapytania"
+benched = "🟡 Na ławce"
+confirmed_starter = "🟢 Zagra"
 
-[category]
-league_owned = "w lidze ma go: {managers}"
-manager = "{manager} ({team})"
-widely_owned = "posiada go {percent}% graczy"
-# Polish plural forms: _one for 1; _few for numbers ending in 2-4 except 12-14; _many otherwise.
-trending_one = "pisze o nim {count} niezależne konto"
-trending_few = "pisze o nim {count} niezależne konta"
-trending_many = "pisze o nim {count} niezależnych kont"
-separator = "; "
+[summary]
+out = "🔴 nie zagra"
+doubt = "🟠 niepewni"
+benched = "🟡 ławka"
+confirmed_starter = "🟢 zagra"
+separator = " · "
 
 [event]
-out = "wypada ze składu"
-doubt = "wątpliwy"
-benched = "na ławce"
-confirmed_starter = "wychodzi w pierwszym składzie"
-
-[certainty]
-confirmed = "potwierdzone"
-likely = "prawdopodobne"
-rumour = "plotka"
+out = "Wypada ze składu"
+doubt = "Wątpliwy"
+benched = "Zaczyna na ławce"
+confirmed_starter = "W pierwszym składzie"
 
 [grade]
-high = "wysoka"
-medium = "średnia"
-low = "niska"
+high = "●●● potwierdzone"
+medium = "●●○ prawdopodobne"
+low = "●○○ plotka"
+legend = "Wiarygodność: ●●● potwierdzone · ●●○ prawdopodobne · ●○○ plotka"
+separator = " · "
+
+[accounts]
+# Polish plural forms: _one for 1; _few for numbers ending in 2-4 except 12-14; _many otherwise.
+one = "jedno konto"
+few = "{count} niezależne konta"
+many = "{count} niezależnych kont"
+
+[age]
+minutes = "{count} min temu"
+hours = "{count} godz. temu"
+day = "wczoraj"
+days = "{count} dni temu"
 
 [note]
-reversal = "Uwaga: wcześniejszy post zaprzecza tej wiadomości, doniesienia się odwracają."
-search_failed = "Uwaga: wyszukiwanie dodatkowych źródeł nie powiodło się, ocena opiera się tylko na znanych postach."
+reversal = "⚠️ Wcześniej pisano co innego — doniesienia się odwracają"
+search_failed = "⚠️ Wyszukiwanie dodatkowych źródeł nie powiodło się, ocena opiera się tylko na znanych postach"
 
-[link]
-anchor = "{marker}Główny post: {account}, {time}: {url}"
-supporting = "{marker}Potwierdza: {account}, {time}: {url}"
-contradicting = "{marker}Zaprzecza: {account}, {time}: {url}"
-account = "@{author}"
-repost = "@{author} (podanie dalej od @{original})"
-new_marker = "[NOWE] "
+[sources]
+one = "Źródło"
+many = "Źródła"
+contradicting = "Zaprzecza"
+new_marker = "🆕 "
 anchor_url = "https://x.com/{author}/status/{x_id}"
 
 [digest]
-empty = "Brak wiadomości o zawodnikach z Twojej listy. Trener śpi spokojnie."
-no_news_one = "Bez wiadomości: {count} zawodnik z Twojej listy."
-no_news_few = "Bez wiadomości: {count} zawodników z Twojej listy."
-no_news_many = "Bez wiadomości: {count} zawodników z Twojej listy."
+empty = "Brak wiadomości o zawodnikach z Twojej listy."
+
+[footer]
+text = "The Gaffer's Presser · newsy z X przed deadline'em, nie oficjalne flagi FPL"
+
+[text]
+player = "{name}{club} — {event}"
+club = " ({club})"
+sources = "{label}:"
+source = "  {marker}@{account}, {time}: {url}"
+
+# Colours of the four groups; a stale card (older news) uses the neutral colours.
+[palette.out]
+accent = "#d92d20"
+background = "#fef3f2"
+heading = "#b42318"
+
+[palette.doubt]
+accent = "#f79009"
+background = "#fffaeb"
+heading = "#b54708"
+
+[palette.benched]
+accent = "#eaaa08"
+background = "#fefbe8"
+heading = "#a15c07"
+
+[palette.confirmed_starter]
+accent = "#47cd89"
+background = "#f3fcf7"
+heading = "#067647"
+
+[palette.base]
+text = "#1d2433"
+
+[palette.stale]
+background = "#f6f7f9"
+text = "#8a92a3"
+
+[html]
+document = """<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title}</title></head>
+<body style="margin:0;padding:0;background:#f2f3f5;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1d2433;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f3f5;"><tr><td align="center" style="padding:16px 8px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+<tr><td style="background:#37003c;border-radius:12px 12px 0 0;padding:20px 20px 16px;color:#ffffff;">
+<div style="font-size:13px;opacity:.75;letter-spacing:.04em;text-transform:uppercase;">The Gaffer's Presser · {kind}</div>
+<div style="font-size:22px;font-weight:700;margin-top:4px;">{headline}</div>
+<div style="font-size:14px;margin-top:6px;opacity:.9;">{moment}</div>
+</td></tr>
+{body}
+<tr><td style="background:#ffffff;border-radius:0 0 12px 12px;padding:12px 20px 16px;border-top:1px solid #e6e8ec;font-size:12px;color:#8a92a3;">{footer}</td></tr>
+</table></td></tr></table>
+</body></html>"""
+summary = """<tr><td style="background:#ffffff;padding:12px 20px;border-bottom:1px solid #e6e8ec;font-size:14px;">{summary}</td></tr>
+<tr><td style="background:#ffffff;padding:10px 20px 4px;font-size:12px;color:#5b6475;">{legend}</td></tr>"""
+summary_item = "{label} <b>{count}</b>"
+empty = """<tr><td style="background:#ffffff;padding:18px 20px;font-size:15px;">{text}</td></tr>"""
+group = """<tr><td style="background:#ffffff;padding:18px 20px 6px;font-size:15px;font-weight:700;color:{color};">{heading}</td></tr>"""
+card = """<tr><td style="background:#ffffff;padding:4px 20px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-left:5px {border} {accent};background:{background};border-radius:6px;"><tr><td style="padding:10px 12px;">
+<div style="font-size:16px;font-weight:700;color:{name_color};">{name} <span style="font-weight:400;color:#5b6475;font-size:14px;">{club}</span></div>
+<div style="font-size:14px;margin-top:2px;color:{name_color};">{event}</div>
+<div style="font-size:13px;margin-top:4px;color:{detail_color};">{details}</div>
+{notes}<div style="font-size:13px;margin-top:6px;color:#5b6475;">{sources}</div>
+</td></tr></table>
+</td></tr>"""
+note = """<div style="font-size:13px;margin-top:4px;color:#b42318;">{text}</div>"""
+sources = "{label}: {links}"
+source_link = """{marker}<a href="{url}" style="color:#37003c;">@{account}</a>"""
+source_first = "{link} {time}"
+source_separator = " · "
+line_break = "<br>"
+spacer = """<tr><td style="background:#ffffff;padding:0 0 14px;"></td></tr>"""

@@ -62,6 +62,12 @@ def current_season(session: Session) -> str | None:
     return session.exec(select(Season.label).order_by(Season.label.desc())).first()
 
 
+def alert_window_start(session: Session, as_of: datetime, config: AlertConfig) -> datetime:
+    """The previous deadline, but no further back than the configured lookback: a long break
+    between deadlines (an international break) would otherwise fill alerts with stale news."""
+    return max(window_start(session, as_of), as_of - config.max_lookback)
+
+
 def shown_x_ids(result: Corroboration) -> set[int]:
     shown = {c.x_id for c in result.supporting + result.contradicting}
     if result.anchor is not None:
@@ -78,13 +84,14 @@ def corroborate_player(
     runtime: CorroborationRuntime,
     listed: ListedPlayer,
     as_of: datetime,
+    since: datetime,
     new_since: datetime | None,
     included: set[int],
     origins: dict[int, set[int]],
 ) -> PlayerReport:
     search_failed = False
     try:
-        result = corroborate(engine, listed.player, as_of, new_since, runtime=runtime)
+        result = corroborate(engine, listed.player, as_of, new_since, since=since, runtime=runtime)
     except Exception as exc:
         logger.warning("alert corroboration failed: %s", type(exc).__name__)
         search_failed = True
@@ -93,6 +100,7 @@ def corroborate_player(
             listed.player,
             as_of,
             new_since,
+            since=since,
             runtime=sql_only_runtime(SEARCH_FAILED_REASON, runtime.tracer),
         )
     shown = shown_x_ids(result)
@@ -135,7 +143,7 @@ def build_slot_alert(
         season = current_season(session)
         if season is None:
             return SlotDraft(kind, as_of, None, [], 0, [])
-        start = window_start(session, as_of)
+        start = alert_window_start(session, as_of, runtime.config)
         listed, without_claim = listed_players(
             session, season, runtime.league_ids, start, as_of, runtime.config
         )
@@ -152,10 +160,12 @@ def build_slot_alert(
             return SlotDraft(kind, as_of, None, [], without_claim, [])
 
     reports = [
-        corroborate_player(engine, runtime.corroboration, item, as_of, new_since, included, origins)
+        corroborate_player(
+            engine, runtime.corroboration, item, as_of, start, new_since, included, origins
+        )
         for item in listed
     ]
-    message = render_alert(kind, deadline, as_of, reports, without_claim if kind == "digest" else 0)
+    message = render_alert(kind, deadline, as_of, reports)
     return SlotDraft(kind, as_of, message, reports, without_claim, included_rows(reports))
 
 

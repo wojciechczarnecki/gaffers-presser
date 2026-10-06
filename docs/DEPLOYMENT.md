@@ -138,7 +138,8 @@ below; agents never touch production.
       message naming it): `ALERTS_ENABLED=false` turns alerts off explicitly;
       `ALERT_SLOTS_MINUTES` (default `120,30`, strictly decreasing positive integers);
       `ALERT_TRENDING_MIN_ACCOUNTS` (default `3`); `ALERT_WIDELY_OWNED_PERCENT` (default `15`,
-      0-100). Fast tweet polling starts at the first slot plus 10 minutes before the deadline
+      0-100); `ALERT_MAX_LOOKBACK_DAYS` (default `7`, a positive integer: the alert window starts
+      at the previous deadline but never more than this many days back). Fast tweet polling starts at the first slot plus 10 minutes before the deadline
       (130 minutes with the defaults) and at least 90 minutes before it.
     - Migrations `0008` (adds `player.selected_by_percent`, refreshed by every reference sync)
       and `0009` (the alert log tables `alert` and `alert_post`) run through the pre-deploy like
@@ -148,8 +149,9 @@ below; agents never touch production.
       `python -m app.alerts latency [--gameweek N | --rehearsal]` (post to inbox latency, split
       into post to first fetch, fetch to extraction and extraction to accepted by the provider,
       for all posts and again per alert kind, so the breaking path is read apart from the digest),
-      and `python -m app.alerts preview --at <Warsaw time> [--kind digest|news]` (renders the
-      alert the worker would send at that moment; sends and writes nothing).
+      and `python -m app.alerts preview --at <Warsaw time> [--kind digest|news] [--html FILE]`
+      (renders the alert the worker would send at that moment, and with `--html` also writes its
+      HTML part to a file; sends and writes nothing to the database).
     - `python -m app.worker status` ends with an `Alerts:` line: the next slot (or the breaking
       window's end), the last alert and the failed alerts of the current deadline.
     - **Rehearsal (optional, for testing).** `ALERT_REHEARSAL_DEADLINE=<Warsaw time>` is an optional

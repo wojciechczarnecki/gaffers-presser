@@ -20,7 +20,7 @@ from tests.delivery.fakes import FakeChannel, FixedClock
 from tests.retrieval.helpers import add_tweet
 
 TEMPLATE = load_template()
-MARKER = TEMPLATE["link"]["new_marker"]
+MARKER = TEMPLATE["sources"]["new_marker"]
 NEWS_AT = NOW + timedelta(minutes=90)
 
 
@@ -92,11 +92,8 @@ def test_breaking_anchor_is_the_post_sql_only(db):
     assert len(corroboration.embedder.calls) == embedder_calls
     assert judge.received_messages == []
     text = channel.calls[0].text
-    anchor_line = next(line for line in text.splitlines() if "status/2" in line)
-    anchor_prefix = TEMPLATE["link"]["anchor"].split("{account}")[0].format(marker=MARKER)
-    assert anchor_line.strip().startswith(anchor_prefix)
-    other = next(line for line in text.splitlines() if "status/1" in line)
-    assert MARKER not in other
+    assert text.index("status/2") < text.index("status/1")  # the trigger post is the anchor
+    assert MARKER not in text
     alert, rows = alert_rows(db, "alert:2026/27:gw6:breaking:2")
     assert (alert.kind, alert.slot_minutes, alert.trigger_x_id, alert.status) == (
         "breaking",
@@ -218,7 +215,8 @@ def test_post_naming_two_listed_players_is_one_email_with_two_sections(db):
     assert channel.keys == ["alert:2026/27:gw6:breaking:2"]
     message = channel.calls[0]
     assert "Saka" in message.title and "Isak" in message.title
-    assert message.text.count(TEMPLATE["section"]["links"]) == 2
+    player_lines = [line for line in message.text.splitlines() if " — " in line]
+    assert len(player_lines) == 2
     _, rows = alert_rows(db, "alert:2026/27:gw6:breaking:2")
     assert rows[(SAKA, 2)] == "new" and rows[(ISAK, 2)] == "new"
 

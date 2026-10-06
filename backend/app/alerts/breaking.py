@@ -10,6 +10,7 @@ from app.alerts.schemas import AlertDeadline, ListedPlayer, PlayerReport
 from app.alerts.service import (
     AlertsRuntime,
     alert_key,
+    alert_window_start,
     current_season,
     shown_x_ids,
 )
@@ -24,7 +25,6 @@ from app.alerts.store import (
 from app.core.clock import Clock
 from app.corroboration.runtime import sql_only_runtime
 from app.corroboration.service import corroborate
-from app.corroboration.sources import window_start
 from app.extraction.store import CurrentExtraction, current_extractions
 
 logger = logging.getLogger(__name__)
@@ -107,7 +107,7 @@ def run_breaking(
         season = current_season(session)
         if season is None:
             return 0
-        start = window_start(session, now)
+        start = alert_window_start(session, now, runtime.config)
         players, _ = listed_players(session, season, runtime.league_ids, start, now, runtime.config)
         listed = {item.player.fpl_id: item for item in players}
         candidates = _candidates(session, season, start, now, since_extracted, listed)
@@ -137,11 +137,12 @@ def run_breaking(
                 item.player,
                 as_of,
                 previous,
+                since=start,
                 anchor_x_id=x_id,
                 runtime=sql_only,
             )
             reports.append(PlayerReport(item, result, frozenset({x_id}), False))
-        message = render_alert("breaking", deadline, as_of, reports, 0)
+        message = render_alert("breaking", deadline, as_of, reports)
         if clock.now() >= deadline.deadline_at:
             logger.info("breaking alert %s not sent: the deadline has passed", key)
             break

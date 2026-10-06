@@ -1,10 +1,12 @@
 import tomllib
 from collections.abc import Mapping
 from dataclasses import replace
+from datetime import timedelta
 
 from app.alerts.render import TEMPLATE_PATH, load_template, render_alert
 from tests.alerts.helpers import (
     AS_OF,
+    citation,
     corroboration,
     deadline,
     full_report,
@@ -24,12 +26,22 @@ KINDS = {"digest", "news", "breaking"}
 
 def test_template_file_is_valid_toml_with_every_vocabulary():
     template = tomllib.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
-    assert set(template["event"]) == EVENT_TYPES
-    assert set(template["certainty"]) == CERTAINTIES
-    assert set(template["grade"]) == GRADES
+    for section in ("event", "group", "summary"):
+        assert set(template[section]) - {"separator"} == EVENT_TYPES
+    assert set(template["palette"]) == EVENT_TYPES | {"base", "stale"}
+    assert GRADES <= set(template["grade"])
     assert set(template["title"]) == KINDS
-    assert set(template["intro"]) == KINDS
-    assert all(value.strip() for section in template.values() for value in section.values())
+    assert set(template["kind"]) == KINDS
+    assert len(template["header"]["weekdays"]) == 7
+    assert all(str(value).strip() for value in leaf_values(template))
+
+
+def leaf_values(data):
+    for value in data.values():
+        if isinstance(value, dict):
+            yield from leaf_values(value)
+        else:
+            yield value
 
 
 def test_loaded_template_matches_the_file():
@@ -66,9 +78,6 @@ def leaf_paths(data, prefix=()):
 def test_template_has_every_key_and_renders():
     seen: set[tuple] = set()
     recorder = Recorder(TEMPLATE, seen)
-    plain = report(listed(ISAK, percent=None, trending=3, claims=(200,)))
-    single = report(listed(ISAK, percent=None, trending=1, claims=(200,)))
-    many = report(listed(ISAK, percent=None, trending=5, claims=(200,)))
     vocabulary = [
         report(
             listed(ISAK, claims=(200,)),
@@ -82,17 +91,24 @@ def test_template_has_every_key_and_renders():
         listed(ISAK, claims=(200,)),
         replace(corroboration(ISAK, 200), anchor=None, grade=None),
     )
+    many = report(
+        listed(ISAK, claims=(200,)),
+        corroboration(ISAK, 200, supporting=[citation(201 + i, f"s{i}") for i in range(4)]),
+    )
     outputs = [
-        render_alert("digest", deadline(), AS_OF, [full_report(), plain], 7, recorder),
-        render_alert("digest", deadline(rehearsal=True), AS_OF, [], 0, recorder),
-        render_alert("digest", deadline(), AS_OF, [], 5, recorder),
-        render_alert("digest", deadline(), AS_OF, [single], 1, recorder),
-        render_alert("digest", deadline(), AS_OF, [many], 2, recorder),
-        render_alert("news", deadline(), AS_OF, [full_report()], 0, recorder),
-        render_alert("breaking", deadline(), AS_OF, [full_report(), plain], 0, recorder),
-        render_alert("news", deadline(), AS_OF, [*vocabulary, anchorless], 0, recorder),
+        render_alert("digest", deadline(), AS_OF, [full_report(), many], recorder),
+        render_alert("digest", deadline(rehearsal=True), AS_OF, [], recorder),
+        render_alert("news", deadline(), AS_OF, [full_report()], recorder),
+        render_alert("breaking", deadline(), AS_OF, [full_report()], recorder),
+        render_alert("news", deadline(), AS_OF, [*vocabulary, anchorless], recorder),
+        # ages: minutes, hours, yesterday, days (a stale card)
+        render_alert(
+            "digest", deadline(), AS_OF - timedelta(hours=1, minutes=10), [many], recorder
+        ),
+        render_alert("digest", deadline(), AS_OF + timedelta(days=1), [many], recorder),
+        render_alert("digest", deadline(), AS_OF + timedelta(days=5), [many], recorder),
     ]
     for message in outputs:
-        assert "{" not in message.title + message.text
-        assert "}" not in message.title + message.text
+        for part in (message.title, message.text, message.html or ""):
+            assert "{" not in part and "}" not in part
     assert seen == set(leaf_paths(TEMPLATE))

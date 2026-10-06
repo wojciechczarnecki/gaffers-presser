@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -10,6 +10,7 @@ from app.core.local_time import parse_local
 DEFAULT_SLOTS = "120,30"
 DEFAULT_TRENDING_MIN_ACCOUNTS = "3"
 DEFAULT_WIDELY_OWNED_PERCENT = "15"
+DEFAULT_MAX_LOOKBACK_DAYS = "7"
 
 
 class AlertSettings(BaseSettings):
@@ -20,6 +21,7 @@ class AlertSettings(BaseSettings):
     alert_trending_min_accounts: str = DEFAULT_TRENDING_MIN_ACCOUNTS
     alert_widely_owned_percent: str = DEFAULT_WIDELY_OWNED_PERCENT
     alert_rehearsal_deadline: str = ""
+    alert_max_lookback_days: str = DEFAULT_MAX_LOOKBACK_DAYS
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,8 @@ class AlertConfig:
     trending_min_accounts: int
     widely_owned_percent: Decimal
     rehearsal_deadline: datetime | None
+    # the alert window starts at the previous deadline, but never earlier than this before now
+    max_lookback: timedelta = timedelta(days=int(DEFAULT_MAX_LOOKBACK_DAYS))
 
 
 def _enabled(settings: AlertSettings) -> bool:
@@ -88,6 +92,12 @@ def parse_alert_config(settings: AlertSettings) -> AlertConfig:
         ),
         widely_owned_percent=_percent(settings.alert_widely_owned_percent),
         rehearsal_deadline=_rehearsal(settings.alert_rehearsal_deadline),
+        max_lookback=timedelta(
+            days=_positive_int(
+                "ALERT_MAX_LOOKBACK_DAYS",
+                settings.alert_max_lookback_days or DEFAULT_MAX_LOOKBACK_DAYS,
+            )
+        ),
     )
 
 
