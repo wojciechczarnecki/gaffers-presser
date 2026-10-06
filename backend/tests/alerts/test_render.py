@@ -46,8 +46,15 @@ def test_card_shows_the_news_grade_accounts_age_and_sources():
 
     assert "Saka (Arsenal) — " + TEMPLATE["event"]["out"] in text
     assert TEMPLATE["grade"]["medium"] in text
-    assert TEMPLATE["accounts"]["few"].format(count=4) in text  # anchor, 2 supporting, 1 against
-    assert TEMPLATE["age"]["hours"].format(count=1) in text  # the anchor is 90 minutes old
+    details = TEMPLATE["grade"]["separator"].join(
+        (
+            TEMPLATE["grade"]["medium"],
+            TEMPLATE["accounts"]["few"].format(count=3),  # the anchor and 2 supporting
+            TEMPLATE["accounts"]["against"].format(count=1),
+            TEMPLATE["age"]["hours"].format(count=1),  # the anchor is 90 minutes old
+        )
+    )
+    assert details in text and details in message.html
     assert TEMPLATE["note"]["reversal"] in text
     assert TEMPLATE["note"]["search_failed"] in text
     assert TEMPLATE["sources"]["contradicting"] in text
@@ -115,15 +122,28 @@ def test_groups_follow_the_event_order_with_a_summary():
 
 
 def test_within_a_group_most_accounts_first_then_overall_ownership():
+    disputed = report(
+        listed(PALMER, percent="1", claims=(300,)),
+        corroboration(
+            PALMER, anchor_x_id=300, contradicting=[citation(301, "x"), citation(302, "y")]
+        ),
+    )
     reports = [
         player_report(SAKA, supporters=0, percent="60"),
-        player_report(ISAK, supporters=2, percent="5"),
-        player_report(PALMER, supporters=0, percent=None),
+        player_report(ISAK, supporters=1, percent="5"),
+        disputed,  # 1 for, 2 against: the most accounts in total
         player_report(HALL, supporters=0, percent="20"),
     ]
     text = render_alert("digest", deadline(), AS_OF, reports).text
     order = sorted(("Saka", "Isak", "Palmer", "Hall"), key=text.index)
-    assert order == ["Isak", "Saka", "Hall", "Palmer"]
+    assert order == ["Palmer", "Isak", "Saka", "Hall"]
+
+
+def test_unknown_event_type_is_left_out_and_the_rest_still_renders():
+    odd = player_report(ISAK, "fit")
+    message = render_alert("breaking", deadline(), AS_OF, [odd, player_report(SAKA)])
+    assert "Isak" not in message.text and "Isak" not in message.title
+    assert "Saka" in message.text and "Saka" in message.title
 
 
 def test_a_report_without_an_anchor_is_left_out():
@@ -135,9 +155,9 @@ def test_a_report_without_an_anchor_is_left_out():
         anchor=None,
         retrieval=RetrievalReport("skipped", "no claim in the window"),
     )
-    text = render_alert("digest", deadline(), AS_OF, [report(listed(ISAK), empty)]).text
-    assert "Isak (" not in text
-    assert TEMPLATE["digest"]["empty"] in text
+    message = render_alert("breaking", deadline(), AS_OF, [report(listed(ISAK), empty)])
+    assert "Isak" not in message.text and "Isak" not in message.title
+    assert TEMPLATE["digest"]["empty"] in message.text
 
 
 def test_empty_digest_says_so():
@@ -167,7 +187,9 @@ def test_age_text():
     assert age(timedelta(seconds=10)) == TEMPLATE["age"]["minutes"].format(count=1)
     assert age(timedelta(minutes=42)) == TEMPLATE["age"]["minutes"].format(count=42)
     assert age(timedelta(hours=5, minutes=50)) == TEMPLATE["age"]["hours"].format(count=5)
-    assert age(timedelta(hours=30)) == TEMPLATE["age"]["day"]
+    # AS_OF is Sunday 16:00 in Warsaw; older news counts calendar days
+    assert age(timedelta(hours=30)) == TEMPLATE["age"]["day"]  # Saturday 10:00
+    assert age(timedelta(hours=41)) == TEMPLATE["age"]["days"].format(count=2)  # Friday 23:00
     assert age(timedelta(days=8, hours=3)) == TEMPLATE["age"]["days"].format(count=8)
     assert age(-timedelta(minutes=5)) == TEMPLATE["age"]["minutes"].format(count=1)
 
@@ -208,14 +230,29 @@ def test_plural_forms_follow_polish_rules():
     }
 
 
+def day_time(weekday: int, date: str, time: str) -> str:
+    return TEMPLATE["header"]["day_time"].format(
+        weekday=TEMPLATE["header"]["weekdays"][weekday], date=date, time=time
+    )
+
+
 def test_times_are_warsaw():
     as_of = datetime(2026, 10, 4, 14, 0, tzinfo=UTC)
     message = render_alert("digest", deadline(), as_of, [full_report()])
     moment = TEMPLATE["header"]["moment"].format(
-        as_of="16:00", weekday=TEMPLATE["header"]["weekdays"][6], date="04.10", time="18:00"
+        as_of="16:00", deadline=day_time(6, "04.10", "18:00")
     )
     assert moment in message.text and moment in message.html  # the deadline is 16:00 UTC
     assert POST_TIME.hour == 12 and "04.10 14:30" in message.text  # a post at 12:30 UTC
+
+
+def test_alert_moment_on_another_day_than_the_deadline_shows_its_day():
+    as_of = datetime(2026, 10, 3, 20, 30, tzinfo=UTC)  # Saturday 22:30 in Warsaw
+    text = render_alert("digest", deadline(), as_of, []).text
+    moment = TEMPLATE["header"]["moment"].format(
+        as_of=day_time(5, "03.10", "22:30"), deadline=day_time(6, "04.10", "18:00")
+    )
+    assert moment in text
 
 
 def test_rehearsal_title_names_the_rehearsal_moment():

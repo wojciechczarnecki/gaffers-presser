@@ -107,8 +107,8 @@ def run_breaking(
         season = current_season(session)
         if season is None:
             return 0
-        start = alert_window_start(session, now, runtime.config)
-        players, _ = listed_players(session, season, runtime.league_ids, start, now, runtime.config)
+        start = alert_window_start(session, now, deadline, runtime.config)
+        players = listed_players(session, season, runtime.league_ids, start, now, runtime.config)
         listed = {item.player.fpl_id: item for item in players}
         candidates = _candidates(session, season, start, now, since_extracted, listed)
         included = included_origins(session, deadline.key)

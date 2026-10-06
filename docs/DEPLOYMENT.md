@@ -139,7 +139,7 @@ below; agents never touch production.
       `ALERT_SLOTS_MINUTES` (default `120,30`, strictly decreasing positive integers);
       `ALERT_TRENDING_MIN_ACCOUNTS` (default `3`); `ALERT_WIDELY_OWNED_PERCENT` (default `15`,
       0-100); `ALERT_MAX_LOOKBACK_DAYS` (default `7`, a positive integer: the alert window starts
-      at the previous deadline but never more than this many days back). Fast tweet polling starts at the first slot plus 10 minutes before the deadline
+      at the previous deadline but never more than this many days before the alert deadline). Fast tweet polling starts at the first slot plus 10 minutes before the deadline
       (130 minutes with the defaults) and at least 90 minutes before it.
     - Migrations `0008` (adds `player.selected_by_percent`, refreshed by every reference sync)
       and `0009` (the alert log tables `alert` and `alert_post`) run through the pre-deploy like

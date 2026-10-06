@@ -19,7 +19,9 @@ breaking = "pilne"
 
 [header]
 headline = "Przed {deadline_label}"
-moment = "Stan na {as_of} · deadline {weekday} {date}, {time}"
+moment = "Stan na {as_of} · deadline {deadline}"
+# A moment with its day; the alert moment shows only {time} when it is on the deadline's day.
+day_time = "{weekday} {date}, {time}"
 # Monday first, as Python's datetime.weekday().
 weekdays = ["pon", "wt", "śr", "czw", "pt", "sob", "nd"]
 
@@ -46,14 +48,17 @@ confirmed_starter = "W pierwszym składzie"
 high = "●●● potwierdzone"
 medium = "●●○ prawdopodobne"
 low = "●○○ plotka"
-legend = "Wiarygodność: ●●● potwierdzone · ●●○ prawdopodobne · ●○○ plotka"
+legend = "Wiarygodność: ●●● potwierdzone · ●●○ prawdopodobne · ●○○ plotka · liczone są niezależne konta"
 separator = " · "
 
 [accounts]
+# Independent accounts behind the news (the anchor and the supporting ones).
 # Polish plural forms: _one for 1; _few for numbers ending in 2-4 except 12-14; _many otherwise.
-one = "jedno konto"
-few = "{count} niezależne konta"
-many = "{count} niezależnych kont"
+one = "1 konto"
+few = "{count} konta"
+many = "{count} kont"
+# Independent accounts contradicting it, shown only when there are any.
+against = "{count} przeciw"
 
 [age]
 minutes = "{count} min temu"
@@ -70,7 +75,6 @@ one = "Źródło"
 many = "Źródła"
 contradicting = "Zaprzecza"
 new_marker = "🆕 "
-anchor_url = "https://x.com/{author}/status/{x_id}"
 
 [digest]
 empty = "Brak wiadomości o zawodnikach z Twojej listy."

@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 
@@ -306,3 +307,19 @@ def test_window_is_capped_by_the_lookback_after_a_long_break(db):
     assert "Saka" in text and "Isak" not in text
     assert "status/3" in text and "status/1" not in text
     assert alert_posts(db, DIGEST_KEY) == {(SAKA, 3): "new"}
+
+
+def test_window_is_the_same_for_every_alert_of_a_deadline(db):
+    from app.alerts.service import alert_window_start
+
+    seed(db)
+    config = AlertConfig((120, 30), 3, Decimal("15"), None, max_lookback=timedelta(days=1))
+    with Session(db) as session:
+        starts = {
+            alert_window_start(session, NOW + offset, REAL, config)
+            for offset in (timedelta(0), timedelta(minutes=90), timedelta(minutes=115))
+        }
+        assert starts == {DEADLINE_AT - timedelta(days=1)}
+        # with a short break the previous deadline is the start
+        long = replace(config, max_lookback=timedelta(days=30))
+        assert alert_window_start(session, NOW, REAL, long) == PREVIOUS

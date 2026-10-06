@@ -46,7 +46,6 @@ class SlotDraft:
     as_of: datetime
     message: Message | None
     reports: list[PlayerReport]
-    listed_without_news: int
     posts: list[IncludedPost]
 
     @property
@@ -62,10 +61,13 @@ def current_season(session: Session) -> str | None:
     return session.exec(select(Season.label).order_by(Season.label.desc())).first()
 
 
-def alert_window_start(session: Session, as_of: datetime, config: AlertConfig) -> datetime:
-    """The previous deadline, but no further back than the configured lookback: a long break
-    between deadlines (an international break) would otherwise fill alerts with stale news."""
-    return max(window_start(session, as_of), as_of - config.max_lookback)
+def alert_window_start(
+    session: Session, as_of: datetime, deadline: AlertDeadline, config: AlertConfig
+) -> datetime:
+    """The previous deadline, but no further back than the configured lookback before the alert
+    deadline: a long break between deadlines (an international break) would otherwise fill
+    alerts with stale news. Counting from the deadline keeps one window for all its alerts."""
+    return max(window_start(session, as_of), deadline.deadline_at - config.max_lookback)
 
 
 def shown_x_ids(result: Corroboration) -> set[int]:
@@ -142,11 +144,9 @@ def build_slot_alert(
     with Session(engine) as session:
         season = current_season(session)
         if season is None:
-            return SlotDraft(kind, as_of, None, [], 0, [])
-        start = alert_window_start(session, as_of, runtime.config)
-        listed, without_claim = listed_players(
-            session, season, runtime.league_ids, start, as_of, runtime.config
-        )
+            return SlotDraft(kind, as_of, None, [], [])
+        start = alert_window_start(session, as_of, deadline, runtime.config)
+        listed = listed_players(session, season, runtime.league_ids, start, as_of, runtime.config)
         all_claims = sorted({x for item in listed for x in item.claim_x_ids})
         origins = post_origin_sets(session, all_claims)
 
@@ -157,7 +157,7 @@ def build_slot_alert(
             if any(_is_new(origins.get(x, {x}), included) for x in item.claim_x_ids)
         ]
         if not listed:
-            return SlotDraft(kind, as_of, None, [], without_claim, [])
+            return SlotDraft(kind, as_of, None, [], [])
 
     reports = [
         corroborate_player(
@@ -166,7 +166,7 @@ def build_slot_alert(
         for item in listed
     ]
     message = render_alert(kind, deadline, as_of, reports)
-    return SlotDraft(kind, as_of, message, reports, without_claim, included_rows(reports))
+    return SlotDraft(kind, as_of, message, reports, included_rows(reports))
 
 
 def run_slot(
