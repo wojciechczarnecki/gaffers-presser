@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -136,6 +137,9 @@ def preview(
     ctx: typer.Context,
     at: Annotated[str, typer.Option("--at", help="Europe/Warsaw time, YYYY-MM-DDTHH:MM.")],
     kind: Annotated[str, typer.Option("--kind", help="digest or news.")] = "digest",
+    html: Annotated[
+        Path | None, typer.Option("--html", help="Also write the HTML e-mail to this file.")
+    ] = None,
 ) -> None:
     deps = get_deps(ctx)
     engine = db_engine(deps)
@@ -191,6 +195,9 @@ def preview(
     typer.echo(f"Title: {draft.message.title}")
     typer.echo("")
     typer.echo(draft.message.text)
+    if html is not None and draft.message.html is not None:
+        html.write_text(draft.message.html, encoding="utf-8")
+        typer.echo(f"HTML written to {html}")
 
 
 def main() -> None:

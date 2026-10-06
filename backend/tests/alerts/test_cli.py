@@ -245,9 +245,9 @@ def test_preview_prints_and_writes_nothing(db):
     assert digest.exit_code == 0, digest.stderr
     assert "Alert deadline: 2026/27:gw6" in digest.stdout
     assert "Title: " in digest.stdout
-    assert "Saka" in digest.stdout and "Jan Kowalski" in digest.stdout
+    assert "Saka" in digest.stdout and "Jan Kowalski" not in digest.stdout
     assert "https://x.com/a1/status/1" in digest.stdout
-    assert template["link"]["new_marker"] in digest.stdout
+    assert template["sources"]["new_marker"] not in digest.stdout
 
     # the digest is already in the log; the news at a later moment has nothing new
     from app.alerts.store import record_alert
@@ -277,7 +277,9 @@ def test_preview_prints_and_writes_nothing(db):
     news = invoke(db, "preview", "--at", "2026-09-29T21:30", "--kind", "news")
     assert news.exit_code == 0
     assert "status/2" in news.stdout
-    marked = [line for line in news.stdout.splitlines() if template["link"]["new_marker"] in line]
+    marked = [
+        line for line in news.stdout.splitlines() if template["sources"]["new_marker"] in line
+    ]
     assert len(marked) == 1 and "status/2" in marked[0]
 
     assert before["alert"] == 0 and before["delivery_log"] == 0
@@ -307,3 +309,15 @@ def test_preview_rejects_bad_input(db):
         config=AlertConfig((120,), 3, Decimal("15"), None),
     )
     assert no_news.exit_code == 1 and "no news slot" in no_news.stderr
+
+
+def test_preview_writes_the_html_part_when_asked(db, tmp_path):
+    preview_world(db)
+    target = tmp_path / "digest.html"
+
+    result = invoke(db, "preview", "--at", "2026-09-29 20:00", "--html", str(target))
+
+    assert result.exit_code == 0, result.stderr
+    html = target.read_text(encoding="utf-8")
+    assert html.startswith("<!doctype html>")
+    assert "Saka" in html and "https://x.com/a1/status/1" in html

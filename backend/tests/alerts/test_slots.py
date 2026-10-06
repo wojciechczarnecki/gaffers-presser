@@ -1,7 +1,10 @@
+from dataclasses import replace
 from datetime import timedelta
+from decimal import Decimal
 
 from sqlmodel import Session, select
 
+from app.alerts.config import AlertConfig
 from app.alerts.models import Alert, AlertPost
 from app.alerts.render import load_template
 from app.alerts.schemas import AlertDeadline
@@ -26,7 +29,7 @@ REAL = AlertDeadline(f"{SEASON}:gw6", DEADLINE_AT, False, SEASON, 6)
 REHEARSAL = AlertDeadline("rehearsal:2026-09-29T20:00Z", DEADLINE_AT, True, None, None)
 DIGEST_KEY = "alert:2026/27:gw6:digest:120"
 NEWS_KEY = "alert:2026/27:gw6:news:30"
-MARKER = TEMPLATE["link"]["new_marker"]
+MARKER = TEMPLATE["sources"]["new_marker"]
 
 
 def seed(db):
@@ -39,10 +42,10 @@ def seed(db):
     )
 
 
-def setup(db, corroboration=None, channel=None, at=NOW):
+def setup(db, corroboration=None, channel=None, at=NOW, config=None):
     clock = FixedClock(at)
     channel = channel or FakeChannel(["msg-1"])
-    runtime = alerts_runtime(db, channel, clock, corroboration)
+    runtime = alerts_runtime(db, channel, clock, corroboration, config=config)
     return runtime, channel, clock
 
 
@@ -103,7 +106,6 @@ def test_digest_without_claims_says_no_news(db):
     assert len(channel.calls) == 1
     text = channel.calls[0].text
     assert TEMPLATE["digest"]["empty"] in text
-    assert TEMPLATE["digest"]["no_news_few"].format(count=2) in text
     assert alert_posts(db, DIGEST_KEY) == {}
 
 
@@ -285,5 +287,39 @@ def test_rehearsal_alerts_do_not_count_for_the_real_deadline(db):
     ]
     assert alert_posts(db, DIGEST_KEY) == {(SAKA, 1): "new"}
     assert alert_posts(db, "alert:rehearsal:2026-09-29T20:00Z:digest:120") == {(SAKA, 1): "new"}
-    assert any(line for line in channel.calls[1].text.splitlines() if MARKER in line)
+    assert "status/1" in channel.calls[1].text
     assert rehearsal_news_key in {a.key for a in alerts(db)}
+
+
+def test_window_is_capped_by_the_lookback_after_a_long_break(db):
+    seed(db)  # the previous deadline is 3 days before the digest
+    add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(days=2), author="old")
+    add_claim(
+        db, 2, ISAK, "doubt", created_at=NOW - timedelta(days=2), author="old", mention="Isak"
+    )
+    add_claim(db, 3, SAKA, "out", created_at=NOW - timedelta(hours=5), author="fresh")
+    config = AlertConfig((120, 30), 3, Decimal("15"), None, max_lookback=timedelta(days=1))
+    runtime, channel, clock = setup(db, config=config)
+
+    assert run_slot(db, runtime, REAL, 0, clock) == "sent"
+
+    text = channel.calls[0].text
+    assert "Saka" in text and "Isak" not in text
+    assert "status/3" in text and "status/1" not in text
+    assert alert_posts(db, DIGEST_KEY) == {(SAKA, 3): "new"}
+
+
+def test_window_is_the_same_for_every_alert_of_a_deadline(db):
+    from app.alerts.service import alert_window_start
+
+    seed(db)
+    config = AlertConfig((120, 30), 3, Decimal("15"), None, max_lookback=timedelta(days=1))
+    with Session(db) as session:
+        starts = {
+            alert_window_start(session, NOW + offset, REAL, config)
+            for offset in (timedelta(0), timedelta(minutes=90), timedelta(minutes=115))
+        }
+        assert starts == {DEADLINE_AT - timedelta(days=1)}
+        # with a short break the previous deadline is the start
+        long = replace(config, max_lookback=timedelta(days=30))
+        assert alert_window_start(session, NOW, REAL, long) == PREVIOUS

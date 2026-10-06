@@ -1,5 +1,5 @@
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -27,6 +27,7 @@ def test_defaults():
     assert config.trending_min_accounts == 3
     assert config.widely_owned_percent == Decimal("15")
     assert config.rehearsal_deadline is None
+    assert config.max_lookback == timedelta(days=7)
 
 
 def test_values_are_parsed():
@@ -36,12 +37,14 @@ def test_values_are_parsed():
             alert_trending_min_accounts="5",
             alert_widely_owned_percent="7.5",
             alert_rehearsal_deadline="2026-10-04 18:00",
+            alert_max_lookback_days="10",
         )
     )
     assert config.slots == (180, 60, 15)
     assert config.trending_min_accounts == 5
     assert config.widely_owned_percent == Decimal("7.5")
     assert config.rehearsal_deadline == datetime(2026, 10, 4, 16, 0, tzinfo=UTC)
+    assert config.max_lookback == timedelta(days=10)
 
 
 def test_empty_environment_values_fall_back_to_defaults(monkeypatch):
@@ -67,6 +70,8 @@ def test_empty_environment_values_fall_back_to_defaults(monkeypatch):
         ("ALERT_WIDELY_OWNED_PERCENT", "x"),
         ("ALERTS_ENABLED", "maybe"),
         ("ALERT_REHEARSAL_DEADLINE", "tomorrow"),
+        ("ALERT_MAX_LOOKBACK_DAYS", "0"),
+        ("ALERT_MAX_LOOKBACK_DAYS", "week"),
     ],
 )
 def test_invalid_values_name_the_variable(variable, value):

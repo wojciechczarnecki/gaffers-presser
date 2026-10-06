@@ -44,9 +44,7 @@ def label_claim(anchor_type: str, claim_type: str) -> Label:
 
 
 def account_of(post: PostRef) -> str:
-    if post.is_repost and post.reposted_author_handle:
-        return post.reposted_author_handle.lower()
-    return post.author_handle.lower()
+    return post.original_author.lower()
 
 
 def _newest_first(items: Sequence[LabelledPost]) -> list[LabelledPost]:

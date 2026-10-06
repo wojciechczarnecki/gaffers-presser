@@ -47,7 +47,7 @@ def test_league_owned_uses_latest_synced_picks_with_managers(db):
     for x_id, player in enumerate((SAKA, ISAK, GABRIEL_JESUS, GABRIEL_MAGALHAES), start=1):
         add_claim(db, x_id, player)
 
-    players, without_claim = listed(db)
+    players = listed(db)
 
     found = by_id(players)
     assert set(found) == {ISAK, GABRIEL_JESUS}
@@ -58,7 +58,6 @@ def test_league_owned_uses_latest_synced_picks_with_managers(db):
     assert [m.manager_name for m in found[GABRIEL_JESUS].managers] == ["Jan Kowalski"]
     assert found[ISAK].player.web_name == "Isak"
     assert found[ISAK].player.team_name == "Newcastle"
-    assert without_claim == 0
 
 
 def test_widely_owned_at_threshold(db):
@@ -67,12 +66,11 @@ def test_widely_owned_at_threshold(db):
     for x_id, player in enumerate((SAKA, ISAK, GABRIEL_JESUS), start=1):
         add_claim(db, x_id, player)
 
-    players, without_claim = listed(db)
+    players = listed(db)
 
     assert set(by_id(players)) == {ISAK}
     assert by_id(players)[ISAK].widely_owned is True
     assert by_id(players)[ISAK].selected_by_percent == Decimal("15.0")
-    assert without_claim == 1  # the 80% player has no claim
 
 
 def test_trending_counts_independent_accounts_with_reposts(db):
@@ -82,11 +80,11 @@ def test_trending_counts_independent_accounts_with_reposts(db):
     add_claim(db, 3, SAKA, author="gamma", is_repost=True, reposted_author_handle="Alpha")
     add_claim(db, 4, SAKA, author="epsilon", created_at=START - timedelta(hours=1))
 
-    players, _ = listed(db)
+    players = listed(db)
     assert players == []
 
     add_claim(db, 5, SAKA, author="delta")
-    players, _ = listed(db)
+    players = listed(db)
 
     assert [(p.player.fpl_id, p.trending_accounts) for p in players] == [(SAKA, 3)]
     assert players[0].managers == () and players[0].widely_owned is False
@@ -105,7 +103,7 @@ def test_only_players_with_a_claim_are_reported_once_with_all_categories(db):
         add_claim(db, x_id, SAKA, author=author)
     add_claim(db, 10, GABRIEL_MAGALHAES, author="z")  # claimed but not listed
 
-    players, without_claim = listed(db)
+    players = listed(db)
 
     assert [p.player.fpl_id for p in players] == [SAKA]
     only = players[0]
@@ -113,7 +111,6 @@ def test_only_players_with_a_claim_are_reported_once_with_all_categories(db):
     assert only.widely_owned is True
     assert only.trending_accounts == 3
     assert only.claim_x_ids == (1, 2, 3)
-    assert without_claim == 2  # ISAK (league-owned) and JESUS (widely owned) have no claim
 
 
 def test_order_by_ownership_nulls_last(db):
@@ -128,6 +125,6 @@ def test_order_by_ownership_nulls_last(db):
     for x_id, player in enumerate((SAKA, ISAK, GABRIEL_JESUS, GABRIEL_MAGALHAES), start=1):
         add_claim(db, x_id, player)
 
-    players, _ = listed(db)
+    players = listed(db)
 
     assert [p.player.web_name for p in players] == ["Isak", "Saka", "Gabriel", "Jesus"]

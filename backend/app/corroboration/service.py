@@ -55,7 +55,7 @@ def _citation(item: LabelledPost, new_since: datetime) -> Citation:
     post = item.post
     return Citation(
         x_id=post.x_id,
-        url=f"https://x.com/{post.author_handle}/status/{post.x_id}",
+        url=post.url,
         author_handle=post.author_handle,
         reposted_author_handle=post.reposted_author_handle if post.is_repost else None,
         created_at=post.created_at,

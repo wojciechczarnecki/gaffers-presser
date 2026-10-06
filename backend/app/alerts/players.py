@@ -93,7 +93,7 @@ def listed_players(
     start: datetime,
     as_of: datetime,
     config: AlertConfig,
-) -> tuple[list[ListedPlayer], int]:
+) -> list[ListedPlayer]:
     claims = _claims(session, season, start, as_of)
     owned = _league_owned(session, season, league_ids)
     widely = _widely_owned(session, season, config.widely_owned_percent)
@@ -128,5 +128,4 @@ def listed_players(
             item.player.web_name,
         )
     )
-    without_claim = len(listed_ids - set(claims))
-    return reported, without_claim
+    return reported

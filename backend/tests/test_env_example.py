@@ -53,6 +53,7 @@ _ALERT_FIELD_TO_VARIABLE = {
     "alert_trending_min_accounts": "ALERT_TRENDING_MIN_ACCOUNTS",
     "alert_widely_owned_percent": "ALERT_WIDELY_OWNED_PERCENT",
     "alert_rehearsal_deadline": "ALERT_REHEARSAL_DEADLINE",
+    "alert_max_lookback_days": "ALERT_MAX_LOOKBACK_DAYS",
 }
 
 

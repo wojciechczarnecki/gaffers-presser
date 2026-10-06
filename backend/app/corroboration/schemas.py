@@ -8,6 +8,10 @@ Freshness = Literal["new", "context"]
 GradeLevel = Literal["high", "medium", "low"]
 
 
+def post_url(author_handle: str, x_id: int) -> str:
+    return f"https://x.com/{author_handle}/status/{x_id}"
+
+
 @dataclass(frozen=True)
 class PlayerRef:
     season: str
@@ -24,6 +28,17 @@ class PostRef:
     is_repost: bool
     created_at: datetime
     text: str
+
+    @property
+    def original_author(self) -> str:
+        """The account the content comes from: a repost's original author."""
+        if self.is_repost and self.reposted_author_handle:
+            return self.reposted_author_handle
+        return self.author_handle
+
+    @property
+    def url(self) -> str:
+        return post_url(self.author_handle, self.x_id)
 
 
 @dataclass(frozen=True)
@@ -55,6 +70,11 @@ class Citation:
     freshness: Freshness
     event_type: str | None
     text: str
+
+    @property
+    def original_author(self) -> str:
+        # reposted_author_handle is set only for reposts (see corroboration.service._citation)
+        return self.reposted_author_handle or self.author_handle
 
 
 @dataclass(frozen=True)
