@@ -20,7 +20,7 @@ TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "content" / "alert_emai
 
 # Groups in the order they appear in the e-mail, one per anchor event type.
 GROUP_ORDER = ("out", "doubt", "benched", "confirmed_starter")
-# Within a group, news newer than this comes first, marked next to the player's name.
+# Within a group, news newer than this comes first, its age marked as new.
 FRESH_WITHIN = timedelta(hours=24)
 POST_TIME = "%d.%m %H:%M"
 
@@ -105,7 +105,9 @@ def _card(
     ]
     if contradicting:
         details.append(template["accounts"]["against"].format(count=len(contradicting)))
-    details.append(age_text(template, post.created_at, as_of))
+    fresh = as_of - post.created_at <= FRESH_WITHIN
+    age = age_text(template, post.created_at, as_of)
+    details.append(template["age"]["fresh"].format(age=age) if fresh else age)
     notes = []
     if result.reversal:
         notes.append(template["note"]["reversal"])
@@ -119,7 +121,7 @@ def _card(
         contradicting=contradicting,
         details=template["grade"]["separator"].join(details),
         notes=tuple(notes),
-        fresh=as_of - post.created_at <= FRESH_WITHIN,
+        fresh=fresh,
     )
 
 
@@ -220,9 +222,6 @@ def _render_text(
                     name=player.web_name,
                     club=club,
                     event=template["event"][event],
-                    badge=texts["badge"].format(text=template["age"]["fresh"])
-                    if card.fresh
-                    else "",
                 )
             )
             lines.append(card.details)
@@ -274,7 +273,6 @@ def _render_card(template: Mapping[str, Any], card: Card) -> str:
         detail_color=palette["heading"],
         name=escape(player.web_name),
         club=escape(player.team_name or ""),
-        badge=(html["badge"].format(text=escape(template["age"]["fresh"])) if card.fresh else ""),
         event=escape(template["event"][card.event]),
         details=escape(card.details),
         notes="".join(html["note"].format(text=escape(note)) for note in card.notes),

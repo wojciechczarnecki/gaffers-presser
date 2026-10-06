@@ -101,7 +101,7 @@ def test_template_has_every_key_and_renders():
         render_alert("news", deadline(), AS_OF, [full_report()], recorder),
         render_alert("breaking", deadline(), AS_OF, [full_report()], recorder),
         render_alert("news", deadline(), AS_OF, [*vocabulary, anchorless], recorder),
-        # ages: minutes, hours, yesterday, days (without the fresh badge)
+        # ages: minutes, hours (marked new), yesterday, days
         render_alert(
             "digest", deadline(), AS_OF - timedelta(hours=1, minutes=10), [many], recorder
         ),

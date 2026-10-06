@@ -46,15 +46,16 @@ def test_card_shows_the_news_grade_accounts_age_and_sources():
     message = render_alert("digest", deadline(), AS_OF, [full_report()])
     text = message.text
 
-    fresh = TEMPLATE["age"]["fresh"]
-    assert f"Saka {fresh} (Arsenal) — " + TEMPLATE["event"]["out"] in text
+    assert "Saka (Arsenal) — " + TEMPLATE["event"]["out"] in text
     assert TEMPLATE["grade"]["medium"] in text
     details = TEMPLATE["grade"]["separator"].join(
         (
             TEMPLATE["grade"]["medium"],
             TEMPLATE["accounts"]["few"].format(count=3),  # the anchor and 2 supporting
             TEMPLATE["accounts"]["against"].format(count=1),
-            TEMPLATE["age"]["hours"].format(count=1),  # the anchor is 90 minutes old
+            TEMPLATE["age"]["fresh"].format(  # the anchor is 90 minutes old
+                age=TEMPLATE["age"]["hours"].format(count=1)
+            ),
         )
     )
     assert details in text and details in message.html
@@ -182,16 +183,17 @@ def test_low_grade_card_is_dashed():
     assert "5px solid" in medium
 
 
-def test_news_of_the_last_24_hours_carries_a_badge():
-    badge = TEMPLATE["age"]["fresh"]
+def test_age_of_news_from_the_last_24_hours_is_marked_new():
+    mark = TEMPLATE["age"]["fresh"].format(age="")
     fresh = render_alert("digest", deadline(), AS_OF, [player_report(SAKA)])  # 90 minutes old
-    assert badge in fresh.text and badge in fresh.html
+    assert mark + TEMPLATE["age"]["hours"].format(count=1) in fresh.text
+    assert mark in fresh.html
     day_old = render_alert(
         "digest", deadline(), AS_OF + timedelta(hours=22, minutes=30), [player_report(SAKA)]
     )
-    assert badge in day_old.text  # 24 hours old
+    assert mark in day_old.text  # 24 hours old
     older = render_alert("digest", deadline(), AS_OF + timedelta(hours=23), [player_report(SAKA)])
-    assert badge not in older.text and badge not in older.html
+    assert mark not in older.text and mark not in older.html
 
 
 def test_news_of_the_last_24_hours_comes_first_within_a_group():
