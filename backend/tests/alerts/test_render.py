@@ -177,18 +177,16 @@ def test_low_grade_card_is_dashed():
     assert "5px solid" in medium
 
 
-def test_news_older_than_three_days_carries_a_badge():
-    badge = TEMPLATE["age"]["stale"]
-    fresh = render_alert("digest", deadline(), AS_OF, [player_report(SAKA)])
-    assert badge not in fresh.text and badge not in fresh.html
-    old = render_alert(
-        "digest", deadline(), AS_OF + timedelta(days=3, hours=2), [player_report(SAKA)]
+def test_news_of_the_last_24_hours_carries_a_badge():
+    badge = TEMPLATE["age"]["fresh"]
+    fresh = render_alert("digest", deadline(), AS_OF, [player_report(SAKA)])  # 90 minutes old
+    assert badge in fresh.text and badge in fresh.html
+    day_old = render_alert(
+        "digest", deadline(), AS_OF + timedelta(hours=22, minutes=30), [player_report(SAKA)]
     )
-    assert badge in old.text and badge in old.html
-    three_days = render_alert(
-        "digest", deadline(), AS_OF + timedelta(days=2, hours=22), [player_report(SAKA)]
-    )
-    assert badge not in three_days.text  # 2 days 23.5 hours old
+    assert badge in day_old.text  # 24 hours old
+    older = render_alert("digest", deadline(), AS_OF + timedelta(hours=23), [player_report(SAKA)])
+    assert badge not in older.text and badge not in older.html
 
 
 def test_news_of_the_last_24_hours_comes_first_within_a_group():

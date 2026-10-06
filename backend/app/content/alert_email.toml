@@ -65,8 +65,8 @@ minutes = "{count} min temu"
 hours = "{count} godz. temu"
 day = "wczoraj"
 days = "{count} dni temu"
-# A badge on a card whose news is older than three days.
-stale = "🕓 stara wiadomość"
+# A badge on a card whose news is from the last 24 hours.
+fresh = "świeże"
 
 [note]
 reversal = "⚠️ Wcześniej pisano co innego — doniesienia się odwracają"
@@ -143,7 +143,7 @@ card = """<tr><td style="background:#ffffff;padding:4px 20px;">
 {notes}<div style="font-size:13px;margin-top:6px;color:#5b6475;">{sources}</div>
 </td></tr></table>
 </td></tr>"""
-badge = """ <span style="display:inline-block;font-size:12px;font-weight:600;color:#5b6475;background:#eceef2;border-radius:10px;padding:1px 8px;vertical-align:middle;">{text}</span>"""
+badge = """ <span style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#ffffff;background:{color};border-radius:4px;padding:2px 6px;margin-left:4px;vertical-align:2px;">{text}</span>"""
 note = """<div style="font-size:13px;margin-top:4px;color:#b42318;">{text}</div>"""
 sources = "{label}: {links}"
 source_link = """{marker}<a href="{url}" style="color:#37003c;">@{account}</a>"""

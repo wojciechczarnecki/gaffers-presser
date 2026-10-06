@@ -20,10 +20,8 @@ TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "content" / "alert_emai
 
 # Groups in the order they appear in the e-mail, one per anchor event type.
 GROUP_ORDER = ("out", "doubt", "benched", "confirmed_starter")
-# Within a group, news newer than this comes before older news.
+# Within a group, news newer than this comes first and carries a "fresh" badge.
 FRESH_WITHIN = timedelta(hours=24)
-# A card whose anchor post is older than this carries a "stale news" badge.
-STALE_AFTER = timedelta(days=3)
 POST_TIME = "%d.%m %H:%M"
 
 
@@ -64,7 +62,6 @@ class Card:
     details: str
     notes: tuple[str, ...]
     fresh: bool
-    stale: bool
 
     @property
     def accounts(self) -> int:
@@ -123,7 +120,6 @@ def _card(
         details=template["grade"]["separator"].join(details),
         notes=tuple(notes),
         fresh=as_of - post.created_at <= FRESH_WITHIN,
-        stale=as_of - post.created_at > STALE_AFTER,
     )
 
 
@@ -224,8 +220,8 @@ def _render_text(
                     name=player.web_name,
                     club=club,
                     event=template["event"][event],
-                    badge=texts["badge"].format(text=template["age"]["stale"])
-                    if card.stale
+                    badge=texts["badge"].format(text=template["age"]["fresh"])
+                    if card.fresh
                     else "",
                 )
             )
@@ -278,7 +274,11 @@ def _render_card(template: Mapping[str, Any], card: Card) -> str:
         detail_color=palette["heading"],
         name=escape(player.web_name),
         club=escape(player.team_name or ""),
-        badge=html["badge"].format(text=escape(template["age"]["stale"])) if card.stale else "",
+        badge=(
+            html["badge"].format(color=palette["heading"], text=escape(template["age"]["fresh"]))
+            if card.fresh
+            else ""
+        ),
         event=escape(template["event"][card.event]),
         details=escape(card.details),
         notes="".join(html["note"].format(text=escape(note)) for note in card.notes),
