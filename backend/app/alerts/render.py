@@ -20,7 +20,9 @@ TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "content" / "alert_emai
 
 # Groups in the order they appear in the e-mail, one per anchor event type.
 GROUP_ORDER = ("out", "doubt", "benched", "confirmed_starter")
-# A card whose anchor post is older than this is drawn faded.
+# Within a group, news newer than this comes before older news.
+FRESH_WITHIN = timedelta(hours=24)
+# A card whose anchor post is older than this carries a "stale news" badge.
 STALE_AFTER = timedelta(days=3)
 POST_TIME = "%d.%m %H:%M"
 
@@ -61,6 +63,7 @@ class Card:
     contradicting: tuple[Source, ...]
     details: str
     notes: tuple[str, ...]
+    fresh: bool
     stale: bool
 
     @property
@@ -119,13 +122,15 @@ def _card(
         contradicting=contradicting,
         details=template["grade"]["separator"].join(details),
         notes=tuple(notes),
+        fresh=as_of - post.created_at <= FRESH_WITHIN,
         stale=as_of - post.created_at > STALE_AFTER,
     )
 
 
-def _order_key(card: Card) -> tuple[int, bool, Decimal, str]:
+def _order_key(card: Card) -> tuple[bool, int, bool, Decimal, str]:
     percent = card.report.listed.selected_by_percent
     return (
+        not card.fresh,
         -card.accounts,
         percent is None,
         -(percent or Decimal(0)),
@@ -136,8 +141,9 @@ def _order_key(card: Card) -> tuple[int, bool, Decimal, str]:
 def group_cards(
     template: Mapping[str, Any], kind: AlertKind, reports: Sequence[PlayerReport], as_of: datetime
 ) -> dict[str, list[Card]]:
-    """Cards by anchor event type in GROUP_ORDER; within a group the player with the most
-    independent accounts (for and against) first, ties broken by overall ownership. A report
+    """Cards by anchor event type in GROUP_ORDER; within a group the news of the last 24 hours
+    first, then older news, each part with the most independent accounts (for and against)
+    first and ties broken by overall ownership. A report
     with no anchor, or with an event type the e-mail has no group for, is left out."""
     groups: dict[str, list[Card]] = {event: [] for event in GROUP_ORDER}
     for report in reports:
@@ -215,7 +221,12 @@ def _render_text(
             lines.append("")
             lines.append(
                 texts["player"].format(
-                    name=player.web_name, club=club, event=template["event"][event]
+                    name=player.web_name,
+                    club=club,
+                    event=template["event"][event],
+                    badge=texts["badge"].format(text=template["age"]["stale"])
+                    if card.stale
+                    else "",
                 )
             )
             lines.append(card.details)
@@ -254,7 +265,6 @@ def _links(template: Mapping[str, Any], sources: Sequence[Source]) -> str:
 def _render_card(template: Mapping[str, Any], card: Card) -> str:
     html = template["html"]
     palette = template["palette"][card.event]
-    stale = template["palette"]["stale"]
     player = card.report.listed.player
     sources = html["line_break"].join(
         html["sources"].format(label=escape(label), links=_links(template, items))
@@ -263,11 +273,12 @@ def _render_card(template: Mapping[str, Any], card: Card) -> str:
     return html["card"].format(
         border="dashed" if card.level == "low" else "solid",
         accent=palette["accent"],
-        background=stale["background"] if card.stale else palette["background"],
-        name_color=stale["text"] if card.stale else template["palette"]["base"]["text"],
-        detail_color=stale["text"] if card.stale else palette["heading"],
+        background=palette["background"],
+        text_color=template["palette"]["base"]["text"],
+        detail_color=palette["heading"],
         name=escape(player.web_name),
         club=escape(player.team_name or ""),
+        badge=html["badge"].format(text=escape(template["age"]["stale"])) if card.stale else "",
         event=escape(template["event"][card.event]),
         details=escape(card.details),
         notes="".join(html["note"].format(text=escape(note)) for note in card.notes),

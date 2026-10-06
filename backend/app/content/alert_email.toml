@@ -65,6 +65,8 @@ minutes = "{count} min temu"
 hours = "{count} godz. temu"
 day = "wczoraj"
 days = "{count} dni temu"
+# A badge on a card whose news is older than three days.
+stale = "🕓 stara wiadomość"
 
 [note]
 reversal = "⚠️ Wcześniej pisano co innego — doniesienia się odwracają"
@@ -83,12 +85,13 @@ empty = "Brak wiadomości o zawodnikach z Twojej listy."
 text = "The Gaffer's Presser · newsy z X przed deadline'em, nie oficjalne flagi FPL"
 
 [text]
-player = "{name}{club} — {event}"
+player = "{name}{club} — {event}{badge}"
+badge = " · {text}"
 club = " ({club})"
 sources = "{label}:"
 source = "  {marker}@{account}, {time}: {url}"
 
-# Colours of the four groups; a stale card (older news) uses the neutral colours.
+# Colours of the four groups.
 [palette.out]
 accent = "#d92d20"
 background = "#fef3f2"
@@ -112,10 +115,6 @@ heading = "#067647"
 [palette.base]
 text = "#1d2433"
 
-[palette.stale]
-background = "#f6f7f9"
-text = "#8a92a3"
-
 [html]
 document = """<!doctype html>
 <html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title}</title></head>
@@ -138,12 +137,13 @@ empty = """<tr><td style="background:#ffffff;padding:18px 20px;font-size:15px;">
 group = """<tr><td style="background:#ffffff;padding:18px 20px 6px;font-size:15px;font-weight:700;color:{color};">{heading}</td></tr>"""
 card = """<tr><td style="background:#ffffff;padding:4px 20px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-left:5px {border} {accent};background:{background};border-radius:6px;"><tr><td style="padding:10px 12px;">
-<div style="font-size:16px;font-weight:700;color:{name_color};">{name} <span style="font-weight:400;color:#5b6475;font-size:14px;">{club}</span></div>
-<div style="font-size:14px;margin-top:2px;color:{name_color};">{event}</div>
+<div style="font-size:16px;font-weight:700;color:{text_color};">{name} <span style="font-weight:400;color:#5b6475;font-size:14px;">{club}</span>{badge}</div>
+<div style="font-size:14px;margin-top:2px;color:{text_color};">{event}</div>
 <div style="font-size:13px;margin-top:4px;color:{detail_color};">{details}</div>
 {notes}<div style="font-size:13px;margin-top:6px;color:#5b6475;">{sources}</div>
 </td></tr></table>
 </td></tr>"""
+badge = """ <span style="display:inline-block;font-size:12px;font-weight:600;color:#5b6475;background:#eceef2;border-radius:10px;padding:1px 8px;vertical-align:middle;">{text}</span>"""
 note = """<div style="font-size:13px;margin-top:4px;color:#b42318;">{text}</div>"""
 sources = "{label}: {links}"
 source_link = """{marker}<a href="{url}" style="color:#37003c;">@{account}</a>"""

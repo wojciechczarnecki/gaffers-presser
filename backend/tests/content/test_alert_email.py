@@ -28,7 +28,7 @@ def test_template_file_is_valid_toml_with_every_vocabulary():
     template = tomllib.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
     for section in ("event", "group", "summary"):
         assert set(template[section]) - {"separator"} == EVENT_TYPES
-    assert set(template["palette"]) == EVENT_TYPES | {"base", "stale"}
+    assert set(template["palette"]) == EVENT_TYPES | {"base"}
     assert GRADES <= set(template["grade"])
     assert set(template["title"]) == KINDS
     assert set(template["kind"]) == KINDS
@@ -101,7 +101,7 @@ def test_template_has_every_key_and_renders():
         render_alert("news", deadline(), AS_OF, [full_report()], recorder),
         render_alert("breaking", deadline(), AS_OF, [full_report()], recorder),
         render_alert("news", deadline(), AS_OF, [*vocabulary, anchorless], recorder),
-        # ages: minutes, hours, yesterday, days (a stale card)
+        # ages: minutes, hours, yesterday, days (with the stale badge)
         render_alert(
             "digest", deadline(), AS_OF - timedelta(hours=1, minutes=10), [many], recorder
         ),

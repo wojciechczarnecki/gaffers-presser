@@ -1,10 +1,11 @@
 import ast
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from app.alerts.render import age_text, load_template, plural_form, render_alert
 from app.alerts.schemas import ManagerRef
-from app.corroboration.schemas import Corroboration, RetrievalReport
+from app.corroboration.schemas import Claim, Corroboration, RetrievalReport
 from tests.alerts.helpers import (
     AS_OF,
     POST_TIME,
@@ -15,6 +16,7 @@ from tests.alerts.helpers import (
     full_report,
     listed,
     player_ref,
+    post_ref,
     report,
 )
 
@@ -168,16 +170,40 @@ def test_empty_digest_says_so():
     assert TEMPLATE["digest"]["empty"] not in with_news
 
 
-def test_low_grade_card_is_dashed_and_stale_card_is_faded():
+def test_low_grade_card_is_dashed():
     low = render_alert("digest", deadline(), AS_OF, [player_report(SAKA, level="low")]).html
     assert "5px dashed" in low and "5px solid" not in low
-    fresh = render_alert("digest", deadline(), AS_OF, [player_report(SAKA)]).html
-    stale_html = render_alert(
-        "digest", deadline(), AS_OF + timedelta(days=4), [player_report(SAKA)]
-    ).html
-    stale_background = TEMPLATE["palette"]["stale"]["background"]
-    assert stale_background not in fresh
-    assert stale_background in stale_html
+    medium = render_alert("digest", deadline(), AS_OF, [player_report(SAKA)]).html
+    assert "5px solid" in medium
+
+
+def test_news_older_than_three_days_carries_a_badge():
+    badge = TEMPLATE["age"]["stale"]
+    fresh = render_alert("digest", deadline(), AS_OF, [player_report(SAKA)])
+    assert badge not in fresh.text and badge not in fresh.html
+    old = render_alert(
+        "digest", deadline(), AS_OF + timedelta(days=3, hours=2), [player_report(SAKA)]
+    )
+    assert badge in old.text and badge in old.html
+    three_days = render_alert(
+        "digest", deadline(), AS_OF + timedelta(days=2, hours=22), [player_report(SAKA)]
+    )
+    assert badge not in three_days.text  # 2 days 23.5 hours old
+
+
+def test_news_of_the_last_24_hours_comes_first_within_a_group():
+    old_but_backed = report(
+        listed(ISAK, percent="60", claims=(200,)),
+        replace(
+            corroboration(ISAK, 200, supporting=[citation(201, "a"), citation(202, "b")]),
+            anchor=Claim(
+                post_ref(200, "anchoracct", AS_OF - timedelta(hours=30)), "doubt", "likely"
+            ),
+        ),
+    )
+    fresh_single = player_report(SAKA, percent="1")  # the anchor is 90 minutes old
+    text = render_alert("digest", deadline(), AS_OF, [old_but_backed, fresh_single]).text
+    assert text.index("Saka") < text.index("Isak")
 
 
 def test_age_text():
