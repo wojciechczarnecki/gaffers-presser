@@ -46,7 +46,8 @@ def test_card_shows_the_news_grade_accounts_age_and_sources():
     message = render_alert("digest", deadline(), AS_OF, [full_report()])
     text = message.text
 
-    assert "Saka (Arsenal) — " + TEMPLATE["event"]["out"] in text
+    fresh = TEMPLATE["age"]["fresh"]
+    assert f"Saka {fresh} (Arsenal) — " + TEMPLATE["event"]["out"] in text
     assert TEMPLATE["grade"]["medium"] in text
     details = TEMPLATE["grade"]["separator"].join(
         (
@@ -93,13 +94,17 @@ def test_notes_only_when_flagged():
     )
 
 
-def test_new_marker_only_in_news_and_only_on_new_sources():
-    news = render_alert("news", deadline(), AS_OF, [full_report()]).text
-    marked = [line for line in news.splitlines() if MARKER in line]
+def test_new_sources_are_marked_only_in_news():
+    news = render_alert("news", deadline(), AS_OF, [full_report()])
+    marked = [line for line in news.text.splitlines() if MARKER in line]
     assert len(marked) == 2
     assert {"status/100" in line or "status/102" in line for line in marked} == {True}
-    breaking = render_alert("breaking", deadline(), AS_OF, [full_report()]).text
-    assert MARKER not in breaking
+    bold = f'style="color:#37003c;{TEMPLATE["html"]["new_weight"]}"'
+    assert news.html.count(bold) == 2
+    for kind in ("digest", "breaking"):
+        other = render_alert(kind, deadline(), AS_OF, [full_report()])
+        assert MARKER not in other.text
+        assert bold not in other.html
 
 
 def test_groups_follow_the_event_order_with_a_summary():

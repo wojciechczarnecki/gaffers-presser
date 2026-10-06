@@ -20,7 +20,7 @@ TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "content" / "alert_emai
 
 # Groups in the order they appear in the e-mail, one per anchor event type.
 GROUP_ORDER = ("out", "doubt", "benched", "confirmed_starter")
-# Within a group, news newer than this comes first and carries a "fresh" badge.
+# Within a group, news newer than this comes first, marked next to the player's name.
 FRESH_WITHIN = timedelta(hours=24)
 POST_TIME = "%d.%m %H:%M"
 
@@ -246,7 +246,7 @@ def _links(template: Mapping[str, Any], sources: Sequence[Source]) -> str:
     html = template["html"]
     links = [
         html["source_link"].format(
-            marker=escape(template["sources"]["new_marker"]) if source.new else "",
+            weight=html["new_weight"] if source.new else "",
             url=escape(source.url),
             account=escape(source.account),
         )
@@ -274,11 +274,7 @@ def _render_card(template: Mapping[str, Any], card: Card) -> str:
         detail_color=palette["heading"],
         name=escape(player.web_name),
         club=escape(player.team_name or ""),
-        badge=(
-            html["badge"].format(color=palette["heading"], text=escape(template["age"]["fresh"]))
-            if card.fresh
-            else ""
-        ),
+        badge=(html["badge"].format(text=escape(template["age"]["fresh"])) if card.fresh else ""),
         event=escape(template["event"][card.event]),
         details=escape(card.details),
         notes="".join(html["note"].format(text=escape(note)) for note in card.notes),
