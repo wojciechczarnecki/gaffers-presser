@@ -25,9 +25,10 @@ metrics:
   findings_accepted: 6
   findings_rejected: 5
   finished_at: 2026-09-29T16:21
-  cost_plan_cents: 212
-  cost_plan_review_cents: 61
-  cost_final_review_cents: 795
+  cost_plan_cents: 311
+  cost_plan_review_cents: 86
+  cost_final_review_cents: 1023
+  cost_implement_cents: 1299
 ---
 
 # SPEC 005 — Extraction model comparison and OpenRouter as the only LLM provider

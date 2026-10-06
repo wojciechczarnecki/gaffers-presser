@@ -25,9 +25,10 @@ metrics:
   findings_accepted: 13
   findings_rejected: 0
   finished_at: 2026-09-30T20:38
-  cost_plan_cents: 287
-  cost_plan_review_cents: 116
-  cost_final_review_cents: 753
+  cost_plan_cents: 347
+  cost_plan_review_cents: 146
+  cost_final_review_cents: 959
+  cost_implement_cents: 2202
 ---
 
 # SPEC 007 — Leak corroboration

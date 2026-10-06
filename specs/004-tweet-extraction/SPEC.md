@@ -26,9 +26,10 @@ metrics:
   findings_accepted: 14
   findings_rejected: 5
   finished_at: 2026-09-28T23:28
-  cost_plan_cents: 155
-  cost_plan_review_cents: 66
-  cost_final_review_cents: 807
+  cost_plan_cents: 187
+  cost_plan_review_cents: 94
+  cost_final_review_cents: 1061
+  cost_implement_cents: 2000
 ---
 
 # SPEC 004 — LangGraph extraction flow, player linking and the default LLM
