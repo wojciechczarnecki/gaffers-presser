@@ -332,7 +332,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       `tests/tweets/payloads/*`, `tests/tweets/test_payloads.py`,
       `tests/tweets/sources/test_twscrape_source.py`.
       Automatic verification: `uv run pytest -q tests/tweets/sources/test_twscrape_source.py tests/tweets/test_payloads.py` `iterations: 0`
-- [ ] 5. **Membership through the source, and the snapshot store.**
+- [x] 5. **Membership through the source, and the snapshot store.**
       - Add `members` to the `TweetSource` protocol and `MembershipNotSupportedError` to
         `base.py`.
       - Implement `TwscrapeSource.members` with the extracted `NoAccountError` helper, and
@@ -361,7 +361,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 
       Files: `app/tweets/sources/{base,twscrape_source,twitterapi_io,x_api}.py`,
       `app/tweets/membership.py`, the test files above, `tests/tweets/payloads/*`.
-      Automatic verification: `uv run pytest -q tests/tweets/sources tests/tweets/test_membership.py tests/tweets/test_payloads.py`
+      Automatic verification: `uv run pytest -q tests/tweets/sources tests/tweets/test_membership.py tests/tweets/test_payloads.py` `iterations: 1`
 - [ ] 6. **Classification.** Create `app/tweets/classes.py` as in Design. Write the tests
       first in `tests/tweets/test_classes.py`:
       - `test_no_snapshot_every_post_is_a_list_post`

@@ -37,6 +37,8 @@ class TweetSource(Protocol):
 
     def pages(self, list_id: int) -> Iterator[list[FetchedPost]]: ...
 
+    def members(self, list_id: int) -> list[str]: ...
+
     def close(self) -> None: ...
 
 
@@ -52,3 +54,7 @@ class SourceRateLimitedError(CollectorError):
     def __init__(self, message: str, retry_after: float | None = None) -> None:
         super().__init__(message)
         self.retry_after = retry_after
+
+
+class MembershipNotSupportedError(CollectorError):
+    pass

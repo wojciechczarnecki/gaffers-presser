@@ -17,6 +17,7 @@ from app.tweets.measure import (
     read_records,
     record_to_json,
 )
+from app.tweets.sources.base import MembershipNotSupportedError
 from tests.tweets.fakes import post
 
 START = datetime(2026, 9, 28, 12, 0, 0, tzinfo=UTC)
@@ -36,6 +37,9 @@ class ScriptedSource:
         if isinstance(script, Exception):
             raise script
         return iter(script)
+
+    def members(self, list_id: int):
+        raise MembershipNotSupportedError("fake: membership not supported")
 
     def close(self) -> None:
         self.closed = True

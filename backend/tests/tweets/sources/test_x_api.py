@@ -6,6 +6,7 @@ import pytest
 
 from app.core.errors import CollectorError
 from app.tweets.sources.base import (
+    MembershipNotSupportedError,
     SourcePayloadError,
     SourceRateLimitedError,
     SourceUnavailableError,
@@ -216,3 +217,12 @@ def test_normalised_posts_carry_no_token():
     assert page
     for post in page:
         assert "sentinel-secret" not in json.dumps(post.raw)
+
+
+def test_members_not_supported():
+    source = _source(FakeHttp())
+    try:
+        with pytest.raises(MembershipNotSupportedError):
+            source.members(42)
+    finally:
+        source.close()

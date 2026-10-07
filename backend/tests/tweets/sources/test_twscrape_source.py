@@ -33,11 +33,20 @@ class FakePool:
 
 
 class FakeApi:
-    def __init__(self, pages: list, pool: FakePool | None = None) -> None:
+    def __init__(
+        self, pages: list, pool: FakePool | None = None, member_pages: list | None = None
+    ) -> None:
         self.pool = pool or FakePool()
         self._pages = pages
+        self._member_pages = member_pages or []
         self.closed = False
         self.pulled = 0
+
+    async def list_members_raw(self, list_id: int):
+        for page in self._member_pages:
+            if isinstance(page, Exception):
+                raise page
+            yield page
 
     async def list_timeline_raw(self, list_id: int):
         try:
@@ -347,3 +356,52 @@ def test_page_without_recognised_entries_falls_back_and_warns(caplog):
     assert page
     assert all(p.entry_head and not p.embedded for p in page)
     assert "no timeline entries recognised" in caplog.text
+
+
+def test_members_from_recorded_payload():
+    api = FakeApi([], member_pages=[_response("twscrape-list-members")])
+    source = _source(api)
+    try:
+        members = source.members(7)
+    finally:
+        source.close()
+    assert members == ["Synthetic_Leaker_1", "Synthetic_Leaker_2", "Synthetic_Leaker_3"]
+
+
+@pytest.mark.parametrize(
+    "next_available,expected_error",
+    [("now", SourceRateLimitedError), (None, SourceUnavailableError)],
+)
+def test_members_rate_limited_maps_to_source_error(next_available, expected_error):
+    queues = []
+
+    class RecordingPool(FakePool):
+        async def next_available_at(self, queue: str):
+            queues.append(queue)
+            return await super().next_available_at(queue)
+
+    api = FakeApi(
+        [],
+        pool=RecordingPool(next_available=next_available),
+        member_pages=[NoAccountError("locked")],
+    )
+    source = _source(api)
+    try:
+        with pytest.raises(expected_error):
+            source.members(7)
+    finally:
+        source.close()
+    assert queues == ["ListMembers"]
+
+
+@pytest.mark.parametrize(
+    "pages",
+    [[], [httpx.Response(200, json={})], [httpx.Response(200, json=["not", "a", "dict"])]],
+)
+def test_members_malformed_or_empty_raises_payload_error(pages):
+    source = _source(FakeApi([], member_pages=pages))
+    try:
+        with pytest.raises(SourcePayloadError):
+            source.members(7)
+    finally:
+        source.close()

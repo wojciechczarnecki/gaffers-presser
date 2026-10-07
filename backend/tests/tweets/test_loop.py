@@ -10,7 +10,11 @@ from app.core.clock import StopAwareClock
 from app.fpl.models import Gameweek, Season
 from app.tweets.loop import TweetPoller, start_poller
 from app.tweets.models import TweetPoll
-from app.tweets.sources.base import SourceRateLimitedError, SourceUnavailableError
+from app.tweets.sources.base import (
+    MembershipNotSupportedError,
+    SourceRateLimitedError,
+    SourceUnavailableError,
+)
 from app.worker.jobs import Shutdown
 from tests.tweets.fakes import FakeSource
 from tests.worker.sim import FakeClock
@@ -32,6 +36,9 @@ class ScriptedSource:
         if isinstance(script, Exception):
             raise script
         return iter(script)
+
+    def members(self, list_id: int):
+        raise MembershipNotSupportedError("fake: membership not supported")
 
     def close(self) -> None:
         self.closed = True

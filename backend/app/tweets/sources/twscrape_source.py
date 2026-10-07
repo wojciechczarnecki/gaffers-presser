@@ -25,6 +25,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 _QUEUE = "ListLatestTweetsTimeline"
+_MEMBERS_QUEUE = "ListMembers"
 _PAST_TOLERANCE = timedelta(hours=12)
 
 
@@ -99,6 +100,22 @@ def _entry_groups(page_dict: dict) -> list[list[int]]:
     return groups
 
 
+def _member_handles(page_dict) -> list[str]:
+    handles = []
+    timeline = page_dict["data"]["list"]["members_timeline"]["timeline"]
+    for instruction in timeline["instructions"]:
+        for entry in instruction.get("entries") or []:
+            if not str(entry.get("entryId", "")).startswith("user-"):
+                continue
+            result = entry["content"]["itemContent"]["user_results"]["result"]
+            handle = (result.get("core") or {}).get("screen_name") or (
+                result.get("legacy") or {}
+            ).get("screen_name")
+            if handle:
+                handles.append(str(handle))
+    return handles
+
+
 def _to_post(tweet, in_entry: set[int] | None, heads: set[int]) -> FetchedPost:
     return FetchedPost(
         x_id=tweet.id,
@@ -141,6 +158,35 @@ class TwscrapeSource:
     def close(self) -> None:
         self._runner.close()
 
+    def _raise_no_account(self, queue: str) -> None:
+        next_available = self._runner.run(self._api.pool.next_available_at(queue))
+        if next_available is None:
+            raise SourceUnavailableError("twscrape: no active account") from None
+        raise SourceRateLimitedError(
+            "twscrape: rate limited", _retry_after_from_next_available(next_available)
+        ) from None
+
+    def members(self, list_id: int) -> list[str]:
+        gen = self._api.list_members_raw(list_id)
+        handles: list[str] = []
+        try:
+            while True:
+                try:
+                    response = self._runner.run(anext(gen))
+                except StopAsyncIteration:
+                    break
+                except NoAccountError:
+                    self._raise_no_account(_MEMBERS_QUEUE)
+                try:
+                    handles.extend(_member_handles(response.json()))
+                except Exception as exc:
+                    raise SourcePayloadError("twscrape: malformed members page") from exc
+        finally:
+            self._runner.run(gen.aclose())
+        if not handles:
+            raise SourcePayloadError("twscrape: empty member list")
+        return handles
+
     def pages(self, list_id: int) -> Iterator[list[FetchedPost]]:
         gen = self._api.list_timeline_raw(list_id)
         try:
@@ -150,13 +196,7 @@ class TwscrapeSource:
                 except StopAsyncIteration:
                     return
                 except NoAccountError:
-                    next_available = self._runner.run(self._api.pool.next_available_at(_QUEUE))
-                    if next_available is None:
-                        raise SourceUnavailableError("twscrape: no active account") from None
-                    raise SourceRateLimitedError(
-                        "twscrape: rate limited",
-                        _retry_after_from_next_available(next_available),
-                    ) from None
+                    self._raise_no_account(_QUEUE)
 
                 try:
                     page_dict = response.json()
