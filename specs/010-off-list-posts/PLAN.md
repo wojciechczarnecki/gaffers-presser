@@ -629,10 +629,9 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 _(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
 
 2026-10-07 — final review (report mode, `/pipeline:ship`). The perspectives ran as separate
-subagents. The compliance and quality perspectives reported in full. The tests perspective
-had not handed in its report (its mutation runs) when this report was written, so its
-findings are missing and the test coverage rests on the compliance perspective's check of
-every proving test. Full verification: ruff clean, 1365 tests passed.
+subagents: compliance, quality and tests. The tests perspective ran 45 mutations: 30 were
+caught, 15 survived, and one of the 15 is equivalent. Full verification: ruff clean, 1365
+tests passed.
 
 AC → evidence:
 
@@ -657,19 +656,35 @@ AC → evidence:
 
 Findings:
 
-- **F1** `worth-fixing` — backend/app/corroboration/rules.py:63 — the anchor is a member's quote of an off-list post: `anchor_account` becomes the quoted author, so the member's own later supporting (or contradicting) post counts as an independent account and lifts the grade, against the 2026-09-30 rule that the anchor account never counts — exclude both `account_of(anchor)` and `counted_account(anchor, "supports")`, with a rules test that has a quote as the anchor.
-- **F2** `worth-fixing` — backend/app/tweets/sources/twscrape_source.py:169 — twscrape's paging ends silently on an aborted request, a stalled cursor or empty pages, so a List of more than 20 members can be stored as a truncated snapshot; the missing members' posts become context for up to 6 h and drop out of extraction and alerts — refuse a snapshot that shrinks sharply against the previous one (keep the previous, log a warning), with a test whose generator stops after page 1.
+- **F1** `worth-fixing` — backend/app/corroboration/rules.py:63 — the anchor is a member's quote of an off-list post: `anchor_account` becomes the quoted author, so the member's own later supporting (or contradicting) post counts as an independent account and lifts the grade, against the 2026-09-30 rule that the anchor account never counts; no test has a quote as the anchor (mutation of line 63 survived) — exclude both `account_of(anchor)` and `counted_account(anchor, "supports")`, with a `count_accounts` test whose anchor quotes an outsider plus a supporting post by the outsider (→ no supporting account) and one by the quoting member.
+- **F2** `worth-fixing` — backend/app/tweets/sources/twscrape_source.py:169 — twscrape's paging ends silently on an aborted request, a stalled cursor or empty pages, so a List of more than 20 members can be stored as a truncated snapshot; the missing members' posts become context for up to 6 h and drop out of extraction and alerts; the multi-page path is also untested, since the fixture has one page and a mutation of `handles.extend` to `=` (line 181, last page only) survived — refuse a snapshot that shrinks sharply against the previous one (keep the previous, log a warning), with a test whose generator stops after page 1 and a two-page test asserting the union of handles.
 - **F3** `worth-fixing` — backend/app/tweets/sources/twscrape_source.py:208 — the fallback fires only when no entry is recognised; when entries are recognised but none of their IDs is among the parsed tweets (partial schema drift, a tweet twscrape cannot parse), every post is embedded and no head exists, so each poll walks 50 pages and `last_seen_id` never advances — fall back when no parsed tweet is a head, with a test.
 - **F4** `worth-fixing` — backend/app/tweets/cli.py:278 — `python -m app.tweets members` with `DATABASE_URL` unset dies with a `ConfigError` traceback, unlike the other CLIs (`extraction/cli.py`, `delivery/cli.py`) — catch `ConfigError`, print `error: …` and exit 1.
 - **F5** `worth-fixing` — backend/app/tweets/sources/twscrape_source.py:133 — twscrape fills `quotedTweet` from the object's own `quoted_status_id_str`, which X's legacy object of a repost of a quote usually carries, so a member's repost of A's quote of B gets `quoted_x_id = B`: it counts as B instead of its original author A, and B becomes a quoted source no member quoted (not confirmed on a real payload) — leave `quoted_x_id` empty for reposts, or apply the quote rule only to non-reposts.
-- **F6** `worth-fixing` — backend/tests/tweets/membership_helpers.py:13 — `set_members` stamps `fetched_at` with `second = counter % 60` over a session-wide counter (34 calls today); past 59 calls a test that sets two snapshots across the wrap writes the newer one with an older time and reads the old snapshot, an order-dependent failure — use `BASE + timedelta(seconds=counter)`.
+- **F6** `worth-fixing` — backend/tests/tweets/membership_helpers.py:13 — `set_members` stamps `fetched_at` with `second = counter % 60` over a session-wide counter (34 calls today); past 59 calls a test that sets two snapshots across the wrap writes the newer one with an older time and reads the old snapshot, an order-dependent failure (found by two perspectives) — use `BASE + timedelta(seconds=counter)`.
 - **F7** `nit` — backend/app/tweets/membership.py:22 — the empty-member-list guard lives only in the twscrape adapter; any other source returning `[]` stores an empty snapshot that turns every post into context — raise `SourcePayloadError` on an empty result in `fetch_membership`.
 - **F8** `nit` — backend/app/tweets/cli.py:133 — `_measure_one` swallows a failed `members()` silently and falls back to non-embedded posts, so a latency report can include off-list module replies without a trace — echo the error class to stderr and catch `CollectorError`.
 - **F9** `nit` — backend/app/tweets/cli.py:285 and backend/app/tweets/loop.py:68 — a database write failure in `save_snapshot` (e.g. an unmigrated database) is reported as "list membership fetch failed", which points at X instead of the database — split the fetch and save error messages.
 - **F10** `nit` — backend/app/tweets/classes.py:8 — `_LATEST` takes the newest snapshot of any List; a changed `X_LIST_ID` whose first fetch fails keeps classifying by the old List's members — record it in DEPLOYMENT, or filter by the configured list id.
 - **F11** `nit` — backend/app/corroboration/rules.py:51, backend/app/tweets/sources/twscrape_source.py:76, backend/tests/tweets/membership_helpers.py:11 — docstrings, which CONVENTIONS forbids — drop them or make them comments.
+- **F12** `worth-fixing` — backend/app/tweets/sources/twscrape_source.py:61 — no fixture has a `TweetWithVisibilityResults` entry (`result.tweet.rest_id`); without that branch the post is embedded, not a head and outside `last_seen_id`, and the mutation survived — wrap one entry of `twscrape-page-conversation` and assert it is a non-embedded head.
+- **F13** `worth-fixing` — backend/app/tweets/sources/twscrape_source.py:91 — skipping `promoted-` entries is untested; without it an old promoted tweet becomes a head and ends a catch-up early (AC13), and the mutation survived — an inline payload with an old promoted entry, asserting paging continues.
+- **F14** `worth-fixing` — backend/app/tweets/store.py:74 — the upsert condition `embedded AND NOT excluded.embedded` is never tested alone, because `test_embedded_then_entry_ends_as_timeline_post` always also fills `quoted_x_id`; the mutation survived — add an embedded-then-entry case without a quote asserting `embedded is False`.
+- **F15** `worth-fixing` — backend/app/tweets/store.py:47 — duplicates inside one `store_posts` call are tested in one order only; "the last copy wins" survived — parametrize `test_duplicate_ids_in_one_call_are_merged` over both orders.
+- **F16** `nit` — backend/app/tweets/sources/base.py:30 — `merge_fetched` has no test where the timeline copy lacks `quoted_x_id` and the embedded copy has it; two mutations survived — a direct unit test over both orders and every field's source.
+- **F17** `nit` — backend/app/tweets/sources/twscrape_source.py:86,112 — the single `entry` instruction and the `legacy.screen_name` fallback are not exercised — inline payload variants.
+- **F18** `nit` — backend/app/tweets/cli.py:130 — nothing checks that `measure` fetches membership once per source — assert one `members` call.
+- **F19** `nit` — backend/app/tweets/classes.py:9 — the `id DESC` tiebreak for snapshots with equal `fetched_at` is untested — a test with two snapshots at one time.
+- **F20** `nit` — backend/app/corroboration/service.py:228 — the trace span `account` for a quoted anchor is untested — assert it in the service test.
+- **F21** `nit` — backend/tests/tweets/test_cli.py:362 — the `members` failure tests cover only a failing `members()`; a `build_source` failure and a database write failure are untested — add both.
+- **F22** `nit` — backend/app/tweets/sources/twscrape_source.py:161 — `_raise_no_account` is annotated `-> None` but always raises, so type checkers see `response` as possibly unbound at its call sites — annotate `-> NoReturn`.
+- **F23** `nit` — backend/app/tweets/sources/twscrape_source.py:80 — a non-dict entry or item wrapper in `_entry_groups` raises `AttributeError`, failing the whole page as `SourcePayloadError`, while the rest of the function tolerates odd shapes — skip non-dicts.
+- **F24** `nit` — backend/app/tweets/classes.py:22, backend/app/tweets/membership.py:44 — `post_classes` and `latest_snapshot` have no production caller — accept as a test seam or move them to test helpers.
+- **F25** `nit` — backend/tests/db/test_migrations.py:39 — `ALL_TABLES` leaves out `list_membership` while named "all" — rename it (e.g. `PRE_0010_TABLES`).
+- **F26** `nit` — backend/tests/tweets/payloads/README.md:18 — AC6 asks for recorded pages, but the conversation pages are synthetic and the reply parent sits under an invented `in_reply_to_status_result` key — keep the owner's manual check 2 and replace the fixture with a sanitised live page after it.
+- **F27** `nit` — specs/010-off-list-posts/PLAN.md (Definition of Done) — the implementer ran `python -m app.tweets members` inside `backend/`, whose `.env` holds the owner's twscrape credentials, so one live `ListMembers` request went out — run such checks with `env -u TWEET_SOURCE` or outside `backend/`.
 
 Rejected: none.
 
-Left out: 6 nit findings
+Left out: 0 nit findings
 
