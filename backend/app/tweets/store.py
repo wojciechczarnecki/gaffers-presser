@@ -2,13 +2,13 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import Engine, func, text
+from sqlalchemy import Engine, and_, func, literal_column, or_, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, select
 
 from app.tweets.models import Tweet, TweetPoll
-from app.tweets.sources.base import FetchedPost
+from app.tweets.sources.base import FetchedPost, merge_fetched
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,10 @@ def store_posts(
 ) -> int:
     if not posts:
         return 0
+    merged: dict[int, FetchedPost] = {}
+    for post in posts:
+        known = merged.get(post.x_id)
+        merged[post.x_id] = post if known is None else merge_fetched(known, post)
     rows = [
         {
             "x_id": post.x_id,
@@ -52,22 +56,31 @@ def store_posts(
             "is_repost": post.is_repost,
             "is_reply": post.is_reply,
             "reposted_author_handle": post.reposted_author_handle,
+            "embedded": post.embedded,
+            "quoted_x_id": post.quoted_x_id,
             "raw": post.raw,
         }
-        for post in posts
+        for post in merged.values()
     ]
-    stmt = (
-        insert(Tweet.__table__)
-        .values(rows)
-        .on_conflict_do_nothing(index_elements=["x_id"])
-        .returning(Tweet.__table__.c.x_id)
-    )
+    table = Tweet.__table__
+    stmt = insert(table).values(rows)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["x_id"],
+        set_={
+            "embedded": table.c.embedded & stmt.excluded.embedded,
+            "quoted_x_id": func.coalesce(table.c.quoted_x_id, stmt.excluded.quoted_x_id),
+        },
+        where=or_(
+            and_(table.c.embedded, ~stmt.excluded.embedded),
+            and_(table.c.quoted_x_id.is_(None), stmt.excluded.quoted_x_id.is_not(None)),
+        ),
+    ).returning(literal_column("(xmax = 0)").label("inserted"))
     result = session.execute(stmt)
-    return len(result.fetchall())
+    return sum(1 for (inserted,) in result.fetchall() if inserted)
 
 
 def last_seen_id(session: Session) -> int | None:
-    return session.exec(select(func.max(Tweet.x_id))).one()
+    return session.exec(select(func.max(Tweet.x_id)).where(Tweet.embedded.is_(False))).one()
 
 
 def write_poll(engine: Engine, record: PollRecord) -> None:

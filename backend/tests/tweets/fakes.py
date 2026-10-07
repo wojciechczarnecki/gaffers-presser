@@ -64,6 +64,9 @@ def post(
     is_reply: bool = False,
     raw: dict | None = None,
     reposted_author_handle: str | None = None,
+    embedded: bool = False,
+    entry_head: bool = True,
+    quoted_x_id: int | None = None,
 ) -> FetchedPost:
     from datetime import UTC, datetime
 
@@ -76,4 +79,7 @@ def post(
         is_reply=is_reply,
         raw=raw or {"id": x_id},
         reposted_author_handle=reposted_author_handle,
+        embedded=embedded,
+        entry_head=entry_head,
+        quoted_x_id=quoted_x_id,
     )

@@ -270,7 +270,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       (like `ALERT_TABLES` today). Files: `migrations/versions/0010_off_list_posts.py`,
       `app/tweets/models.py`, `tests/db/test_migrations.py`.
       Automatic verification: `uv run pytest -q tests/db/test_migrations.py` `iterations: 2`
-- [ ] 2. **Fetched-post fields, upsert and paging bound.** Add `embedded`, `entry_head` and
+- [x] 2. **Fetched-post fields, upsert and paging bound.** Add `embedded`, `entry_head` and
       `quoted_x_id` to `FetchedPost`, and the same keyword arguments to `tests/tweets/fakes.py::post`.
       Add `merge_fetched` to `base.py` (Design → Fetched posts) and use it for the in-call
       duplicates. Turn `store_posts` into the upsert from Design and change `last_seen_id`.
@@ -284,7 +284,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       - `test_first_fetched_at_never_changes`
       Files: `app/tweets/sources/base.py`, `app/tweets/store.py`, `tests/tweets/fakes.py`,
       `tests/tweets/test_store.py`.
-      Automatic verification: `uv run pytest -q tests/tweets/test_store.py tests/tweets/test_ingest.py`
+      Automatic verification: `uv run pytest -q tests/tweets/test_store.py tests/tweets/test_ingest.py` `iterations: 0`
 - [ ] 3. **Paging on entry heads.** Change `collect_new` as in Design. Write the tests first
       in `tests/tweets/sources/test_paging.py`:
       - `test_embedded_old_post_does_not_end_paging`

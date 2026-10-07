@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Protocol
 
@@ -16,6 +16,19 @@ class FetchedPost:
     is_reply: bool
     raw: dict
     reposted_author_handle: str | None = None
+    embedded: bool = False
+    entry_head: bool = True
+    quoted_x_id: int | None = None
+
+
+def merge_fetched(first: FetchedPost, second: FetchedPost) -> FetchedPost:
+    base = second if first.embedded and not second.embedded else first
+    return replace(
+        base,
+        embedded=first.embedded and second.embedded,
+        entry_head=first.entry_head or second.entry_head,
+        quoted_x_id=first.quoted_x_id or second.quoted_x_id,
+    )
 
 
 class TweetSource(Protocol):
