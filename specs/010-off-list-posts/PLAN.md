@@ -396,7 +396,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 
       Files: `app/tweets/loop.py`, `tests/tweets/test_loop.py`.
       Automatic verification: `uv run pytest -q tests/tweets/test_loop.py tests/worker/test_cli.py` `iterations: 1`
-- [ ] 8. **CLI `python -m app.tweets members`.** Add the command and `MeasureDeps.make_engine`.
+- [x] 8. **CLI `python -m app.tweets members`.** Add the command and `MeasureDeps.make_engine`.
       Add a line for `members` in README → Development next to `measure`/`summary`. Write the
       tests first in `tests/tweets/test_cli.py`:
       - `test_members_command_stores_and_prints_snapshot`
@@ -405,7 +405,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       - `test_members_command_needs_tweet_source_and_list_id`
 
       Files: `app/tweets/cli.py`, `tests/tweets/test_cli.py`, `README.md`.
-      Automatic verification: `uv run pytest -q tests/tweets/test_cli.py tests/test_readme.py`
+      Automatic verification: `uv run pytest -q tests/tweets/test_cli.py tests/test_readme.py` `iterations: 1`
 - [ ] 9. **Extraction reads source posts only.** Add `source_post_sql` to `next_pending` and
       to `extraction_status().waiting`. Write the tests first:
       - `tests/extraction/test_store.py`:

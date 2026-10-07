@@ -6,6 +6,7 @@ import threading
 import time
 from datetime import UTC, datetime, timedelta
 
+from sqlmodel import Session
 from typer.testing import CliRunner
 
 from app.core.settings import TweetSettings
@@ -17,8 +18,9 @@ from app.tweets.measure import (
     read_records,
     record_to_json,
 )
+from app.tweets.membership import latest_snapshot
 from app.tweets.sources.base import MembershipNotSupportedError
-from tests.tweets.fakes import post
+from tests.tweets.fakes import FakeSource, post
 
 START = datetime(2026, 9, 28, 12, 0, 0, tzinfo=UTC)
 
@@ -320,3 +322,61 @@ def test_help_via_subprocess():
     assert result.returncode == 0
     assert "measure" in result.stdout
     assert "summary" in result.stdout
+    assert "members" in result.stdout
+
+
+def _members_deps(db, source, **overrides) -> MeasureDeps:
+    return MeasureDeps(
+        settings=_settings(tweet_source="twscrape", **overrides),
+        build_source=lambda name, settings: source,
+        clock_factory=lambda stop: SeqClock(START),
+        make_engine=lambda: db,
+    )
+
+
+def test_members_command_stores_and_prints_snapshot(db):
+    source = FakeSource([], members=["Synthetic_A", "synthetic_b"])
+
+    result = CliRunner().invoke(app, ["members"], obj=_members_deps(db, source))
+
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == "List members: 2  snapshot: 2026-09-28 12:00:00 UTC"
+    with Session(db) as session:
+        snapshot = latest_snapshot(session)
+    assert snapshot.handles == frozenset({"synthetic_a", "synthetic_b"})
+    assert snapshot.fetched_at == START
+    assert source.closed
+
+
+def test_members_command_unsupported_source(db):
+    source = FakeSource([])
+
+    result = CliRunner().invoke(app, ["members"], obj=_members_deps(db, source))
+
+    assert result.exit_code == 0, result.output
+    assert "not supported by fake" in result.output
+    with Session(db) as session:
+        assert latest_snapshot(session).handles is None
+
+
+def test_members_command_failure_exits_1(db):
+    source = FakeSource([], members=RuntimeError("secret-token-xyz"))
+
+    result = CliRunner().invoke(app, ["members"], obj=_members_deps(db, source))
+
+    assert result.exit_code == 1
+    assert "error: list membership fetch failed: RuntimeError" in result.output
+    assert "secret-token-xyz" not in result.output
+    assert source.closed
+
+
+def test_members_command_needs_tweet_source_and_list_id(db):
+    source = FakeSource([], members=["a"])
+    no_source = MeasureDeps(settings=_settings(), make_engine=lambda: db)
+    result = CliRunner().invoke(app, ["members"], obj=no_source)
+    assert result.exit_code == 1
+    assert "TWEET_SOURCE" in result.output
+
+    result = CliRunner().invoke(app, ["members"], obj=_members_deps(db, source, x_list_id=""))
+    assert result.exit_code == 1
+    assert "X_LIST_ID" in result.output

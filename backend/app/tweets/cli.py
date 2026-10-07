@@ -6,10 +6,12 @@ from pathlib import Path
 from typing import Annotated, Protocol, TextIO
 
 import typer
+from sqlalchemy import Engine
 
 from app.core.errors import ConfigError
-from app.core.settings import TweetSettings
-from app.tweets.config import check_source
+from app.core.settings import TweetSettings, load_settings
+from app.db.engine import make_engine
+from app.tweets.config import check_source, resolve_ingest
 from app.tweets.measure import (
     LatencyRecord,
     PollCounts,
@@ -19,6 +21,7 @@ from app.tweets.measure import (
     record_to_json,
     summarise,
 )
+from app.tweets.membership import refresh_membership
 from app.tweets.sources import SOURCE_NAMES, build_source
 from app.tweets.sources.base import TweetSource
 from app.tweets.sources.paging import collect_new
@@ -55,6 +58,7 @@ class MeasureDeps:
     settings: TweetSettings
     build_source: Callable[[str, TweetSettings], TweetSource] = build_source
     clock_factory: Callable[[threading.Event], Clock] = SystemClock
+    make_engine: Callable[[], Engine] | None = None
 
 
 def get_deps(ctx: typer.Context) -> MeasureDeps:
@@ -243,6 +247,40 @@ def summary(
 ) -> None:
     records, poll_counts = read_records(path)
     typer.echo(format_summary(summarise(records, poll_counts), markdown=markdown))
+
+
+@app.command(help="Fetch the watched List's members now and store the snapshot.")
+def members(ctx: typer.Context) -> None:
+    deps = get_deps(ctx)
+    try:
+        config = resolve_ingest(deps.settings)
+    except ConfigError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from None
+    if config is None:
+        typer.echo("error: TWEET_SOURCE must be set to fetch the List's members", err=True)
+        raise typer.Exit(1)
+
+    engine = deps.make_engine() if deps.make_engine else make_engine(load_settings().database_url)
+    now = deps.clock_factory(threading.Event()).now()
+    source = None
+    try:
+        source = deps.build_source(config.source_name, deps.settings)
+        snapshot = refresh_membership(engine, source, config.list_id, now)
+    except Exception as exc:
+        typer.echo(f"error: list membership fetch failed: {type(exc).__name__}", err=True)
+        raise typer.Exit(1) from None
+    finally:
+        if source is not None:
+            source.close()
+
+    if snapshot.handles is None:
+        typer.echo(
+            f"List members: not supported by {snapshot.source} (every post counts as a list post)"
+        )
+        return
+    stamp = snapshot.fetched_at.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+    typer.echo(f"List members: {len(snapshot.handles)}  snapshot: {stamp}")
 
 
 def main() -> None:
