@@ -15,6 +15,7 @@ from tests.corroboration.helpers import (
     add_claim,
     seed_reference,
 )
+from tests.tweets.membership_helpers import set_members
 
 START = NOW - timedelta(days=7)
 CONFIG = AlertConfig((120, 30), 3, Decimal("15"), None)
@@ -128,3 +129,33 @@ def test_order_by_ownership_nulls_last(db):
     players = listed(db)
 
     assert [p.player.web_name for p in players] == ["Isak", "Saka", "Gabriel", "Jesus"]
+
+
+def test_trending_counts_quote_and_quoted_as_one_account(db):
+    seed_reference(db)
+    add_claim(db, 1, SAKA, author="outsider")
+    add_claim(db, 2, SAKA, author="member_a", quoted_x_id=1)
+    add_claim(db, 3, SAKA, author="member_b")
+    set_members(db, ["member_a", "member_b"])
+
+    assert listed(db) == []
+
+    add_claim(db, 4, SAKA, author="member_c")
+    set_members(db, ["member_a", "member_b", "member_c"])
+    players = listed(db)
+
+    assert [(p.player.fpl_id, p.trending_accounts) for p in players] == [(SAKA, 3)]
+    assert players[0].claim_x_ids == (1, 2, 3, 4)
+
+
+def test_context_post_is_not_a_claim(db):
+    seed_reference(db)
+    for x_id, author in enumerate(("a", "b", "c"), start=1):
+        add_claim(db, x_id, SAKA, author=author)
+    add_claim(db, 4, SAKA, author="outsider", embedded=True)
+    set_members(db, ["a", "b", "c"])
+
+    (only,) = listed(db)
+
+    assert only.claim_x_ids == (1, 2, 3)
+    assert only.trending_accounts == 3

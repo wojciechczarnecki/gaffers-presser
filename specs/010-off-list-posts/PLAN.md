@@ -454,7 +454,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 
       Files: `app/corroboration/{rules,service}.py`, the tests above.
       Automatic verification: `uv run pytest -q tests/corroboration` `iterations: 0`
-- [ ] 12. **Alerts: source posts only, quoted posts as sources.** Pass `sources_only=True` in
+- [x] 12. **Alerts: source posts only, quoted posts as sources.** Pass `sources_only=True` in
       `alerts/players.py::_claims` and `alerts/breaking.py::_candidates`. Fill
       `quoted_author_handle` in `_claims` and count trending by
       `counted_account(post, "supports")`. Write the tests first:
@@ -473,7 +473,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
         - `test_trending_counts_quote_and_quoted_as_one_account`
 
       Files: `app/alerts/{players,breaking}.py`, the tests above.
-      Automatic verification: `uv run pytest -q tests/alerts`
+      Automatic verification: `uv run pytest -q tests/alerts` `iterations: 0`
 - [ ] 13. **Latency reports count list posts only.** Add `list_post_sql('t')` to
       `post_latencies`. Filter `_measure_one` as in Design. Write the tests first:
       - `tests/alerts/test_latency.py::test_post_latencies_leave_out_a_quoted_post`: a sent
@@ -617,6 +617,7 @@ Checked and found correct:
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
 
 - `minor` — Step 4 also generated the `twscrape-list-members.json.gz` fixture (planned for step 5), because the payload-count test and README are updated once for all three new fixtures.
+- `minor` — Step 12: `test_trending_counts_quote_and_quoted_as_one_account` (and an extra `test_context_post_is_not_a_claim`) live in `tests/alerts/test_players.py`, next to the other trending tests, instead of `test_slots.py`.
 - `minor` — The reply-parent post in `twscrape-page-conversation` is nested under the tweet result as `in_reply_to_status_result`, a placement made up for the fixture (X does not nest reply parents that way; they come as module items). It is documented in the payloads README.
 
 ## Final review
