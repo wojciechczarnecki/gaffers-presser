@@ -4,6 +4,7 @@ import time
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
 from app.core.clock import StopAwareClock
@@ -434,3 +435,38 @@ def test_unsupported_source_records_a_null_snapshot_once(db):
     with Session(db) as session:
         rows = session.exec(select(ListMembership)).all()
     assert [row.handles for row in rows] == [None]
+
+
+def test_sharply_shrunk_membership_is_refused_and_retried(db, caplog):
+    set_members(db, ["m1", "m2", "m3", "m4", "m5", "m6"])
+    start = datetime(2026, 10, 7, 0, 0, 0, tzinfo=UTC)
+    clock = FakeClock(start, start + timedelta(minutes=31))
+    source = FakeSource(pages=[[]], members=["m1"])
+    poller = TweetPoller(db, lambda: source, list_id=1, clock=clock, stop_event=threading.Event())
+
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(Shutdown):
+            poller.run()
+
+    assert "list membership snapshot refused: list membership shrank from 6 to 1" in caplog.text
+    assert source.members_calls == 2
+    with Session(db) as session:
+        assert len(latest_snapshot(session).handles) == 6
+
+
+def test_membership_save_failure_is_reported_as_a_save(db, caplog, monkeypatch):
+    def failing_store(engine, snapshot):
+        raise OperationalError("INSERT", {}, Exception("no table"))
+
+    monkeypatch.setattr("app.tweets.loop.store_membership", failing_store)
+    start = datetime(2026, 10, 7, 0, 0, 0, tzinfo=UTC)
+    clock = FakeClock(start, start + timedelta(minutes=1))
+    source = FakeSource(pages=[[]], members=["m1"])
+    poller = TweetPoller(db, lambda: source, list_id=1, clock=clock, stop_event=threading.Event())
+
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(Shutdown):
+            poller.run()
+
+    assert "list membership save failed: OperationalError" in caplog.text
+    assert "fetch failed" not in caplog.text

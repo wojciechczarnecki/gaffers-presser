@@ -324,3 +324,29 @@ def test_grade_weighs_a_quote_by_the_quoted_account():
         GradeRules(credibility=credibility),
     )
     assert seen == ["outsider"]
+
+
+QUOTING_ANCHOR = _post(100, "member", minutes=0, quotes="Outsider")
+
+
+def test_quoted_anchor_neither_the_quoted_nor_the_quoting_account_counts():
+    counts = count_accounts(
+        [
+            _lab(1, "supports", "outsider", -20),
+            _lab(2, "supports", "Member", -10),
+            _lab(3, "supports", "other", -5),
+        ],
+        QUOTING_ANCHOR,
+    )
+    assert [c.post.x_id for c in counts.supporting] == [3]
+
+
+def test_quoted_anchor_its_quoting_account_never_contradicts():
+    counts = count_accounts(
+        [
+            _lab(1, "contradicts", "member", -10),
+            _lab(2, "contradicts", "outsider", -5),
+        ],
+        QUOTING_ANCHOR,
+    )
+    assert counts.contradicting == []

@@ -559,8 +559,9 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 - `cd /home/czarny/Projects/gaffers-presser/backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
   is fully green.
 - `cd /home/czarny/Projects/gaffers-presser/backend && uv run python -m app.tweets --help` lists
-  `members`. `uv run python -m app.tweets members` with `TWEET_SOURCE` unset exits 1 with an
-  error naming `TWEET_SOURCE`.
+  `members`. `env -u TWEET_SOURCE uv run python -m app.tweets members`, run outside `backend/`
+  so `backend/.env` cannot set `TWEET_SOURCE` (no live request), exits 1 with an error naming
+  `TWEET_SOURCE`.
 - The migration chain on a fresh container is covered by `tests/db/test_migrations.py`:
   upgrade, downgrade and upgrade, the `0010` backfill, and the models matching the migration.
 
@@ -690,3 +691,34 @@ Rejected: none.
 
 Left out: 0 nit findings
 
+Fixed (apply mode, 2026-10-07; full verification green: ruff clean, 1397 tests passed):
+
+- F1 → `count_accounts` excludes both `account_of(anchor)` and the quoted account of a quoting anchor; `test_rules.py::test_quoted_anchor_*`, `test_service.py::test_quoting_anchor_counts_as_the_quoted_account_in_counts_and_trace`.
+- F2 → `membership.check_shrink` / `store_membership` refuse a snapshot that drops more than `MAX_REMOVED_MEMBERS` (3) stored members (previous kept, warning, retry after 30 min); `members --force` accepts a real drop; tests: two-page union and legacy handle (`test_twscrape_source.py`), a fetch cut after page 1 (`test_membership.py`), loop and CLI refusal.
+- F3 → the fallback fires when no parsed post is an entry head; `test_entries_matching_no_parsed_post_fall_back_and_warn`.
+- F4 → `members` catches `ConfigError` from the database settings; `test_members_command_without_database_url_exits_1`.
+- F5 → a repost never carries `quoted_x_id`; `test_repost_of_a_quote_is_not_a_quote`.
+- F6 → `set_members` stamps `BASE + timedelta(seconds=counter)`.
+- F7 → `fetch_membership` raises `SourcePayloadError` on an empty member list; `test_empty_member_list_is_a_payload_error`.
+- F8 → `_measure_one` catches `CollectorError` (unsupported sources stay silent) and echoes the error class; `test_measure_reports_a_failed_member_fetch_and_counts_every_timeline_post`.
+- F9 → the loop and `members` report `fetch failed`, `snapshot refused` and `save failed` separately; loop and CLI tests for the save failure.
+- F10 → DEPLOYMENT: run `python -m app.tweets members` after changing `X_LIST_ID`.
+- F11 → the three docstrings became a comment or were dropped.
+- F12 → `test_tweet_with_visibility_results_entry_is_a_timeline_head`.
+- F13 → `test_old_promoted_entry_does_not_end_paging`.
+- F14 → `test_embedded_then_entry_without_quote_ends_as_timeline_post`.
+- F15 → `test_duplicate_ids_in_one_call_are_merged` parametrized over both orders.
+- F16 → `tests/tweets/sources/test_base.py` covers `merge_fetched` in both orders and per field.
+- F17 → `test_single_entry_instruction_is_read`, `test_members_reads_the_legacy_screen_name`.
+- F18 → the measure test asserts one `members` call.
+- F19 → `test_snapshots_fetched_at_one_time_the_higher_id_wins` (both insertion orders), `test_latest_snapshot_tie_goes_to_the_later_row`.
+- F20 → the trace span `account` is asserted in the quoting-anchor service test.
+- F21 → `test_members_command_source_build_failure_exits_1`, `test_members_command_database_write_failure_names_the_save`.
+- F22 → `_raise_no_account` is annotated `-> NoReturn`.
+- F23 → non-dict entries and module items are skipped; `test_non_dict_entries_and_items_are_skipped`.
+- F24 → `post_classes` moved to `tests/tweets/membership_helpers.py`; `latest_snapshot` now has a production caller (`store_membership`).
+- F25 → `ALL_TABLES` renamed to `PRE_0010_TABLES`.
+- F26 → the payload README says the conversation pages wait for a live page; BACKLOG #30 (P1) replaces them once the owner's manual check 2 has passed, since recording a live page needs the owner's credentials.
+- F27 → CONVENTIONS forbid live calls with the owner's `.env` from agent sessions; the automatic e2e step now runs `env -u TWEET_SOURCE` outside `backend/`.
+
+The new tests were checked against mutations of the fixed lines (promoted skip, visibility branch, single `entry`, upsert condition, in-call merge, `merge_fetched` quote, snapshot tie-break, quoting anchor, shrink guard, multi-page join, fallback): each fails on the mutated code.

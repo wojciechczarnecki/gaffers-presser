@@ -4,6 +4,7 @@ import logging
 import os
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from typing import NoReturn
 
 os.environ.setdefault("TWS_TELEMETRY", "0")
 
@@ -73,7 +74,6 @@ def _item_result_id(item) -> int | None:
 
 
 def _entry_groups(page_dict: dict) -> list[list[int]]:
-    """The tweet IDs of each timeline entry: one for a single post, several for a module."""
     try:
         instructions = page_dict["data"]["list"]["tweets_timeline"]["timeline"]["instructions"]
     except (KeyError, TypeError):
@@ -86,12 +86,18 @@ def _entry_groups(page_dict: dict) -> list[list[int]]:
         if isinstance(instruction.get("entry"), dict):
             entries.append(instruction["entry"])
         for entry in entries:
+            if not isinstance(entry, dict):
+                continue
             entry_id = str(entry.get("entryId", ""))
             content = entry.get("content")
             if entry_id.startswith(("cursor-", "promoted-")) or not isinstance(content, dict):
                 continue
             if content.get("items") is not None:
-                ids = [_item_result_id(wrapper.get("item")) for wrapper in content["items"]]
+                ids = [
+                    _item_result_id(wrapper.get("item"))
+                    for wrapper in content["items"]
+                    if isinstance(wrapper, dict)
+                ]
             else:
                 ids = [_item_result_id(content)]
             group = [x_id for x_id in ids if x_id is not None]
@@ -130,7 +136,13 @@ def _to_post(tweet, in_entry: set[int] | None, heads: set[int]) -> FetchedPost:
         ),
         embedded=in_entry is not None and tweet.id not in in_entry,
         entry_head=in_entry is None or tweet.id in heads,
-        quoted_x_id=tweet.quotedTweet.id if tweet.quotedTweet is not None else None,
+        # A repost's own object may carry the reposted post's quote; the repost counts as
+        # its original author, never as a quote.
+        quoted_x_id=(
+            tweet.quotedTweet.id
+            if tweet.quotedTweet is not None and tweet.retweetedTweet is None
+            else None
+        ),
     )
 
 
@@ -158,7 +170,7 @@ class TwscrapeSource:
     def close(self) -> None:
         self._runner.close()
 
-    def _raise_no_account(self, queue: str) -> None:
+    def _raise_no_account(self, queue: str) -> NoReturn:
         next_available = self._runner.run(self._api.pool.next_available_at(queue))
         if next_available is None:
             raise SourceUnavailableError("twscrape: no active account") from None
@@ -205,12 +217,11 @@ class TwscrapeSource:
                 except Exception as exc:
                     raise SourcePayloadError("twscrape: malformed page") from exc
 
-                if tweets and not groups:
+                in_entry: set[int] | None = {x_id for group in groups for x_id in group}
+                heads = {max(group) for group in groups}
+                if tweets and not any(tweet.id in heads for tweet in tweets):
                     logger.warning("twscrape: no timeline entries recognised on a page")
                     in_entry, heads = None, set()
-                else:
-                    in_entry = {x_id for group in groups for x_id in group}
-                    heads = {max(group) for group in groups}
                 yield [_to_post(tweet, in_entry, heads) for tweet in tweets]
         finally:
             self._runner.run(gen.aclose())

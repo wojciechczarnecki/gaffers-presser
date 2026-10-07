@@ -36,7 +36,7 @@ NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OFF_LIST_COLUMNS = {"embedded", "quoted_x_id"}
 BEFORE_OWNERSHIP = DEFAULT_EXCLUDE | {"selected_by_percent"} | OFF_LIST_COLUMNS
 ALERT_TABLES = {"alert", "alert_post"}
-ALL_TABLES = set(SQLModel.metadata.tables.keys()) - {"list_membership"}
+PRE_0010_TABLES = set(SQLModel.metadata.tables.keys()) - {"list_membership"}
 
 
 def _apply_bootstrap_at_revision(session: Session) -> None:
@@ -99,7 +99,7 @@ def test_job_run_migration_keeps_collector_data():
             session.commit()
 
         collector_tables = (
-            ALL_TABLES
+            PRE_0010_TABLES
             - ALERT_TABLES
             - {
                 "job_run",
@@ -153,7 +153,7 @@ def test_tweet_migration_adds_only_new_tables():
             )
 
         other_tables = (
-            ALL_TABLES
+            PRE_0010_TABLES
             - ALERT_TABLES
             - {
                 "tweet",
@@ -212,7 +212,7 @@ def test_extraction_migration_adds_only_new_tables():
             )
 
         other_tables = (
-            ALL_TABLES
+            PRE_0010_TABLES
             - ALERT_TABLES
             - {
                 "extraction",
@@ -276,7 +276,7 @@ def test_retrieval_migration_keeps_data_and_downgrades():
                 {"now": NOW},
             )
 
-        other_tables = ALL_TABLES - ALERT_TABLES - {"post_embedding", "delivery_log"}
+        other_tables = PRE_0010_TABLES - ALERT_TABLES - {"post_embedding", "delivery_log"}
         excluded = BEFORE_OWNERSHIP | {"search_vector", "reposted_author_handle"}
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
@@ -351,7 +351,7 @@ def test_repost_author_migration_backfills_and_downgrades():
             insert(conn, 5, True, {})
             insert(conn, 6, False, {"retweetedTweet": {"user": {"username": "NotARepost"}}})
 
-        other_tables = ALL_TABLES - ALERT_TABLES - {"tweet", "delivery_log"}
+        other_tables = PRE_0010_TABLES - ALERT_TABLES - {"tweet", "delivery_log"}
         with Session(engine) as session:
             before = table_contents(session, exclude=BEFORE_OWNERSHIP, tables=other_tables)
 
@@ -405,7 +405,7 @@ def test_delivery_migration_adds_only_new_table():
                 {"now": NOW},
             )
 
-        other_tables = ALL_TABLES - ALERT_TABLES - {"delivery_log"}
+        other_tables = PRE_0010_TABLES - ALERT_TABLES - {"delivery_log"}
         excluded = BEFORE_OWNERSHIP | {"search_vector"}
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
@@ -444,7 +444,7 @@ def test_ownership_migration_keeps_rows_and_downgrades():
             session.commit()
         with Session(engine) as session:
             before = table_contents(
-                session, exclude=BEFORE_OWNERSHIP, tables=ALL_TABLES - ALERT_TABLES
+                session, exclude=BEFORE_OWNERSHIP, tables=PRE_0010_TABLES - ALERT_TABLES
             )
             players = session.execute(sa_text("SELECT count(*) FROM player")).scalar_one()
         assert players > 0
@@ -460,7 +460,9 @@ def test_ownership_migration_keeps_rows_and_downgrades():
         assert filled == 0
         with Session(engine) as session:
             assert (
-                table_contents(session, exclude=BEFORE_OWNERSHIP, tables=ALL_TABLES - ALERT_TABLES)
+                table_contents(
+                    session, exclude=BEFORE_OWNERSHIP, tables=PRE_0010_TABLES - ALERT_TABLES
+                )
                 == before
             )
 
@@ -470,7 +472,9 @@ def test_ownership_migration_keeps_rows_and_downgrades():
         assert "selected_by_percent" not in columns
         with Session(engine) as session:
             assert (
-                table_contents(session, exclude=BEFORE_OWNERSHIP, tables=ALL_TABLES - ALERT_TABLES)
+                table_contents(
+                    session, exclude=BEFORE_OWNERSHIP, tables=PRE_0010_TABLES - ALERT_TABLES
+                )
                 == before
             )
 
@@ -507,7 +511,7 @@ def test_alert_log_migration_adds_only_new_tables():
                 {"now": NOW},
             )
 
-        other_tables = ALL_TABLES - ALERT_TABLES
+        other_tables = PRE_0010_TABLES - ALERT_TABLES
         excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
@@ -555,7 +559,7 @@ def test_quote_migration_backfills_and_downgrades():
             insert(conn, 2, {"text": "no quote"})
             insert(conn, 3, {"quotedTweet": {"id": "not-a-number"}})
 
-        other_tables = ALL_TABLES - {"tweet"}
+        other_tables = PRE_0010_TABLES - {"tweet"}
         excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)

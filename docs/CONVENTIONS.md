@@ -49,6 +49,9 @@ Product content is Polish and lives in files, never as string literals in code:
   managers or leagues are synthetic; public player data may be real.
 - Tests that need PostgreSQL run against a container (locally and in CI), never a shared
   database.
+- Agent sessions never reach live external services with the owner's credentials:
+  `backend/.env` holds them, so a CLI check that could call X or another source runs with
+  `env -u TWEET_SOURCE` or outside `backend/`.
 - Write tests BEFORE or TOGETHER with the implementation.
 - Minimum coverage: key paths + edge cases (authorisation errors, missing resource,
   validation, empty lists, duplicates, range boundaries).

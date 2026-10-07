@@ -53,6 +53,14 @@ below; agents never touch production.
      this migration, run `python -m app.tweets members` from a Railway shell to fetch the
      membership at once: it prints `List members: <n>  snapshot: <UTC time>`. The other sources
      cannot list members and treat every post as a list post.
+   - A fetched membership that drops more than 3 of the stored members at once is refused
+     (twscrape ends paging silently, so a cut-off fetch looks like a shrunk List): the worker
+     logs `list membership snapshot refused: list membership shrank from <n> to <m> members`,
+     keeps the previous snapshot and retries after 30 minutes. After removing more than 3
+     accounts from the List on purpose, run `python -m app.tweets members --force` once.
+   - Classification follows the newest snapshot of any List. After changing `X_LIST_ID`, run
+     `python -m app.tweets members` and check that it prints the new List's member count;
+     until a fetch for the new List succeeds, posts are classified by the old List's members.
 8. **Tweet extraction (optional).** With no `OPENROUTER_API_KEY` set, the worker runs exactly
    as above and logs `extraction disabled` once, whatever `LLM_MODEL` says;
    `python -m app.worker status` shows `Extraction: disabled`. OpenRouter is the only LLM

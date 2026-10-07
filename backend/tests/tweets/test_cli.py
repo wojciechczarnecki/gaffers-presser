@@ -6,9 +6,11 @@ import threading
 import time
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import create_engine
 from sqlmodel import Session
 from typer.testing import CliRunner
 
+from app.core.errors import ConfigError
 from app.core.settings import TweetSettings
 from app.tweets.cli import MeasureDeps, app
 from app.tweets.measure import (
@@ -18,8 +20,8 @@ from app.tweets.measure import (
     read_records,
     record_to_json,
 )
-from app.tweets.membership import latest_snapshot
-from app.tweets.sources.base import MembershipNotSupportedError
+from app.tweets.membership import MembershipSnapshot, latest_snapshot, save_snapshot
+from app.tweets.sources.base import MembershipNotSupportedError, SourceRateLimitedError
 from tests.tweets.fakes import FakeSource, post
 
 START = datetime(2026, 9, 28, 12, 0, 0, tzinfo=UTC)
@@ -370,6 +372,75 @@ def test_members_command_failure_exits_1(db):
     assert source.closed
 
 
+def test_members_command_source_build_failure_exits_1(db):
+    def failing_build(name, settings):
+        raise RuntimeError("secret-token-xyz")
+
+    deps = MeasureDeps(
+        settings=_settings(tweet_source="twscrape"),
+        build_source=failing_build,
+        clock_factory=lambda stop: SeqClock(START),
+        make_engine=lambda: db,
+    )
+
+    result = CliRunner().invoke(app, ["members"], obj=deps)
+
+    assert result.exit_code == 1
+    assert "error: list membership fetch failed: RuntimeError" in result.output
+    assert "secret-token-xyz" not in result.output
+
+
+def test_members_command_database_write_failure_names_the_save(db):
+    source = FakeSource([], members=["a"])
+    deps = _members_deps(db, source)
+    broken = MeasureDeps(
+        settings=deps.settings,
+        build_source=deps.build_source,
+        clock_factory=deps.clock_factory,
+        make_engine=lambda: create_engine("sqlite://"),
+    )
+
+    result = CliRunner().invoke(app, ["members"], obj=broken)
+
+    assert result.exit_code == 1
+    assert "error: list membership save failed: OperationalError" in result.output
+    assert "fetch failed" not in result.output
+    assert source.closed
+
+
+def test_members_command_without_database_url_exits_1(db, monkeypatch):
+    def no_database():
+        raise ConfigError("no database configured")
+
+    monkeypatch.setattr("app.tweets.cli.load_settings", no_database)
+    deps = _members_deps(db, FakeSource([], members=["a"]))
+    deps = MeasureDeps(settings=deps.settings, build_source=deps.build_source)
+
+    result = CliRunner().invoke(app, ["members"], obj=deps)
+
+    assert result.exit_code == 1
+    assert result.output.strip() == "error: no database configured"
+
+
+def test_members_command_refuses_a_sharp_shrink_unless_forced(db):
+    previous = frozenset({"a", "b", "c", "d", "e", "f"})
+    save_snapshot(db, MembershipSnapshot(START - timedelta(days=1), "fake", 123, previous))
+    source = FakeSource([], members=["a", "b"])
+
+    refused = CliRunner().invoke(app, ["members"], obj=_members_deps(db, source))
+
+    assert refused.exit_code == 1
+    assert "snapshot refused, list membership shrank from 6 to 2 members" in refused.output
+    with Session(db) as session:
+        assert len(latest_snapshot(session).handles) == 6
+
+    forced = CliRunner().invoke(app, ["members", "--force"], obj=_members_deps(db, source))
+
+    assert forced.exit_code == 0, forced.output
+    with Session(db) as session:
+        assert latest_snapshot(session).handles == frozenset({"a", "b"})
+
+
 def test_members_command_needs_tweet_source_and_list_id(db):
     source = FakeSource([], members=["a"])
     no_source = MeasureDeps(settings=_settings(), make_engine=lambda: db)
@@ -383,14 +454,18 @@ def test_members_command_needs_tweet_source_and_list_id(db):
 
 
 class MemberSource(ScriptedSource):
-    def __init__(self, name: str, scripts: list, members: list[str] | None) -> None:
+    def __init__(self, name: str, scripts: list, members: list[str] | Exception | None) -> None:
         super().__init__(name, scripts)
         self._members = members
         self.pages_pulled = 0
+        self.members_calls = 0
 
     def members(self, list_id: int):
+        self.members_calls += 1
         if self._members is None:
             return super().members(list_id)
+        if isinstance(self._members, Exception):
+            raise self._members
         return list(self._members)
 
     def pages(self, list_id: int):
@@ -422,6 +497,23 @@ def test_measure_records_list_posts_only(tmp_path):
 
     records, _ = read_records(output)
     assert [r.x_id for r in records] == [2001]
+    assert src.members_calls == 1
+
+
+def test_measure_reports_a_failed_member_fetch_and_counts_every_timeline_post(tmp_path):
+    member_post = post(2001, author_handle="member", created_at=START + timedelta(seconds=5))
+    reply = post(2002, author_handle="outsider", created_at=START + timedelta(seconds=6))
+    src = MemberSource(
+        "twscrape", [[[member_post, reply]], [[]]], members=SourceRateLimitedError("limited")
+    )
+
+    output, result = _measure_with(src, tmp_path)
+
+    records, _ = read_records(output)
+    assert [r.x_id for r in records] == [2001, 2002]
+    assert "twscrape: list members unavailable" in result.output
+    assert "SourceRateLimitedError" in result.output
+    assert src.members_calls == 1
 
 
 def test_measure_without_membership_skips_embedded_posts(tmp_path):

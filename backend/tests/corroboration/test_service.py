@@ -357,3 +357,23 @@ def test_contradicting_quote_gives_one_contradicting_account(db):
 
     assert [c.x_id for c in result.contradicting] == [2]
     assert [c.x_id for c in result.supporting] == [1]
+
+
+def test_quoting_anchor_counts_as_the_quoted_account_in_counts_and_trace(db):
+    seed_reference(db, {6: DEADLINE})
+    add_claim(db, 1, SAKA, "out", author="outsider", created_at=NOW - timedelta(hours=5))
+    add_claim(db, 2, SAKA, "out", author="member_b", created_at=NOW - timedelta(hours=4))
+    add_claim(db, 3, SAKA, "out", author="member_a", created_at=NOW - timedelta(hours=3))
+    add_claim(
+        db, 4, SAKA, "out", author="member_a", quoted_x_id=1, created_at=NOW - timedelta(hours=1)
+    )
+    set_members(db, ["member_a", "member_b"])
+    client = FakeLangfuseClient()
+
+    result = _run(db, _runtime(tracer=LangfuseCorroborationTracer(client)))
+
+    assert result.anchor.post.x_id == 4
+    assert [c.x_id for c in result.supporting] == [2]
+    (root,) = client.named("corroboration")
+    (update,) = root["updates"]
+    assert update["output"]["anchor"]["account"] == "outsider"

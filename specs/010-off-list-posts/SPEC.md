@@ -22,6 +22,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 10
   final_review_nits: 17
+  findings_accepted: 27
+  findings_rejected: 0
 ---
 
 # SPEC 010 — Off-list posts: list membership, quotes and conversation context

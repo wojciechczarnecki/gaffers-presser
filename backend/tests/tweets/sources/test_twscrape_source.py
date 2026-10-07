@@ -405,3 +405,143 @@ def test_members_malformed_or_empty_raises_payload_error(pages):
             source.members(7)
     finally:
         source.close()
+
+
+def _members_page(handles: list[str], legacy: bool = False) -> httpx.Response:
+    payload = load("twscrape-list-members")
+    instruction = payload["data"]["list"]["members_timeline"]["timeline"]["instructions"][0]
+    template, *rest = instruction["entries"]
+    cursors = [entry for entry in rest if not entry["entryId"].startswith("user-")]
+    entries = []
+    for i, handle in enumerate(handles):
+        entry = json.loads(json.dumps(template))
+        entry["entryId"] = f"user-{9999000000000000500 + i}"
+        result = entry["content"]["itemContent"]["user_results"]["result"]
+        if legacy:
+            result.pop("core", None)
+            result.setdefault("legacy", {})["screen_name"] = handle
+        else:
+            result["core"]["screen_name"] = handle
+        entries.append(entry)
+    instruction["entries"] = entries + cursors
+    return httpx.Response(200, json=payload)
+
+
+def test_members_joins_every_page():
+    api = FakeApi(
+        [],
+        member_pages=[_members_page(["Page1_A", "Page1_B"]), _members_page(["Page2_C"])],
+    )
+    source = _source(api)
+    try:
+        members = source.members(7)
+    finally:
+        source.close()
+    assert members == ["Page1_A", "Page1_B", "Page2_C"]
+
+
+def test_members_reads_the_legacy_screen_name():
+    source = _source(FakeApi([], member_pages=[_members_page(["Legacy_A"], legacy=True)]))
+    try:
+        assert source.members(7) == ["Legacy_A"]
+    finally:
+        source.close()
+
+
+def _timeline_entries(payload: dict) -> list[dict]:
+    return payload["data"]["list"]["tweets_timeline"]["timeline"]["instructions"][0]["entries"]
+
+
+def _entry(payload: dict, entry_id: str) -> dict:
+    return next(e for e in _timeline_entries(payload) if e["entryId"] == entry_id)
+
+
+def _page_from(payload: dict) -> list:
+    source = _source(FakeApi([httpx.Response(200, json=payload)]))
+    try:
+        return next(source.pages(1))
+    finally:
+        source.close()
+
+
+def test_tweet_with_visibility_results_entry_is_a_timeline_head():
+    payload = load("twscrape-page-conversation")
+    results = _entry(payload, "tweet-4012")["content"]["itemContent"]["tweet_results"]
+    results["result"] = {"__typename": "TweetWithVisibilityResults", "tweet": results["result"]}
+
+    by_id = {p.x_id: p for p in _page_from(payload)}
+
+    assert (by_id[4012].embedded, by_id[4012].entry_head) == (False, True)
+
+
+def test_old_promoted_entry_does_not_end_paging():
+    first = load("twscrape-page-conversation")
+    promoted = json.loads(json.dumps(_entry(load("twscrape-page-conversation-2"), "tweet-3990")))
+    promoted["entryId"] = "promoted-tweet-3990"
+    _timeline_entries(first).insert(1, promoted)
+    api = FakeApi([httpx.Response(200, json=first), _response("twscrape-page-conversation-2")])
+    source = _source(api)
+    try:
+        result = collect_new(source, list_id=1, since_id=4000)
+    finally:
+        source.close()
+
+    assert api.pulled == 2
+    assert 4000 in {p.x_id for p in result}
+
+
+def test_single_entry_instruction_is_read():
+    payload = load("twscrape-page-conversation")
+    timeline = payload["data"]["list"]["tweets_timeline"]["timeline"]
+    entries = timeline["instructions"][0]["entries"]
+    pinned = _entry(payload, "tweet-4012")
+    entries.remove(pinned)
+    timeline["instructions"].append({"type": "TimelinePinEntry", "entry": pinned})
+
+    by_id = {p.x_id: p for p in _page_from(payload)}
+
+    assert (by_id[4012].embedded, by_id[4012].entry_head) == (False, True)
+
+
+def test_non_dict_entries_and_items_are_skipped():
+    payload = load("twscrape-page-conversation")
+    entries = _timeline_entries(payload)
+    entries.insert(0, "not-an-entry")
+    module = next(e for e in entries if isinstance(e, dict) and "items" in e["content"])
+    module["content"]["items"].insert(0, ["not", "an", "item"])
+
+    by_id = {p.x_id: p for p in _page_from(payload)}
+
+    assert (by_id[4012].embedded, by_id[4012].entry_head) == (False, True)
+    assert (by_id[4008].embedded, by_id[4008].entry_head) == (False, True)
+
+
+def test_entries_matching_no_parsed_post_fall_back_and_warn(caplog):
+    # Entry posts twscrape cannot parse leave only embedded posts on the page.
+    payload = load("twscrape-page-conversation")
+    for entry in _timeline_entries(payload):
+        content = entry["content"]
+        wrappers = [w["item"] for w in content["items"]] if "items" in content else [content]
+        for wrapper in wrappers:
+            results = wrapper.get("itemContent", {}).get("tweet_results")
+            if results:
+                results["result"].pop("legacy", None)
+
+    with caplog.at_level("WARNING"):
+        page = _page_from(payload)
+
+    assert {p.x_id for p in page} == {1500, 1700}
+    assert all(p.entry_head and not p.embedded for p in page)
+    assert "no timeline entries recognised" in caplog.text
+
+
+def test_repost_of_a_quote_is_not_a_quote():
+    payload = load("twscrape-page-conversation")
+    repost = _entry(payload, "tweet-4014")["content"]["itemContent"]["tweet_results"]["result"]
+    repost["legacy"]["quoted_status_id_str"] = "1500"
+
+    by_id = {p.x_id: p for p in _page_from(payload)}
+
+    assert by_id[4014].is_repost is True
+    assert by_id[4014].quoted_x_id is None
+    assert by_id[4010].quoted_x_id == 1500

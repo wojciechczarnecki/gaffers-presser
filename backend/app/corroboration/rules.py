@@ -48,8 +48,6 @@ def account_of(post: PostRef) -> str:
 
 
 def counted_account(post: PostRef, label: Label) -> str:
-    """The account a labelled post counts as: a quote that does not contradict counts as the
-    account it quotes, like a repost counts as its original author."""
     if label != "contradicts" and post.quoted_author_handle:
         return post.quoted_author_handle.lower()
     return account_of(post)
@@ -60,7 +58,7 @@ def _newest_first(items: Sequence[LabelledPost]) -> list[LabelledPost]:
 
 
 def count_accounts(labelled: Sequence[LabelledPost], anchor: PostRef) -> AccountCounts:
-    anchor_account = counted_account(anchor, "supports")
+    anchor_accounts = {account_of(anchor), counted_account(anchor, "supports")}
     newest: dict[str, LabelledPost] = {}
     for item in _newest_first(labelled):
         if item.post.x_id == anchor.x_id or item.label == "unrelated":
@@ -69,10 +67,10 @@ def count_accounts(labelled: Sequence[LabelledPost], anchor: PostRef) -> Account
     counts = AccountCounts([], [], [])
     for account, item in newest.items():
         if item.label == "supports":
-            if account != anchor_account:
+            if account not in anchor_accounts:
                 counts.supporting.append(item)
         elif item.label == "contradicts":
-            if account != anchor_account:
+            if account not in anchor_accounts:
                 counts.contradicting.append(item)
         else:
             counts.related.append(item)

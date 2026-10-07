@@ -23,7 +23,9 @@ fabricated (`synthetic_leaker_*`).
   2019 off-list post (`quoted_status_result`), a `list-conversation-…` module with a member
   post, an off-list reply and the member's reply back, and cursor entries. Page 2 is an older
   page holding the post used as `since_id`. Handles are `synthetic_leaker_*` (members) and
-  `synthetic_offlist_*` (not members).
+  `synthetic_offlist_*` (not members). Because these pages are not recorded, the live page
+  shape is confirmed by the owner's manual check of spec 010 (one worker poll); BACKLOG #30
+  replaces them with a sanitised live page after that check.
 - `twscrape-list-members.json.gz` — synthetic, shaped on a `ListMembers` response
   (`data.list.members_timeline.timeline.instructions[*].entries[*]` with `user-<id>`
   `TimelineUser` entries and a bottom cursor); three members `Synthetic_Leaker_1..3` in mixed

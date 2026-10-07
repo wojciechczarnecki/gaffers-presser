@@ -1,13 +1,15 @@
 from datetime import UTC, datetime
 
 import httpx
+import pytest
 from sqlmodel import Session
 
-from app.tweets.classes import post_classes, quoted_authors
+from app.tweets.classes import quoted_authors
+from app.tweets.models import ListMembership
 from app.tweets.sources.twscrape_source import TwscrapeSource
 from app.tweets.store import store_posts
 from tests.tweets.fakes import post
-from tests.tweets.membership_helpers import set_members
+from tests.tweets.membership_helpers import post_classes, set_members
 from tests.tweets.payloads import load
 from tests.tweets.sources.test_twscrape_source import FakeApi
 
@@ -32,6 +34,22 @@ def test_no_snapshot_every_post_is_a_list_post(db):
 def test_unsupported_snapshot_every_post_is_a_list_post(db):
     _store(db, post(1, author_handle="anyone"))
     set_members(db, None)
+    assert _classes(db, 1) == {1: "list"}
+
+
+@pytest.mark.parametrize("higher_id_first", [True, False])
+def test_snapshots_fetched_at_one_time_the_higher_id_wins(db, higher_id_first):
+    _store(db, post(1, author_handle="member"))
+    same_time = datetime(2031, 1, 1, tzinfo=UTC)
+    rows = [
+        ListMembership(id=1001, list_id=1, source="fake", fetched_at=same_time, handles=["other"]),
+        ListMembership(id=1002, list_id=1, source="fake", fetched_at=same_time, handles=["member"]),
+    ]
+    if higher_id_first:
+        rows.reverse()
+    for row in rows:
+        with Session(db) as session, session.begin():
+            session.add(row)
     assert _classes(db, 1) == {1: "list"}
 
 
