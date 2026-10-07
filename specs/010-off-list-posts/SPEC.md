@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-07"
   - "spec-ready — 2026-10-07"
+metrics:
+  started_at: 2026-10-07T12:11
 ---
 
 # SPEC 010 — Off-list posts: list membership, quotes and conversation context
