@@ -582,12 +582,16 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/DEPLOYMENT.md`, `docs/BACKLOG.md`,
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+      - Full verification `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`: green: ruff check and format clean, 1365 tests passed.
+      - `uv run python -m app.tweets --help` lists `members`; `python -m app.tweets members` with `TWEET_SOURCE` unset (run outside `backend/`, because `backend/.env` sets it) exits 1 with `error: TWEET_SOURCE must be set to fetch the List's members`.
+      - Migration chain: `tests/db/test_migrations.py` (upgrade/downgrade/upgrade, the `0010` backfill, models match the migration) green.
+      - An accidental live `python -m app.tweets members` run against the owner's `.env` (unmigrated dev database) fetched the real List members and parsed them (the failure came afterwards, at the database write: `list_membership` did not exist yet), which suggests the assumed `ListMembers` shape matches the live response. The owner's manual check below still confirms it.
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/DEPLOYMENT.md`, `docs/BACKLOG.md`,
       the new report and `README.md` updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
