@@ -362,7 +362,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       Files: `app/tweets/sources/{base,twscrape_source,twitterapi_io,x_api}.py`,
       `app/tweets/membership.py`, the test files above, `tests/tweets/payloads/*`.
       Automatic verification: `uv run pytest -q tests/tweets/sources tests/tweets/test_membership.py tests/tweets/test_payloads.py` `iterations: 1`
-- [ ] 6. **Classification.** Create `app/tweets/classes.py` as in Design. Write the tests
+- [x] 6. **Classification.** Create `app/tweets/classes.py` as in Design. Write the tests
       first in `tests/tweets/test_classes.py`:
       - `test_no_snapshot_every_post_is_a_list_post`
       - `test_unsupported_snapshot_every_post_is_a_list_post`
@@ -382,7 +382,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       - `test_quoted_authors`
 
       Files: `app/tweets/classes.py`, `tests/tweets/test_classes.py`.
-      Automatic verification: `uv run pytest -q tests/tweets/test_classes.py`
+      Automatic verification: `uv run pytest -q tests/tweets/test_classes.py` `iterations: 1`
 - [ ] 7. **Membership refresh in the poller.** Add the refresh to `TweetPoller.run` as in
       Design. Write the tests first in `tests/tweets/test_loop.py`, with a fake clock:
       - `test_membership_fetched_at_start_and_every_6_hours`, which uses a `TwscrapeSource`
