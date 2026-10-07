@@ -406,7 +406,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 
       Files: `app/tweets/cli.py`, `tests/tweets/test_cli.py`, `README.md`.
       Automatic verification: `uv run pytest -q tests/tweets/test_cli.py tests/test_readme.py` `iterations: 1`
-- [ ] 9. **Extraction reads source posts only.** Add `source_post_sql` to `next_pending` and
+- [x] 9. **Extraction reads source posts only.** Add `source_post_sql` to `next_pending` and
       to `extraction_status().waiting`. Write the tests first:
       - `tests/extraction/test_store.py`:
         - `test_context_post_is_not_pending` (neither `next_pending` nor `waiting`)
@@ -420,7 +420,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       with `quoted_x_id` and `embedded` keyword arguments. Add a helper
       `set_members(engine, handles)` in `tests/tweets/membership_helpers.py` (wraps
       `save_snapshot`). Files: `app/extraction/store.py`, the tests and helpers above.
-      Automatic verification: `uv run pytest -q tests/extraction tests/retrieval/test_indexing.py`
+      Automatic verification: `uv run pytest -q tests/extraction tests/retrieval/test_indexing.py` `iterations: 1`
 - [ ] 10. **Corroboration sources: no context posts, quoted authors carried.** Add
       `sources_only` to `current_extractions` and `SearchFilters` (and `_filters_for_trace`).
       Pass `True` in `corroboration/sources.py`, add `PostRef.quoted_author_handle` and fill it

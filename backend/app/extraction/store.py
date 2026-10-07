@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from app.extraction.models import Extraction, ExtractionEvent
 from app.extraction.schemas import LinkedEvent, PostInput
 from app.fpl.models.reference import Player
+from app.tweets.classes import source_post_sql
 from app.tweets.models import Tweet
 
 
@@ -129,6 +130,7 @@ def next_pending(session: Session) -> PostInput | None:
     tweet = session.exec(
         select(Tweet)
         .where(Tweet.x_id.not_in(extracted_ids))
+        .where(text(source_post_sql("tweet")))
         .order_by(Tweet.created_at, Tweet.x_id)
         .limit(1)
     ).first()
@@ -279,6 +281,7 @@ def extraction_status(engine: Engine) -> ExtractionStatus:
             text(
                 "SELECT count(*) FROM tweet t"
                 " WHERE NOT EXISTS (SELECT 1 FROM extraction e WHERE e.tweet_x_id = t.x_id)"
+                f" AND {source_post_sql('t')}"
             )
         ).scalar_one()
         failed_posts = conn.execute(

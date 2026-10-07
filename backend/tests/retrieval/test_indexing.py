@@ -244,3 +244,18 @@ def test_attempts_accumulate_and_retries_stop_at_the_cap(db):
     assert _rows(db)[0].attempts == MAX_TOTAL_ATTEMPTS
     assert _next(db, clock) is None
     assert _rows(db)[0].status == "failed"
+
+
+def test_context_post_is_indexed(db):
+    from tests.tweets.membership_helpers import set_members
+
+    clock = FixedClock(NOW)
+    add_tweet(db, 1, "Saka is fit", author="outsider", embedded=True)
+    set_members(db, ["reporter"])
+
+    post = _next(db, clock)
+
+    assert post is not None and post.x_id == 1
+    outcome = _embed(db, FakeEmbedder(default=[0.1, 0.2, 0.3, 0.4]), post, clock)
+    assert outcome is not None and outcome.status == "embedded"
+    assert [row.tweet_x_id for row in _rows(db)] == [1]

@@ -11,17 +11,24 @@ from app.extraction.store import (
 )
 from app.fpl.models.reference import Player, Season, Team
 from app.tweets.models import Tweet
+from tests.tweets.membership_helpers import set_members
 
 SEASON = "2026/27"
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
 
 
 def _tweet(
-    x_id: int, created_at: datetime, is_repost: bool = False, is_reply: bool = False
+    x_id: int,
+    created_at: datetime,
+    is_repost: bool = False,
+    is_reply: bool = False,
+    author: str = "reporter",
+    quoted_x_id: int | None = None,
 ) -> Tweet:
     return Tweet(
         x_id=x_id,
-        author_handle="reporter",
+        quoted_x_id=quoted_x_id,
+        author_handle=author,
         text="Haaland starts today.",
         created_at=created_at,
         first_fetched_at=created_at,
@@ -229,3 +236,46 @@ def test_failed_posts_count_uses_the_latest_extraction_only(db_session):
 
     assert status.failed_posts == 2
     assert status.waiting == 0
+
+
+def test_context_post_is_not_pending(db_session):
+    db_session.add(_tweet(1, NOW, author="outsider"))
+    db_session.commit()
+    set_members(db_session.get_bind(), ["member"])
+
+    assert next_pending(db_session) is None
+    assert extraction_status(db_session.get_bind()).waiting == 0
+
+
+def test_context_post_becomes_pending_when_its_author_joins(db_session):
+    db_session.add(_tweet(1, NOW, author="outsider"))
+    db_session.commit()
+    set_members(db_session.get_bind(), ["member"])
+    assert next_pending(db_session) is None
+
+    set_members(db_session.get_bind(), ["member", "outsider"])
+
+    assert next_pending(db_session).x_id == 1
+    assert extraction_status(db_session.get_bind()).waiting == 1
+
+
+def test_context_post_becomes_pending_when_a_list_post_quotes_it(db_session):
+    db_session.add(_tweet(1, NOW, author="outsider"))
+    db_session.commit()
+    set_members(db_session.get_bind(), ["member"])
+    assert next_pending(db_session) is None
+
+    db_session.add(_tweet(2, NOW + timedelta(seconds=5), author="member", quoted_x_id=1))
+    db_session.commit()
+
+    assert next_pending(db_session).x_id == 1
+    assert extraction_status(db_session.get_bind()).waiting == 2
+
+
+def test_reextract_still_selects_a_context_post(db_session):
+    db_session.add(_tweet(1, NOW, author="outsider"))
+    db_session.commit()
+    set_members(db_session.get_bind(), ["member"])
+
+    assert [p.x_id for p in posts_for_reextract(db_session, x_id=1)] == [1]
+    assert [p.x_id for p in posts_for_reextract(db_session, since=NOW)] == [1]
