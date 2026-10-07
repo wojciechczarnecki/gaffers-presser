@@ -474,7 +474,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 
       Files: `app/alerts/{players,breaking}.py`, the tests above.
       Automatic verification: `uv run pytest -q tests/alerts` `iterations: 0`
-- [ ] 13. **Latency reports count list posts only.** Add `list_post_sql('t')` to
+- [x] 13. **Latency reports count list posts only.** Add `list_post_sql('t')` to
       `post_latencies`. Filter `_measure_one` as in Design. Write the tests first:
       - `tests/alerts/test_latency.py::test_post_latencies_leave_out_a_quoted_post`: a sent
         alert holds a list post and an off-list quoted post created a day earlier, both
@@ -487,7 +487,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
         - `test_summary_reads_only_what_measure_wrote`
 
       Files: `app/alerts/latency.py`, `app/tweets/cli.py`, the tests above.
-      Automatic verification: `uv run pytest -q tests/alerts/test_latency.py tests/alerts/test_cli.py tests/tweets/test_cli.py`
+      Automatic verification: `uv run pytest -q tests/alerts/test_latency.py tests/alerts/test_cli.py tests/tweets/test_cli.py` `iterations: 0`
 - [ ] 14. **Documents.**
       - Write `docs/reports/twscrape-list-replies-2026-10.md`: the two posts (x_id
         2104662407054266709 and 2104663688330486065), their reply target `@FPL_TomHadley`

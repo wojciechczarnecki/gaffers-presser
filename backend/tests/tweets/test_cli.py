@@ -380,3 +380,86 @@ def test_members_command_needs_tweet_source_and_list_id(db):
     result = CliRunner().invoke(app, ["members"], obj=_members_deps(db, source, x_list_id=""))
     assert result.exit_code == 1
     assert "X_LIST_ID" in result.output
+
+
+class MemberSource(ScriptedSource):
+    def __init__(self, name: str, scripts: list, members: list[str] | None) -> None:
+        super().__init__(name, scripts)
+        self._members = members
+        self.pages_pulled = 0
+
+    def members(self, list_id: int):
+        if self._members is None:
+            return super().members(list_id)
+        return list(self._members)
+
+    def pages(self, list_id: int):
+        script = self._scripts[min(self._i, len(self._scripts) - 1)]
+        self._i += 1
+        for page in script:
+            self.pages_pulled += 1
+            yield page
+
+
+def _measure_with(src, tmp_path, minutes="1"):
+    deps = MeasureDeps(
+        settings=_settings(),
+        build_source=lambda name, settings: src,
+        clock_factory=lambda stop: SeqClock(START),
+    )
+    output = tmp_path / "latency.jsonl"
+    result = _measure(deps, output, "--duration-minutes", minutes, "--source", "twscrape")
+    assert result.exit_code == 0, result.output
+    return output, result
+
+
+def test_measure_records_list_posts_only(tmp_path):
+    member_post = post(2001, author_handle="member", created_at=START + timedelta(seconds=5))
+    reply = post(2002, author_handle="Outsider", created_at=START + timedelta(seconds=6))
+    src = MemberSource("twscrape", [[[member_post, reply]], [[]]], members=["Member"])
+
+    output, _ = _measure_with(src, tmp_path)
+
+    records, _ = read_records(output)
+    assert [r.x_id for r in records] == [2001]
+
+
+def test_measure_without_membership_skips_embedded_posts(tmp_path):
+    kept = post(2001, created_at=START + timedelta(seconds=5))
+    embedded = post(2002, created_at=START + timedelta(seconds=6), embedded=True)
+    src = MemberSource("twscrape", [[[kept, embedded]], [[]]], members=None)
+
+    output, _ = _measure_with(src, tmp_path)
+
+    records, _ = read_records(output)
+    assert [r.x_id for r in records] == [2001]
+
+
+def test_measure_since_id_ignores_embedded_posts(tmp_path):
+    first = [post(2001, created_at=START + timedelta(seconds=5))]
+    embedded = [post(9999, created_at=START - timedelta(days=30), embedded=True)]
+    second_pages = [
+        [post(2003, created_at=START + timedelta(seconds=25))],
+        [post(2002)],
+        [post(2001)],
+    ]
+    src = MemberSource("twscrape", [[first + embedded], second_pages], members=None)
+
+    output, _ = _measure_with(src, tmp_path, minutes="0.5")
+
+    records, _ = read_records(output)
+    assert sorted(r.x_id for r in records) == [2001, 2002, 2003]
+    assert src.pages_pulled == 1 + 3
+
+
+def test_summary_reads_only_what_measure_wrote(tmp_path):
+    member_post = post(2001, author_handle="member", created_at=START + timedelta(seconds=5))
+    reply = post(2002, author_handle="outsider", created_at=START + timedelta(seconds=6))
+    src = MemberSource("twscrape", [[[member_post, reply]], [[]]], members=["member"])
+    output, _ = _measure_with(src, tmp_path)
+
+    result = CliRunner().invoke(app, ["summary", str(output)])
+
+    assert result.exit_code == 0, result.output
+    row = [line for line in result.output.splitlines() if line.startswith("twscrape")][0]
+    assert row.split()[1] == "1"

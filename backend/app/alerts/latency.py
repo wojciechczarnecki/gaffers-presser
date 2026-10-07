@@ -5,6 +5,8 @@ from datetime import datetime
 from sqlalchemy import text
 from sqlmodel import Session
 
+from app.tweets.classes import list_post_sql
+
 LEGS = ("post -> first fetch", "fetch -> extraction done", "extraction -> accepted", "total")
 KINDS = ("digest", "news", "breaking")
 
@@ -59,6 +61,7 @@ def post_latencies(session: Session, deadline_key: str) -> list[PostLatency]:
             " JOIN delivery_log d ON d.id = a.delivery_log_id"
             " WHERE a.deadline_key = :deadline_key AND a.status = 'sent'"
             " AND ap.freshness = 'new' AND d.accepted_at IS NOT NULL"
+            f" AND {list_post_sql('t')}"
             " ORDER BY t.x_id, d.accepted_at"
         ),
         {"deadline_key": deadline_key},

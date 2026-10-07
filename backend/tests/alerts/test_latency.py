@@ -1,7 +1,12 @@
 from datetime import timedelta
 
-from app.alerts.latency import PostLatency, format_report, percentile, summarize
+from sqlmodel import Session
+
+from app.alerts.latency import PostLatency, format_report, percentile, post_latencies, summarize
+from tests.alerts.test_cli import REAL, latency_post, sent_alert
+from tests.alerts.test_store import post
 from tests.corroboration.helpers import NOW
+from tests.tweets.membership_helpers import set_members
 
 
 def latency(
@@ -73,3 +78,21 @@ def test_report_splits_legs_per_alert_kind():
     assert lines[breaking_at + 4].split()[0:2] == ["extraction", "->"]
     assert lines[breaking_at + 4].split()[-6:] == ["6.0", "s", "6.0", "s", "6.0", "s"]
     assert lines[breaking_at + 5].split()[-6:] == ["31.0", "s", "31.0", "s", "31.0", "s"]
+
+
+def test_post_latencies_leave_out_a_quoted_post(db):
+    from tests.corroboration.helpers import seed_reference
+
+    seed_reference(db)
+    latency_post(db, 1, 10, 5, created=NOW)
+    latency_post(db, 2, 30, 5, created=NOW - timedelta(days=1))
+    with db.begin() as conn:
+        conn.exec_driver_sql("UPDATE tweet SET author_handle = 'outsider' WHERE x_id = 2")
+        conn.exec_driver_sql("UPDATE tweet SET quoted_x_id = 2 WHERE x_id = 1")
+    set_members(db, ["a1"])
+    sent_alert(db, "k1", 1, 60, REAL, extra=(post(2),))
+
+    with Session(db) as session:
+        rows = post_latencies(session, REAL.key)
+
+    assert [row.x_id for row in rows] == [1]

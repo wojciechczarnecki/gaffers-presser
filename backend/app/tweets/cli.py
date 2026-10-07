@@ -105,6 +105,8 @@ def _measure_one(
     writer: RecordWriter,
 ) -> PollCounts:
     source: TweetSource | None = None
+    member_handles: set[str] | None = None
+    members_checked = False
     since_id: int | None = None
     seen: set[int] = set()
     polls = 0
@@ -124,13 +126,25 @@ def _measure_one(
                                 f"{name}: source build failed: {type(exc).__name__}", err=True
                             )
                         raise
+                if not members_checked:
+                    members_checked = True
+                    try:
+                        member_handles = {h.lower() for h in source.members(list_id)}
+                    except Exception:
+                        member_handles = None
                 posts = collect_new(source, list_id, since_id)
                 fetched_at = clock.now()
                 for post in posts:
+                    if post.embedded:
+                        continue
                     since_id = post.x_id if since_id is None else max(since_id, post.x_id)
                     if post.x_id in seen:
                         continue
                     seen.add(post.x_id)
+                    if member_handles is not None and post.author_handle.lower() not in (
+                        member_handles
+                    ):
+                        continue
                     if post.created_at >= start:
                         writer.write(
                             LatencyRecord(
