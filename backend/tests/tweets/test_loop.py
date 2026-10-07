@@ -9,7 +9,8 @@ from sqlmodel import Session, select
 from app.core.clock import StopAwareClock
 from app.fpl.models import Gameweek, Season
 from app.tweets.loop import TweetPoller, start_poller
-from app.tweets.models import TweetPoll
+from app.tweets.membership import latest_snapshot
+from app.tweets.models import ListMembership, TweetPoll
 from app.tweets.sources.base import (
     MembershipNotSupportedError,
     SourceRateLimitedError,
@@ -17,6 +18,8 @@ from app.tweets.sources.base import (
 )
 from app.worker.jobs import Shutdown
 from tests.tweets.fakes import FakeSource
+from tests.tweets.membership_helpers import set_members
+from tests.tweets.payloads import load
 from tests.worker.sim import FakeClock
 
 DEADLINE = datetime(2026, 10, 10, 18, 30, 0, tzinfo=UTC)
@@ -354,3 +357,80 @@ def test_a_past_rehearsal_deadline_does_not_move_the_floor(db, monkeypatch):
         db, monkeypatch, now=now, extra_deadlines=(now - timedelta(hours=2),)
     )
     assert floors == [gw5]
+
+
+class _CountingClock(FakeClock):
+    def __init__(self, start, end, db) -> None:
+        super().__init__(start, end)
+        self._db = db
+        self.rows_at: dict[datetime, int] = {}
+
+    def sleep(self, seconds: float) -> None:
+        with Session(self._db) as session:
+            self.rows_at[self.now()] = len(session.exec(select(ListMembership)).all())
+        super().sleep(seconds)
+
+
+def _members_api():
+    import httpx
+
+    from tests.tweets.sources.test_twscrape_source import FakeApi
+
+    return FakeApi([], member_pages=[httpx.Response(200, json=load("twscrape-list-members"))])
+
+
+def test_membership_fetched_at_start_and_every_6_hours(db):
+    from app.tweets.sources.twscrape_source import TwscrapeSource
+
+    start = datetime(2026, 10, 7, 0, 0, 0, tzinfo=UTC)
+    clock = _CountingClock(start, start + timedelta(hours=6, minutes=2), db)
+    source = TwscrapeSource("dedicated", "auth_token=a; ct0=b", ":unused:", api=_members_api())
+    poller = TweetPoller(db, lambda: source, list_id=1, clock=clock, stop_event=threading.Event())
+
+    with pytest.raises(Shutdown):
+        poller.run()
+
+    assert clock.rows_at[start + timedelta(minutes=1)] == 1
+    assert clock.rows_at[start + timedelta(hours=5, minutes=59)] == 1
+    assert clock.rows_at[start + timedelta(hours=6, minutes=1)] == 2
+    with Session(db) as session:
+        snapshot = latest_snapshot(session)
+    assert snapshot.handles == frozenset(
+        {"synthetic_leaker_1", "synthetic_leaker_2", "synthetic_leaker_3"}
+    )
+    assert snapshot.fetched_at == start + timedelta(hours=6)
+
+
+def test_failed_membership_fetch_keeps_snapshot_and_polling(db, caplog):
+    set_members(db, ["kept_member"])
+    start = datetime(2026, 10, 7, 0, 0, 0, tzinfo=UTC)
+    clock = FakeClock(start, start + timedelta(minutes=31))
+    source = FakeSource(pages=[[]], members=SourceRateLimitedError("limited"))
+    poller = TweetPoller(db, lambda: source, list_id=1, clock=clock, stop_event=threading.Event())
+
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(Shutdown):
+            poller.run()
+
+    assert "list membership fetch failed: SourceRateLimitedError" in caplog.text
+    assert source.members_calls == 2
+    with Session(db) as session:
+        assert latest_snapshot(session).handles == frozenset({"kept_member"})
+        assert len(session.exec(select(ListMembership)).all()) == 1
+    assert len(_poll_times(db)) == 2
+    assert all(outcome == "succeeded" for _t, outcome in _poll_times(db))
+
+
+def test_unsupported_source_records_a_null_snapshot_once(db):
+    start = datetime(2026, 10, 7, 0, 0, 0, tzinfo=UTC)
+    clock = FakeClock(start, start + timedelta(hours=7))
+    source = FakeSource(pages=[[]])
+    poller = TweetPoller(db, lambda: source, list_id=1, clock=clock, stop_event=threading.Event())
+
+    with pytest.raises(Shutdown):
+        poller.run()
+
+    assert source.members_calls == 1
+    with Session(db) as session:
+        rows = session.exec(select(ListMembership)).all()
+    assert [row.handles for row in rows] == [None]

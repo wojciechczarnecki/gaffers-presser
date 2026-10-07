@@ -383,7 +383,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 
       Files: `app/tweets/classes.py`, `tests/tweets/test_classes.py`.
       Automatic verification: `uv run pytest -q tests/tweets/test_classes.py` `iterations: 1`
-- [ ] 7. **Membership refresh in the poller.** Add the refresh to `TweetPoller.run` as in
+- [x] 7. **Membership refresh in the poller.** Add the refresh to `TweetPoller.run` as in
       Design. Write the tests first in `tests/tweets/test_loop.py`, with a fake clock:
       - `test_membership_fetched_at_start_and_every_6_hours`, which uses a `TwscrapeSource`
         over a `FakeApi` serving the recorded `list_members` payload, then checks the
@@ -395,7 +395,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       - `test_unsupported_source_records_a_null_snapshot_once`
 
       Files: `app/tweets/loop.py`, `tests/tweets/test_loop.py`.
-      Automatic verification: `uv run pytest -q tests/tweets/test_loop.py tests/worker/test_cli.py`
+      Automatic verification: `uv run pytest -q tests/tweets/test_loop.py tests/worker/test_cli.py` `iterations: 1`
 - [ ] 8. **CLI `python -m app.tweets members`.** Add the command and `MeasureDeps.make_engine`.
       Add a line for `members` in README → Development next to `measure`/`summary`. Write the
       tests first in `tests/tweets/test_cli.py`:
