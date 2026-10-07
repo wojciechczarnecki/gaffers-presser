@@ -98,9 +98,24 @@ def test_catch_up_stops_at_the_floor_when_the_last_seen_post_is_older(caplog):
     )
     with caplog.at_level("INFO"):
         result = collect_new(source, list_id=1, since_id=2, floor=FLOOR)
+    assert [p.x_id for p in result] == [5, 6, 7, 8, 9]
+    assert source.pull_count == 3
+    assert "pages=3 stopped_by=window start" in caplog.text
+
+
+def test_one_old_post_on_a_fresh_page_does_not_end_the_catch_up():
+    source = FakeSource([[dated(9, 3), dated(8, -30)], [dated(7, 2)], [dated(6, -1)]])
+    result = collect_new(source, list_id=1, since_id=6, floor=FLOOR)
     assert [p.x_id for p in result] == [6, 7, 8, 9]
-    assert source.pull_count == 2
-    assert "stopped_by=window start" in caplog.text
+    assert source.pull_count == 3
+
+
+def test_a_short_timeline_without_the_last_seen_post_is_quiet(caplog):
+    source = FakeSource([[dated(9, 3)]], max_pages=50)
+    with caplog.at_level("INFO"):
+        result = collect_new(source, list_id=1, since_id=1, floor=FLOOR)
+    assert [p.x_id for p in result] == [9]
+    assert "paged back" not in caplog.text
 
 
 def test_empty_store_with_a_floor_pages_back_to_the_floor():

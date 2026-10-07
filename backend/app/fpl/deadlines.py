@@ -7,6 +7,9 @@ from sqlmodel import Session, select
 
 from app.fpl.models.reference import Gameweek
 
+# how far before a deadline the alert window may reach (ALERT_MAX_LOOKBACK_DAYS)
+DEFAULT_MAX_LOOKBACK = timedelta(days=7)
+
 
 def _identity(item: Any) -> Any:
     return item
@@ -39,11 +42,12 @@ def deadline_at_or_before(session: Session, t: datetime) -> datetime | None:
     ).one()
 
 
-def catch_up_floor(
+def window_floor(
     previous: datetime | None, next_: datetime | None, max_lookback: timedelta, now: datetime
 ) -> datetime:
     """The start of the alert window: the previous deadline, but no further back than
-    max_lookback before the next deadline (or before now when no deadline is known)."""
+    max_lookback before the next deadline (or before now when no deadline is known). Shared by
+    the alerts and the tweet ingest catch-up, so the ingest always covers the alert window."""
     candidates = [now - max_lookback if next_ is None else next_ - max_lookback]
     if previous is not None:
         candidates.append(previous)

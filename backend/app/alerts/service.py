@@ -25,6 +25,7 @@ from app.corroboration.service import CorroborationRuntime, corroborate
 from app.corroboration.sources import window_start
 from app.delivery.channels.base import Message
 from app.delivery.service import DeliveryService
+from app.fpl.deadlines import window_floor
 from app.fpl.models.reference import Season
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,9 @@ def alert_window_start(
     """The previous deadline, but no further back than the configured lookback before the alert
     deadline: a long break between deadlines (an international break) would otherwise fill
     alerts with stale news. Counting from the deadline keeps one window for all its alerts."""
-    return max(window_start(session, as_of), deadline.deadline_at - config.max_lookback)
+    return window_floor(
+        window_start(session, as_of), deadline.deadline_at, config.max_lookback, as_of
+    )
 
 
 def shown_x_ids(result: Corroboration) -> set[int]:
