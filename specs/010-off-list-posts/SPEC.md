@@ -19,6 +19,9 @@ metrics:
   implement_iterations: 8
   deviations_minor: 3
   deviations_major: 0
+  final_review_blockers: 0
+  final_review_worth_fixing: 6
+  final_review_nits: 5
 ---
 
 # SPEC 010 — Off-list posts: list membership, quotes and conversation context
