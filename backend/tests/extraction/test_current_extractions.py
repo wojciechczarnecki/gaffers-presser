@@ -4,6 +4,7 @@ from app.extraction.schemas import LinkedEvent
 from app.extraction.store import ExtractionRecord, current_extractions, save_extraction
 from app.fpl.models.reference import Player, Season, Team
 from app.tweets.models import Tweet
+from tests.tweets.membership_helpers import set_members
 
 SEASON = "2026/27"
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
@@ -193,3 +194,23 @@ def test_a_repost_exposes_its_original_author(db_session):
 
     assert rows[1].is_repost and rows[1].reposted_author_handle == "origin"
     assert rows[2].reposted_author_handle is None
+
+
+def test_sources_only_drops_context_posts(db_session):
+    _seed(db_session)
+    for x_id in (1, 2, 3, 4):
+        db_session.add(_tweet(x_id, NOW))
+    db_session.commit()
+    db_session.get(Tweet, 4).quoted_x_id = 3
+    db_session.get(Tweet, 4).author_handle = "member"
+    db_session.get(Tweet, 1).author_handle = "member"
+    db_session.commit()
+    for x_id in (1, 2, 3):
+        save_extraction(db_session, _record(x_id), [_event()])
+    set_members(db_session.get_bind(), ["member"])
+
+    everything = current_extractions(db_session)
+    sources = current_extractions(db_session, sources_only=True)
+
+    assert [r.tweet_x_id for r in everything] == [1, 2, 3]
+    assert [r.tweet_x_id for r in sources] == [1, 3]

@@ -311,3 +311,19 @@ def test_fulltext_mode_never_calls_the_embedder(db):
     embedder = FakeEmbedder()
     _search(db, "injured", "fulltext", embedder)
     assert embedder.calls == []
+
+
+def test_sources_only_filter_drops_context_posts(db):
+    from tests.tweets.membership_helpers import set_members
+
+    add_tweet(db, 1, "Saka injury", author="member")
+    add_tweet(db, 2, "Saka injury news", author="outsider")
+    add_tweet(db, 3, "Saka injury confirmed", author="quoted_out")
+    add_tweet(db, 4, "look at this", author="member", quoted_x_id=3)
+    set_members(db, ["member"])
+
+    everything = _search(db, "saka injury", "fulltext")
+    sources = _search(db, "saka injury", "fulltext", filters=SearchFilters(sources_only=True))
+
+    assert set(_ids(everything)) == {1, 2, 3}
+    assert set(_ids(sources)) == {1, 3}

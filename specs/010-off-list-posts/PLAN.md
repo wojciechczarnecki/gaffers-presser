@@ -421,7 +421,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       `set_members(engine, handles)` in `tests/tweets/membership_helpers.py` (wraps
       `save_snapshot`). Files: `app/extraction/store.py`, the tests and helpers above.
       Automatic verification: `uv run pytest -q tests/extraction tests/retrieval/test_indexing.py` `iterations: 1`
-- [ ] 10. **Corroboration sources: no context posts, quoted authors carried.** Add
+- [x] 10. **Corroboration sources: no context posts, quoted authors carried.** Add
       `sources_only` to `current_extractions` and `SearchFilters` (and `_filters_for_trace`).
       Pass `True` in `corroboration/sources.py`, add `PostRef.quoted_author_handle` and fill it
       from `quoted_authors` in `sql_claims` and `retrieval_candidates`. Write the tests first:
@@ -435,7 +435,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 
       Files: `app/extraction/store.py`, `app/retrieval/search.py`,
       `app/corroboration/{schemas,sources}.py`, the tests above.
-      Automatic verification: `uv run pytest -q tests/corroboration tests/retrieval/test_search.py tests/extraction/test_current_extractions.py`
+      Automatic verification: `uv run pytest -q tests/corroboration tests/retrieval/test_search.py tests/extraction/test_current_extractions.py` `iterations: 1`
 - [ ] 11. **Quote counting rule.** Add `counted_account` and use it in `count_accounts`,
       `grade` and the trace span (`service.py`). Write the tests first:
       - `tests/corroboration/test_rules.py`:

@@ -183,6 +183,7 @@ def current_extractions(
     created_from: datetime | None = None,
     created_until: datetime | None = None,
     player: tuple[str, int] | None = None,
+    sources_only: bool = False,
 ) -> list[CurrentExtraction]:
     if x_ids is not None and not x_ids:
         return []
@@ -209,6 +210,8 @@ def current_extractions(
             " AND ev.player_season = :player_season AND ev.player_fpl_id = :player_fpl_id)"
         )
         params["player_season"], params["player_fpl_id"] = player
+    if sources_only:
+        conditions.append(source_post_sql("t"))
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
     rows = (
         session.execute(

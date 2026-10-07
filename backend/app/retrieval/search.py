@@ -13,6 +13,7 @@ from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder
 from app.retrieval.indexing import traced_embed
 from app.retrieval.tracing import NULL_TRACER, RetrievalTracer
+from app.tweets.classes import source_post_sql
 from app.tweets.models import Tweet
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class SearchFilters:
     until: datetime | None = None
     exclude_reposts: bool = False
     exclude_replies: bool = False
+    sources_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -117,6 +119,8 @@ def _filter_sql(filters: SearchFilters) -> tuple[str, dict[str, Any]]:
         clauses.append("AND NOT t.is_repost")
     if filters.exclude_replies:
         clauses.append("AND NOT t.is_reply")
+    if filters.sources_only:
+        clauses.append(f"AND {source_post_sql('t')}")
     return " ".join(clauses), params
 
 
@@ -157,6 +161,7 @@ def _filters_for_trace(filters: SearchFilters) -> dict[str, Any]:
         "until": filters.until.isoformat() if filters.until else None,
         "exclude_reposts": filters.exclude_reposts,
         "exclude_replies": filters.exclude_replies,
+        "sources_only": filters.sources_only,
     }
 
 
