@@ -42,7 +42,7 @@ from app.extraction.loop import start_extractor
 from app.extraction.service import ExtractionRuntime, load_reference_files
 from app.extraction.store import extraction_status
 from app.fpl.client import FplClient
-from app.fpl.deadlines import upcoming_deadlines
+from app.fpl.deadlines import DEFAULT_MAX_LOOKBACK, upcoming_deadlines
 from app.llm.chat import PROVIDER, build_chat_model, resolve_llm
 from app.llm.settings import load_llm_settings
 from app.llm.tracing import resolve_tracing
@@ -227,6 +227,11 @@ def _polling(deps: WorkerDeps) -> tuple[timedelta, tuple[datetime, ...]]:
     return polling_window(deps.alerts.config), (rehearsal,) if rehearsal is not None else ()
 
 
+def _catch_up_lookback(deps: WorkerDeps) -> timedelta:
+    # the tweet catch-up pages back to the start of the alert window, so it shares its lookback
+    return DEFAULT_MAX_LOOKBACK if deps.alerts is None else deps.alerts.config.max_lookback
+
+
 def _fmt(dt: datetime) -> str:
     return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -292,6 +297,7 @@ def run(ctx: typer.Context) -> None:
                 clock=deps.tweet_ingest.clock,
                 window=window,
                 extra_deadlines=extra_deadlines,
+                max_lookback=_catch_up_lookback(deps),
             )
 
         if deps.extraction is None:

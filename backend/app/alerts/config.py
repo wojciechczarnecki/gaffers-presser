@@ -6,11 +6,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.errors import ConfigError
 from app.core.local_time import parse_local
+from app.fpl.deadlines import DEFAULT_MAX_LOOKBACK
 
 DEFAULT_SLOTS = "120,30"
 DEFAULT_TRENDING_MIN_ACCOUNTS = "3"
 DEFAULT_WIDELY_OWNED_PERCENT = "15"
-DEFAULT_MAX_LOOKBACK_DAYS = "7"
+DEFAULT_MAX_LOOKBACK_DAYS = str(DEFAULT_MAX_LOOKBACK.days)
 
 
 class AlertSettings(BaseSettings):
@@ -31,7 +32,7 @@ class AlertConfig:
     widely_owned_percent: Decimal
     rehearsal_deadline: datetime | None
     # the alert window starts at the previous deadline, but never earlier than this before now
-    max_lookback: timedelta = timedelta(days=int(DEFAULT_MAX_LOOKBACK_DAYS))
+    max_lookback: timedelta = DEFAULT_MAX_LOOKBACK
 
 
 def _enabled(settings: AlertSettings) -> bool:

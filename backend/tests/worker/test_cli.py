@@ -1551,6 +1551,7 @@ def test_rehearsal_not_written_to_gameweek_and_polls_fast(cli, db, monkeypatch):
     assert result.exit_code == 0
     assert captured["window"] == timedelta(minutes=130)
     assert captured["extra_deadlines"] == (rehearsal,)
+    assert captured["max_lookback"] == timedelta(days=7)
     with Session(db) as session:
         gameweeks = [(g.fpl_id, g.deadline_at) for g in session.exec(select(Gameweek)).all()]
     assert all(row in gameweeks for row in before)

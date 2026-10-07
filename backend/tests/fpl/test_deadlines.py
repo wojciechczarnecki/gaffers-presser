@@ -8,6 +8,7 @@ from app.fpl.deadlines import (
     latest_deadline_at_or_before,
     next_deadline_after,
     upcoming_deadlines,
+    window_floor,
 )
 from app.fpl.models.reference import Gameweek, Season
 
@@ -80,3 +81,24 @@ def test_deadline_at_or_before_from_the_database(db):
         assert deadline_at_or_before(session, NOW + timedelta(days=2)) == NOW + timedelta(days=2)
         assert deadline_at_or_before(session, NOW) == NOW - timedelta(days=5)
         assert deadline_at_or_before(session, NOW - timedelta(days=6)) is None
+
+
+def test_window_floor_is_the_previous_deadline_in_a_normal_week():
+    previous, next_ = NOW - timedelta(days=3), NOW + timedelta(days=4)
+    assert window_floor(previous, next_, timedelta(days=7), NOW) == previous
+
+
+def test_window_floor_caps_a_long_break_at_the_lookback_before_the_next_deadline():
+    previous, next_ = NOW - timedelta(days=10), NOW + timedelta(days=4)
+    assert window_floor(previous, next_, timedelta(days=7), NOW) == NOW - timedelta(days=3)
+
+
+def test_window_floor_without_a_next_deadline_counts_back_from_now():
+    previous = NOW - timedelta(days=10)
+    assert window_floor(previous, None, timedelta(days=7), NOW) == NOW - timedelta(days=7)
+
+
+def test_window_floor_without_a_previous_deadline_uses_the_lookback():
+    next_ = NOW + timedelta(days=2)
+    assert window_floor(None, next_, timedelta(days=7), NOW) == NOW - timedelta(days=5)
+    assert window_floor(None, None, timedelta(days=7), NOW) == NOW - timedelta(days=7)

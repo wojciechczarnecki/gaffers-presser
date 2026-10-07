@@ -283,3 +283,67 @@ def test_poller_without_a_custom_window_stays_sparse_at_two_hours(db):
         poller.run()
 
     assert [t for t, _ in _poll_times(db)] == [start]
+
+
+def _floors_of_one_poll(db, monkeypatch, now, extra_deadlines=()):
+    from app.tweets import loop
+
+    floors = []
+    real_poll_once = loop.poll_once
+
+    def spy(*args):
+        floors.append(args[-1])
+        return real_poll_once(*args)
+
+    monkeypatch.setattr(loop, "poll_once", spy)
+    poller = TweetPoller(
+        db,
+        lambda: FakeSource(pages=[[]]),
+        list_id=123,
+        clock=FakeClock(now, now + timedelta(seconds=1)),
+        stop_event=threading.Event(),
+        extra_deadlines=extra_deadlines,
+        max_lookback=timedelta(days=5),
+    )
+    with pytest.raises(Shutdown):
+        poller.run()
+    return floors
+
+
+def _seed_gw5_and_gw6(db, gw5_deadline: datetime) -> None:
+    with Session(db) as session, session.begin():
+        session.add(Season(label="2026/27"))
+        session.flush()
+        for fpl_id, deadline_at in ((5, gw5_deadline), (6, DEADLINE)):
+            session.add(
+                Gameweek(
+                    season="2026/27",
+                    fpl_id=fpl_id,
+                    name=f"GW{fpl_id}",
+                    deadline_at=deadline_at,
+                    finished=False,
+                    data_checked=False,
+                )
+            )
+
+
+@pytest.mark.parametrize(
+    ("gw5_before_gw6", "expected_floor_before_gw6"),
+    [(timedelta(days=3), timedelta(days=3)), (timedelta(days=10), timedelta(days=5))],
+)
+def test_poll_gets_the_alert_window_floor(
+    db, monkeypatch, gw5_before_gw6, expected_floor_before_gw6
+):
+    _seed_gw5_and_gw6(db, DEADLINE - gw5_before_gw6)
+    floors = _floors_of_one_poll(db, monkeypatch, now=DEADLINE - timedelta(days=1))
+    assert floors == [DEADLINE - expected_floor_before_gw6]
+
+
+def test_a_past_rehearsal_deadline_does_not_move_the_floor(db, monkeypatch):
+    gw5 = DEADLINE - timedelta(days=3)
+    _seed_gw5_and_gw6(db, gw5)
+    now = DEADLINE - timedelta(days=1)
+    floors = _floors_of_one_poll(
+        db, monkeypatch, now=now, extra_deadlines=(now - timedelta(hours=2),)
+    )
+    assert floors == [gw5]

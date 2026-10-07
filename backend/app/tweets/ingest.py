@@ -13,7 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 def poll_once(
-    engine: Engine, source: TweetSource, list_id: int, now_fn: Callable[[], datetime]
+    engine: Engine,
+    source: TweetSource,
+    list_id: int,
+    now_fn: Callable[[], datetime],
+    floor: datetime | None = None,
 ) -> PollRecord:
     started_at = now_fn()
     outcome = "succeeded"
@@ -23,7 +27,7 @@ def poll_once(
     try:
         with Session(engine) as session:
             since_id = last_seen_id(session)
-        posts = collect_new(source, list_id, since_id)
+        posts = collect_new(source, list_id, since_id, floor)
         fetched_at = now_fn()
         with Session(engine) as session, session.begin():
             new_posts = store_posts(session, posts, source.name, fetched_at)

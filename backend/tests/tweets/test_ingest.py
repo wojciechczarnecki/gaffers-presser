@@ -155,3 +155,44 @@ def test_failed_poll_record_and_logs_carry_no_secret(db, caplog):
     assert len(rows) == 1
     assert rows[0].error_class == "SourcePayloadError"
     assert "sentinel-secret" not in repr(rows[0].model_dump())
+
+
+def test_catch_up_fills_a_gap_longer_than_a_regular_poll(db):
+    with Session(db) as session, session.begin():
+        session.add(_stored(1))
+    pages = [[post(x_id=20 - i, created_at=START - timedelta(hours=i))] for i in range(19)]
+    source = FakeSource(pages=pages, max_pages=50)
+    record = poll_once(
+        db, source, list_id=123, now_fn=lambda: START, floor=START - timedelta(days=7)
+    )
+    assert record.new_posts == 19
+    assert source.pull_count == 19
+
+
+def test_rate_limit_during_catch_up_stores_nothing(db):
+    with Session(db) as session, session.begin():
+        session.add(_stored(1))
+    source = FakeSource(
+        pages=[[post(x_id=9, created_at=START)], SourceRateLimitedError("limited", 60.0)],
+        max_pages=50,
+    )
+    record = poll_once(
+        db, source, list_id=123, now_fn=lambda: START, floor=START - timedelta(days=7)
+    )
+    assert record.outcome == "rate_limited"
+    with Session(db) as session:
+        assert [t.x_id for t in session.exec(select(Tweet)).all()] == [1]
+
+
+def _stored(x_id: int) -> Tweet:
+    return Tweet(
+        x_id=x_id,
+        author_handle="synthetic_leaker",
+        text="synthetic text",
+        created_at=START - timedelta(days=1),
+        first_fetched_at=START - timedelta(days=1),
+        source="fake",
+        is_repost=False,
+        is_reply=False,
+        raw={"id": x_id},
+    )
