@@ -597,6 +597,8 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
+- 2026-10-07 — final-review — `gate` — Which final review findings to fix (F12–F27 were added after the tests perspective finished; the owner asked to fix all of them too)? — `accepted`: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, F25, F26, F27; `rejected`: none
+
 ## Review log
 
 2026-10-07 — plan review (fresh eye, `/pipeline:ship`)
