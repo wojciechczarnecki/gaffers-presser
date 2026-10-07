@@ -47,7 +47,9 @@ The other 7 posts twscrape saw came from real accounts on the list (p50 17.4 s, 
 - **twscrape missed two posts that twitterapi.io returned** — both from `@FPL_Harry`
   (created 19:59:55 and 20:05:00 UTC); the one post both sources saw (`@City_Xtra`) was
   detected at 17.1 s and 17.4 s. The cause is not known yet (a reply or quote excluded from
-  the List timeline is the first suspect); it is followed up in BACKLOG #11.
+  the List timeline is the first suspect); the follow-up found replies in other people's
+  conversations, which do not affect leaks
+  ([twscrape-list-replies-2026-10.md](twscrape-list-replies-2026-10.md)).
 
 ## Outcome
 

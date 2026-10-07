@@ -488,7 +488,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 
       Files: `app/alerts/latency.py`, `app/tweets/cli.py`, the tests above.
       Automatic verification: `uv run pytest -q tests/alerts/test_latency.py tests/alerts/test_cli.py tests/tweets/test_cli.py` `iterations: 0`
-- [ ] 14. **Documents.**
+- [x] 14. **Documents.**
       - Write `docs/reports/twscrape-list-replies-2026-10.md`: the two posts (x_id
         2104662407054266709 and 2104663688330486065), their reply target `@FPL_TomHadley`
         (off-list, in a conversation another account started), the conversation-module
@@ -516,7 +516,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
         members` in DEPLOYMENT, a DECISIONS row naming `list_membership` and the quote rule)
 
       Files: the documents above, `tests/test_docs.py`.
-      Automatic verification: `uv run pytest -q tests/test_docs.py tests/test_readme.py`
+      Automatic verification: `uv run pytest -q tests/test_docs.py tests/test_readme.py` `iterations: 0`
 
 ## Risks and traps
 

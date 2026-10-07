@@ -43,6 +43,16 @@ below; agents never touch production.
      naming the missing variable, never its value.
    `python -m app.worker status` then also prints the source, the last successful poll, the
    next poll and the current mode (`window` near a deadline, `sparse` otherwise).
+   - Migration `0010` (spec 010) adds `tweet.embedded` and `tweet.quoted_x_id` (indexed),
+     backfills `quoted_x_id` from each stored twscrape payload's `quotedTweet.id`, and adds the
+     `list_membership` table. It runs through the pre-deploy like the others, leaves existing
+     data unchanged and downgrades cleanly.
+   - With `twscrape`, the worker fetches the List's members when it starts and then every
+     6 hours (a failed fetch is retried after 30 minutes and never stops polling); until the
+     first fetch succeeds every stored post counts as a list post. On the first start after
+     this migration, run `python -m app.tweets members` from a Railway shell to fetch the
+     membership at once: it prints `List members: <n>  snapshot: <UTC time>`. The other sources
+     cannot list members and treat every post as a list post.
 8. **Tweet extraction (optional).** With no `OPENROUTER_API_KEY` set, the worker runs exactly
    as above and logs `extraction disabled` once, whatever `LLM_MODEL` says;
    `python -m app.worker status` shows `Extraction: disabled`. OpenRouter is the only LLM
