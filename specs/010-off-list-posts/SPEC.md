@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-07"
   - "spec-ready — 2026-10-07"
   - "plan-draft — 2026-10-07"
   - "plan-approved — 2026-10-07"
   - "implemented — 2026-10-07"
+  - "done — 2026-10-07"
 metrics:
   started_at: 2026-10-07T12:11
   plan_steps: 14
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 17
   findings_accepted: 27
   findings_rejected: 0
+  cost_plan_cents: 284
+  cost_plan_review_cents: 119
+  cost_implement_cents: 654
+  cost_final_review_cents: 937
+  finished_at: 2026-10-07T20:13
 ---
 
 # SPEC 010 — Off-list posts: list membership, quotes and conversation context
