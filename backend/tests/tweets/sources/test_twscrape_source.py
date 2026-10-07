@@ -37,12 +37,14 @@ class FakeApi:
         self.pool = pool or FakePool()
         self._pages = pages
         self.closed = False
+        self.pulled = 0
 
     async def list_timeline_raw(self, list_id: int):
         try:
             for page in self._pages:
                 if isinstance(page, Exception):
                     raise page
+                self.pulled += 1
                 yield page
         finally:
             self.closed = True
@@ -284,3 +286,64 @@ def test_real_twscrape_pool_rate_limit_carries_no_cookie(tmp_path, caplog, capfd
     captured = capfd.readouterr()
     for text in (str(exc.value), repr(exc.value), caplog.text, captured.err, captured.out):
         assert "sentinel-secret" not in text
+
+
+def _pages(*names: str) -> list[list]:
+    source = _source(FakeApi([_response(name) for name in names]))
+    try:
+        return list(source.pages(1))
+    finally:
+        source.close()
+
+
+def test_conversation_page_marks_entries_heads_and_embedded():
+    (page,) = _pages("twscrape-page-conversation")
+    by_id = {p.x_id: p for p in page}
+    flags = {x_id: (p.embedded, p.entry_head, p.quoted_x_id) for x_id, p in by_id.items()}
+    assert flags == {
+        4014: (False, True, None),
+        4012: (False, True, None),
+        1700: (True, False, None),
+        4010: (False, True, 1500),
+        1500: (True, False, None),
+        4004: (False, False, None),
+        4006: (False, False, None),
+        4008: (False, True, None),
+    }
+    assert by_id[4014].is_repost is True
+    assert 1800 not in by_id
+
+
+def test_recorded_quote_of_2019_post_pages_to_last_seen():
+    api = FakeApi(
+        [_response("twscrape-page-conversation"), _response("twscrape-page-conversation-2")]
+    )
+    source = _source(api)
+    try:
+        result = collect_new(source, list_id=1, since_id=4000)
+    finally:
+        source.close()
+    assert {p.x_id for p in result} >= {1500, 4000, 4010}
+    assert api.pulled == 2
+    assert api.closed is True
+
+
+def test_page_without_recognised_entries_falls_back_and_warns(caplog):
+    payload = load("twscrape-page-conversation")
+    timeline = payload["data"]["list"]["tweets_timeline"]["timeline"]
+    timeline["instructions"][0]["entries"] = [
+        {"entryId": "weird-1", "content": entry["content"]}
+        for entry in timeline["instructions"][0]["entries"]
+        if entry["entryId"].startswith("tweet-")
+    ]
+    for entry in timeline["instructions"][0]["entries"]:
+        entry["content"] = {"__typename": "SomethingNew", "wrapped": entry["content"]}
+    source = _source(FakeApi([httpx.Response(200, json=payload)]))
+    try:
+        with caplog.at_level("WARNING"):
+            page = next(source.pages(1))
+    finally:
+        source.close()
+    assert page
+    assert all(p.entry_head and not p.embedded for p in page)
+    assert "no timeline entries recognised" in caplog.text

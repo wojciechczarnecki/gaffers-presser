@@ -301,7 +301,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       used by `store_posts` there). Every existing paging test stays green unchanged. Files:
       `app/tweets/sources/paging.py`, `tests/tweets/sources/test_paging.py`.
       Automatic verification: `uv run pytest -q tests/tweets/sources/test_paging.py tests/tweets/test_ingest.py` `iterations: 0`
-- [ ] 4. **twscrape entries, embedded posts and quotes.** Add the synthetic fixtures under
+- [x] 4. **twscrape entries, embedded posts and quotes.** Add the synthetic fixtures under
       the rules in `tests/tweets/payloads/README.md`, enforced by `tests/tweets/test_payloads.py`,
       and add them to the README and to `test_payload_files_exist`:
       - `twscrape-page-conversation.json.gz` is built from `twscrape-page-1`'s tweet result as
@@ -331,7 +331,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       `test_page_normalised` stays green. Files: `app/tweets/sources/twscrape_source.py`,
       `tests/tweets/payloads/*`, `tests/tweets/test_payloads.py`,
       `tests/tweets/sources/test_twscrape_source.py`.
-      Automatic verification: `uv run pytest -q tests/tweets/sources/test_twscrape_source.py tests/tweets/test_payloads.py`
+      Automatic verification: `uv run pytest -q tests/tweets/sources/test_twscrape_source.py tests/tweets/test_payloads.py` `iterations: 0`
 - [ ] 5. **Membership through the source, and the snapshot store.**
       - Add `members` to the `TweetSource` protocol and `MembershipNotSupportedError` to
         `base.py`.
@@ -615,6 +615,9 @@ Checked and found correct:
 ## Deviations
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+
+- `minor` — Step 4 also generated the `twscrape-list-members.json.gz` fixture (planned for step 5), because the payload-count test and README are updated once for all three new fixtures.
+- `minor` — The reply-parent post in `twscrape-page-conversation` is nested under the tweet result as `in_reply_to_status_result`, a placement made up for the fixture (X does not nest reply parents that way; they come as module items). It is documented in the payloads README.
 
 ## Final review
 
