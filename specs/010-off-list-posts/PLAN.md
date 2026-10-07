@@ -257,7 +257,7 @@ Rejected variants (one sentence each):
 Every step's command runs from `/home/czarny/Projects/gaffers-presser/backend`, and every
 step ends green on `uv run ruff check . && uv run ruff format --check .` as well.
 
-- [ ] 1. **Migration `0010` and models (data migration).** Add `tweet.embedded`,
+- [x] 1. **Migration `0010` and models (data migration).** Add `tweet.embedded`,
       `tweet.quoted_x_id` (with `ix_tweet_quoted_x_id`) and the `list_membership` table as in
       Design → Schema. Write the backfill and a downgrade that drops all three. Update the
       models in `app/tweets/models.py`. In `tests/db/test_migrations.py`, add
@@ -269,7 +269,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       Add `list_membership` to the tables excluded by the tests that run at older revisions
       (like `ALERT_TABLES` today). Files: `migrations/versions/0010_off_list_posts.py`,
       `app/tweets/models.py`, `tests/db/test_migrations.py`.
-      Automatic verification: `uv run pytest -q tests/db/test_migrations.py`
+      Automatic verification: `uv run pytest -q tests/db/test_migrations.py` `iterations: 2`
 - [ ] 2. **Fetched-post fields, upsert and paging bound.** Add `embedded`, `entry_head` and
       `quoted_x_id` to `FetchedPost`, and the same keyword arguments to `tests/tweets/fakes.py::post`.
       Add `merge_fetched` to `base.py` (Design → Fetched posts) and use it for the in-call

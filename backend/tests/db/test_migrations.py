@@ -33,9 +33,10 @@ from tests.fpl.fakes import DEFAULT_EXCLUDE, table_contents
 from tests.fpl.payloads import load
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
-BEFORE_OWNERSHIP = DEFAULT_EXCLUDE | {"selected_by_percent"}
+OFF_LIST_COLUMNS = {"embedded", "quoted_x_id"}
+BEFORE_OWNERSHIP = DEFAULT_EXCLUDE | {"selected_by_percent"} | OFF_LIST_COLUMNS
 ALERT_TABLES = {"alert", "alert_post"}
-ALL_TABLES = set(SQLModel.metadata.tables.keys())
+ALL_TABLES = set(SQLModel.metadata.tables.keys()) - {"list_membership"}
 
 
 def _apply_bootstrap_at_revision(session: Session) -> None:
@@ -98,7 +99,7 @@ def test_job_run_migration_keeps_collector_data():
             session.commit()
 
         collector_tables = (
-            set(SQLModel.metadata.tables.keys())
+            ALL_TABLES
             - ALERT_TABLES
             - {
                 "job_run",
@@ -152,7 +153,7 @@ def test_tweet_migration_adds_only_new_tables():
             )
 
         other_tables = (
-            set(SQLModel.metadata.tables.keys())
+            ALL_TABLES
             - ALERT_TABLES
             - {
                 "tweet",
@@ -211,7 +212,7 @@ def test_extraction_migration_adds_only_new_tables():
             )
 
         other_tables = (
-            set(SQLModel.metadata.tables.keys())
+            ALL_TABLES
             - ALERT_TABLES
             - {
                 "extraction",
@@ -507,7 +508,7 @@ def test_alert_log_migration_adds_only_new_tables():
             )
 
         other_tables = ALL_TABLES - ALERT_TABLES
-        excluded = DEFAULT_EXCLUDE | {"search_vector"}
+        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
 
@@ -528,3 +529,54 @@ def test_alert_log_migration_adds_only_new_tables():
             assert not ALERT_TABLES & set(inspect(conn).get_table_names())
         with Session(engine) as session:
             assert table_contents(session, exclude=excluded, tables=other_tables) == before
+
+
+def test_quote_migration_backfills_and_downgrades():
+    def insert(conn, x_id: int, raw: dict) -> None:
+        conn.execute(
+            sa_text(
+                "INSERT INTO tweet (x_id, author_handle, text, created_at, first_fetched_at,"
+                " source, is_repost, is_reply, raw) VALUES (:x_id, 'lister', 'text', :now, :now,"
+                " 'list', false, false, CAST(:raw AS jsonb))"
+            ),
+            {"x_id": x_id, "now": NOW, "raw": json.dumps(raw)},
+        )
+
+    def quotes(conn) -> dict[int, tuple[int | None, bool]]:
+        rows = conn.execute(sa_text("SELECT x_id, quoted_x_id, embedded FROM tweet ORDER BY x_id"))
+        return {row[0]: (row[1], row[2]) for row in rows}
+
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
+        url = container.get_connection_url()
+        run_alembic(url, "upgrade", "0009")
+        engine = make_engine(url)
+        with engine.begin() as conn:
+            insert(conn, 1, {"quotedTweet": {"id": 77}})
+            insert(conn, 2, {"text": "no quote"})
+            insert(conn, 3, {"quotedTweet": {"id": "not-a-number"}})
+
+        other_tables = ALL_TABLES - {"tweet"}
+        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS
+        with Session(engine) as session:
+            before = table_contents(session, exclude=excluded, tables=other_tables)
+
+        run_alembic(url, "upgrade", "0010")
+        with engine.connect() as conn:
+            assert quotes(conn) == {1: (77, False), 2: (None, False), 3: (None, False)}
+            assert "list_membership" in inspect(conn).get_table_names()
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before
+
+        run_alembic(url, "downgrade", "-1")
+        with engine.connect() as conn:
+            inspector = inspect(conn)
+            columns = {column["name"] for column in inspector.get_columns("tweet")}
+            assert conn.execute(sa_text("SELECT count(*) FROM tweet")).scalar_one() == 3
+            assert "list_membership" not in inspector.get_table_names()
+        assert not OFF_LIST_COLUMNS & columns
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before
+
+        run_alembic(url, "upgrade", "0010")
+        with engine.connect() as conn:
+            assert quotes(conn)[1] == (77, False)

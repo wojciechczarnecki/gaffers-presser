@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Column, Computed, Index
+from sqlalchemy import ARRAY, BigInteger, Boolean, Column, Computed, Index, String, text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlmodel import Field, SQLModel
 
@@ -12,6 +12,7 @@ class Tweet(SQLModel, table=True):
     __table_args__ = (
         Index("ix_tweet_created_at", "created_at"),
         Index("ix_tweet_search_vector", "search_vector", postgresql_using="gin"),
+        Index("ix_tweet_quoted_x_id", "quoted_x_id"),
     )
 
     x_id: int = Field(sa_column=Column(BigInteger, primary_key=True, autoincrement=False))
@@ -23,6 +24,10 @@ class Tweet(SQLModel, table=True):
     is_repost: bool
     is_reply: bool
     reposted_author_handle: str | None = None
+    embedded: bool = Field(
+        default=False, sa_column=Column(Boolean, nullable=False, server_default=text("false"))
+    )
+    quoted_x_id: int | None = Field(default=None, sa_column=Column(BigInteger, nullable=True))
     raw: dict = Field(sa_column=Column(JSONB, nullable=False))
     search_vector: str | None = Field(
         default=None,
@@ -48,3 +53,14 @@ class TweetPoll(SQLModel, table=True):
     new_posts: int
     error_class: str | None = None
     retry_after_seconds: float | None = None
+
+
+class ListMembership(SQLModel, table=True):
+    __tablename__ = "list_membership"
+    __table_args__ = (Index("ix_list_membership_fetched_at", "fetched_at"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    list_id: int = Field(sa_column=Column(BigInteger, nullable=False))
+    source: str
+    fetched_at: datetime = Field(sa_column=utc_column())
+    handles: list[str] | None = Field(default=None, sa_column=Column(ARRAY(String), nullable=True))
