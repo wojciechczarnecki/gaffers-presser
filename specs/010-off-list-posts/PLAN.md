@@ -285,7 +285,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       Files: `app/tweets/sources/base.py`, `app/tweets/store.py`, `tests/tweets/fakes.py`,
       `tests/tweets/test_store.py`.
       Automatic verification: `uv run pytest -q tests/tweets/test_store.py tests/tweets/test_ingest.py` `iterations: 0`
-- [ ] 3. **Paging on entry heads.** Change `collect_new` as in Design. Write the tests first
+- [x] 3. **Paging on entry heads.** Change `collect_new` as in Design. Write the tests first
       in `tests/tweets/sources/test_paging.py`:
       - `test_embedded_old_post_does_not_end_paging`
       - `test_old_non_head_module_item_does_not_end_paging`
@@ -300,7 +300,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       Replace the `setdefault` dedupe with `merge_fetched` (added to `base.py` in step 2 and
       used by `store_posts` there). Every existing paging test stays green unchanged. Files:
       `app/tweets/sources/paging.py`, `tests/tweets/sources/test_paging.py`.
-      Automatic verification: `uv run pytest -q tests/tweets/sources/test_paging.py tests/tweets/test_ingest.py`
+      Automatic verification: `uv run pytest -q tests/tweets/sources/test_paging.py tests/tweets/test_ingest.py` `iterations: 0`
 - [ ] 4. **twscrape entries, embedded posts and quotes.** Add the synthetic fixtures under
       the rules in `tests/tweets/payloads/README.md`, enforced by `tests/tweets/test_payloads.py`,
       and add them to the README and to `test_payload_files_exist`:

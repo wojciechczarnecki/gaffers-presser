@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from app.tweets.sources.base import FetchedPost, TweetSource
+from app.tweets.sources.base import FetchedPost, TweetSource, merge_fetched
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +19,17 @@ def collect_new(
     for page in source.pages(list_id):
         pages_seen += 1
         # A post can become visible after a newer one, so an ID at or below since_id only
-        # ends paging; every post on the fetched pages is kept and the store dedupes.
+        # ends paging; only an entry head counts for it, an embedded post says nothing about
+        # the timeline. Every post on the fetched pages is kept.
         for post in page:
-            collected.setdefault(post.x_id, post)
-        if since_id is not None and any(post.x_id <= since_id for post in page):
+            known = collected.get(post.x_id)
+            collected[post.x_id] = post if known is None else merge_fetched(known, post)
+        heads = [post for post in page if post.entry_head]
+        if since_id is not None and any(post.x_id <= since_id for post in heads):
             stopped_by = LAST_SEEN
             break
         # a whole page before the floor, so one out-of-order post cannot end a catch-up early
-        if floor is not None and page and all(post.created_at < floor for post in page):
+        if floor is not None and heads and all(post.created_at < floor for post in heads):
             stopped_by = "window start"
             break
         if since_id is None and floor is None:
