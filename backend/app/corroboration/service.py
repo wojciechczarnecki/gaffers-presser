@@ -9,8 +9,8 @@ from app.corroboration.judge import Judge, JudgeInput, render_input
 from app.corroboration.rules import (
     DEFAULT_RULES,
     GradeRules,
-    account_of,
     count_accounts,
+    counted_account,
     freshness,
     grade,
     label_claim,
@@ -225,7 +225,7 @@ def corroborate(
                     "x_id": anchor.post.x_id,
                     "event_type": anchor.event_type,
                     "certainty": anchor.certainty,
-                    "account": account_of(anchor.post),
+                    "account": counted_account(anchor.post, "supports"),
                 },
                 "supporting": len(counts.supporting),
                 "contradicting": len(counts.contradicting),

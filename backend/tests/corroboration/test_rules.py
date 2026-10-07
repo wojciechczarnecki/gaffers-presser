@@ -7,6 +7,7 @@ from app.corroboration.rules import (
     GradeRules,
     account_of,
     count_accounts,
+    counted_account,
     freshness,
     grade,
     label_claim,
@@ -19,7 +20,7 @@ T0 = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
 TYPES = ("out", "doubt", "benched", "confirmed_starter")
 
 
-def _post(x_id, author="a", minutes=0, repost_of=None) -> PostRef:
+def _post(x_id, author="a", minutes=0, repost_of=None, quotes=None) -> PostRef:
     return PostRef(
         x_id=x_id,
         author_handle=author,
@@ -27,12 +28,18 @@ def _post(x_id, author="a", minutes=0, repost_of=None) -> PostRef:
         is_repost=repost_of is not None,
         created_at=T0 + timedelta(minutes=minutes),
         text=f"post {x_id}",
+        quoted_author_handle=quotes,
     )
 
 
-def _lab(x_id, label, author="a", minutes=0, repost_of=None, origin="sql") -> LabelledPost:
+def _lab(
+    x_id, label, author="a", minutes=0, repost_of=None, origin="sql", quotes=None
+) -> LabelledPost:
     return LabelledPost(
-        post=_post(x_id, author, minutes, repost_of), label=label, origin=origin, certainty="likely"
+        post=_post(x_id, author, minutes, repost_of, quotes),
+        label=label,
+        origin=origin,
+        certainty="likely",
     )
 
 
@@ -241,3 +248,79 @@ def test_grade_thresholds_are_named_parameters():
     rules = GradeRules(high_min_supporting=3, medium_min_supporting=2)
     assert _grade("rumour", _supporters(2), rules=rules).level == "medium"
     assert _grade("rumour", _supporters(1), rules=rules).level == "low"
+
+
+def test_supporting_quote_counts_as_quoted_author():
+    counts = count_accounts(
+        [
+            _lab(1, "supports", "Outsider", -20),
+            _lab(2, "supports", "member", -10, quotes="outsider"),
+        ],
+        ANCHOR,
+    )
+    assert [c.post.x_id for c in counts.supporting] == [2]
+
+
+def test_related_quote_counts_as_quoted_author():
+    counts = count_accounts(
+        [
+            _lab(1, "related", "outsider", -20),
+            _lab(2, "related", "member", -10, quotes="Outsider"),
+        ],
+        ANCHOR,
+    )
+    assert [c.post.x_id for c in counts.related] == [2]
+    assert counted_account(_post(3, "member", quotes="Outsider"), "related") == "outsider"
+
+
+def test_contradicting_quote_counts_as_its_own_author():
+    counts = count_accounts(
+        [
+            _lab(1, "supports", "outsider", -20),
+            _lab(2, "contradicts", "member", -10, quotes="outsider"),
+        ],
+        ANCHOR,
+    )
+    assert [c.post.x_id for c in counts.supporting] == [1]
+    assert [c.post.x_id for c in counts.contradicting] == [2]
+    assert counted_account(_post(2, "Member", quotes="outsider"), "contradicts") == "member"
+
+
+def test_member_quoting_member_counts_once():
+    counts = count_accounts(
+        [
+            _lab(1, "supports", "member_a", -20),
+            _lab(2, "supports", "member_b", -10, quotes="member_a"),
+        ],
+        ANCHOR,
+    )
+    assert [c.post.x_id for c in counts.supporting] == [2]
+
+
+def test_quote_of_the_anchor_author_never_supports():
+    counts = count_accounts([_lab(1, "supports", "member", -10, quotes="Anchor_Account")], ANCHOR)
+    assert counts.supporting == []
+
+
+def test_quote_without_stored_quoted_post_counts_as_its_author():
+    assert counted_account(_post(1, "Member"), "supports") == "member"
+    counts = count_accounts([_lab(1, "supports", "member", -10)], ANCHOR)
+    assert [c.post.x_id for c in counts.supporting] == [1]
+
+
+def test_grade_weighs_a_quote_by_the_quoted_account():
+    seen = []
+
+    def credibility(account: str) -> float:
+        seen.append(account)
+        return 1.0
+
+    grade(
+        "rumour",
+        [_lab(1, "supports", "member", -10, quotes="Outsider")],
+        [],
+        False,
+        T0,
+        GradeRules(credibility=credibility),
+    )
+    assert seen == ["outsider"]

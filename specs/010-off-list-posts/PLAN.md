@@ -436,7 +436,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       Files: `app/extraction/store.py`, `app/retrieval/search.py`,
       `app/corroboration/{schemas,sources}.py`, the tests above.
       Automatic verification: `uv run pytest -q tests/corroboration tests/retrieval/test_search.py tests/extraction/test_current_extractions.py` `iterations: 1`
-- [ ] 11. **Quote counting rule.** Add `counted_account` and use it in `count_accounts`,
+- [x] 11. **Quote counting rule.** Add `counted_account` and use it in `count_accounts`,
       `grade` and the trace span (`service.py`). Write the tests first:
       - `tests/corroboration/test_rules.py`:
         - `test_supporting_quote_counts_as_quoted_author`
@@ -453,7 +453,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
           member
 
       Files: `app/corroboration/{rules,service}.py`, the tests above.
-      Automatic verification: `uv run pytest -q tests/corroboration`
+      Automatic verification: `uv run pytest -q tests/corroboration` `iterations: 0`
 - [ ] 12. **Alerts: source posts only, quoted posts as sources.** Pass `sources_only=True` in
       `alerts/players.py::_claims` and `alerts/breaking.py::_candidates`. Fill
       `quoted_author_handle` in `_claims` and count trending by

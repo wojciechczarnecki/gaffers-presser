@@ -47,17 +47,25 @@ def account_of(post: PostRef) -> str:
     return post.original_author.lower()
 
 
+def counted_account(post: PostRef, label: Label) -> str:
+    """The account a labelled post counts as: a quote that does not contradict counts as the
+    account it quotes, like a repost counts as its original author."""
+    if label != "contradicts" and post.quoted_author_handle:
+        return post.quoted_author_handle.lower()
+    return account_of(post)
+
+
 def _newest_first(items: Sequence[LabelledPost]) -> list[LabelledPost]:
     return sorted(items, key=lambda item: (item.post.created_at, item.post.x_id), reverse=True)
 
 
 def count_accounts(labelled: Sequence[LabelledPost], anchor: PostRef) -> AccountCounts:
-    anchor_account = account_of(anchor)
+    anchor_account = counted_account(anchor, "supports")
     newest: dict[str, LabelledPost] = {}
     for item in _newest_first(labelled):
         if item.post.x_id == anchor.x_id or item.label == "unrelated":
             continue
-        newest.setdefault(account_of(item.post), item)
+        newest.setdefault(counted_account(item.post, item.label), item)
     counts = AccountCounts([], [], [])
     for account, item in newest.items():
         if item.label == "supports":
@@ -98,7 +106,7 @@ def grade(
     new_since: datetime,
     rules: GradeRules = DEFAULT_RULES,
 ) -> Grade:
-    weight = sum(rules.credibility(account_of(item.post)) for item in supporting)
+    weight = sum(rules.credibility(counted_account(item.post, item.label)) for item in supporting)
     support = f"{_count(weight)} independent supporting account(s)"
     reasons: list[str] = []
     if certainty == "confirmed" or weight >= rules.high_min_supporting:
