@@ -26,7 +26,8 @@
   deployment.
 - **Manual scenarios for the owner:** 1. On the local development database: migrate, fetch
   the membership with the new CLI and check how the 22 stored off-list posts are classified,
-  including the `@afcstuff` Tzolis post as a quoted post.
+  including the `@afcstuff` Tzolis post as a quoted post. 2. Run the worker for one poll and
+  check that the live List page is parsed into entries (no fallback warning).
 
 ## Approach
 
@@ -109,6 +110,13 @@ whichever order the fetches come in (AC7). `last_seen_id` becomes `max(x_id) WHE
 `collect_new` (`app/tweets/sources/paging.py`) keeps every post of the fetched pages. The
 `since_id` check and the "whole page before the floor" rule look only at the posts with
 `entry_head`. A page without any head never ends paging by these two rules (AC13).
+Today `collect_new` dedupes with `collected.setdefault(...)`, which keeps the first copy: a
+post embedded on a newer page and shown as an entry on an older page of the same catch-up
+would reach the store as embedded. A shared helper `merge_fetched(a, b) -> FetchedPost` in
+`app/tweets/sources/base.py` (`embedded = a.embedded and b.embedded`,
+`entry_head = a.entry_head or b.entry_head`, `quoted_x_id = a.quoted_x_id or b.quoted_x_id`,
+every other field from the non-embedded copy) merges duplicates both in `collect_new` and in
+`store_posts` before the insert, so the timeline copy wins in every order (AC7, AC14).
 
 **twscrape adapter (step 4).** `TwscrapeSource.pages` reads the entries of each raw page,
 `data.list.tweets_timeline.timeline.instructions[*]` → `entries` (and a single `entry`):
@@ -210,7 +218,8 @@ of the snapshot reclassifies stored posts without rewriting any data (AC5).
   `app/tweets/cli.py` `_measure_one`, after building the source, the command tries
   `source.members(list_id)` once. With members, it records only posts whose lowercased author
   is a member. When membership is not supported or the fetch fails, it records only posts with
-  `not post.embedded`. `summary` reads what `measure` wrote, so it counts list posts only.
+  `not post.embedded`. Its own `since_id` is the maximum over posts with `not post.embedded`
+  only, as `last_seen_id` (AC14). `summary` reads what `measure` wrote, so it counts list posts only.
 
 Rejected variants (one sentence each):
 - **Storing the class on each post:** rejected by the SPEC decision (the class follows the
@@ -232,13 +241,13 @@ Rejected variants (one sentence each):
 | AC4 | 8 | `tests/tweets/test_cli.py::test_members_command_stores_and_prints_snapshot`, `::test_members_command_unsupported_source`, `::test_members_command_failure_exits_1` |
 | AC5 | 6 | `tests/tweets/test_classes.py::test_class_follows_the_current_snapshot_both_ways`, `::test_repost_counts_by_its_reposting_member` |
 | AC6 | 1, 4, 6 | `tests/tweets/test_classes.py::test_recorded_pages_classified`, `tests/db/test_migrations.py::test_quote_migration_backfills_and_downgrades` |
-| AC7 | 2, 9 | `tests/extraction/test_store.py::test_context_post_is_not_pending`, `::test_context_post_becomes_pending_when_its_author_joins`, `::test_context_post_becomes_pending_when_a_list_post_quotes_it`, `tests/extraction/test_loop.py::test_loop_skips_context_posts`, `tests/tweets/test_store.py::test_embedded_then_entry_ends_as_timeline_post`, `::test_entry_then_embedded_stays_timeline_post`, `tests/retrieval/test_indexing.py::test_context_post_is_indexed` |
+| AC7 | 2, 3, 9 | `tests/extraction/test_store.py::test_context_post_is_not_pending`, `::test_context_post_becomes_pending_when_its_author_joins`, `::test_context_post_becomes_pending_when_a_list_post_quotes_it`, `tests/extraction/test_loop.py::test_loop_skips_context_posts`, `tests/tweets/test_store.py::test_embedded_then_entry_ends_as_timeline_post`, `::test_entry_then_embedded_stays_timeline_post`, `tests/tweets/sources/test_paging.py::test_duplicate_across_pages_keeps_timeline_copy`, `tests/retrieval/test_indexing.py::test_context_post_is_indexed` |
 | AC8 | 10, 12 | `tests/corroboration/test_sources.py::test_context_post_never_a_claim_or_candidate`, `tests/retrieval/test_search.py::test_sources_only_filter_drops_context_posts`, `tests/alerts/test_breaking.py::test_context_reply_parent_never_alerts`, `tests/alerts/test_slots.py::test_context_post_absent_from_digest_and_counts` |
 | AC9 | 10, 12 | `tests/alerts/test_breaking.py::test_quoted_off_list_leak_breaks_and_is_cited` |
 | AC10 | 11 | `tests/corroboration/test_rules.py::test_supporting_quote_counts_as_quoted_author`, `::test_contradicting_quote_counts_as_its_own_author`, `::test_member_quoting_member_counts_once`, `tests/corroboration/test_service.py::test_quote_and_quoted_leak_give_one_supporting_account` |
 | AC11 | 12 | `tests/alerts/test_slots.py::test_quoted_post_included_once_across_slots` |
 | AC12 | 13 | `tests/alerts/test_latency.py::test_post_latencies_leave_out_a_quoted_post`, `tests/tweets/test_cli.py::test_measure_records_list_posts_only`, `::test_measure_without_membership_skips_embedded_posts` |
-| AC13 | 3, 4 | `tests/tweets/sources/test_paging.py::test_embedded_old_post_does_not_end_paging`, `::test_old_non_head_module_item_does_not_end_paging`, `::test_floor_rule_reads_entry_heads_only`, `tests/tweets/sources/test_twscrape_source.py::test_recorded_quote_of_2019_post_pages_to_last_seen` |
+| AC13 | 3, 4 | `tests/tweets/sources/test_paging.py::test_embedded_old_post_does_not_end_paging`, `::test_old_non_head_module_item_does_not_end_paging`, `::test_floor_rule_reads_entry_heads_only`, `::test_duplicate_across_pages_keeps_timeline_copy`, `tests/tweets/sources/test_twscrape_source.py::test_recorded_quote_of_2019_post_pages_to_last_seen` |
 | AC14 | 2 | `tests/tweets/test_store.py::test_last_seen_id_ignores_embedded_posts` |
 | AC15 | 14 | `tests/test_docs.py::test_backlog_11_closed_and_off_list_entries_added`, `::test_list_replies_report_exists_and_is_linked` |
 | AC16 | 14 | `tests/test_docs.py::test_decisions_and_deployment_cover_list_membership` |
@@ -263,8 +272,9 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       Automatic verification: `uv run pytest -q tests/db/test_migrations.py`
 - [ ] 2. **Fetched-post fields, upsert and paging bound.** Add `embedded`, `entry_head` and
       `quoted_x_id` to `FetchedPost`, and the same keyword arguments to `tests/tweets/fakes.py::post`.
-      Turn `store_posts` into the upsert from Design and change `last_seen_id`. Write the
-      tests first in `tests/tweets/test_store.py`:
+      Add `merge_fetched` to `base.py` (Design → Fetched posts) and use it for the in-call
+      duplicates. Turn `store_posts` into the upsert from Design and change `last_seen_id`.
+      Write the tests first in `tests/tweets/test_store.py`:
       - `test_last_seen_id_ignores_embedded_posts`
       - `test_embedded_then_entry_ends_as_timeline_post`, where a later fetch fills
         `quoted_x_id` too
@@ -282,8 +292,13 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       - `test_floor_rule_reads_entry_heads_only`, where a page whose heads are new but whose
         embedded posts are older than the floor keeps paging
       - `test_page_without_heads_continues`
+      - `test_duplicate_across_pages_keeps_timeline_copy`: a post embedded (with no
+        `quoted_x_id`) on page 1 and an entry head with `quoted_x_id` on page 2 comes out of
+        `collect_new` once, `embedded = False`, with the `quoted_x_id`; the same in the
+        opposite page order
 
-      Every existing paging test stays green unchanged. Files:
+      Replace the `setdefault` dedupe with `merge_fetched` (added to `base.py` in step 2 and
+      used by `store_posts` there). Every existing paging test stays green unchanged. Files:
       `app/tweets/sources/paging.py`, `tests/tweets/sources/test_paging.py`.
       Automatic verification: `uv run pytest -q tests/tweets/sources/test_paging.py tests/tweets/test_ingest.py`
 - [ ] 4. **twscrape entries, embedded posts and quotes.** Add the synthetic fixtures under
@@ -296,7 +311,9 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
         older post by member `synthetic_leaker_2`, a reply to it by off-list
         `synthetic_offlist_2`, and the member's newer reply back. A single entry by member
         `synthetic_leaker_3` replies to a post by off-list `synthetic_offlist_3`, which is
-        shown as an embedded reply parent. A cursor entry closes the page.
+        shown as an embedded reply parent. A single entry is a repost by member
+        `synthetic_leaker_1` of a post by off-list `synthetic_offlist_4`, embedded through
+        `retweeted_status_result`. A cursor entry closes the page.
       - `twscrape-page-conversation-2.json.gz` is an older page that holds the post used as
         `since_id`.
 
@@ -304,7 +321,9 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       the README. Implement Design → twscrape adapter. Write the tests first in
       `tests/tweets/sources/test_twscrape_source.py`:
       - `test_conversation_page_marks_entries_heads_and_embedded`, which checks the
-        `embedded`, `entry_head` and `quoted_x_id` values per post
+        `embedded`, `entry_head` and `quoted_x_id` values per post; the repost is an entry
+        head and, if `parse_tweets` returns the reposted original as its own post, that
+        original is embedded
       - `test_recorded_quote_of_2019_post_pages_to_last_seen`, which runs `collect_new` over
         both pages with `since_id` on page 2 and expects 2 pages fetched
       - `test_page_without_recognised_entries_falls_back_and_warns`
@@ -356,7 +375,8 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
       - `test_recorded_pages_classified`: stores both conversation pages through
         `TwscrapeSource` + `store_posts` with a snapshot of `synthetic_leaker_1..3`. It checks
         that the quote is `list`, the 2019 post `quoted`, the module's off-list reply
-        `context`, the embedded reply parent `context`, and that the 2019 post is classified
+        `context`, the embedded reply parent `context`, the member's repost `list` (and a
+        stored reposted original by `synthetic_offlist_4` `context`), and that the 2019 post is classified
         the same when its quote relation comes from a backfilled row (set `quoted_x_id`
         directly).
       - `test_quoted_authors`
@@ -463,6 +483,7 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
         - `test_measure_records_list_posts_only`: an off-list conversation reply created after
           the start is left out
         - `test_measure_without_membership_skips_embedded_posts`
+        - `test_measure_since_id_ignores_embedded_posts`
         - `test_summary_reads_only_what_measure_wrote`
 
       Files: `app/alerts/latency.py`, `app/tweets/cli.py`, the tests above.
@@ -524,6 +545,10 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
 - **Existing tests keep passing without a snapshot:** no snapshot means every post is a list
   post. Any test that starts failing after steps 9–13 points to a wrong fragment, not to a test
   that needs a snapshot.
+- **Reposted originals:** `parse_tweets` may return a reposted original as its own post. It
+  is in no entry, so it is stored as embedded and, by an off-list author, is a context post.
+  The repost itself stays a list post, is extracted and counts as the original author, so
+  the news still reaches alerts once.
 - **Time zones:** `fetched_at` is timezone-aware UTC (`utc_column`), and the CLI prints UTC like
   `app.worker status`.
 
@@ -548,6 +573,12 @@ step ends green on `uv run ruff check . && uv run ruff format --check .` as well
   Pass when: the command prints `List members: <the List's member count>`, the query
   returns the 22 off-list posts (plus any fetched since), every row is `quoted` or `context`,
   and the `@afcstuff` Tzolis post is `quoted`.
+- With the same `.env`, run `cd backend && uv run python -m app.worker run` until the tweet
+  poller has polled once (a minute is enough), stop it with Ctrl-C, and run
+  `SELECT count(*) FILTER (WHERE embedded) AS embedded, count(*) FILTER (WHERE NOT embedded) AS timeline FROM tweet WHERE first_fetched_at > now() - interval '10 minutes';`
+  Pass when: the worker log has no `twscrape: no timeline entries recognised on a page`
+  warning and no `list membership fetch failed` warning, and, when the poll stored new
+  posts, `timeline` is at least 1 (the live page shape matches the parsing of step 4).
 
 ## Definition of Done
 
@@ -564,7 +595,22 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+2026-10-07 — plan review (fresh eye, `/pipeline:ship`)
+
+- `major` — Design and step 3: `collect_new` dedupes with `collected.setdefault(...)`, so a post embedded on a newer page and shown as an entry on an older page of the same catch-up reached `store_posts` only as its embedded copy (wrong `embedded`, possibly no `quoted_x_id`); the plan's "whichever order" claim for AC7/AC14 held only across separate polls. Added the shared `merge_fetched` helper in `base.py` (step 2), used by both `store_posts` and `collect_new` (step 3), and the proving test `test_duplicate_across_pages_keeps_timeline_copy`; matrix rows AC7 and AC13 updated.
+- `minor` — Step 13: `_measure_one` keeps its own `since_id` as the maximum over every collected post, embedded ones included, which contradicts AC14's bound. Design now takes the maximum over non-embedded posts; added `test_measure_since_id_ignores_embedded_posts`.
+- `minor` — Step 4/6: the conversation fixture had no repost, although a reposted original that `parse_tweets` returns as its own post becomes an embedded context post under the new parsing. Added a member repost of an off-list post to the fixture, assertions in `test_conversation_page_marks_entries_heads_and_embedded` and `test_recorded_pages_classified`, and a risk entry.
+- `minor` — Manual verification: the risks say the owner's manual check confirms the live page shape, but no manual item checked it. Added a second manual item (one worker poll, no fallback warning, timeline rows stored) with a `Pass when:` line, and mentioned it in the Owner summary.
+
+Checked and found correct:
+
+- Coverage: AC1–AC16 each have steps and a named proving test; the matrix matches the steps; every step has `Automatic verification:` with exact test paths and writes its tests first.
+- Compliance: DECISIONS rows 2026-09-28 (relevance rule, reposts attributed to the list account), 2026-09-29 (every post indexed — kept, indexing unchanged), 2026-09-30 (independent accounts, anchor account never counts — `counted_account(anchor, "supports")` and `test_quote_of_the_anchor_author_never_supports`), 2026-10-02 (alert log, included posts — no change needed) and 2026-10-07 (catch-up) are respected; CONVENTIONS: synthetic payloads under the payload README rules, PostgreSQL container tests, no user-facing Polish text added.
+- Every query that feeds alerts or corroboration was checked against the code: `current_extractions` callers (`alerts/players.py`, `alerts/breaking.py`, `corroboration/sources.py`; evaluation tooling deliberately keeps the default), `SearchFilters` in `corroboration/sources.py`, `next_pending` and `extraction_status` (the extraction loop selects only through `next_pending`, so failed context posts are not retried), `post_latencies`.
+- Feasibility: step order has no forward dependencies (fixtures in 4 and 5 before the classification test in 6 and the poller test in 7; `save_snapshot` in 5 before the helpers in 9); `MAX_SLEEP` is 60 s, so the 6-hour refresh in `TweetPoller.run` fires on time without changing the sleep computation; the uncorrelated `_LATEST` subquery is evaluated once per query; the upsert pitfalls (`xmax = 0`, in-statement duplicates) are covered.
+- Data migration `0010` with backfill is accepted in SPEC → Owner decisions for the development and test databases; no new dependency (twscrape 0.20.1 already in the lock). The Owner summary flags both correctly.
+- Language: the plan is in English, as `language: en` requires.
+- Approval: the plan is ready — every finding was fixed in the plan itself, the migration is accepted by the owner and no SPEC gap was found.
 
 ## Deviations
 

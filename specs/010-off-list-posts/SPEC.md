@@ -1,15 +1,19 @@
 ---
-status: plan-draft
+status: plan-approved
 stage_history:
   - "spec-draft — 2026-10-07"
   - "spec-ready — 2026-10-07"
   - "plan-draft — 2026-10-07"
+  - "plan-approved — 2026-10-07"
 metrics:
   started_at: 2026-10-07T12:11
   plan_steps: 14
+  plan_changes: 4
   escalations: 0
   escalations_permission: 0
   escalations_tooling: 0
+  plan_review_blockers: 0
+  plan_review_majors: 1
 ---
 
 # SPEC 010 — Off-list posts: list membership, quotes and conversation context
