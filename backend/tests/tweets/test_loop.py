@@ -283,3 +283,55 @@ def test_poller_without_a_custom_window_stays_sparse_at_two_hours(db):
         poller.run()
 
     assert [t for t, _ in _poll_times(db)] == [start]
+
+
+def test_poll_gets_the_alert_window_floor(db, monkeypatch):
+    from app.tweets import loop
+
+    previous = DEADLINE - timedelta(days=10)
+    with Session(db) as session, session.begin():
+        session.add(Season(label="2026/27"))
+        session.flush()
+        for fpl_id, deadline_at in ((5, previous), (6, DEADLINE)):
+            session.add(
+                Gameweek(
+                    season="2026/27",
+                    fpl_id=fpl_id,
+                    name=f"GW{fpl_id}",
+                    deadline_at=deadline_at,
+                    finished=False,
+                    data_checked=False,
+                )
+            )
+    floors = []
+    real_poll_once = loop.poll_once
+
+    def spy(*args):
+        floors.append(args[-1])
+        return real_poll_once(*args)
+
+    monkeypatch.setattr(loop, "poll_once", spy)
+    now = DEADLINE - timedelta(days=1)
+    clock = FakeClock(now, now + timedelta(seconds=1))
+    poller = TweetPoller(
+        db,
+        lambda: FakeSource(pages=[[]]),
+        list_id=123,
+        clock=clock,
+        stop_event=threading.Event(),
+        max_lookback=timedelta(days=5),
+    )
+    with pytest.raises(Shutdown):
+        poller.run()
+
+    # the previous deadline is ten days back, so the lookback before GW6 wins
+    assert floors == [DEADLINE - timedelta(days=5)]
+
+
+def test_a_past_rehearsal_deadline_counts_as_the_previous_deadline():
+    now = DEADLINE - timedelta(days=1)
+    rehearsal = now - timedelta(hours=2)
+    poller = TweetPoller(
+        None, lambda: None, 1, None, threading.Event(), extra_deadlines=(rehearsal,)
+    )
+    assert poller._floor([DEADLINE], now - timedelta(days=3), now) == rehearsal

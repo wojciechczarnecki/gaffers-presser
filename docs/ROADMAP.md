@@ -18,8 +18,8 @@ and each LLM step that produces data has an evaluation set with recorded results
       (spec: [002](../specs/002-fpl-worker/SPEC.md))
 - [ ] Production deployment on Railway: the owner follows the runbook and confirms the
       first deploy (spec: [002](../specs/002-fpl-worker/SPEC.md), AC21; after the owner's local
-      test run of the alerts on the GW6 deadline, 2026-10-10, which needs BACKLOG #26 — the
-      tweet ingest catch-up — merged first)
+      test run of the alerts on the GW6 deadline, 2026-10-10; the tweet ingest catch-up after
+      downtime it needed (former BACKLOG #26) is done)
 
 ## Stage 1 — Tweet ingest and extraction
 

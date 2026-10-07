@@ -51,7 +51,7 @@ from app.retrieval.embedder import build_embedder
 from app.retrieval.indexing import IndexingRuntime
 from app.retrieval.loop import start_indexer
 from app.tweets.config import resolve_ingest
-from app.tweets.loop import start_poller
+from app.tweets.loop import CATCH_UP_LOOKBACK, start_poller
 from app.tweets.schedule import WINDOW, mode, next_poll_at
 from app.tweets.sources import build_source
 from app.tweets.sources.base import TweetSource
@@ -227,6 +227,11 @@ def _polling(deps: WorkerDeps) -> tuple[timedelta, tuple[datetime, ...]]:
     return polling_window(deps.alerts.config), (rehearsal,) if rehearsal is not None else ()
 
 
+def _catch_up_lookback(deps: WorkerDeps) -> timedelta:
+    # the tweet catch-up pages back to the start of the alert window, so it shares its lookback
+    return CATCH_UP_LOOKBACK if deps.alerts is None else deps.alerts.config.max_lookback
+
+
 def _fmt(dt: datetime) -> str:
     return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -292,6 +297,7 @@ def run(ctx: typer.Context) -> None:
                 clock=deps.tweet_ingest.clock,
                 window=window,
                 extra_deadlines=extra_deadlines,
+                max_lookback=_catch_up_lookback(deps),
             )
 
         if deps.extraction is None:

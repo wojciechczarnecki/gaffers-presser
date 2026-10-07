@@ -7,7 +7,13 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.clock import Clock, StopAwareClock
-from app.fpl.deadlines import upcoming_deadlines
+from app.fpl.deadlines import (
+    catch_up_floor,
+    deadline_at_or_before,
+    latest_deadline_at_or_before,
+    next_deadline_after,
+    upcoming_deadlines,
+)
 from app.tweets.ingest import poll_once
 from app.tweets.schedule import MAX_SLEEP, WINDOW, next_poll_at
 from app.tweets.sources.base import TweetSource
@@ -15,6 +21,9 @@ from app.tweets.store import PollRecord, latest_poll
 from app.worker.jobs import Shutdown
 
 logger = logging.getLogger(__name__)
+
+# matches the alert default (ALERT_MAX_LOOKBACK_DAYS); the worker passes the configured value
+CATCH_UP_LOOKBACK = timedelta(days=7)
 
 
 def _later(stored: PollRecord | None, remembered: PollRecord | None) -> PollRecord | None:
@@ -33,6 +42,7 @@ class TweetPoller:
         stop_event: threading.Event,
         window: timedelta = WINDOW,
         extra_deadlines: tuple[datetime, ...] = (),
+        max_lookback: timedelta = CATCH_UP_LOOKBACK,
     ) -> None:
         self._engine = engine
         self._make_source = make_source
@@ -41,9 +51,23 @@ class TweetPoller:
         self._stop_event = stop_event
         self._window = window
         self._extra_deadlines = list(extra_deadlines)
+        self._max_lookback = max_lookback
         # The poll log write may fail while reads still work; the in-memory record keeps
         # the schedule from treating an unrecorded poll as never having happened.
         self._last_record: PollRecord | None = None
+
+    def _floor(
+        self, deadlines: list[datetime], previous: datetime | None, now: datetime
+    ) -> datetime:
+        # upcoming_deadlines starts a day back, so the previous deadline comes from its own
+        # query; a rehearsal deadline in the past counts as previous too
+        previous = max(
+            filter(None, [previous, latest_deadline_at_or_before(self._extra_deadlines, now)]),
+            default=None,
+        )
+        return catch_up_floor(
+            previous, next_deadline_after(deadlines, now), self._max_lookback, now
+        )
 
     def run(self) -> None:
         source: TweetSource | None = None
@@ -59,12 +83,14 @@ class TweetPoller:
                                 *self._extra_deadlines,
                             ]
                         )
+                        previous = deadline_at_or_before(session, self._clock.now())
                     last = _later(latest_poll(self._engine, source.name), self._last_record)
                     now = self._clock.now()
                     next_at = next_poll_at(deadlines, last, now, self._window)
                     if next_at <= now:
+                        floor = self._floor(deadlines, previous, now)
                         self._last_record = poll_once(
-                            self._engine, source, self._list_id, self._clock.now
+                            self._engine, source, self._list_id, self._clock.now, floor
                         )
                     else:
                         sleep_seconds = min(
@@ -87,6 +113,7 @@ def start_poller(
     clock: Clock | None = None,
     window: timedelta = WINDOW,
     extra_deadlines: tuple[datetime, ...] = (),
+    max_lookback: timedelta = CATCH_UP_LOOKBACK,
 ) -> threading.Thread:
     poller = TweetPoller(
         engine,
@@ -96,6 +123,7 @@ def start_poller(
         stop_event,
         window,
         extra_deadlines,
+        max_lookback,
     )
 
     def target() -> None:

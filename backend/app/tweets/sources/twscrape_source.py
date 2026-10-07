@@ -68,7 +68,7 @@ def _to_post(tweet) -> FetchedPost:
 
 class TwscrapeSource:
     name = "twscrape"
-    max_pages = 5
+    max_pages = 50
 
     def __init__(
         self,
