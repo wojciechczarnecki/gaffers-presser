@@ -22,6 +22,7 @@ from app.alerts.service import AlertsRuntime
 from app.alerts.status import alert_status, status_line
 from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError
+from app.core.local_time import format_local_day
 from app.core.settings import (
     TweetSettings,
     load_settings,
@@ -444,7 +445,9 @@ def status(ctx: typer.Context) -> None:
     if deps.alerts is None:
         typer.echo(f"Alerts: disabled ({deps.alerts_disabled_reason or 'not configured'})")
     else:
-        typer.echo(status_line(alert_status(deps.engine, deps.alerts.config, now), _fmt))
+        typer.echo(
+            status_line(alert_status(deps.engine, deps.alerts.config, now), format_local_day)
+        )
 
 
 def main() -> None:

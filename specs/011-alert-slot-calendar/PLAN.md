@@ -246,7 +246,7 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
       set.
       Automatic verification: `cd backend && uv run pytest -q tests/alerts/test_loop.py
       tests/alerts/test_slots.py tests/alerts/test_breaking.py tests/alerts/test_end_to_end.py`
-- [ ] 4. **Status, worker `Alerts:` line and preview** (AC11, AC12). Files:
+- [x] 4. **Status, worker `Alerts:` line and preview** (AC11, AC12). `iterations: 0` Files:
       `backend/app/core/local_time.py` (`format_local_day`), `backend/app/alerts/status.py`,
       `backend/app/alerts/cli.py`, `backend/app/worker/cli.py` (Alerts line formatter only),
       `backend/tests/core/test_local_time.py` (exists; add the test), `backend/tests/alerts/test_status.py`,

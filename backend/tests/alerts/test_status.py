@@ -1,7 +1,9 @@
 from datetime import UTC, datetime, timedelta
+from datetime import time as clock_time
 from decimal import Decimal
 
-from app.alerts.config import AlertConfig
+from app.alerts.config import AlertConfig, WallClockSlot
+from app.alerts.schedule import resolve_slots
 from app.alerts.status import alert_status, status_line
 from tests.alerts.helpers import deadline
 from tests.alerts.test_store import record
@@ -73,3 +75,28 @@ def test_alert_status_follows_a_rehearsal_deadline(db):
 
     assert status.deadline is not None and status.deadline.rehearsal
     assert status.next_slot_at == rehearsal - timedelta(hours=2)
+
+
+def test_status_with_wall_clock_digest(db):
+    seed(db)
+    config = AlertConfig((WallClockSlot(1, clock_time(20, 0)), 60), 3, Decimal("15"), None)
+    n = resolve_slots(config.slots, DEADLINE_AT).minutes[0]
+    digest_at = DEADLINE_AT - timedelta(minutes=n)
+    now = digest_at - timedelta(hours=1)
+
+    first = alert_status(db, config, now)
+    assert (first.next_slot_kind, first.next_slot_at) == ("digest", digest_at)
+
+    record(db, f"alert:2026/27:gw6:digest:{n}", slot=n, status="sent", at=digest_at, posts=[])
+    after = alert_status(db, config, digest_at + timedelta(minutes=1))
+    assert (after.next_slot_kind, after.next_slot_at) == (
+        "news",
+        DEADLINE_AT - timedelta(minutes=60),
+    )
+
+    news_at = DEADLINE_AT - timedelta(minutes=60)
+    record(
+        db, "alert:2026/27:gw6:news:60", kind="news", slot=60, status="sent", at=news_at, posts=[]
+    )
+    breaking = alert_status(db, config, news_at + timedelta(minutes=1))
+    assert breaking.next_slot_at is None and breaking.breaking_until == DEADLINE_AT

@@ -9,13 +9,18 @@ from sqlmodel import Session
 
 from app.alerts.config import AlertConfig, AlertSettings, parse_alert_config
 from app.alerts.latency import format_report, has_alerts, latest_deadline_key, post_latencies
-from app.alerts.schedule import alert_deadlines, deadline_key, next_alert_deadline
+from app.alerts.schedule import (
+    alert_deadlines,
+    deadline_key,
+    next_alert_deadline,
+    resolve_slots,
+)
 from app.alerts.service import AlertsRuntime, build_slot_alert, current_season
 from app.alerts.status import alert_status
 from app.alerts.store import included_origins, last_alert_as_of
 from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError
-from app.core.local_time import format_local, parse_local
+from app.core.local_time import format_local, format_local_day, parse_local
 from app.core.settings import load_settings, parse_league_ids
 from app.corroboration.config import CorroborationSettings
 from app.corroboration.runtime import build_runtime
@@ -94,9 +99,9 @@ def status(ctx: typer.Context) -> None:
             f"  {format_local(state.deadline.deadline_at)} Europe/Warsaw"
         )
     if state.next_slot_at is not None:
-        typer.echo(f"Next slot: {state.next_slot_kind} {format_local(state.next_slot_at)}")
+        typer.echo(f"Next slot: {state.next_slot_kind} {format_local_day(state.next_slot_at)}")
     elif state.breaking_until is not None:
-        typer.echo(f"Next slot: none, breaking until {format_local(state.breaking_until)}")
+        typer.echo(f"Next slot: none, breaking until {format_local_day(state.breaking_until)}")
     else:
         typer.echo("Next slot: none")
     if state.last is None:
@@ -149,9 +154,6 @@ def preview(
         moment = parse_local(at)
     except ValueError:
         raise fail("--at must be a Europe/Warsaw time like 2026-10-04T18:00") from None
-    slots = deps.config.slots
-    if kind == "news" and len(slots) < 2:
-        raise fail("ALERT_SLOTS has no news slot")
     try:
         league_ids = parse_league_ids(deps.league_ids_raw)
     except CollectorError as exc:
@@ -161,6 +163,9 @@ def preview(
     deadline = next_alert_deadline(deadlines, moment)
     if deadline is None:
         raise fail("no deadline after that time")
+    slots = resolve_slots(deps.config.slots, deadline.deadline_at).minutes
+    if kind == "news" and len(slots) < 2:
+        raise fail("ALERT_SLOTS has no news slot for that deadline")
     with Session(engine) as session:
         included = (
             included_origins(session, deadline.key, before=moment) if kind == "news" else set()

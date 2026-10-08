@@ -1382,7 +1382,7 @@ def test_status_shows_alerts_line(cli, db):
     setup = _alerts_setup()
 
     first = cli("status", clock=FixedClock(D6 - timedelta(hours=5)), alerts=setup)
-    assert "Alerts: next slot: digest 2026-10-10T08:00:00Z  last alert: never  failed: 0" in (
+    assert "Alerts: next slot: digest Sat 2026-10-10 10:00  last alert: never  failed: 0" in (
         first.stdout.splitlines()
     )
 
@@ -1407,7 +1407,7 @@ def test_status_shows_alerts_line(cli, db):
         )
     later = cli("status", clock=FixedClock(D6 - timedelta(minutes=20)), alerts=setup)
     assert (
-        "Alerts: breaking until 2026-10-10T10:00:00Z  last alert: news 2026-10-10T09:30:00Z"
+        "Alerts: breaking until Sat 2026-10-10 12:00  last alert: news Sat 2026-10-10 11:30"
         " failed  failed: 1"
     ) in later.stdout.splitlines()
 

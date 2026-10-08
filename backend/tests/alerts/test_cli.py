@@ -50,7 +50,7 @@ def test_status_shows_next_slot_last_alert_and_failures(db):
     first = invoke(db, "status", clock=FixedClock(NOW - timedelta(hours=3)))
     assert first.exit_code == 0
     assert "Alert deadline: 2026/27:gw6 (real)  2026-09-29 22:00 Europe/Warsaw" in first.stdout
-    assert "Next slot: digest 2026-09-29 20:00" in first.stdout
+    assert "Next slot: digest Tue 2026-09-29 20:00" in first.stdout
     assert "Last alert: never" in first.stdout
     assert "Failed alerts: 0" in first.stdout
 
@@ -65,7 +65,7 @@ def test_status_shows_next_slot_last_alert_and_failures(db):
         deadline_value=REAL,
     )
     later = invoke(db, "status", clock=FixedClock(NOW + timedelta(minutes=100)))
-    assert "Next slot: none, breaking until 2026-09-29 22:00" in later.stdout
+    assert "Next slot: none, breaking until Tue 2026-09-29 22:00" in later.stdout
     assert "Last alert: news 2026-09-29 21:30 failed" in later.stdout
     assert "Failed alerts: 1" in later.stdout
 
@@ -318,7 +318,7 @@ def test_preview_rejects_bad_input(db):
         "news",
         config=AlertConfig((120,), 3, Decimal("15"), None),
     )
-    assert no_news.exit_code == 1 and "no news slot" in no_news.stderr
+    assert no_news.exit_code == 1 and "ALERT_SLOTS has no news slot" in no_news.stderr
 
 
 def test_preview_writes_the_html_part_when_asked(db, tmp_path):
