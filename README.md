@@ -178,8 +178,8 @@ reviewed cases only unless `--include-unreviewed` is given, and writes
 model the judge runs on: `LLM_MODEL` when set, the default model otherwise.
 
 Alerts — before each deadline the worker e-mails team news for the players that matter to the
-league (league-owned, widely owned or trending): a digest at T-120, news at T-30 and a breaking
-e-mail per new post until the deadline, each with graded, linked sources; they run when delivery,
+league (league-owned, widely owned or trending): a digest at 20:00 Warsaw time the day before, news at T-60 and a
+breaking e-mail per new post until the deadline, each with graded, linked sources; they run when delivery,
 tweet ingest and extraction are enabled. The alert text is a deterministic Polish template.
 `python -m app.alerts` shows the state, measures post → inbox latency and previews an alert at
 any past moment; none of these is run by `pytest`:

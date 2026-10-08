@@ -321,7 +321,7 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
         `next poll` shows p in UTC format.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_schedule.py
       tests/tweets/test_loop.py tests/worker/test_cli.py`
-- [ ] 7. **Documentation** (AC14). Files: `docs/DECISIONS.md`, `docs/DEPLOYMENT.md` (step 12),
+- [x] 7. **Documentation** (AC14). `iterations: 0` Files: `docs/DECISIONS.md`, `docs/DEPLOYMENT.md` (step 12),
       `docs/BACKLOG.md` (#31), `README.md` (the T-120/T-30 sentence), `backend/tests/test_readme.py`,
       `backend/tests/test_docs.py`.
       Tests first:

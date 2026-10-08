@@ -61,3 +61,17 @@ def test_decisions_and_deployment_cover_list_membership():
     deployment = (ROOT / "docs" / "DEPLOYMENT.md").read_text(encoding="utf-8")
     assert "`0010`" in deployment
     assert "app.tweets members" in deployment
+
+
+def test_backlog_has_deadline_day_slot_entry():
+    (row,) = [row for row in _rows() if "deadline day" in row.lower()]
+    assert " P2 " in row
+    assert row.rstrip().rstrip("|").rsplit("|", 1)[-1].strip(), "an entry needs a trigger"
+
+
+def test_decisions_cover_alert_slots():
+    decisions = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")
+    (row,) = [
+        line for line in decisions.splitlines() if "ALERT_SLOTS`" in line and "D-1@20:00" in line
+    ]
+    assert "2026-10-02" in row and "supersedes" in row.lower()
