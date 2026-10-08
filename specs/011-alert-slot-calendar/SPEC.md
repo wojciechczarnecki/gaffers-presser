@@ -22,6 +22,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 7
   final_review_nits: 5
+  findings_accepted: 12
+  findings_rejected: 0
 ---
 
 # SPEC 011 — Alert slots by the deadline calendar

@@ -155,11 +155,13 @@ below; agents never touch production.
     - Variables (all optional; an invalid value stops the worker and the CLI at start with a
       message naming it): `ALERTS_ENABLED=false` turns alerts off explicitly;
       `ALERT_SLOTS` (default `D-1@20:00,60`: comma-separated slots, each either minutes before
-      the deadline or `D-<n>@HH:MM`, a Warsaw wall-clock time `n` days before the deadline's
-      Warsaw date; the first slot is the digest, the others are news, and breaking e-mails run
-      from the last slot to the deadline; minutes slots are strictly decreasing and come after
-      wall-clock ones; a wall-clock slot that does not fall before the next slot or the deadline
-      is skipped for that deadline with a warning in the log);
+      the deadline or `D-<n>@HH:MM`, a Warsaw wall-clock time `n` (1 to 7) days before the
+      deadline's Warsaw date; the first slot is the digest, the others are news, and breaking
+      e-mails run from the last slot to the deadline; wall-clock slots are listed from the
+      earliest to the latest, minutes slots are strictly decreasing and come after wall-clock
+      ones; a wall-clock slot that does not fall before the next slot or the deadline is skipped
+      for that deadline with a warning in the log; when FPL moves a deadline after its digest
+      went out, the digest is not sent again);
       `ALERT_TRENDING_MIN_ACCOUNTS` (default `3`); `ALERT_WIDELY_OWNED_PERCENT` (default `15`,
       0-100); `ALERT_MAX_LOOKBACK_DAYS` (default `7`, a positive integer: the alert window starts
       at the previous deadline but never more than this many days before the alert deadline).
@@ -181,7 +183,8 @@ below; agents never touch production.
       (renders the alert the worker would send at that moment, and with `--html` also writes its
       HTML part to a file; sends and writes nothing to the database).
     - `python -m app.worker status` ends with an `Alerts:` line: the next slot (or the breaking
-      window's end), the last alert and the failed alerts of the current deadline.
+      window's end), the last alert and the failed alerts of the current deadline; its times are
+      Warsaw time and marked `Warsaw`, while the other status lines are UTC.
     - **Rehearsal (optional, for testing).** `ALERT_REHEARSAL_DEADLINE=<Warsaw time>` is an optional
       variable for testing: it makes the worker treat that moment as one extra alert deadline: fast tweet polling, the digest, the
       news slots and breaking e-mails run for it and are sent for real, in any environment. It is

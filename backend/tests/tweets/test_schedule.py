@@ -129,10 +129,11 @@ def test_no_extra_poll_when_the_regular_schedule_polls_before_the_slot():
         SLOT + timedelta(minutes=25)
     )
 
-    inside = _poll(DEADLINE - timedelta(hours=3))
+    # a slot at the window start is not before the window: the window start poll covers it
+    sparse = _poll(DEADLINE - timedelta(minutes=115))
     assert next_poll_at(
-        [DEADLINE], inside, inside.started_at, slot_times=_slot_times(timedelta(minutes=60))
-    ) == (inside.started_at + timedelta(minutes=30))
+        [DEADLINE], sparse, sparse.started_at, slot_times=_slot_times(timedelta(minutes=90))
+    ) == (DEADLINE - timedelta(minutes=90))
 
     exactly = _poll(SLOT - timedelta(minutes=30))
     assert next_poll_at([DEADLINE], exactly, exactly.started_at, slot_times=times) == (

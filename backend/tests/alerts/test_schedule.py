@@ -116,7 +116,18 @@ def test_polling_window():
         minutes=110
     )
     assert polling_window(config(DEFAULT_SLOTS)) == timedelta(minutes=90)
-    assert polling_window(config((WallClockSlot(1, clock_time(20, 0)),))) == timedelta(minutes=90)
+
+
+def test_a_wall_clock_last_slot_keeps_the_short_window_and_gets_a_pre_slot_poll():
+    only_digest = config((WallClockSlot(1, clock_time(20, 0)),))
+    saturday = parse_local("2026-10-10 12:00")
+
+    window = polling_window(only_digest)
+    moments = slot_moments(only_digest.slots, saturday)
+
+    assert window == timedelta(minutes=90)
+    assert moments == [parse_local("2026-10-09 20:00")]
+    assert moments[0] < saturday - window  # so the tweet loop adds one poll before it (AC9)
 
 
 def test_rehearsal_overlap_by_alert_span():
@@ -134,6 +145,7 @@ def test_rehearsal_overlap_by_alert_span():
         DEADLINE,
         DEADLINE + timedelta(minutes=60),
         DEADLINE - timedelta(minutes=60),
+        DEADLINE - timedelta(minutes=100),  # inside the real span (T-120) but before its T-90
     ):
         with pytest.raises(ConfigError, match="ALERT_REHEARSAL_DEADLINE"):
             check_rehearsal(config(rehearsal=rehearsal), [DEADLINE], now)
@@ -152,12 +164,11 @@ def test_rehearsal_overlap_with_the_default_slots_needs_about_a_day():
     now = parse_local("2026-10-01 12:00")
     default = config(DEFAULT_SLOTS)
 
-    with pytest.raises(ConfigError, match="ALERT_REHEARSAL_DEADLINE"):
-        check_rehearsal(
-            AlertConfig(DEFAULT_SLOTS, 3, Decimal("15"), parse_local("2026-10-10 18:00")),
-            [real],
-            now,
-        )
+    for rehearsal in ("2026-10-10 18:00", "2026-10-10 10:00", "2026-10-09 21:00"):
+        with pytest.raises(ConfigError, match="ALERT_REHEARSAL_DEADLINE"):
+            check_rehearsal(
+                AlertConfig(DEFAULT_SLOTS, 3, Decimal("15"), parse_local(rehearsal)), [real], now
+            )
     for rehearsal in ("2026-10-13 18:00", "2026-10-07 18:00"):
         check_rehearsal(
             AlertConfig(DEFAULT_SLOTS, 3, Decimal("15"), parse_local(rehearsal)), [real], now
@@ -231,6 +242,9 @@ def test_out_of_order_wall_clock_slot_is_skipped():
     two = WallClockSlot(2, clock_time(20, 0))
     ordered = resolve_slots((DIGEST, two, 60), saturday)
     assert (ordered.minutes, ordered.skipped) == ((2400, 60), (DIGEST,))
+
+    at_the_next_slot = resolve_slots((DIGEST, 960), saturday)  # Fri 20:00 is exactly T-960
+    assert (at_the_next_slot.minutes, at_the_next_slot.skipped) == ((960,), (DIGEST,))
 
     plain = resolve_slots((120, 30), saturday)
     assert (plain.minutes, plain.skipped) == ((120, 30), ())

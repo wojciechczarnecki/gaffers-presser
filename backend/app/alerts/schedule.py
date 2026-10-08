@@ -105,6 +105,8 @@ def next_wake(
 
 
 def polling_window(config: AlertConfig | None) -> timedelta:
+    # a wall-clock last slot moves per deadline, so breaking runs from it on sparse polling
+    # plus the pre-slot poll; following it would mean hours of fast polling (ban risk)
     if config is None or not isinstance(config.slots[-1], int):
         return MIN_POLLING_WINDOW
     return max(MIN_POLLING_WINDOW, timedelta(minutes=config.slots[-1]) + POLLING_MARGIN)

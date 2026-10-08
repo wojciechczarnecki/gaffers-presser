@@ -1,6 +1,6 @@
 import os
 import re
-from datetime import timedelta
+from datetime import time, timedelta
 from decimal import Decimal
 
 import pytest
@@ -9,7 +9,7 @@ from sqlmodel import Session
 from typer.testing import CliRunner
 
 from app.alerts.cli import AlertsCliDeps, app
-from app.alerts.config import AlertConfig
+from app.alerts.config import AlertConfig, WallClockSlot
 from app.corroboration.runtime import sql_only_runtime
 from app.delivery.models import DeliveryLog
 from tests.alerts.helpers import deadline
@@ -319,6 +319,24 @@ def test_preview_rejects_bad_input(db):
         config=AlertConfig((120,), 3, Decimal("15"), None),
     )
     assert no_news.exit_code == 1 and "ALERT_SLOTS has no news slot" in no_news.stderr
+
+
+def test_preview_with_wall_clock_slots(db):
+    preview_world(db)
+    calendar = AlertConfig((WallClockSlot(1, time(20, 0)), 60), 3, Decimal("15"), None)
+    # D-1@20:00 is 1560 minutes before this deadline, so a 1600 slot leaves it out of order
+    clashing = AlertConfig((WallClockSlot(1, time(20, 0)), 1600), 3, Decimal("15"), None)
+
+    digest = invoke(db, "preview", "--at", "2026-09-29 20:00", config=calendar)
+    news = invoke(db, "preview", "--at", "2026-09-29 20:00", "--kind", "news", config=calendar)
+    skipped = invoke(db, "preview", "--at", "2026-09-29 20:00", "--kind", "news", config=clashing)
+
+    assert digest.exit_code == 0, digest.stderr
+    assert "Alert deadline: 2026/27:gw6" in digest.stdout and "Title: " in digest.stdout
+    assert news.exit_code == 0, news.stderr
+    assert "Title: " in news.stdout
+    assert skipped.exit_code == 1
+    assert "ALERT_SLOTS has no news slot for that deadline" in skipped.stderr
 
 
 def test_preview_writes_the_html_part_when_asked(db, tmp_path):

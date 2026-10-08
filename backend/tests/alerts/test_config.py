@@ -82,6 +82,11 @@ def test_empty_environment_values_fall_back_to_defaults(monkeypatch):
         ("ALERT_SLOTS", "120,120"),
         ("ALERT_SLOTS", "120,-5"),
         ("ALERT_SLOTS", "60,D-1@20:00"),
+        ("ALERT_SLOTS", "D-8@20:00"),
+        ("ALERT_SLOTS", "D-999999@20:00,60"),
+        ("ALERT_SLOTS", "D-1@20:00,D-2@20:00,60"),
+        ("ALERT_SLOTS", "D-1@20:00,D-1@20:00,60"),
+        ("ALERT_SLOTS", "D-1@20:00,D-1@08:00"),
         ("ALERT_TRENDING_MIN_ACCOUNTS", "0"),
         ("ALERT_TRENDING_MIN_ACCOUNTS", "x"),
         ("ALERT_WIDELY_OWNED_PERCENT", "-1"),
@@ -99,8 +104,21 @@ def test_invalid_values_name_the_variable(variable, value):
 
 
 def test_retired_slots_minutes_variable_stops_the_start():
-    with pytest.raises(ConfigError, match="replaced by ALERT_SLOTS"):
-        parse_alert_config(settings(alert_slots_minutes="120,30"))
+    for value in ("120,30", "  "):
+        with pytest.raises(ConfigError, match="replaced by ALERT_SLOTS"):
+            parse_alert_config(settings(alert_slots_minutes=value))
+
+
+@pytest.mark.parametrize("value", ["D1@20:00", "abc", "D-1@20"])
+def test_a_malformed_slot_names_both_slot_forms(value):
+    with pytest.raises(ConfigError, match=r"ALERT_SLOTS.*\(60\).*D-<n>@HH:MM"):
+        parse_alert_config(settings(alert_slots=value))
+
+
+def test_wall_clock_slots_up_to_a_week_before_in_calendar_order():
+    config = parse_alert_config(settings(alert_slots="D-7@20:00,D-2@08:00,D-2@20:00,D-1@20:00,60"))
+
+    assert format_slots(config.slots) == "D-7@20:00,D-2@08:00,D-2@20:00,D-1@20:00,60"
 
 
 def test_alert_slots_defaults_and_mixed_values():

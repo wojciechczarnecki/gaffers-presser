@@ -245,6 +245,10 @@ def _fmt(dt: datetime) -> str:
     return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _fmt_warsaw(dt: datetime) -> str:
+    return f"{format_local_day(dt)} Warsaw"
+
+
 @app.command(help="Run the deadline-driven worker until stopped.")
 def run(ctx: typer.Context) -> None:
     deps = get_deps(ctx)
@@ -454,9 +458,7 @@ def status(ctx: typer.Context) -> None:
     if deps.alerts is None:
         typer.echo(f"Alerts: disabled ({deps.alerts_disabled_reason or 'not configured'})")
     else:
-        typer.echo(
-            status_line(alert_status(deps.engine, deps.alerts.config, now), format_local_day)
-        )
+        typer.echo(status_line(alert_status(deps.engine, deps.alerts.config, now), _fmt_warsaw))
 
 
 def main() -> None:

@@ -1401,8 +1401,9 @@ def test_status_shows_alerts_line(cli, db):
     setup = _alerts_setup()
 
     first = cli("status", clock=FixedClock(D6 - timedelta(hours=5)), alerts=setup)
-    assert "Alerts: next slot: digest Sat 2026-10-10 10:00  last alert: never  failed: 0" in (
-        first.stdout.splitlines()
+    assert (
+        "Alerts: next slot: digest Sat 2026-10-10 10:00 Warsaw  last alert: never  failed: 0"
+        in (first.stdout.splitlines())
     )
 
     real = alert_deadline()
@@ -1426,8 +1427,8 @@ def test_status_shows_alerts_line(cli, db):
         )
     later = cli("status", clock=FixedClock(D6 - timedelta(minutes=20)), alerts=setup)
     assert (
-        "Alerts: breaking until Sat 2026-10-10 12:00  last alert: news Sat 2026-10-10 11:30"
-        " failed  failed: 1"
+        "Alerts: breaking until Sat 2026-10-10 12:00 Warsaw"
+        "  last alert: news Sat 2026-10-10 11:30 Warsaw failed  failed: 1"
     ) in later.stdout.splitlines()
 
 
@@ -1607,13 +1608,18 @@ def test_rehearsal_not_written_to_gameweek_and_polls_fast(cli, db, monkeypatch):
             client=fake.client(sleep=lambda _: None),
             clock=RealClock(far_future),
             tweet_ingest=tweet_ingest,
-            alerts=_alerts_setup(rehearsal=rehearsal),
+            alerts=_alerts_setup(rehearsal=rehearsal, slots=DEFAULT_SLOTS_TUPLE),
         )
     finally:
         timer.cancel()
 
     assert result.exit_code == 0
     assert captured["window"] == timedelta(minutes=90)
+    # the rehearsal is 2027-06-02 02:00 Warsaw: its digest is 2027-06-01 20:00 Warsaw (18:00Z)
+    assert captured["slot_times"](rehearsal) == [
+        datetime(2027, 6, 1, 18, 0, tzinfo=UTC),
+        rehearsal - timedelta(minutes=60),
+    ]
     assert captured["extra_deadlines"] == (rehearsal,)
     assert captured["max_lookback"] == timedelta(days=7)
     with Session(db) as session:

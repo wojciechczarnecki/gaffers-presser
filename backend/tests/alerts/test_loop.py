@@ -12,6 +12,7 @@ from app.alerts.config import AlertConfig, WallClockSlot
 from app.alerts.loop import AlertLoop, start_alerts
 from app.alerts.models import Alert
 from app.alerts.schedule import resolve_slots
+from app.alerts.status import alert_status
 from app.delivery.models import DeliveryLog
 from app.worker.jobs import Shutdown
 from tests.alerts.helpers import alerts_runtime
@@ -337,3 +338,32 @@ def test_out_of_order_slot_skipped_with_one_warning(db, caplog):
     warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
     assert len(warnings) == 1
     assert "2026/27:gw6" in warnings[0] and "D-1@20:00" in warnings[0]
+
+
+def test_a_deadline_moved_after_the_digest_does_not_resend_it(db):
+    seed(db)
+    digest_at = DEADLINE_AT - minutes(digest_minutes())
+    add_claim(db, 1, SAKA, "out", created_at=digest_at - minutes(60), author="a1", finished=-90000)
+    loop, clock, channel = calendar_loop(db, digest_at)
+    loop.tick()
+    moved = DEADLINE_AT + minutes(30)
+    with db.begin() as conn:
+        conn.exec_driver_sql(
+            "UPDATE gameweek SET deadline_at = %(at)s WHERE fpl_id = 6", {"at": moved}
+        )
+    assert resolve_slots(DEFAULT_CONFIG.slots, moved).minutes[0] == digest_minutes() + 30
+
+    clock.advance(minutes(1))
+    loop.tick()
+    status = alert_status(db, DEFAULT_CONFIG, clock.now())
+
+    assert [(r.kind, r.slot_minutes) for r in alert_rows(db)] == [("digest", 1560)]
+    assert len(channel.calls) == 1
+    assert (status.next_slot_kind, status.next_slot_at) == ("news", moved - minutes(60))
+
+    clock.advance(moved - minutes(60) - clock.now())
+    loop.tick()
+    assert [r.key for r in alert_rows(db)] == [
+        "alert:2026/27:gw6:digest:1560",
+        "alert:2026/27:gw6:news:60",
+    ]

@@ -521,3 +521,20 @@ Rejected:
 - An empty resolved slot list crashing `tick`/`preview` (`IndexError`) — false: `resolve_slots` starts with `bound = 0` and a `D-n` slot with n ≥ 1 is always more than 0 minutes before the deadline, so the last slot is always kept (checked: `D-1@23:59` before a 00:30 deadline resolves to `(31,)`).
 
 Left out: 8 nit findings
+
+Fixed (2026-10-08, apply mode; owner accepted F1-F12):
+
+- F1 → `app/alerts/store.py::with_sent_digest` counts a recorded `digest` row as the first slot when the resolved minutes moved; used by `AlertLoop.tick` and `alert_status`; test `tests/alerts/test_loop.py::test_a_deadline_moved_after_the_digest_does_not_resend_it` (fails with the helper disabled).
+- F2 → `_slot` accepts `D-<n>` only for n from 1 to `MAX_DAYS_BEFORE` (7); `D-8@20:00` and `D-999999@20:00,60` added to `test_invalid_values_name_the_variable`.
+- F3 → `_slots` requires wall-clock slots in strictly increasing `(-days_before, at)` order; three cases added to the invalid-values test, `test_wall_clock_slots_up_to_a_week_before_in_calendar_order` keeps a valid calendar list accepted.
+- F4 → `test_out_of_order_wall_clock_slot_is_skipped` asserts `(D-1@20:00, 960)` for Sat 12:00 resolves to `(960,)` with the digest skipped (fails with `<` in place of `<=`).
+- F5 → `test_rehearsal_not_written_to_gameweek_and_polls_fast` runs with the calendar slots and asserts the `slot_times` passed to `start_poller` (fails with the argument removed).
+- F6 → rehearsal rejections inside the real span but outside T-90: T-100 with `(120, 30)`; Sat 10:00 and Fri 21:00 before a real Sat 12:00 with the default slots (fail with the real side replaced by `deadline - polling_window`).
+- F7 → `tests/alerts/test_cli.py::test_preview_with_wall_clock_slots`: digest and news preview with `(D-1@20:00, 60)`, and a news preview refused when the wall-clock slot is skipped for that deadline (fails when preview reads `deps.config.slots`). `build_slot_alert` does not read `slot_minutes`, so the original mutation changes no output; the test pins the resolution instead.
+- F8 → a non-integer slot that is not `D-<n>@HH:MM` gets a message naming both forms; `test_a_malformed_slot_names_both_slot_forms`.
+- F9 → the worker `Alerts:` line marks its Warsaw times with `Warsaw` (`_fmt_warsaw`); `test_status_shows_alerts_line` updated, DEPLOYMENT step 12 says so.
+- F10 → `ALERT_SLOTS_MINUTES` stops the start for any non-empty value, whitespace included; `test_retired_slots_minutes_variable_stops_the_start` covers `"  "`.
+- F11 → comment in `polling_window`; `test_a_wall_clock_last_slot_keeps_the_short_window_and_gets_a_pre_slot_poll`.
+- F12 → kept the condition (AC9 is about slots before the window) and replaced the unobservable in-window case with a slot exactly at the window start, which now fails when the condition is removed.
+- Verification: `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` green, 1449 passed.
+- Docs: DEPLOYMENT step 12 and `.env.example` state the 1-7 day range, the wall-clock order and the moved-deadline behaviour.

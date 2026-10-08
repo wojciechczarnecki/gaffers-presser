@@ -16,7 +16,7 @@ from app.alerts.schedule import (
     resolve_slots,
 )
 from app.alerts.service import AlertsRuntime, run_slot
-from app.alerts.store import done_slots
+from app.alerts.store import done_slots, with_sent_digest
 from app.core.clock import Clock, StopAwareClock
 from app.worker.jobs import Shutdown
 from app.worker.store import load_state
@@ -63,11 +63,11 @@ class AlertLoop:
         slots = resolved.minutes
         try:
             with Session(self._engine) as session:
-                done = done_slots(session, deadline.key)
+                done = with_sent_digest(done_slots(session, deadline.key), slots)
             for slot in due_slots(deadline, slots, set(done), self._clock.now()):
                 run_slot(self._engine, self._runtime, deadline, slots.index(slot), self._clock)
             with Session(self._engine) as session:
-                done = done_slots(session, deadline.key)
+                done = with_sent_digest(done_slots(session, deadline.key), slots)
             if slots[-1] in done and breaking_open(deadline, True, self._clock.now()):
                 with Session(self._engine) as session:
                     newest = newest_extraction(session)
