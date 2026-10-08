@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-08"
   - "spec-ready — 2026-10-08"
   - "plan-draft — 2026-10-08"
   - "plan-approved — 2026-10-08"
   - "implemented — 2026-10-08"
+  - "done — 2026-10-08"
 metrics:
   started_at: 2026-10-08T16:35
   plan_steps: 7
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 5
   findings_accepted: 12
   findings_rejected: 0
+  cost_plan_cents: 172
+  cost_plan_review_cents: 98
+  cost_implement_cents: 233
+  cost_final_review_cents: 590
+  finished_at: 2026-10-08T21:22
 ---
 
 # SPEC 011 — Alert slots by the deadline calendar
