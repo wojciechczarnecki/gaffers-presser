@@ -71,7 +71,7 @@ and each LLM step that produces data has an evaluation set with recorded results
 ## Stage 3 — League presser
 
 - [ ] Post-gameweek presser per league in Polish FPL slang: summary, best manager of the
-      gameweek (net points, ties allowed), banter; delivered by e-mail (spec: TBD)
+      gameweek (net points, ties allowed), banter; delivered by e-mail (spec: [012](../specs/012-league-presser/SPEC.md))
 - [ ] Slang glossary and style examples (from X and Polish FPL podcasts) (spec: TBD)
 
 ## Stage 4 — Source credibility and Q&A
