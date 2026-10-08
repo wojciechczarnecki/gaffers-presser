@@ -8,6 +8,7 @@ from functools import cache
 from html import escape
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from app.alerts.schemas import AlertDeadline, AlertKind, PlayerReport
 from app.core.local_time import WARSAW, format_local
@@ -23,6 +24,7 @@ GROUP_ORDER = ("out", "doubt", "benched", "confirmed_starter")
 # Within a group, news newer than this comes first, its age marked as new.
 FRESH_WITHIN = timedelta(hours=24)
 POST_TIME = "%d.%m %H:%M"
+WHATSAPP_SHARE_URL = "https://wa.me/?text={text}"
 
 
 @cache
@@ -197,12 +199,15 @@ def _source_groups(template: Mapping[str, Any], card: Card) -> list[tuple[str, t
 
 def _render_text(
     template: Mapping[str, Any],
+    section: str,
     headline: str,
     moment: str,
     groups: Mapping[str, list[Card]],
 ) -> str:
-    texts = template["text"]
-    lines = [headline, moment]
+    """The plain-text layout of the alert; `section` picks its line formats (the e-mail's
+    plain-text part or the WhatsApp share text)."""
+    texts = template[section]
+    lines = [texts["headline"].format(headline=headline), moment]
     if groups:
         lines.append(
             template["summary"]["separator"].join(
@@ -212,7 +217,7 @@ def _render_text(
     else:
         lines.extend(["", template["digest"]["empty"]])
     for event, cards in groups.items():
-        lines.extend(["", template["group"][event]])
+        lines.extend(["", texts["group"].format(heading=template["group"][event])])
         for card in cards:
             player = card.report.listed.player
             club = texts["club"].format(club=player.team_name) if player.team_name else ""
@@ -280,6 +285,13 @@ def _render_card(template: Mapping[str, Any], card: Card) -> str:
     )
 
 
+def _share(template: Mapping[str, Any], text: str) -> str:
+    url = WHATSAPP_SHARE_URL.format(text=quote(text, safe=""))
+    return template["html"]["share"].format(
+        url=escape(url), label=escape(template["whatsapp"]["button"])
+    )
+
+
 def _render_html(
     template: Mapping[str, Any],
     kind: AlertKind,
@@ -287,6 +299,7 @@ def _render_html(
     headline: str,
     moment: str,
     groups: Mapping[str, list[Card]],
+    share_text: str | None,
 ) -> str:
     html = template["html"]
     body = []
@@ -315,6 +328,7 @@ def _render_html(
         headline=escape(headline),
         moment=escape(moment),
         body="\n".join(body),
+        share=_share(template, share_text) if share_text is not None else "",
         footer=escape(template["footer"]["text"]),
     )
 
@@ -336,8 +350,11 @@ def render_alert(
     title = template["title"][kind].format(deadline_label=deadline_label, players=names)
     headline = template["header"]["headline"].format(deadline_label=deadline_label)
     moment = _moment(template, deadline, as_of)
+    # an empty digest has nothing worth sharing; the shared text leads with the title, which
+    # tells a breaking or news alert apart from the digest
+    share_text = _render_text(template, "whatsapp", title, moment, groups) if groups else None
     return Message(
         title=title,
-        text=_render_text(template, headline, moment, groups),
-        html=_render_html(template, kind, title, headline, moment, groups),
+        text=_render_text(template, "text", headline, moment, groups),
+        html=_render_html(template, kind, title, headline, moment, groups, share_text),
     )

@@ -86,10 +86,23 @@ empty = "Brak wiadomości o zawodnikach z Twojej listy."
 text = "The Gaffer's Presser · newsy z X przed deadline'em, nie oficjalne flagi FPL"
 
 [text]
+headline = "{headline}"
+group = "{heading}"
 player = "{name}{club} — {event}"
 club = " ({club})"
 sources = "{label}:"
 source = "  @{account}, {time}: {url}{marker}"
+
+# The same layout for pasting into WhatsApp, which turns *text* bold; the e-mail's HTML part
+# carries it behind a share button.
+[whatsapp]
+headline = "*{headline}*"
+group = "*{heading}*"
+player = "*{name}*{club} — {event}"
+club = " ({club})"
+sources = "{label}:"
+source = "@{account}, {time}: {url}{marker}"
+button = "📲 Wyślij na WhatsApp"
 
 # Colours of the four groups.
 [palette.out]
@@ -127,7 +140,7 @@ document = """<!doctype html>
 <div style="font-size:14px;margin-top:6px;opacity:.9;">{moment}</div>
 </td></tr>
 {body}
-<tr><td style="background:#ffffff;border-radius:0 0 12px 12px;padding:12px 20px 16px;border-top:1px solid #e6e8ec;font-size:12px;color:#8a92a3;">{footer}</td></tr>
+{share}<tr><td style="background:#ffffff;border-radius:0 0 12px 12px;padding:12px 20px 16px;border-top:1px solid #e6e8ec;font-size:12px;color:#8a92a3;">{footer}</td></tr>
 </table></td></tr></table>
 </body></html>"""
 summary = """<tr><td style="background:#ffffff;padding:12px 20px;border-bottom:1px solid #e6e8ec;font-size:14px;">{summary}</td></tr>
@@ -151,3 +164,5 @@ source_first = "{link} {time}"
 source_separator = " · "
 line_break = "<br>"
 spacer = """<tr><td style="background:#ffffff;padding:0 0 14px;"></td></tr>"""
+share = """<tr><td style="background:#ffffff;padding:4px 20px 16px;"><a href="{url}" style="display:inline-block;background:#25d366;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:8px;padding:10px 16px;">{label}</a></td></tr>
+"""
