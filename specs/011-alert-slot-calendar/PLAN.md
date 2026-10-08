@@ -80,10 +80,11 @@ Design:
      tzinfo=WARSAW).astimezone(UTC)`, and its minutes are
      `int((deadline_at - moment).total_seconds() // 60)` (AC5).
    - A minutes slot keeps its number.
-   - Slots are walked from last to first with `bound = deadline_at`. Minutes slots are always
-     kept (validated already) and set `bound`. A wall-clock slot is kept only when its moment is
-     `< bound`, otherwise it goes to `skipped` (AC6). The result is strictly increasing moments,
-     that is strictly decreasing minutes.
+   - Slots are walked from last to first with `bound = 0` minutes (the deadline). Minutes slots
+     are always kept (validated already) and set `bound` to their minutes. A wall-clock slot is
+     kept only when its floored minutes are `> bound`, otherwise it goes to `skipped` (AC6).
+     Comparing the floored minutes (not the moments) guarantees strictly decreasing minutes, so
+     two slots can never share one idempotency key even for a deadline with seconds.
    - `slot_moments(slots, deadline_at) -> list[datetime]` = `deadline_at - minutes` for the
      kept slots.
    - All existing int-based functions (`due_slots`, `next_wake`, `breaking_open`) stay unchanged
@@ -230,10 +231,15 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
         - at T-60 the news slot is recorded (key `…:news:60`);
         - a post extracted after T-60 produces a breaking alert;
         - a post extracted between the digest and T-60 does not.
+      - Reference values: `DEADLINE_AT` (test_slots) = 2026-09-29T20:00Z = Tue 22:00 Warsaw,
+        so the digest resolves to Mon 2026-09-28 20:00 Warsaw = 2026-09-28T18:00Z (1560
+        minutes, key `…:digest:1560`); claims and extractions are seeded before 18:00Z and
+        after `PREVIOUS` (2026-09-26T18:00Z) so they fall in the alert window.
       - `test_restart_after_missed_evening_digest_sends_it_at_once`: a fresh `AlertLoop` with
         the clock at the digest moment + 13 h (before T-60) sends the digest in its first tick.
-      - `test_out_of_order_slot_skipped_with_one_warning`: config `(D-1@20:00, 1500)`, three
-        ticks. The out-of-order slot is never sent, the 1500 slot works as the digest, and
+      - `test_out_of_order_slot_skipped_with_one_warning`: config `(D-1@20:00, 1600)` (for
+        this `DEADLINE_AT` the wall-clock slot is 1560 minutes before, after the 1600 slot),
+        three ticks. The out-of-order slot is never sent, the 1600 slot works as the digest, and
         `caplog` holds exactly one warning that contains the deadline key and `D-1@20:00`.
       Then the product change: `run_slot` indexes `resolve_slots(runtime.config.slots,
       deadline.deadline_at).minutes`; `tick` uses the resolved minutes and the once-only warning
@@ -251,9 +257,11 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
         resolved moment; after recording `digest:<n>` the next slot is news at T-60; after
         `news:60` it shows breaking until the deadline.
       - Update the alerts CLI status test to expect `Next slot: digest <format_local_day>`.
-      - Update the worker `test_status_shows_alerts_line` to expect the Warsaw format, e.g.
-        `Alerts: next slot: digest Sat 2026-10-10 10:00` for the `(120, 30)` setup (check the
-        exact value against `D6`).
+      - Update the worker `test_status_shows_alerts_line` to expect the Warsaw format for the
+        `(120, 30)` setup (`D6` = 2026-10-10T10:00Z = Sat 12:00 Warsaw): `Alerts: next slot:
+        digest Sat 2026-10-10 10:00`. The same `fmt` renders `breaking until` and the `last
+        alert` time, so those expectations move to Warsaw too (`breaking until Sat 2026-10-10
+        12:00`, `last alert: news Sat 2026-10-10 11:30 failed`).
       - In `test_preview_rejects_bad_input`, expect `ALERT_SLOTS has no news slot` for a
         single-slot config.
       Automatic verification: `cd backend && uv run pytest -q tests/core tests/alerts/test_status.py
@@ -270,17 +278,23 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
           20:00 lies inside the real span);
         - a rehearsal 3 days away is accepted;
         - a rehearsal in the past is ignored.
-        With `(120, 30)` the 90-minute window applies:
+        With `(120, 30)` the span starts at T-120 (the first slot is earlier than T-90):
         - a rehearsal 6 h after the real deadline is accepted;
         - a rehearsal 60 min after it is rejected;
         - spans that only touch at the boundary are accepted.
+      - Worker tests build `AlertConfig` through `_alerts_setup(slots=(120, 30))`, not from
+        `AlertSettings`, so "the default slots" below means passing
+        `slots=(WallClockSlot(1, time(20, 0)), 60)` explicitly (a module constant
+        `DEFAULT_SLOTS_TUPLE` in `tests/worker/test_cli.py`); the `_alerts_setup` default stays
+        `(120, 30)` so the existing tests keep their values.
       - `test_status_tweet_window_follows_the_last_slot` (renamed from
         `…_follows_the_alert_slots`):
         - with the default slots at T-100 the mode is `sparse`;
         - at T-90 it is `window`;
         - with `(D-1@20:00, 100)` at T-105 it is `window`.
-      - `test_run_logs_the_configured_slots`: `caplog` contains `alerts started:
-        slots=D-1@20:00,60` with the default setup.
+      - `test_run_logs_the_configured_slots`: with `_alerts_setup(slots=DEFAULT_SLOTS_TUPLE)`,
+        `caplog` contains `alerts started: slots=D-1@20:00,60`; with `_alerts_setup()` it
+        contains `slots=120,30`.
       Automatic verification: `cd backend && uv run pytest -q tests/alerts/test_schedule.py
       tests/worker/test_cli.py -k "window or rehearsal or slots or polling"`
 - [ ] 6. **Extra tweet poll before a slot outside the window** (AC9). Files:
@@ -302,7 +316,8 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
       - `test_poller_polls_ten_minutes_before_a_slot` in `tests/tweets/test_loop.py`, modelled
         on `test_poller_uses_window_and_extra_deadlines`: a poll is recorded at s − 10 min.
       - `test_status_next_poll_is_ten_minutes_before_the_digest` in `tests/worker/test_cli.py`,
-        with the default alerts setup, a recorded poll before p and the clock between them:
+        with `_alerts_setup(slots=DEFAULT_SLOTS_TUPLE)` (see step 5), a recorded poll before p
+        and the clock between them:
         `next poll` shows p in UTC format.
       Automatic verification: `cd backend && uv run pytest -q tests/tweets/test_schedule.py
       tests/tweets/test_loop.py tests/worker/test_cli.py`
@@ -416,7 +431,31 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+2026-10-08 — plan review (fresh eye, anti-anchoring on the SPEC first).
+
+Findings:
+
+- `major` — Steps 5 and 6 said "with the default setup/slots" for `test_run_logs_the_configured_slots`, `test_status_tweet_window_follows_the_last_slot` and `test_status_next_poll_is_ten_minutes_before_the_digest`, but `_alerts_setup()` in `tests/worker/test_cli.py` builds `AlertConfig((120, 30), …)` directly and never reads `AlertSettings`, so the start-log test would see `slots=120,30` and fail or prove nothing about AC13/AC8/AC9 with the real default. Changed: the tests pass `slots=DEFAULT_SLOTS_TUPLE` (`(WallClockSlot(1, time(20, 0)), 60)`) explicitly; `_alerts_setup` keeps its `(120, 30)` default.
+- `major` — Step 3's `test_out_of_order_slot_skipped_with_one_warning` used `(D-1@20:00, 1500)` against `DEADLINE_AT` from `tests/alerts/test_slots.py` (Tue 2026-09-29 22:00 Warsaw), where D-1@20:00 is 1560 minutes before the deadline, i.e. earlier than the 1500 slot and therefore in order: the test as written would fail against a correct implementation. Changed to `(D-1@20:00, 1600)` with the reasoning inline, and added the resolved reference values for that deadline to step 3.
+- `minor` — Design 3 kept a wall-clock slot when its moment was `< bound`, but minutes are floored, so for a deadline with seconds a wall-clock slot less than a minute before a minutes slot would resolve to the same number and share an idempotency key with it (AC5). Changed: the walk compares floored minutes (`> bound`, starting at 0).
+- `minor` — Step 4 asked to "check the exact value against D6" and did not say that the same `fmt` also renders `breaking until` and the `last alert` time in the worker `Alerts:` line. Changed: exact Warsaw expectations written out for all three parts.
+- `minor` — Step 5 said "with `(120, 30)` the 90-minute window applies" to the rehearsal span, but by design 7 that span starts at the first slot (T-120). Changed the wording; the test cases themselves were correct.
+
+Checked and found correct:
+
+- Coverage: AC1–AC14 each have a step and a named proving test; the matrix matches the step list; every step writes its tests first.
+- Step order: no forward dependency. Changing the default in step 1 does not break steps 2–4, because every test that reaches `polling_window`, `check_rehearsal`, the loop, status or preview builds `AlertConfig` with `(120, 30)` explicitly (`tests/alerts/helpers.py`, `test_status.py`, `test_cli.py`, worker `_alerts_setup`); the CLI only parses `AlertSettings()` in the invalid-variable tests, which stop before any slot use. The preview test asserts `"no news slot"`, so the step 1 message change keeps it green.
+- `int | WallClockSlot` with `resolve_slots` feeding the existing int-based `due_slots`/`next_wake`/`breaking_open`/`done_slots` is the minimal design; the alert log, keys and schema stay unchanged (no migration, AC5).
+- Out-of-order examples in step 2 resolve as stated (Sat 12:00: Fri 20:00 = 960 min < 1500; Sat 00:30: 31 min < 60; D-1 after D-2 skipped). DST references (1230 and 1110 minutes) are correct for 2026-10-25 and 2027-03-28.
+- AC8 reading for a configuration whose last slot is a wall-clock slot (window stays 90 min, the AC9 extra poll covers the slot) is consistent with the SPEC's ban-risk rationale and needs no SPEC change.
+- AC9 rule (`last < p` and `candidate >= s` → `min(candidate, p)`, before the rate-limit rule) matches "the regular schedule would not poll between that moment and the slot"; `app/tweets` stays free of `app/alerts` imports via the `slot_times` callable.
+- Rehearsal span check and its boundary cases; past rehearsal still ignored.
+- Compliance: aware UTC, Warsaw only for display/parsing, date arithmetic on the Warsaw `date`; logs carry only the deadline key and slot; no Polish product text in code (only English operator messages); DECISIONS 2026-09-28/2026-10-02/2026-10-06 respected or explicitly superseded in step 7.
+- Docs: ROADMAP already links spec 011 under the spec 009 item; README line 181 (T-120/T-30) is in scope; `test_env_example.py` handles the retired field explicitly.
+- E2E: automatic part runnable without touching the owner's `.env`; the three manual items each have `Pass when:`; owner summary flags (no dependency, no migration) agree with the SPEC's owner decisions.
+- Language: the PLAN is in English, as `language: en` requires.
+
+Decision: the plan is ready for implementation — all findings were fixed in place, no blocker remains, and it adds no dependency or migration.
 
 ## Deviations
 

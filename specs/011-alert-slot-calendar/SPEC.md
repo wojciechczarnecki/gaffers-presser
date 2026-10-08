@@ -1,15 +1,19 @@
 ---
-status: plan-draft
+status: plan-approved
 stage_history:
   - "spec-draft — 2026-10-08"
   - "spec-ready — 2026-10-08"
   - "plan-draft — 2026-10-08"
+  - "plan-approved — 2026-10-08"
 metrics:
   started_at: 2026-10-08T16:35
   plan_steps: 7
+  plan_changes: 8
   escalations: 0
   escalations_permission: 0
   escalations_tooling: 0
+  plan_review_blockers: 0
+  plan_review_majors: 2
 ---
 
 # SPEC 011 — Alert slots by the deadline calendar
