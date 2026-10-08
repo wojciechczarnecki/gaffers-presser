@@ -1,9 +1,10 @@
 from datetime import UTC, datetime, timedelta
+from datetime import time as clock_time
 from decimal import Decimal
 
 import pytest
 
-from app.alerts.config import AlertConfig
+from app.alerts.config import AlertConfig, WallClockSlot
 from app.alerts.schedule import (
     alert_deadlines,
     breaking_open,
@@ -14,8 +15,11 @@ from app.alerts.schedule import (
     next_wake,
     polling_window,
     rehearsal_key,
+    resolve_slots,
+    slot_moments,
 )
 from app.core.errors import ConfigError
+from app.core.local_time import parse_local
 from app.worker.schedule import GameweekState
 
 DEADLINE = datetime(2026, 10, 4, 16, 0, tzinfo=UTC)
@@ -134,3 +138,74 @@ def test_rehearsal_past_ignored_and_overlap_rejected():
             [just_passed, DEADLINE],
             just_passed + timedelta(minutes=30),
         )
+
+
+DIGEST = WallClockSlot(1, clock_time(20, 0))
+DEFAULT = (DIGEST, 60)
+
+
+@pytest.mark.parametrize(
+    ("deadline", "digest", "news"),
+    [
+        ("2026-10-09 19:30", "2026-10-08 20:00", "2026-10-09 18:30"),
+        ("2026-10-10 12:00", "2026-10-09 20:00", "2026-10-10 11:00"),
+        ("2026-10-10 14:30", "2026-10-09 20:00", "2026-10-10 13:30"),
+        ("2026-10-14 19:30", "2026-10-13 20:00", "2026-10-14 18:30"),
+        ("2026-10-11 15:30", "2026-10-10 20:00", "2026-10-11 14:30"),
+    ],
+)
+def test_default_slots_resolve_per_deadline_type(deadline, digest, news):
+    deadline_at = parse_local(deadline)
+
+    resolved = resolve_slots(DEFAULT, deadline_at)
+    moments = slot_moments(DEFAULT, deadline_at)
+
+    assert resolved.skipped == ()
+    assert moments == [parse_local(digest), parse_local(news)]
+    assert resolved.minutes[1] == 60
+
+
+def test_wall_clock_slot_across_dst_change():
+    autumn = resolve_slots(DEFAULT, parse_local("2026-10-25 15:30"))
+    spring = resolve_slots(DEFAULT, parse_local("2027-03-28 15:30"))
+
+    assert autumn.minutes == (1230, 60)
+    assert spring.minutes == (1110, 60)
+
+
+def test_wall_clock_slot_minutes_are_whole_minutes_to_deadline():
+    deadline_at = parse_local("2026-10-10 12:00") + timedelta(seconds=30)
+
+    resolved = resolve_slots(DEFAULT, deadline_at)
+
+    assert resolved.minutes == (960, 60)
+    assert deadline_at - timedelta(minutes=960) >= parse_local("2026-10-09 20:00")
+
+
+def test_wall_clock_slot_uses_the_warsaw_date_of_the_deadline():
+    resolved = resolve_slots(
+        (WallClockSlot(1, clock_time(20, 0)),), parse_local("2026-10-10 00:30")
+    )
+
+    assert slot_moments(
+        (WallClockSlot(1, clock_time(20, 0)),), parse_local("2026-10-10 00:30")
+    ) == [parse_local("2026-10-09 20:00")]
+    assert resolved.minutes == (270,)
+
+
+def test_out_of_order_wall_clock_slot_is_skipped():
+    saturday = parse_local("2026-10-10 12:00")
+    resolved = resolve_slots((DIGEST, 1500), saturday)
+    assert (resolved.minutes, resolved.skipped) == ((1500,), (DIGEST,))
+
+    early = resolve_slots(
+        (WallClockSlot(1, clock_time(23, 59)), 60), parse_local("2026-10-10 00:30")
+    )
+    assert (early.minutes, early.skipped) == ((60,), (WallClockSlot(1, clock_time(23, 59)),))
+
+    two = WallClockSlot(2, clock_time(20, 0))
+    ordered = resolve_slots((DIGEST, two, 60), saturday)
+    assert (ordered.minutes, ordered.skipped) == ((2400, 60), (DIGEST,))
+
+    plain = resolve_slots((120, 30), saturday)
+    assert (plain.minutes, plain.skipped) == ((120, 30), ())

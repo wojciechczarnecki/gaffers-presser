@@ -197,7 +197,7 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
       tests/alerts/test_cli.py tests/test_env_example.py tests/worker/test_cli.py -k "slots or
       alert or env"` then `cd backend && uv run pytest -q tests/alerts tests/worker
       tests/test_env_example.py`
-- [ ] 2. **Slot resolution per deadline** (AC3, AC5, AC6 pure part). Files:
+- [x] 2. **Slot resolution per deadline** (AC3, AC5, AC6 pure part). `iterations: 1` Files:
       `backend/app/alerts/schedule.py` (`ResolvedSlots`, `resolve_slots`, `slot_moments`),
       `backend/tests/alerts/test_schedule.py`.
       Tests first:

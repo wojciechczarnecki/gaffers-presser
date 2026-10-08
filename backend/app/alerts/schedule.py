@@ -1,8 +1,10 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from app.alerts.config import AlertConfig
+from app.alerts.config import AlertConfig, Slot, WallClockSlot
 from app.alerts.schemas import AlertDeadline
 from app.core.errors import ConfigError
+from app.core.local_time import WARSAW
 from app.fpl.deadlines import next_deadline_after
 from app.worker.schedule import GameweekState
 
@@ -19,6 +21,39 @@ def deadline_key(season: str, gameweek: int) -> str:
 
 def rehearsal_key(deadline_at: datetime) -> str:
     return f"rehearsal:{deadline_at.astimezone(UTC).strftime('%Y-%m-%dT%H:%MZ')}"
+
+
+@dataclass(frozen=True)
+class ResolvedSlots:
+    minutes: tuple[int, ...]
+    skipped: tuple[WallClockSlot, ...]
+
+
+def _wall_clock_minutes(slot: WallClockSlot, deadline_at: datetime) -> int:
+    day = deadline_at.astimezone(WARSAW).date() - timedelta(days=slot.days_before)
+    moment = datetime.combine(day, slot.at, tzinfo=WARSAW).astimezone(UTC)
+    return int((deadline_at - moment).total_seconds() // 60)
+
+
+def resolve_slots(slots: tuple[Slot, ...], deadline_at: datetime) -> ResolvedSlots:
+    kept: list[int] = []
+    skipped: list[WallClockSlot] = []
+    bound = 0
+    for slot in reversed(slots):
+        minutes = slot if isinstance(slot, int) else _wall_clock_minutes(slot, deadline_at)
+        if isinstance(slot, WallClockSlot) and minutes <= bound:
+            skipped.append(slot)
+            continue
+        kept.append(minutes)
+        bound = minutes
+    return ResolvedSlots(tuple(reversed(kept)), tuple(reversed(skipped)))
+
+
+def slot_moments(slots: tuple[Slot, ...], deadline_at: datetime) -> list[datetime]:
+    return [
+        deadline_at - timedelta(minutes=minutes)
+        for minutes in resolve_slots(slots, deadline_at).minutes
+    ]
 
 
 def alert_deadlines(
