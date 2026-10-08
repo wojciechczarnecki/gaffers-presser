@@ -10,7 +10,23 @@ from app.tweets.sources.twscrape_source import TwscrapeSource
 from app.tweets.store import store_posts
 from tests.tweets.fakes import post
 from tests.tweets.membership_helpers import post_classes, set_members
-from tests.tweets.payloads import load
+from tests.tweets.payloads import (
+    LATER_PLAIN,
+    MODULE_HEAD,
+    MODULE_REPLY_TO_ABSENT,
+    MODULE_ROOT,
+    OFF_LIST_MODULE_HEAD,
+    OFF_LIST_ROOT,
+    OLD_QUOTED,
+    PAGE_2_MEMBER_POSTS,
+    PLAIN,
+    QUOTE_OF_ENTRY,
+    QUOTE_OF_OLD_POST,
+    QUOTED_OFF_LIST,
+    REPOST,
+    REPOSTED_ORIGINAL,
+    load,
+)
 from tests.tweets.sources.test_twscrape_source import FakeApi
 
 NOW = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)
@@ -124,19 +140,24 @@ def test_recorded_pages_classified(db):
     finally:
         source.close()
     _store(db, *[p for page in pages for p in page])
-    set_members(db, ["synthetic_leaker_1", "synthetic_leaker_2", "synthetic_leaker_3"])
-    classes = _classes(db, 4010, 1500, 4006, 1700, 4014, 4004, 4008, 4012)
-    assert classes == {
-        4010: "list",
-        1500: "quoted",
-        4006: "context",
-        1700: "context",
-        4014: "list",
-        4004: "list",
-        4008: "list",
-        4012: "list",
-    }
-    assert 1800 not in _classes(db, 1800)
+    set_members(db, [f"synthetic_leaker_{n}" for n in range(1, 8)])
+    page_1_member_posts = [
+        REPOST,
+        QUOTE_OF_OLD_POST,
+        MODULE_HEAD,
+        MODULE_ROOT,
+        QUOTE_OF_ENTRY,
+        PLAIN,
+        OFF_LIST_MODULE_HEAD,
+        MODULE_REPLY_TO_ABSENT,
+        LATER_PLAIN,
+        OLD_QUOTED,
+    ]
+    expected = {OFF_LIST_ROOT: "context"} | dict.fromkeys(QUOTED_OFF_LIST, "quoted")
+    expected |= dict.fromkeys([*page_1_member_posts, *PAGE_2_MEMBER_POSTS], "list")
+    assert {p.x_id for page in pages for p in page} == set(expected)
+    assert _classes(db, *expected) == expected
+    assert REPOSTED_ORIGINAL not in _classes(db, REPOSTED_ORIGINAL)
 
 
 def test_backfilled_quote_relation_classifies_the_same(db):
