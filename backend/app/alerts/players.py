@@ -7,9 +7,10 @@ from sqlmodel import Session
 
 from app.alerts.config import AlertConfig
 from app.alerts.schemas import ListedPlayer, ManagerRef
-from app.corroboration.rules import account_of
+from app.corroboration.rules import counted_account
 from app.corroboration.schemas import PlayerRef, PostRef
 from app.extraction.store import current_extractions
+from app.tweets.classes import quoted_authors
 
 LAST_PICK_POSITION = 15
 
@@ -18,7 +19,9 @@ def _claims(
     session: Session, season: str, start: datetime, as_of: datetime
 ) -> dict[int, list[tuple[int, str]]]:
     claims: dict[int, list[tuple[int, str]]] = defaultdict(list)
-    for row in current_extractions(session, created_from=start, created_until=as_of):
+    rows = current_extractions(session, created_from=start, created_until=as_of, sources_only=True)
+    quoted = quoted_authors(session, [row.tweet_x_id for row in rows])
+    for row in rows:
         post = PostRef(
             row.tweet_x_id,
             row.author_handle,
@@ -26,6 +29,7 @@ def _claims(
             row.is_repost,
             row.created_at,
             row.text,
+            quoted.get(row.tweet_x_id),
         )
         named = {
             event.player_fpl_id
@@ -33,7 +37,7 @@ def _claims(
             if event.player_season == season and event.player_fpl_id is not None
         }
         for fpl_id in named:
-            claims[fpl_id].append((row.tweet_x_id, account_of(post)))
+            claims[fpl_id].append((row.tweet_x_id, counted_account(post, "supports")))
     return claims
 
 

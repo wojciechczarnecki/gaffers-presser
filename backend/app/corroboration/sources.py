@@ -19,6 +19,7 @@ from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder
 from app.retrieval.search import SearchFilters, search
 from app.retrieval.tracing import NULL_TRACER, RetrievalTracer
+from app.tweets.classes import quoted_authors
 
 SEARCH_LIMIT = 20
 MAX_JUDGED = 10
@@ -42,6 +43,7 @@ def _post_ref(
     is_repost: bool,
     created_at: datetime,
     text: str,
+    quoted_author_handle: str | None = None,
 ) -> PostRef:
     return PostRef(
         x_id=x_id,
@@ -50,6 +52,7 @@ def _post_ref(
         is_repost=is_repost,
         created_at=created_at,
         text=text,
+        quoted_author_handle=quoted_author_handle,
     )
 
 
@@ -92,7 +95,9 @@ def sql_claims(
         created_from=start,
         created_until=as_of,
         player=(player.season, player.fpl_id),
+        sources_only=True,
     )
+    quoted = quoted_authors(session, [row.tweet_x_id for row in rows])
     for row in rows:
         event = next(
             (
@@ -113,6 +118,7 @@ def sql_claims(
                     row.is_repost,
                     row.created_at,
                     row.text,
+                    quoted.get(row.tweet_x_id),
                 ),
                 event_type=event.event_type,
                 certainty=event.certainty,
@@ -138,18 +144,26 @@ def retrieval_candidates(
         player.web_name,
         "hybrid",
         embedder=embedder,
-        filters=SearchFilters(since=start, until=as_of),
+        filters=SearchFilters(since=start, until=as_of, sources_only=True),
         limit=SEARCH_LIMIT,
         tracer=tracer,
         prices=prices,
         embed_timeout_seconds=embed_timeout_seconds,
     )
+    results = [r for r in response.results if r.x_id not in claimed_ids]
+    with Session(engine) as session:
+        quoted = quoted_authors(session, [r.x_id for r in results])
     posts = [
         _post_ref(
-            r.x_id, r.author_handle, r.reposted_author_handle, r.is_repost, r.created_at, r.text
+            r.x_id,
+            r.author_handle,
+            r.reposted_author_handle,
+            r.is_repost,
+            r.created_at,
+            r.text,
+            quoted.get(r.x_id),
         )
-        for r in response.results
-        if r.x_id not in claimed_ids
+        for r in results
     ]
     return Candidates(
         posts=posts[:MAX_JUDGED], failed_legs=response.failed_legs, failure=response.failure

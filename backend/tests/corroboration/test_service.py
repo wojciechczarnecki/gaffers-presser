@@ -17,6 +17,7 @@ from tests.corroboration.helpers import ISAK, NOW, SAKA, SEASON, add_claim, seed
 from tests.extraction.fakes import FakeChatModel
 from tests.retrieval.fakes import FakeEmbedder, SlowEmbedder
 from tests.retrieval.helpers import MODEL, PRICES, FixedClock, add_tweet
+from tests.tweets.membership_helpers import set_members
 
 DEADLINE = NOW - timedelta(days=3)
 SAKA_REF = PlayerRef(SEASON, SAKA, "Saka", "Arsenal")
@@ -319,3 +320,60 @@ def test_given_anchor_is_the_anchor(db):
     newest = _run(db, _runtime(), anchor_x_id=999)
     assert newest.anchor is not None and newest.anchor.post.x_id == 3
     assert _run(db, _runtime()).anchor.post.x_id == 3
+
+
+def test_quote_and_quoted_leak_give_one_supporting_account(db):
+    seed_reference(db, {6: DEADLINE})
+    add_claim(db, 1, SAKA, "out", author="outsider", created_at=NOW - timedelta(hours=5))
+    add_claim(
+        db, 2, SAKA, "out", author="member_a", quoted_x_id=1, created_at=NOW - timedelta(hours=4)
+    )
+    add_claim(db, 3, SAKA, "out", author="member_b", created_at=NOW - timedelta(hours=1))
+    set_members(db, ["member_a", "member_b"])
+
+    result = _run(db, _runtime())
+
+    assert result.anchor.post.x_id == 3
+    assert [c.x_id for c in result.supporting] == [2]
+    assert result.grade.level == "medium"
+
+
+def test_contradicting_quote_gives_one_contradicting_account(db):
+    seed_reference(db, {6: DEADLINE})
+    add_claim(db, 1, SAKA, "out", author="outsider", created_at=NOW - timedelta(hours=5))
+    add_claim(
+        db,
+        2,
+        SAKA,
+        "confirmed_starter",
+        author="member_a",
+        quoted_x_id=1,
+        created_at=NOW - timedelta(hours=4),
+    )
+    add_claim(db, 3, SAKA, "out", author="member_b", created_at=NOW - timedelta(hours=1))
+    set_members(db, ["member_a", "member_b"])
+
+    result = _run(db, _runtime())
+
+    assert [c.x_id for c in result.contradicting] == [2]
+    assert [c.x_id for c in result.supporting] == [1]
+
+
+def test_quoting_anchor_counts_as_the_quoted_account_in_counts_and_trace(db):
+    seed_reference(db, {6: DEADLINE})
+    add_claim(db, 1, SAKA, "out", author="outsider", created_at=NOW - timedelta(hours=5))
+    add_claim(db, 2, SAKA, "out", author="member_b", created_at=NOW - timedelta(hours=4))
+    add_claim(db, 3, SAKA, "out", author="member_a", created_at=NOW - timedelta(hours=3))
+    add_claim(
+        db, 4, SAKA, "out", author="member_a", quoted_x_id=1, created_at=NOW - timedelta(hours=1)
+    )
+    set_members(db, ["member_a", "member_b"])
+    client = FakeLangfuseClient()
+
+    result = _run(db, _runtime(tracer=LangfuseCorroborationTracer(client)))
+
+    assert result.anchor.post.x_id == 4
+    assert [c.x_id for c in result.supporting] == [2]
+    (root,) = client.named("corroboration")
+    (update,) = root["updates"]
+    assert update["output"]["anchor"]["account"] == "outsider"

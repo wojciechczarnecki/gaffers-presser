@@ -60,7 +60,9 @@ def _candidates(
     listed: dict[int, ListedPlayer],
 ) -> list[tuple[CurrentExtraction, list[ListedPlayer]]]:
     found = []
-    for row in current_extractions(session, created_from=start, created_until=now):
+    for row in current_extractions(
+        session, created_from=start, created_until=now, sources_only=True
+    ):
         if row.finished_at < since_extracted:
             continue
         named = sorted(

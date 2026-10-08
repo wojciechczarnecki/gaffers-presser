@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 from app.extraction.models import Extraction, ExtractionEvent
 from app.extraction.schemas import LinkedEvent, PostInput
 from app.fpl.models.reference import Player
+from app.tweets.classes import source_post_sql
 from app.tweets.models import Tweet
 
 
@@ -129,6 +130,7 @@ def next_pending(session: Session) -> PostInput | None:
     tweet = session.exec(
         select(Tweet)
         .where(Tweet.x_id.not_in(extracted_ids))
+        .where(text(source_post_sql("tweet")))
         .order_by(Tweet.created_at, Tweet.x_id)
         .limit(1)
     ).first()
@@ -181,6 +183,7 @@ def current_extractions(
     created_from: datetime | None = None,
     created_until: datetime | None = None,
     player: tuple[str, int] | None = None,
+    sources_only: bool = False,
 ) -> list[CurrentExtraction]:
     if x_ids is not None and not x_ids:
         return []
@@ -207,6 +210,8 @@ def current_extractions(
             " AND ev.player_season = :player_season AND ev.player_fpl_id = :player_fpl_id)"
         )
         params["player_season"], params["player_fpl_id"] = player
+    if sources_only:
+        conditions.append(source_post_sql("t"))
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
     rows = (
         session.execute(
@@ -279,6 +284,7 @@ def extraction_status(engine: Engine) -> ExtractionStatus:
             text(
                 "SELECT count(*) FROM tweet t"
                 " WHERE NOT EXISTS (SELECT 1 FROM extraction e WHERE e.tweet_x_id = t.x_id)"
+                f" AND {source_post_sql('t')}"
             )
         ).scalar_one()
         failed_posts = conn.execute(

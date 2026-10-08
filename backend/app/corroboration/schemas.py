@@ -28,6 +28,7 @@ class PostRef:
     is_repost: bool
     created_at: datetime
     text: str
+    quoted_author_handle: str | None = None
 
     @property
     def original_author(self) -> str:

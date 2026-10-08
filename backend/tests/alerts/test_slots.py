@@ -18,9 +18,17 @@ from tests.alerts.helpers import (
     scripted_corroboration,
     seed_league,
 )
-from tests.corroboration.helpers import ISAK, NOW, SAKA, add_claim, seed_reference
+from tests.corroboration.helpers import (
+    ISAK,
+    NOW,
+    SAKA,
+    add_claim,
+    add_extraction,
+    seed_reference,
+)
 from tests.delivery.fakes import FakeChannel, FixedClock
 from tests.retrieval.helpers import add_tweet
+from tests.tweets.membership_helpers import set_members
 
 TEMPLATE = load_template()
 PREVIOUS = NOW - timedelta(days=3)
@@ -323,3 +331,47 @@ def test_window_is_the_same_for_every_alert_of_a_deadline(db):
         # with a short break the previous deadline is the start
         long = replace(config, max_lookback=timedelta(days=30))
         assert alert_window_start(session, NOW, REAL, long) == PREVIOUS
+
+
+def test_context_post_absent_from_digest_and_counts(db):
+    seed(db)
+    add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="member")
+    add_claim(
+        db,
+        2,
+        SAKA,
+        "out",
+        created_at=NOW - timedelta(hours=2),
+        author="outsider",
+        embedded=True,
+    )
+    set_members(db, ["member"])
+    runtime, channel, clock = setup(db)
+
+    assert run_slot(db, runtime, REAL, 0, clock) == "sent"
+
+    assert alert_posts(db, DIGEST_KEY) == {(SAKA, 1): "new"}
+    assert "status/2" not in channel.calls[0].text
+
+
+def test_quoted_post_included_once_across_slots(db):
+    seed(db)
+    add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="outsider")
+    add_tweet(
+        db,
+        2,
+        "confirmed",
+        author="member",
+        quoted_x_id=1,
+        created_at=NOW - timedelta(hours=2),
+    )
+    add_extraction(db, 2, None)
+    set_members(db, ["member"])
+    runtime, channel, clock = setup(db)
+
+    assert run_slot(db, runtime, REAL, 0, clock) == "sent"
+    assert alert_posts(db, DIGEST_KEY) == {(SAKA, 1): "new"}
+
+    clock.advance(timedelta(minutes=90))
+    assert run_slot(db, runtime, REAL, 1, clock) == "skipped"
+    assert channel.keys == [DIGEST_KEY]

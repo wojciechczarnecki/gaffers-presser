@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from sqlalchemy import event
 from sqlmodel import Session
 
@@ -150,3 +151,77 @@ def test_upcoming_deadlines(db):
     with Session(db) as session:
         deadlines = upcoming_deadlines(session, NOW)
     assert deadlines == [NOW + timedelta(days=2)]
+
+
+def _store(db, posts, fetched_at=NOW):
+    with Session(db) as session, session.begin():
+        return store_posts(session, posts, "twscrape", fetched_at)
+
+
+def test_last_seen_id_ignores_embedded_posts(db):
+    _store(db, [post(x_id=10), post(x_id=99, embedded=True)])
+    with Session(db) as session:
+        assert last_seen_id(session) == 10
+
+
+def test_last_seen_id_none_when_only_embedded(db):
+    _store(db, [post(x_id=99, embedded=True)])
+    with Session(db) as session:
+        assert last_seen_id(session) is None
+
+
+def test_embedded_then_entry_ends_as_timeline_post(db):
+    _store(db, [post(x_id=5, embedded=True)])
+    with Session(db) as session:
+        assert session.get(Tweet, 5).embedded is True
+    count = _store(db, [post(x_id=5, quoted_x_id=3)], NOW + timedelta(minutes=1))
+    assert count == 0
+    with Session(db) as session:
+        row = session.get(Tweet, 5)
+    assert row.embedded is False
+    assert row.quoted_x_id == 3
+    assert row.first_fetched_at == NOW
+
+
+def test_entry_then_embedded_stays_timeline_post(db):
+    _store(db, [post(x_id=5, quoted_x_id=3)])
+    _store(db, [post(x_id=5, embedded=True)], NOW + timedelta(minutes=1))
+    with Session(db) as session:
+        row = session.get(Tweet, 5)
+    assert row.embedded is False
+    assert row.quoted_x_id == 3
+
+
+def test_upsert_counts_only_inserted_rows(db):
+    _store(db, [post(x_id=1, embedded=True)])
+    count = _store(db, [post(x_id=1), post(x_id=2), post(x_id=3, embedded=True)])
+    assert count == 2
+
+
+def test_embedded_then_entry_without_quote_ends_as_timeline_post(db):
+    _store(db, [post(x_id=5, embedded=True)])
+    _store(db, [post(x_id=5)], NOW + timedelta(minutes=1))
+    with Session(db) as session:
+        row = session.get(Tweet, 5)
+    assert row.embedded is False
+    assert row.quoted_x_id is None
+
+
+@pytest.mark.parametrize("entry_first", [False, True])
+def test_duplicate_ids_in_one_call_are_merged(db, entry_first):
+    copies = [post(x_id=7, embedded=True), post(x_id=7, quoted_x_id=4)]
+    if entry_first:
+        copies.reverse()
+    count = _store(db, [*copies, post(x_id=8)])
+    assert count == 2
+    with Session(db) as session:
+        row = session.get(Tweet, 7)
+    assert row.embedded is False
+    assert row.quoted_x_id == 4
+
+
+def test_first_fetched_at_never_changes(db):
+    _store(db, [post(x_id=5, embedded=True)])
+    _store(db, [post(x_id=5, quoted_x_id=3)], NOW + timedelta(hours=1))
+    with Session(db) as session:
+        assert session.get(Tweet, 5).first_fetched_at == NOW

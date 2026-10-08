@@ -53,8 +53,13 @@ and each LLM step that produces data has an evaluation set with recorded results
       from the retrieved posts (with a faithfulness evaluation) is decided in its spec.
       The owner builds and tests it locally first (a rehearsal deadline with real e-mails);
       the production deployment (Stage 0) follows it, and BACKLOG #11 is settled after this
-      spec and before the deployment
+      spec and before the deployment (settled by spec 010)
       (spec: [009](../specs/009-pre-deadline-alerts/SPEC.md)) — **first functional MVP**
+- [x] Off-list posts: the worker keeps the List's membership, posts quoted by a list member
+      stay alert sources and count with the quote as one account, conversation context from
+      outside the List is stored but never extracted or alerted, and a catch-up is no longer
+      ended by an old quoted post; closes BACKLOG #11
+      (spec: [010](../specs/010-off-list-posts/SPEC.md))
 - [ ] LLM-written per-player alert summary with a faithfulness evaluation, after the
       production deployment: it only summarises the facts already in the alert and neither
       chooses what or when to send nor changes grades (spec: TBD)

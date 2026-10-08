@@ -94,6 +94,7 @@ moment our system first fetches them), side by side, without a database:
 uv run python -m app.tweets measure --interval-seconds 20 --duration-minutes 45 \
   --output measurements/latency.jsonl                 # polls every configured source
 uv run python -m app.tweets summary measurements/latency.jsonl --markdown  # per-source table
+uv run python -m app.tweets members   # fetch the List's members now and store the snapshot
 ```
 
 `backend/measurements/` is gitignored; a source with missing credentials is skipped with a

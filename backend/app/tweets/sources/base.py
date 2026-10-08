@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Protocol
 
@@ -16,6 +16,19 @@ class FetchedPost:
     is_reply: bool
     raw: dict
     reposted_author_handle: str | None = None
+    embedded: bool = False
+    entry_head: bool = True
+    quoted_x_id: int | None = None
+
+
+def merge_fetched(first: FetchedPost, second: FetchedPost) -> FetchedPost:
+    base = second if first.embedded and not second.embedded else first
+    return replace(
+        base,
+        embedded=first.embedded and second.embedded,
+        entry_head=first.entry_head or second.entry_head,
+        quoted_x_id=first.quoted_x_id or second.quoted_x_id,
+    )
 
 
 class TweetSource(Protocol):
@@ -23,6 +36,8 @@ class TweetSource(Protocol):
     max_pages: int
 
     def pages(self, list_id: int) -> Iterator[list[FetchedPost]]: ...
+
+    def members(self, list_id: int) -> list[str]: ...
 
     def close(self) -> None: ...
 
@@ -39,3 +54,7 @@ class SourceRateLimitedError(CollectorError):
     def __init__(self, message: str, retry_after: float | None = None) -> None:
         super().__init__(message)
         self.retry_after = retry_after
+
+
+class MembershipNotSupportedError(CollectorError):
+    pass

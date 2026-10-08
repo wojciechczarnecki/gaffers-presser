@@ -26,6 +26,7 @@ from tests.corroboration.helpers import (
 )
 from tests.retrieval.fakes import FakeEmbedder, RecordingTracer, SlowEmbedder
 from tests.retrieval.helpers import MODEL, PRICES, add_tweet
+from tests.tweets.membership_helpers import set_members
 
 DEADLINE = NOW - timedelta(days=3)
 SAKA_REF = PlayerRef(SEASON, SAKA, "Saka", "Arsenal")
@@ -229,3 +230,97 @@ def test_candidates_search_uses_the_short_timeout_and_the_window_filters(db):
     assert search["mode"] == "hybrid"
     assert search["filters"]["since"] == _start().isoformat()
     assert search["filters"]["until"] == NOW.isoformat()
+
+
+def test_context_post_never_a_claim_or_candidate(db):
+    seed_reference(db)
+    add_claim(db, 1, SAKA, "out", author="member", created_at=NOW - timedelta(hours=3))
+    add_claim(
+        db,
+        2,
+        SAKA,
+        "out",
+        author="outsider",
+        text="Saka injury reply parent",
+        created_at=NOW - timedelta(hours=2),
+        embedded=True,
+    )
+    add_tweet(db, 3, "Saka injury chatter", author="outsider2", created_at=NOW - timedelta(hours=2))
+    set_members(db, ["member"])
+
+    with Session(db) as session:
+        claims = sql_claims(session, SAKA_REF, _start(), NOW)
+    candidates = retrieval_candidates(
+        db,
+        SAKA_REF,
+        _start(),
+        NOW,
+        embedder=FakeEmbedder(),
+        claimed_ids={1},
+        prices=PRICES,
+    )
+
+    assert [c.post.x_id for c in claims] == [1]
+    assert [p.x_id for p in candidates.posts] == []
+
+
+def test_quoted_off_list_post_stays_a_claim_and_candidate(db):
+    seed_reference(db)
+    add_claim(db, 2, SAKA, "out", author="outsider", created_at=NOW - timedelta(hours=3))
+    add_tweet(
+        db,
+        3,
+        "confirmed",
+        author="member",
+        quoted_x_id=2,
+        created_at=NOW - timedelta(hours=2),
+    )
+    set_members(db, ["member"])
+    with Session(db) as session:
+        claims = sql_claims(session, SAKA_REF, _start(), NOW)
+    assert [c.post.x_id for c in claims] == [2]
+
+
+def test_quote_carries_quoted_author(db):
+    seed_reference(db)
+    add_claim(db, 2, SAKA, "out", author="Outsider", created_at=NOW - timedelta(hours=3))
+    add_claim(
+        db,
+        3,
+        SAKA,
+        "out",
+        author="member",
+        quoted_x_id=2,
+        created_at=NOW - timedelta(hours=2),
+    )
+    add_claim(db, 4, SAKA, "out", author="member", created_at=NOW - timedelta(hours=1))
+    add_tweet(
+        db,
+        5,
+        "Saka injury quote",
+        author="member",
+        quoted_x_id=2,
+        created_at=NOW - timedelta(hours=1),
+    )
+    set_members(db, ["member"])
+
+    with Session(db) as session:
+        claims = {c.post.x_id: c.post for c in sql_claims(session, SAKA_REF, _start(), NOW)}
+    assert claims[3].quoted_author_handle == "Outsider"
+    assert claims[4].quoted_author_handle is None
+    assert claims[2].quoted_author_handle is None
+
+    (candidate,) = [
+        p
+        for p in retrieval_candidates(
+            db,
+            SAKA_REF,
+            _start(),
+            NOW,
+            embedder=FakeEmbedder(),
+            claimed_ids={2, 3, 4},
+            prices=PRICES,
+        ).posts
+    ]
+    assert candidate.x_id == 5
+    assert candidate.quoted_author_handle == "Outsider"

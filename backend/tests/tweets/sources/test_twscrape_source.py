@@ -33,16 +33,27 @@ class FakePool:
 
 
 class FakeApi:
-    def __init__(self, pages: list, pool: FakePool | None = None) -> None:
+    def __init__(
+        self, pages: list, pool: FakePool | None = None, member_pages: list | None = None
+    ) -> None:
         self.pool = pool or FakePool()
         self._pages = pages
+        self._member_pages = member_pages or []
         self.closed = False
+        self.pulled = 0
+
+    async def list_members_raw(self, list_id: int):
+        for page in self._member_pages:
+            if isinstance(page, Exception):
+                raise page
+            yield page
 
     async def list_timeline_raw(self, list_id: int):
         try:
             for page in self._pages:
                 if isinstance(page, Exception):
                     raise page
+                self.pulled += 1
                 yield page
         finally:
             self.closed = True
@@ -284,3 +295,253 @@ def test_real_twscrape_pool_rate_limit_carries_no_cookie(tmp_path, caplog, capfd
     captured = capfd.readouterr()
     for text in (str(exc.value), repr(exc.value), caplog.text, captured.err, captured.out):
         assert "sentinel-secret" not in text
+
+
+def _pages(*names: str) -> list[list]:
+    source = _source(FakeApi([_response(name) for name in names]))
+    try:
+        return list(source.pages(1))
+    finally:
+        source.close()
+
+
+def test_conversation_page_marks_entries_heads_and_embedded():
+    (page,) = _pages("twscrape-page-conversation")
+    by_id = {p.x_id: p for p in page}
+    flags = {x_id: (p.embedded, p.entry_head, p.quoted_x_id) for x_id, p in by_id.items()}
+    assert flags == {
+        4014: (False, True, None),
+        4012: (False, True, None),
+        1700: (True, False, None),
+        4010: (False, True, 1500),
+        1500: (True, False, None),
+        4004: (False, False, None),
+        4006: (False, False, None),
+        4008: (False, True, None),
+    }
+    assert by_id[4014].is_repost is True
+    assert 1800 not in by_id
+
+
+def test_recorded_quote_of_2019_post_pages_to_last_seen():
+    api = FakeApi(
+        [_response("twscrape-page-conversation"), _response("twscrape-page-conversation-2")]
+    )
+    source = _source(api)
+    try:
+        result = collect_new(source, list_id=1, since_id=4000)
+    finally:
+        source.close()
+    assert {p.x_id for p in result} >= {1500, 4000, 4010}
+    assert api.pulled == 2
+    assert api.closed is True
+
+
+def test_page_without_recognised_entries_falls_back_and_warns(caplog):
+    payload = load("twscrape-page-conversation")
+    timeline = payload["data"]["list"]["tweets_timeline"]["timeline"]
+    timeline["instructions"][0]["entries"] = [
+        {"entryId": "weird-1", "content": entry["content"]}
+        for entry in timeline["instructions"][0]["entries"]
+        if entry["entryId"].startswith("tweet-")
+    ]
+    for entry in timeline["instructions"][0]["entries"]:
+        entry["content"] = {"__typename": "SomethingNew", "wrapped": entry["content"]}
+    source = _source(FakeApi([httpx.Response(200, json=payload)]))
+    try:
+        with caplog.at_level("WARNING"):
+            page = next(source.pages(1))
+    finally:
+        source.close()
+    assert page
+    assert all(p.entry_head and not p.embedded for p in page)
+    assert "no timeline entries recognised" in caplog.text
+
+
+def test_members_from_recorded_payload():
+    api = FakeApi([], member_pages=[_response("twscrape-list-members")])
+    source = _source(api)
+    try:
+        members = source.members(7)
+    finally:
+        source.close()
+    assert members == ["Synthetic_Leaker_1", "Synthetic_Leaker_2", "Synthetic_Leaker_3"]
+
+
+@pytest.mark.parametrize(
+    "next_available,expected_error",
+    [("now", SourceRateLimitedError), (None, SourceUnavailableError)],
+)
+def test_members_rate_limited_maps_to_source_error(next_available, expected_error):
+    queues = []
+
+    class RecordingPool(FakePool):
+        async def next_available_at(self, queue: str):
+            queues.append(queue)
+            return await super().next_available_at(queue)
+
+    api = FakeApi(
+        [],
+        pool=RecordingPool(next_available=next_available),
+        member_pages=[NoAccountError("locked")],
+    )
+    source = _source(api)
+    try:
+        with pytest.raises(expected_error):
+            source.members(7)
+    finally:
+        source.close()
+    assert queues == ["ListMembers"]
+
+
+@pytest.mark.parametrize(
+    "pages",
+    [[], [httpx.Response(200, json={})], [httpx.Response(200, json=["not", "a", "dict"])]],
+)
+def test_members_malformed_or_empty_raises_payload_error(pages):
+    source = _source(FakeApi([], member_pages=pages))
+    try:
+        with pytest.raises(SourcePayloadError):
+            source.members(7)
+    finally:
+        source.close()
+
+
+def _members_page(handles: list[str], legacy: bool = False) -> httpx.Response:
+    payload = load("twscrape-list-members")
+    instruction = payload["data"]["list"]["members_timeline"]["timeline"]["instructions"][0]
+    template, *rest = instruction["entries"]
+    cursors = [entry for entry in rest if not entry["entryId"].startswith("user-")]
+    entries = []
+    for i, handle in enumerate(handles):
+        entry = json.loads(json.dumps(template))
+        entry["entryId"] = f"user-{9999000000000000500 + i}"
+        result = entry["content"]["itemContent"]["user_results"]["result"]
+        if legacy:
+            result.pop("core", None)
+            result.setdefault("legacy", {})["screen_name"] = handle
+        else:
+            result["core"]["screen_name"] = handle
+        entries.append(entry)
+    instruction["entries"] = entries + cursors
+    return httpx.Response(200, json=payload)
+
+
+def test_members_joins_every_page():
+    api = FakeApi(
+        [],
+        member_pages=[_members_page(["Page1_A", "Page1_B"]), _members_page(["Page2_C"])],
+    )
+    source = _source(api)
+    try:
+        members = source.members(7)
+    finally:
+        source.close()
+    assert members == ["Page1_A", "Page1_B", "Page2_C"]
+
+
+def test_members_reads_the_legacy_screen_name():
+    source = _source(FakeApi([], member_pages=[_members_page(["Legacy_A"], legacy=True)]))
+    try:
+        assert source.members(7) == ["Legacy_A"]
+    finally:
+        source.close()
+
+
+def _timeline_entries(payload: dict) -> list[dict]:
+    return payload["data"]["list"]["tweets_timeline"]["timeline"]["instructions"][0]["entries"]
+
+
+def _entry(payload: dict, entry_id: str) -> dict:
+    return next(e for e in _timeline_entries(payload) if e["entryId"] == entry_id)
+
+
+def _page_from(payload: dict) -> list:
+    source = _source(FakeApi([httpx.Response(200, json=payload)]))
+    try:
+        return next(source.pages(1))
+    finally:
+        source.close()
+
+
+def test_tweet_with_visibility_results_entry_is_a_timeline_head():
+    payload = load("twscrape-page-conversation")
+    results = _entry(payload, "tweet-4012")["content"]["itemContent"]["tweet_results"]
+    results["result"] = {"__typename": "TweetWithVisibilityResults", "tweet": results["result"]}
+
+    by_id = {p.x_id: p for p in _page_from(payload)}
+
+    assert (by_id[4012].embedded, by_id[4012].entry_head) == (False, True)
+
+
+def test_old_promoted_entry_does_not_end_paging():
+    first = load("twscrape-page-conversation")
+    promoted = json.loads(json.dumps(_entry(load("twscrape-page-conversation-2"), "tweet-3990")))
+    promoted["entryId"] = "promoted-tweet-3990"
+    _timeline_entries(first).insert(1, promoted)
+    api = FakeApi([httpx.Response(200, json=first), _response("twscrape-page-conversation-2")])
+    source = _source(api)
+    try:
+        result = collect_new(source, list_id=1, since_id=4000)
+    finally:
+        source.close()
+
+    assert api.pulled == 2
+    assert 4000 in {p.x_id for p in result}
+
+
+def test_single_entry_instruction_is_read():
+    payload = load("twscrape-page-conversation")
+    timeline = payload["data"]["list"]["tweets_timeline"]["timeline"]
+    entries = timeline["instructions"][0]["entries"]
+    pinned = _entry(payload, "tweet-4012")
+    entries.remove(pinned)
+    timeline["instructions"].append({"type": "TimelinePinEntry", "entry": pinned})
+
+    by_id = {p.x_id: p for p in _page_from(payload)}
+
+    assert (by_id[4012].embedded, by_id[4012].entry_head) == (False, True)
+
+
+def test_non_dict_entries_and_items_are_skipped():
+    payload = load("twscrape-page-conversation")
+    entries = _timeline_entries(payload)
+    entries.insert(0, "not-an-entry")
+    module = next(e for e in entries if isinstance(e, dict) and "items" in e["content"])
+    module["content"]["items"].insert(0, ["not", "an", "item"])
+
+    by_id = {p.x_id: p for p in _page_from(payload)}
+
+    assert (by_id[4012].embedded, by_id[4012].entry_head) == (False, True)
+    assert (by_id[4008].embedded, by_id[4008].entry_head) == (False, True)
+
+
+def test_entries_matching_no_parsed_post_fall_back_and_warn(caplog):
+    # Entry posts twscrape cannot parse leave only embedded posts on the page.
+    payload = load("twscrape-page-conversation")
+    for entry in _timeline_entries(payload):
+        content = entry["content"]
+        wrappers = [w["item"] for w in content["items"]] if "items" in content else [content]
+        for wrapper in wrappers:
+            results = wrapper.get("itemContent", {}).get("tweet_results")
+            if results:
+                results["result"].pop("legacy", None)
+
+    with caplog.at_level("WARNING"):
+        page = _page_from(payload)
+
+    assert {p.x_id for p in page} == {1500, 1700}
+    assert all(p.entry_head and not p.embedded for p in page)
+    assert "no timeline entries recognised" in caplog.text
+
+
+def test_repost_of_a_quote_is_not_a_quote():
+    payload = load("twscrape-page-conversation")
+    repost = _entry(payload, "tweet-4014")["content"]["itemContent"]["tweet_results"]["result"]
+    repost["legacy"]["quoted_status_id_str"] = "1500"
+
+    by_id = {p.x_id: p for p in _page_from(payload)}
+
+    assert by_id[4014].is_repost is True
+    assert by_id[4014].quoted_x_id is None
+    assert by_id[4010].quoted_x_id == 1500

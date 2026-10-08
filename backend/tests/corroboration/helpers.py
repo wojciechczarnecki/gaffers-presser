@@ -68,6 +68,8 @@ def add_claim(
     reposted_author_handle: str | None = None,
     finished: int = 0,
     mention: str = "Saka",
+    quoted_x_id: int | None = None,
+    embedded: bool = False,
 ) -> int:
     created_at = created_at or NOW - timedelta(hours=1)
     add_tweet(
@@ -78,6 +80,8 @@ def add_claim(
         is_repost=is_repost,
         author=author or f"author{x_id}",
         reposted_author_handle=reposted_author_handle,
+        quoted_x_id=quoted_x_id,
+        embedded=embedded,
     )
     return add_extraction(engine, x_id, player_fpl_id, event_type, certainty, finished, mention)
 

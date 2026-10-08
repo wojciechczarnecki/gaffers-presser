@@ -11,14 +11,15 @@ from app.extraction.service import ExtractionRuntime
 from app.llm.chat import ChatModelSpec
 from app.tweets.models import Tweet
 from tests.extraction.fakes import FakeChatModel
+from tests.tweets.membership_helpers import set_members
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
 
 
-def _tweet_row(x_id: int, created_at: datetime = NOW) -> Tweet:
+def _tweet_row(x_id: int, created_at: datetime = NOW, author: str = "reporter") -> Tweet:
     return Tweet(
         x_id=x_id,
-        author_handle="reporter",
+        author_handle=author,
         text="Haaland starts today.",
         created_at=created_at,
         first_fetched_at=created_at,
@@ -329,3 +330,34 @@ def test_tracing_setup_error_extracts_untraced(db, monkeypatch, caplog):
     assert [(row.tweet_x_id, row.status) for row in rows] == [(1, "extracted")]
     assert "ValueError" in caplog.text
     assert "sk-lf-sentinel" not in caplog.text
+
+
+def test_loop_skips_context_posts(db):
+    with Session(db) as session:
+        session.add(_tweet_row(1, author="outsider"))
+        session.add(_tweet_row(2, NOW + timedelta(seconds=1)))
+        session.commit()
+    set_members(db, ["reporter"])
+    stop_event = threading.Event()
+
+    class Clock:
+        def now(self) -> datetime:
+            return NOW
+
+        def sleep(self, seconds: float) -> None:
+            time.sleep(0.01)
+
+    loop = ExtractionLoop(db, _runtime(ExtractionOutput(events=[])), Clock(), stop_event)
+    thread = threading.Thread(target=loop.run, daemon=True)
+    thread.start()
+
+    def extracted() -> list[int]:
+        with Session(db) as session:
+            return sorted(session.exec(select(Extraction.tweet_x_id)).all())
+
+    _wait_for(lambda: extracted() == [2])
+    time.sleep(0.2)
+    stop_event.set()
+    thread.join(timeout=5)
+
+    assert extracted() == [2]

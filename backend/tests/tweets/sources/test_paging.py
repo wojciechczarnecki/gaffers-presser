@@ -145,3 +145,62 @@ def test_rate_limit_during_catch_up_propagates():
     source = FakeSource([[dated(9, 3)], SourceRateLimitedError("limited", 60.0)], max_pages=50)
     with pytest.raises(SourceRateLimitedError):
         collect_new(source, list_id=1, since_id=1, floor=FLOOR)
+
+
+def test_embedded_old_post_does_not_end_paging():
+    source = FakeSource(
+        [
+            [post(9), post(2, embedded=True, entry_head=False)],
+            [post(6), post(5)],
+            [post(4)],
+        ]
+    )
+    result = collect_new(source, list_id=1, since_id=5)
+    assert source.pull_count == 2
+    assert [p.x_id for p in result] == [2, 5, 6, 9]
+
+
+def test_old_non_head_module_item_does_not_end_paging():
+    source = FakeSource(
+        [
+            [post(9), post(3, entry_head=False)],
+            [post(6), post(5)],
+        ]
+    )
+    collect_new(source, list_id=1, since_id=5)
+    assert source.pull_count == 2
+
+
+def test_floor_rule_reads_entry_heads_only():
+    old = FLOOR - timedelta(days=2)
+    source = FakeSource(
+        [
+            [post(2, created_at=old), post(9, created_at=FLOOR, embedded=True, entry_head=False)],
+            [post(1, created_at=old)],
+        ]
+    )
+    collect_new(source, list_id=1, since_id=None, floor=FLOOR)
+    assert source.pull_count == 1
+
+
+def test_page_without_heads_continues():
+    source = FakeSource(
+        [
+            [post(2, embedded=True, entry_head=False)],
+            [post(1)],
+        ]
+    )
+    collect_new(source, list_id=1, since_id=5, floor=FLOOR + timedelta(days=30))
+    assert source.pull_count == 2
+
+
+def test_duplicate_across_pages_keeps_timeline_copy():
+    for pages in (
+        [[post(5, embedded=True, entry_head=False)], [post(5, quoted_x_id=3)]],
+        [[post(5, quoted_x_id=3)], [post(5, embedded=True, entry_head=False)]],
+    ):
+        result = collect_new(FakeSource(pages), list_id=1, since_id=0, floor=None)
+        assert len(result) == 1
+        assert result[0].embedded is False
+        assert result[0].quoted_x_id == 3
+        assert result[0].entry_head is True

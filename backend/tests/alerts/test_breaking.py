@@ -15,9 +15,10 @@ from tests.alerts.helpers import (
     set_raw,
 )
 from tests.alerts.test_slots import DEADLINE_AT, REAL, seed
-from tests.corroboration.helpers import ISAK, NOW, SAKA, SEASON, add_claim
+from tests.corroboration.helpers import ISAK, NOW, SAKA, SEASON, add_claim, add_extraction
 from tests.delivery.fakes import FakeChannel, FixedClock
 from tests.retrieval.helpers import add_tweet
+from tests.tweets.membership_helpers import set_members
 
 TEMPLATE = load_template()
 MARKER = TEMPLATE["sources"]["new_marker"]
@@ -275,3 +276,38 @@ def test_processed_until_skips_the_window_query_until_a_new_extraction(db, monke
         "alert:2026/27:gw6:breaking:2",
         "alert:2026/27:gw6:breaking:3",
     ]
+
+
+def test_context_reply_parent_never_alerts(db):
+    runtime, channel, clock = world(db)
+    set_members(db, ["a1"])
+    add_late(db, 2, author="outsider", embedded=True)
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 0
+
+    assert channel.calls == []
+
+
+def test_quoted_off_list_leak_breaks_and_is_cited(db):
+    runtime, channel, clock = world(db)
+    set_members(db, ["a1", "member"])
+    add_late(db, 2, author="outsider", at=80, finished=97)
+    add_tweet(
+        db,
+        3,
+        "confirmed",
+        author="member",
+        quoted_x_id=2,
+        created_at=NOW + minutes(94),
+    )
+    add_extraction(db, 3, None, finished=seconds_after_now(minutes(97)))
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 1
+
+    assert channel.keys == ["alert:2026/27:gw6:breaking:2"]
+    assert "https://x.com/outsider/status/2" in channel.calls[0].text
+    alert, rows = alert_rows(db, "alert:2026/27:gw6:breaking:2")
+    assert alert.trigger_x_id == 2
+    assert rows[(SAKA, 2)] == "new"

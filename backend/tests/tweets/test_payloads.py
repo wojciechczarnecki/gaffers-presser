@@ -14,7 +14,7 @@ def _text(path) -> str:
 
 
 def test_payload_files_exist():
-    assert len(PAYLOAD_FILES) == 6
+    assert len(PAYLOAD_FILES) == 9
 
 
 @pytest.mark.parametrize("path", PAYLOAD_FILES, ids=lambda path: path.name)

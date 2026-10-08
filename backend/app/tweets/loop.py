@@ -15,6 +15,13 @@ from app.fpl.deadlines import (
     window_floor,
 )
 from app.tweets.ingest import poll_once
+from app.tweets.membership import (
+    MEMBERSHIP_INTERVAL,
+    MEMBERSHIP_RETRY,
+    MembershipShrunkError,
+    fetch_membership,
+    store_membership,
+)
 from app.tweets.schedule import MAX_SLEEP, WINDOW, next_poll_at
 from app.tweets.sources.base import TweetSource
 from app.tweets.store import PollRecord, latest_poll
@@ -52,6 +59,35 @@ class TweetPoller:
         # The poll log write may fail while reads still work; the in-memory record keeps
         # the schedule from treating an unrecorded poll as never having happened.
         self._last_record: PollRecord | None = None
+        self._membership_due_at: datetime | None = None
+        self._membership_unsupported = False
+
+    def _refresh_membership(self, source: TweetSource) -> None:
+        now = self._clock.now()
+        if self._membership_unsupported or (
+            self._membership_due_at is not None and now < self._membership_due_at
+        ):
+            return
+        try:
+            snapshot = fetch_membership(source, self._list_id, now)
+        except Exception as exc:
+            logger.warning("list membership fetch failed: %s", type(exc).__name__)
+            self._membership_due_at = now + MEMBERSHIP_RETRY
+            return
+        try:
+            store_membership(self._engine, snapshot)
+        except MembershipShrunkError as exc:
+            logger.warning("list membership snapshot refused: %s", exc)
+            self._membership_due_at = now + MEMBERSHIP_RETRY
+            return
+        except Exception as exc:
+            logger.warning("list membership save failed: %s", type(exc).__name__)
+            self._membership_due_at = now + MEMBERSHIP_RETRY
+            return
+        if snapshot.handles is None:
+            self._membership_unsupported = True
+        else:
+            self._membership_due_at = now + MEMBERSHIP_INTERVAL
 
     def run(self) -> None:
         source: TweetSource | None = None
@@ -60,6 +96,7 @@ class TweetPoller:
                 try:
                     if source is None:
                         source = self._make_source()
+                    self._refresh_membership(source)
                     with Session(self._engine) as session:
                         deadlines = sorted(
                             [

@@ -7,6 +7,7 @@ import httpx
 
 from app.tweets.sources.base import (
     FetchedPost,
+    MembershipNotSupportedError,
     SourcePayloadError,
     SourceRateLimitedError,
     SourceUnavailableError,
@@ -107,6 +108,9 @@ class XApiSource:
 
     def close(self) -> None:
         self._client.close()
+
+    def members(self, list_id: int) -> list[str]:
+        raise MembershipNotSupportedError("x_api: list membership is not supported")
 
     def pages(self, list_id: int) -> Iterator[list[FetchedPost]]:
         pagination_token: str | None = None

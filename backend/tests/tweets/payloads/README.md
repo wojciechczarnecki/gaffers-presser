@@ -15,3 +15,18 @@ fabricated (`synthetic_leaker_*`).
   synthetic `9999…` values (also inside base64 node IDs), image URLs and `t.co` links point
   at `example.com`, locations are empty, account creation dates and user counters are
   fixed; `tests/tweets/test_payloads.py` enforces this. MIT License, twscrape contributors.
+- `twscrape-page-conversation.json.gz`, `twscrape-page-conversation-2.json.gz` — synthetic,
+  built from the tweet result of `twscrape-page-1` as a template (not from a live response).
+  Page 1 holds, in X's GraphQL entry shapes: a repost by a member of an off-list post
+  (`retweeted_status_result`), a member's reply to an off-list post shown as a reply parent
+  (`in_reply_to_status_result`, a placement made up for the tests), a member's quote of a
+  2019 off-list post (`quoted_status_result`), a `list-conversation-…` module with a member
+  post, an off-list reply and the member's reply back, and cursor entries. Page 2 is an older
+  page holding the post used as `since_id`. Handles are `synthetic_leaker_*` (members) and
+  `synthetic_offlist_*` (not members). Because these pages are not recorded, the live page
+  shape is confirmed by the owner's manual check of spec 010 (one worker poll); BACKLOG #30
+  replaces them with a sanitised live page after that check.
+- `twscrape-list-members.json.gz` — synthetic, shaped on a `ListMembers` response
+  (`data.list.members_timeline.timeline.instructions[*].entries[*]` with `user-<id>`
+  `TimelineUser` entries and a bottom cursor); three members `Synthetic_Leaker_1..3` in mixed
+  case. Every ID is synthetic.

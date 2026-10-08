@@ -2,7 +2,7 @@ from collections.abc import Callable, Iterator
 
 import httpx
 
-from app.tweets.sources.base import FetchedPost
+from app.tweets.sources.base import FetchedPost, MembershipNotSupportedError
 
 Route = dict | httpx.Response | Callable[[httpx.Request], httpx.Response]
 
@@ -37,8 +37,15 @@ class FakeHttp:
 
 
 class FakeSource:
-    def __init__(self, pages: list[list[FetchedPost] | Exception], max_pages: int = 5) -> None:
+    def __init__(
+        self,
+        pages: list[list[FetchedPost] | Exception],
+        max_pages: int = 5,
+        members: list[str] | Exception | None = None,
+    ) -> None:
         self.name = "fake"
+        self._members = members
+        self.members_calls = 0
         self.max_pages = max_pages
         self._pages = pages
         self.pull_count = 0
@@ -50,6 +57,14 @@ class FakeSource:
             if isinstance(page, Exception):
                 raise page
             yield page
+
+    def members(self, list_id: int) -> list[str]:
+        self.members_calls += 1
+        if isinstance(self._members, Exception):
+            raise self._members
+        if self._members is None:
+            raise MembershipNotSupportedError("fake: membership not supported")
+        return list(self._members)
 
     def close(self) -> None:
         self.closed = True
@@ -64,6 +79,9 @@ def post(
     is_reply: bool = False,
     raw: dict | None = None,
     reposted_author_handle: str | None = None,
+    embedded: bool = False,
+    entry_head: bool = True,
+    quoted_x_id: int | None = None,
 ) -> FetchedPost:
     from datetime import UTC, datetime
 
@@ -76,4 +94,7 @@ def post(
         is_reply=is_reply,
         raw=raw or {"id": x_id},
         reposted_author_handle=reposted_author_handle,
+        embedded=embedded,
+        entry_head=entry_head,
+        quoted_x_id=quoted_x_id,
     )

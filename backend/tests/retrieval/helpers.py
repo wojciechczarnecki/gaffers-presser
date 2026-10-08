@@ -35,6 +35,8 @@ def add_tweet(
     is_reply: bool = False,
     author: str = "reporter",
     reposted_author_handle: str | None = None,
+    quoted_x_id: int | None = None,
+    embedded: bool = False,
 ) -> None:
     created_at = created_at or NOW - timedelta(hours=1)
     with Session(engine) as session:
@@ -49,6 +51,8 @@ def add_tweet(
                 is_repost=is_repost,
                 is_reply=is_reply,
                 reposted_author_handle=reposted_author_handle,
+                quoted_x_id=quoted_x_id,
+                embedded=embedded,
                 raw={},
             )
         )

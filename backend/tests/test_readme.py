@@ -73,6 +73,7 @@ def test_development_section_lists_commands():
     assert "app.worker status" in section
     assert "app.tweets measure" in section
     assert "app.tweets summary" in section
+    assert "app.tweets members" in section
     for variable in TWEET_VARIABLES:
         assert variable in section, f"{variable!r} missing from the README Development section"
     for variable in EXTRACTION_VARIABLES:

@@ -6,10 +6,12 @@ from pathlib import Path
 from typing import Annotated, Protocol, TextIO
 
 import typer
+from sqlalchemy import Engine
 
-from app.core.errors import ConfigError
-from app.core.settings import TweetSettings
-from app.tweets.config import check_source
+from app.core.errors import CollectorError, ConfigError
+from app.core.settings import TweetSettings, load_settings
+from app.db.engine import make_engine
+from app.tweets.config import check_source, resolve_ingest
 from app.tweets.measure import (
     LatencyRecord,
     PollCounts,
@@ -19,8 +21,9 @@ from app.tweets.measure import (
     record_to_json,
     summarise,
 )
+from app.tweets.membership import MembershipShrunkError, fetch_membership, store_membership
 from app.tweets.sources import SOURCE_NAMES, build_source
-from app.tweets.sources.base import TweetSource
+from app.tweets.sources.base import MembershipNotSupportedError, TweetSource
 from app.tweets.sources.paging import collect_new
 
 _STOP_TIMEOUT_SECONDS = 15.0
@@ -55,6 +58,7 @@ class MeasureDeps:
     settings: TweetSettings
     build_source: Callable[[str, TweetSettings], TweetSource] = build_source
     clock_factory: Callable[[threading.Event], Clock] = SystemClock
+    make_engine: Callable[[], Engine] | None = None
 
 
 def get_deps(ctx: typer.Context) -> MeasureDeps:
@@ -101,6 +105,8 @@ def _measure_one(
     writer: RecordWriter,
 ) -> PollCounts:
     source: TweetSource | None = None
+    member_handles: set[str] | None = None
+    members_checked = False
     since_id: int | None = None
     seen: set[int] = set()
     polls = 0
@@ -120,13 +126,32 @@ def _measure_one(
                                 f"{name}: source build failed: {type(exc).__name__}", err=True
                             )
                         raise
+                if not members_checked:
+                    members_checked = True
+                    try:
+                        member_handles = {h.lower() for h in source.members(list_id)}
+                    except MembershipNotSupportedError:
+                        member_handles = None
+                    except CollectorError as exc:
+                        member_handles = None
+                        typer.echo(
+                            f"{name}: list members unavailable, counting every timeline post:"
+                            f" {type(exc).__name__}",
+                            err=True,
+                        )
                 posts = collect_new(source, list_id, since_id)
                 fetched_at = clock.now()
                 for post in posts:
+                    if post.embedded:
+                        continue
                     since_id = post.x_id if since_id is None else max(since_id, post.x_id)
                     if post.x_id in seen:
                         continue
                     seen.add(post.x_id)
+                    if member_handles is not None and post.author_handle.lower() not in (
+                        member_handles
+                    ):
+                        continue
                     if post.created_at >= start:
                         writer.write(
                             LatencyRecord(
@@ -243,6 +268,63 @@ def summary(
 ) -> None:
     records, poll_counts = read_records(path)
     typer.echo(format_summary(summarise(records, poll_counts), markdown=markdown))
+
+
+@app.command(help="Fetch the watched List's members now and store the snapshot.")
+def members(
+    ctx: typer.Context,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="Store the snapshot even when it drops more members than the poller accepts.",
+        ),
+    ] = False,
+) -> None:
+    deps = get_deps(ctx)
+    try:
+        config = resolve_ingest(deps.settings)
+    except ConfigError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from None
+    if config is None:
+        typer.echo("error: TWEET_SOURCE must be set to fetch the List's members", err=True)
+        raise typer.Exit(1)
+
+    try:
+        engine = (
+            deps.make_engine() if deps.make_engine else make_engine(load_settings().database_url)
+        )
+    except ConfigError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from None
+    now = deps.clock_factory(threading.Event()).now()
+    source = None
+    try:
+        source = deps.build_source(config.source_name, deps.settings)
+        snapshot = fetch_membership(source, config.list_id, now)
+    except Exception as exc:
+        typer.echo(f"error: list membership fetch failed: {type(exc).__name__}", err=True)
+        raise typer.Exit(1) from None
+    finally:
+        if source is not None:
+            source.close()
+    try:
+        store_membership(engine, snapshot, force=force)
+    except MembershipShrunkError as exc:
+        typer.echo(f"error: snapshot refused, {exc}; rerun with --force to store it", err=True)
+        raise typer.Exit(1) from None
+    except Exception as exc:
+        typer.echo(f"error: list membership save failed: {type(exc).__name__}", err=True)
+        raise typer.Exit(1) from None
+
+    if snapshot.handles is None:
+        typer.echo(
+            f"List members: not supported by {snapshot.source} (every post counts as a list post)"
+        )
+        return
+    stamp = snapshot.fetched_at.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+    typer.echo(f"List members: {len(snapshot.handles)}  snapshot: {stamp}")
 
 
 def main() -> None:
