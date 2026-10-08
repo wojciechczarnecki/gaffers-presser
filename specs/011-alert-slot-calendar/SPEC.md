@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-08"
   - "spec-ready — 2026-10-08"
+metrics:
+  started_at: 2026-10-08T16:35
 ---
 
 # SPEC 011 — Alert slots by the deadline calendar
