@@ -173,7 +173,7 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
 
 ## Steps
 
-- [ ] 1. **`ALERT_SLOTS` parsing and the retired variable** (AC1, AC2). Files:
+- [x] 1. **`ALERT_SLOTS` parsing and the retired variable** (AC1, AC2). `iterations: 1` Files:
       `backend/app/alerts/config.py`, `backend/app/alerts/cli.py` (only the news-slot message
       text → `ALERT_SLOTS`), `backend/.env.example`, `backend/tests/alerts/test_config.py`,
       `backend/tests/alerts/test_cli.py`, `backend/tests/worker/test_cli.py`,

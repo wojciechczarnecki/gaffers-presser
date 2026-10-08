@@ -151,7 +151,7 @@ def preview(
         raise fail("--at must be a Europe/Warsaw time like 2026-10-04T18:00") from None
     slots = deps.config.slots
     if kind == "news" and len(slots) < 2:
-        raise fail("ALERT_SLOTS_MINUTES has no news slot")
+        raise fail("ALERT_SLOTS has no news slot")
     try:
         league_ids = parse_league_ids(deps.league_ids_raw)
     except CollectorError as exc:

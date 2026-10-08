@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 from datetime import UTC, datetime, timedelta
+from datetime import time as clock_time
 
 import httpx
 import pytest
@@ -16,6 +17,7 @@ from sqlalchemy import text
 from sqlmodel import Session, select
 from typer.testing import CliRunner
 
+from app.alerts.config import WallClockSlot
 from app.db.engine import make_engine
 from app.db.locks import SCHEDULE_LOCK_KEY
 from app.extraction.schemas import ExtractionOutput
@@ -41,6 +43,7 @@ EXTRACTION_VARIABLE = re.compile(
 )
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 D6 = datetime(2026, 10, 10, 10, 0, tzinfo=UTC)
+DEFAULT_SLOTS_TUPLE = (WallClockSlot(1, clock_time(20, 0)), 60)
 
 
 @pytest.fixture(autouse=True)
@@ -1462,12 +1465,22 @@ def test_run_starts_alerts_only_when_enabled(cli, db):
 
 def test_worker_rejects_invalid_alert_slots_naming_the_variable(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("ALERT_SLOTS_MINUTES", "30,120")
+    monkeypatch.setenv("ALERT_SLOTS", "30,120")
 
     result = CliRunner().invoke(app, ["status"])
 
     assert result.exit_code == 1
-    assert "ALERT_SLOTS_MINUTES" in result.stderr
+    assert "ALERT_SLOTS" in result.stderr
+
+
+def test_worker_rejects_retired_slots_minutes(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ALERT_SLOTS_MINUTES", "120,30")
+
+    result = CliRunner().invoke(app, ["status"])
+
+    assert result.exit_code == 1
+    assert "ALERT_SLOTS_MINUTES" in result.stderr and "ALERT_SLOTS" in result.stderr
 
 
 def test_worker_rejects_overlapping_rehearsal_naming_the_variable(cli, db):
@@ -1596,7 +1609,7 @@ def test_deps_carry_the_alert_setup_or_the_reason(monkeypatch, tmp_path):
     _all_features(monkeypatch)
     enabled = worker_cli._deps_from_settings()
     assert enabled.alerts is not None and enabled.alerts_disabled_reason is None
-    assert enabled.alerts.config.slots == (120, 30)
+    assert enabled.alerts.config.slots == DEFAULT_SLOTS_TUPLE
 
     monkeypatch.setenv("ALERTS_ENABLED", "false")
     off = worker_cli._deps_from_settings()

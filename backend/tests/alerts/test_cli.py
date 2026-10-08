@@ -206,12 +206,22 @@ def test_latency_without_alerts_fails_clearly(db):
 
 def test_cli_rejects_invalid_alert_variable(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("ALERT_SLOTS_MINUTES", "30,120")
+    monkeypatch.setenv("ALERT_SLOTS", "30,120")
 
     result = CliRunner().invoke(app, ["status"])
 
     assert result.exit_code == 1
-    assert "ALERT_SLOTS_MINUTES" in result.stderr
+    assert "ALERT_SLOTS" in result.stderr
+
+
+def test_cli_rejects_retired_slots_minutes(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ALERT_SLOTS_MINUTES", "120,30")
+
+    result = CliRunner().invoke(app, ["status"])
+
+    assert result.exit_code == 1
+    assert "ALERT_SLOTS_MINUTES" in result.stderr and "ALERT_SLOTS" in result.stderr
 
 
 def row_counts(db) -> dict[str, int]:
