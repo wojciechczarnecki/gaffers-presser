@@ -395,6 +395,11 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
   the same message and `exit=1`.
 - Record both outputs (without secrets) in this section when the step is done.
 
+Result (2026-10-08, performed): the full verification command is green (1437 passed).
+`env -u TWEET_SOURCE uv run python -m app.alerts status` printed
+`error: ALERT_SLOTS_MINUTES was replaced by ALERT_SLOTS; remove it` and exited 1;
+`env -u TWEET_SOURCE uv run python -m app.worker status` printed the same message and exited 1.
+
 ### Manual (performed by the owner)
 
 - Remove `ALERT_SLOTS_MINUTES` from `backend/.env` (leave `ALERT_SLOTS` unset), then run
@@ -416,14 +421,14 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
       fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md`: the spec 009 item still links spec 011 and stays true (nothing new to
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md`: the spec 009 item still links spec 011 and stays true (nothing new to
       tick); `docs/DECISIONS.md`, `docs/DEPLOYMENT.md`, `docs/BACKLOG.md`, `README.md` and
       `backend/.env.example` updated (step 7, step 1)
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -460,6 +465,10 @@ Decision: the plan is ready for implementation — all findings were fixed in pl
 ## Deviations
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+
+- `minor` — `AlertSettings` keeps the retired `alert_slots_minutes` field with an empty default and `Slot = int | WallClockSlot` is exported from `app/alerts/config.py`, as the plan's design says; in addition `tests/worker/test_cli.py::test_deps_carry_the_alert_setup_or_the_reason` now expects `DEFAULT_SLOTS_TUPLE` (the default changed) and `test_rehearsal_not_written_to_gameweek_and_polls_fast` expects a 90-minute window for `(120, 30)` (the plan lists this window change).
+- `minor` — `preview` resolves the slots after the deadline is found, so its message reads `ALERT_SLOTS has no news slot for that deadline` (contains the planned text), and the alerts CLI `status` prints the Warsaw weekday form (`format_local_day`) for the next slot and the breaking end only.
+- `minor` — the rehearsal error message now says `alert span` instead of `alert window` (the overlap rule changed); it still names `ALERT_REHEARSAL_DEADLINE`.
 
 ## Final review
 
