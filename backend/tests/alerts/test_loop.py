@@ -1,19 +1,25 @@
 import contextlib
 import logging
 import threading
+from datetime import time as clock_time
 from datetime import timedelta
+from decimal import Decimal
 
 from sqlmodel import Session, select
 
 from app.alerts import loop as loop_module
+from app.alerts.config import AlertConfig, WallClockSlot
 from app.alerts.loop import AlertLoop, start_alerts
 from app.alerts.models import Alert
+from app.alerts.schedule import resolve_slots
 from app.delivery.models import DeliveryLog
 from app.worker.jobs import Shutdown
 from tests.alerts.helpers import alerts_runtime
 from tests.alerts.test_slots import DEADLINE_AT, seed
 from tests.corroboration.helpers import NOW, SAKA, add_claim
 from tests.delivery.fakes import FakeChannel, FixedClock
+
+DEFAULT_CONFIG = AlertConfig((WallClockSlot(1, clock_time(20, 0)), 60), 3, Decimal("15"), None)
 
 
 def minutes(value: float) -> timedelta:
@@ -252,3 +258,82 @@ def test_quiet_breaking_ticks_skip_the_window_query(db, monkeypatch):
     assert window_queries == [1]
     assert len(channel.calls) == sent + 1
     assert channel.keys[-1] == "alert:2026/27:gw6:breaking:3"
+
+
+def calendar_loop(db, at, config=DEFAULT_CONFIG):
+    clock = FixedClock(at)
+    channel = FakeChannel(["msg-1"])
+    runtime = alerts_runtime(db, channel, clock, config=config)
+    return AlertLoop(db, runtime, clock, threading.Event()), clock, channel
+
+
+def digest_minutes(config=DEFAULT_CONFIG):
+    return resolve_slots(config.slots, DEADLINE_AT).minutes[0]
+
+
+def test_default_slots_digest_day_before_news_and_breaking_from_t60(db):
+    seed(db)
+    n = digest_minutes()
+    assert n == 1560
+    digest_at = DEADLINE_AT - minutes(n)
+    add_claim(db, 1, SAKA, "out", created_at=digest_at - minutes(60), author="a1", finished=-90000)
+    loop, clock, channel = calendar_loop(db, digest_at - minutes(1))
+
+    loop.tick()
+    assert alert_rows(db) == []
+
+    clock.advance(minutes(1))
+    loop.tick()
+    rows = alert_rows(db)
+    assert [(r.key, r.kind, r.slot_minutes) for r in rows] == [
+        (f"alert:2026/27:gw6:digest:{n}", "digest", n)
+    ]
+    loop.tick()
+    assert len(alert_rows(db)) == 1
+
+    add_claim(db, 2, SAKA, "out", created_at=NOW - minutes(180), author="a2", finished=-10800)
+    clock.advance(DEADLINE_AT - minutes(60) - clock.now())
+    loop.tick()
+    assert [r.key for r in alert_rows(db)][-1] == "alert:2026/27:gw6:news:60"
+    assert [r.kind for r in alert_rows(db)] == ["digest", "news"]
+
+    add_claim(
+        db,
+        3,
+        SAKA,
+        "out",
+        created_at=clock.now() - minutes(1),
+        author="a3",
+        finished=int(minutes(121).total_seconds()),
+    )
+    clock.advance(minutes(1))
+    loop.tick()
+    assert [r.key for r in alert_rows(db)][2:] == ["alert:2026/27:gw6:breaking:3"]
+
+
+def test_restart_after_missed_evening_digest_sends_it_at_once(db):
+    seed(db)
+    digest_at = DEADLINE_AT - minutes(digest_minutes())
+    add_claim(db, 1, SAKA, "out", created_at=digest_at - minutes(60), author="a1", finished=-90000)
+    loop, _, _ = calendar_loop(db, digest_at + minutes(13 * 60))
+
+    loop.tick()
+
+    assert [(r.kind, r.status) for r in alert_rows(db)] == [("digest", "sent")]
+
+
+def test_out_of_order_slot_skipped_with_one_warning(db, caplog):
+    seed(db)
+    config = AlertConfig((WallClockSlot(1, clock_time(20, 0)), 1600), 3, Decimal("15"), None)
+    add_claim(db, 1, SAKA, "out", created_at=NOW - minutes(2000), author="a1", finished=-90000)
+    loop, clock, _ = calendar_loop(db, DEADLINE_AT - minutes(1600), config)
+
+    with caplog.at_level(logging.WARNING):
+        for _ in range(3):
+            loop.tick()
+            clock.advance(minutes(1))
+
+    assert [(r.kind, r.slot_minutes) for r in alert_rows(db)] == [("digest", 1600)]
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "2026/27:gw6" in warnings[0] and "D-1@20:00" in warnings[0]

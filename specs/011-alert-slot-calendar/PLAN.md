@@ -217,7 +217,7 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
         - `(D-1@20:00, D-2@20:00, 60)` → skipped `D-1@20:00`;
         - a minutes-only config is never skipped.
       Automatic verification: `cd backend && uv run pytest -q tests/alerts/test_schedule.py`
-- [ ] 3. **Alerts loop and `run_slot` on resolved slots** (AC4, AC5, AC6 warning, AC7). Files:
+- [x] 3. **Alerts loop and `run_slot` on resolved slots** (AC4, AC5, AC6 warning, AC7). `iterations: 0` Files:
       `backend/app/alerts/loop.py`, `backend/app/alerts/service.py`,
       `backend/tests/alerts/test_loop.py`.
       Tests first, with `alerts_runtime(..., config=AlertConfig((WallClockSlot(1, time(20, 0)),
