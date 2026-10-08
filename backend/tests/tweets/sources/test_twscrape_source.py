@@ -15,7 +15,23 @@ from app.tweets.sources.base import (
 )
 from app.tweets.sources.paging import collect_new
 from app.tweets.sources.twscrape_source import TwscrapeSource
-from tests.tweets.payloads import load
+from tests.tweets.payloads import (
+    LATER_PLAIN,
+    MODULE_HEAD,
+    MODULE_REPLY_TO_ABSENT,
+    MODULE_ROOT,
+    OFF_LIST_MODULE_HEAD,
+    OFF_LIST_ROOT,
+    OLD_QUOTED,
+    OLDER_THAN_SINCE,
+    PLAIN,
+    QUOTE_OF_ENTRY,
+    QUOTE_OF_OLD_POST,
+    REPOST,
+    REPOSTED_ORIGINAL,
+    SINCE_ID,
+    load,
+)
 
 SENTINEL_COOKIES = "auth_token=sentinel-secret-auth; ct0=sentinel-secret-ct0"
 
@@ -310,29 +326,33 @@ def test_conversation_page_marks_entries_heads_and_embedded():
     by_id = {p.x_id: p for p in page}
     flags = {x_id: (p.embedded, p.entry_head, p.quoted_x_id) for x_id, p in by_id.items()}
     assert flags == {
-        4014: (False, True, None),
-        4012: (False, True, None),
-        1700: (True, False, None),
-        4010: (False, True, 1500),
-        1500: (True, False, None),
-        4004: (False, False, None),
-        4006: (False, False, None),
-        4008: (False, True, None),
+        REPOST: (False, True, None),
+        QUOTE_OF_OLD_POST: (False, True, OLD_QUOTED),
+        OLD_QUOTED: (True, False, None),
+        MODULE_ROOT: (False, False, None),
+        MODULE_HEAD: (False, True, None),
+        QUOTE_OF_ENTRY: (False, True, PLAIN),
+        PLAIN: (False, True, None),
+        OFF_LIST_ROOT: (False, False, None),
+        MODULE_REPLY_TO_ABSENT: (False, False, None),
+        OFF_LIST_MODULE_HEAD: (False, True, None),
+        LATER_PLAIN: (False, True, None),
     }
-    assert by_id[4014].is_repost is True
-    assert 1800 not in by_id
+    assert by_id[REPOST].is_repost is True
+    assert by_id[MODULE_HEAD].is_reply is True
+    assert REPOSTED_ORIGINAL not in by_id
 
 
-def test_recorded_quote_of_2019_post_pages_to_last_seen():
+def test_recorded_quote_of_old_post_pages_to_last_seen():
     api = FakeApi(
         [_response("twscrape-page-conversation"), _response("twscrape-page-conversation-2")]
     )
     source = _source(api)
     try:
-        result = collect_new(source, list_id=1, since_id=4000)
+        result = collect_new(source, list_id=1, since_id=SINCE_ID)
     finally:
         source.close()
-    assert {p.x_id for p in result} >= {1500, 4000, 4010}
+    assert {p.x_id for p in result} >= {OLD_QUOTED, QUOTE_OF_OLD_POST, SINCE_ID}
     assert api.pulled == 2
     assert api.closed is True
 
@@ -466,41 +486,43 @@ def _page_from(payload: dict) -> list:
 
 def test_tweet_with_visibility_results_entry_is_a_timeline_head():
     payload = load("twscrape-page-conversation")
-    results = _entry(payload, "tweet-4012")["content"]["itemContent"]["tweet_results"]
+    results = _entry(payload, f"tweet-{PLAIN}")["content"]["itemContent"]["tweet_results"]
     results["result"] = {"__typename": "TweetWithVisibilityResults", "tweet": results["result"]}
 
     by_id = {p.x_id: p for p in _page_from(payload)}
 
-    assert (by_id[4012].embedded, by_id[4012].entry_head) == (False, True)
+    assert (by_id[PLAIN].embedded, by_id[PLAIN].entry_head) == (False, True)
 
 
 def test_old_promoted_entry_does_not_end_paging():
     first = load("twscrape-page-conversation")
-    promoted = json.loads(json.dumps(_entry(load("twscrape-page-conversation-2"), "tweet-3990")))
-    promoted["entryId"] = "promoted-tweet-3990"
+    promoted = json.loads(
+        json.dumps(_entry(load("twscrape-page-conversation-2"), f"tweet-{OLDER_THAN_SINCE}"))
+    )
+    promoted["entryId"] = f"promoted-tweet-{OLDER_THAN_SINCE}"
     _timeline_entries(first).insert(1, promoted)
     api = FakeApi([httpx.Response(200, json=first), _response("twscrape-page-conversation-2")])
     source = _source(api)
     try:
-        result = collect_new(source, list_id=1, since_id=4000)
+        result = collect_new(source, list_id=1, since_id=SINCE_ID)
     finally:
         source.close()
 
     assert api.pulled == 2
-    assert 4000 in {p.x_id for p in result}
+    assert SINCE_ID in {p.x_id for p in result}
 
 
 def test_single_entry_instruction_is_read():
     payload = load("twscrape-page-conversation")
     timeline = payload["data"]["list"]["tweets_timeline"]["timeline"]
     entries = timeline["instructions"][0]["entries"]
-    pinned = _entry(payload, "tweet-4012")
+    pinned = _entry(payload, f"tweet-{PLAIN}")
     entries.remove(pinned)
     timeline["instructions"].append({"type": "TimelinePinEntry", "entry": pinned})
 
     by_id = {p.x_id: p for p in _page_from(payload)}
 
-    assert (by_id[4012].embedded, by_id[4012].entry_head) == (False, True)
+    assert (by_id[PLAIN].embedded, by_id[PLAIN].entry_head) == (False, True)
 
 
 def test_non_dict_entries_and_items_are_skipped():
@@ -512,13 +534,15 @@ def test_non_dict_entries_and_items_are_skipped():
 
     by_id = {p.x_id: p for p in _page_from(payload)}
 
-    assert (by_id[4012].embedded, by_id[4012].entry_head) == (False, True)
-    assert (by_id[4008].embedded, by_id[4008].entry_head) == (False, True)
+    assert (by_id[PLAIN].embedded, by_id[PLAIN].entry_head) == (False, True)
+    assert (by_id[MODULE_HEAD].embedded, by_id[MODULE_HEAD].entry_head) == (False, True)
 
 
 def test_entries_matching_no_parsed_post_fall_back_and_warn(caplog):
     # Entry posts twscrape cannot parse leave only embedded posts on the page.
     payload = load("twscrape-page-conversation")
+    # PLAIN then appears only as the copy quoted inside QUOTE_OF_ENTRY.
+    _timeline_entries(payload).remove(_entry(payload, f"tweet-{PLAIN}"))
     for entry in _timeline_entries(payload):
         content = entry["content"]
         wrappers = [w["item"] for w in content["items"]] if "items" in content else [content]
@@ -530,18 +554,18 @@ def test_entries_matching_no_parsed_post_fall_back_and_warn(caplog):
     with caplog.at_level("WARNING"):
         page = _page_from(payload)
 
-    assert {p.x_id for p in page} == {1500, 1700}
+    assert {p.x_id for p in page} == {OLD_QUOTED, PLAIN}
     assert all(p.entry_head and not p.embedded for p in page)
     assert "no timeline entries recognised" in caplog.text
 
 
 def test_repost_of_a_quote_is_not_a_quote():
     payload = load("twscrape-page-conversation")
-    repost = _entry(payload, "tweet-4014")["content"]["itemContent"]["tweet_results"]["result"]
-    repost["legacy"]["quoted_status_id_str"] = "1500"
+    repost = _entry(payload, f"tweet-{REPOST}")["content"]["itemContent"]["tweet_results"]["result"]
+    repost["legacy"]["quoted_status_id_str"] = str(OLD_QUOTED)
 
     by_id = {p.x_id: p for p in _page_from(payload)}
 
-    assert by_id[4014].is_repost is True
-    assert by_id[4014].quoted_x_id is None
-    assert by_id[4010].quoted_x_id == 1500
+    assert by_id[REPOST].is_repost is True
+    assert by_id[REPOST].quoted_x_id is None
+    assert by_id[QUOTE_OF_OLD_POST].quoted_x_id == OLD_QUOTED
