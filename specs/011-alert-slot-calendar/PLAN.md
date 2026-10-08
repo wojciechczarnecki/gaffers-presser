@@ -473,3 +473,49 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 ## Final review
 
 _(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
+
+2026-10-08 — final review (three independent perspectives: compliance, quality, tests; full suite
+1437 passed, ruff clean; 12 mutations run, 4 survived).
+
+AC → evidence:
+
+| AC | Evidence |
+|---|---|
+| AC1 | `app/alerts/config.py` `_slot`/`_slots`; `tests/alerts/test_config.py::test_invalid_values_name_the_variable`, `::test_alert_slots_defaults_and_mixed_values`; `tests/worker/test_cli.py::test_worker_rejects_invalid_alert_slots_naming_the_variable` |
+| AC2 | `parse_alert_config`; `test_config.py::test_retired_slots_minutes_variable_stops_the_start`, `tests/alerts/test_cli.py::test_cli_rejects_retired_slots_minutes`, `tests/worker/test_cli.py::test_worker_rejects_retired_slots_minutes` |
+| AC3 | `schedule.py::_wall_clock_minutes`, `resolve_slots`; `test_schedule.py::test_default_slots_resolve_per_deadline_type`, `::test_wall_clock_slot_across_dst_change`, `::test_wall_clock_slot_uses_the_warsaw_date_of_the_deadline` |
+| AC4 | `loop.py` tick, `service.run_slot`; `test_loop.py::test_default_slots_digest_day_before_news_and_breaking_from_t60` |
+| AC5 | floored minutes; `test_schedule.py::test_wall_clock_slot_minutes_are_whole_minutes_to_deadline`, `test_loop.py::…_t60` (`digest:1560`, repeat tick sends nothing) — see F1 |
+| AC6 | `resolve_slots`, `AlertLoop._warned`; `test_schedule.py::test_out_of_order_wall_clock_slot_is_skipped`, `test_loop.py::test_out_of_order_slot_skipped_with_one_warning` — see F4 |
+| AC7 | `test_loop.py::test_restart_after_missed_evening_digest_sends_it_at_once` |
+| AC8 | `polling_window`; `test_schedule.py::test_polling_window`, `tests/worker/test_cli.py::test_status_tweet_window_follows_the_last_slot` |
+| AC9 | `tweets/schedule.py::next_poll_at`, `TweetPoller`; `tests/tweets/test_schedule.py::test_extra_poll_before_a_slot_outside_the_window` and boundary tests, `tests/tweets/test_loop.py::test_poller_polls_ten_minutes_before_a_slot` — see F5 |
+| AC10 | `alert_span_start`, `check_rehearsal`; `test_schedule.py::test_rehearsal_overlap_by_alert_span`, `::test_rehearsal_overlap_with_the_default_slots_needs_about_a_day` — see F6 |
+| AC11 | `format_local_day`, `alerts/status.py`; `test_status.py::test_status_with_wall_clock_digest`, `tests/worker/test_cli.py::test_status_shows_alerts_line` |
+| AC12 | `alerts/cli.py` preview; `tests/alerts/test_cli.py::test_preview_rejects_bad_input` — see F7 |
+| AC13 | `format_slots`; `tests/worker/test_cli.py::test_run_logs_the_configured_slots` |
+| AC14 | DECISIONS 2026-10-08, DEPLOYMENT step 12, BACKLOG item, `.env.example`; `test_docs.py`, `test_readme.py`, `test_env_example.py` |
+
+Plan steps 1–7 ticked with matching commits; the three `minor` deviations are justified; nothing
+outside the scope.
+
+Findings:
+
+- **F1** `worth-fixing` — backend/app/alerts/loop.py:66 (with schedule.py `_wall_clock_minutes`) — FPL moves a deadline after the D-1 digest was sent while the key stays `season:gwN` → the wall-clock slot resolves to a new minutes number not in `done_slots`, its moment has passed, so a second digest goes out at once (AC5 "never sends a slot twice"; a regression from spec 009, flagged in PLAN risks as a backlog proposal but never recorded) — treat slot index 0 as done when the deadline already has a `digest` row, with a test; or record the behaviour as accepted in DECISIONS/BACKLOG.
+- **F2** `worth-fixing` — backend/app/alerts/config.py:80 — `ALERT_SLOTS=D-999999@20:00,60` passes config → `resolve_slots` raises `OverflowError` at runtime: every alert-loop tick, the poller's `slot_times`, `status` and `preview` fail with a traceback instead of the start stopping with a message naming `ALERT_SLOTS` (AC1) — cap `days_before` (e.g. 1–7) in `_slot` with a `ConfigError`, add the case to `test_invalid_values_name_the_variable`.
+- **F3** `worth-fixing` — backend/app/alerts/config.py:85 — `D-1@20:00,D-2@20:00,60` or `D-1@20:00,D-1@20:00,60` is accepted → for every deadline one slot is skipped with a warning and D-2 quietly becomes the digest; the order of two wall-clock slots is static, so this is a config error, not AC6's per-deadline clash — require wall-clock slots strictly earlier by `(-days_before, at)` in `_slots`, add the cases to the invalid-values test.
+- **F4** `worth-fixing` — backend/tests/alerts/test_schedule.py:221 (code schedule.py:44) — the "at" boundary of AC6 is untested: mutating `minutes <= bound` to `<` makes `(D-1@20:00, 960)` for a Sat 12:00 deadline resolve to `(960, 960)` (digest and news share one idempotency key) and all tests stay green — assert `resolve_slots((DIGEST, 960), Sat 12:00)` gives `(960,)` with `DIGEST` skipped.
+- **F5** `worth-fixing` — backend/tests/worker/test_cli.py:1616 (code worker/cli.py:309) — deleting `slot_times=slot_times` from the `start_poller` call turns the AC9 extra digest poll off in the running worker with every test green — capture `slot_times` in `test_rehearsal_not_written_to_gameweek_and_polls_fast` and assert it returns `slot_moments(config.slots, D)`.
+- **F6** `worth-fixing` — backend/tests/alerts/test_schedule.py:122 (code schedule.py:125) — the real deadline's side of the overlap check is untested: replacing `alert_span_start(config, deadline)` with `deadline - polling_window(config)` accepts a rehearsal at Sat 10:00 before a real Sat 12:00 deadline (inside its Fri 20:00 span) with every test green — add rejection cases inside the real span but outside T-90 (default slots; `(120, 30)` with rehearsal at T-100).
+- **F7** `worth-fixing` — backend/tests/alerts/test_cli.py:246 (code alerts/cli.py:166) — every preview test uses int slots; replacing the resolved minutes with `deps.config.slots` passes a `WallClockSlot` into `build_slot_alert` with the default config and every test green — run `preview --kind digest|news` with `(WallClockSlot(1, 20:00), 60)`.
+- **F8** `nit` — backend/app/alerts/config.py:78 — a near-miss such as `D1@20:00` gives "ALERT_SLOTS must be a positive integer", which hides the `D-<n>@HH:MM` form — name both forms in the message for any non-integer part.
+- **F9** `nit` — backend/app/worker/cli.py:458 — `python -m app.worker status` prints all other lines in UTC (`…Z`) and the `Alerts:` line (including `last alert`, UTC before) in Warsaw time with no zone label → two unlabelled zones in one output — add a Warsaw label or keep `last alert` in `_fmt`.
+- **F10** `nit` — backend/app/alerts/config.py:119 — `ALERT_SLOTS_MINUTES="  "` (whitespace only) is silently ignored though AC2 says "any non-empty value" — compare against `""` instead of `.strip()`.
+- **F11** `nit` — backend/app/alerts/schedule.py:108 — a configuration whose last slot is wall-clock falls back to the 90-minute window (breaking from D-1 with sparse polling); reasonable but untested and uncommented — add a test and a one-line comment.
+- **F12** `nit` — backend/app/tweets/schedule.py:45 — the `slot_at < upcoming - window` condition is unobservable (mutating it to `True` keeps tests green; in-window slots are always preceded by window polling) — drop it or correct the test's stated intent.
+
+Rejected:
+
+- An empty resolved slot list crashing `tick`/`preview` (`IndexError`) — false: `resolve_slots` starts with `bound = 0` and a `D-n` slot with n ≥ 1 is always more than 0 minutes before the deadline, so the last slot is always kept (checked: `D-1@23:59` before a 00:30 deadline resolves to `(31,)`).
+
+Left out: 8 nit findings

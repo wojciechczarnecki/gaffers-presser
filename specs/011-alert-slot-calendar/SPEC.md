@@ -19,6 +19,9 @@ metrics:
   implement_iterations: 4
   deviations_minor: 3
   deviations_major: 0
+  final_review_blockers: 0
+  final_review_worth_fixing: 7
+  final_review_nits: 5
 ---
 
 # SPEC 011 — Alert slots by the deadline calendar
