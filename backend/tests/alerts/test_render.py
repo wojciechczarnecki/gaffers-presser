@@ -1,7 +1,10 @@
 import ast
+import re
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from html import unescape
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from app.alerts.render import age_text, load_template, plural_form, render_alert
 from app.alerts.schemas import ManagerRef
@@ -241,6 +244,71 @@ def test_html_escapes_values():
     html = render_alert("digest", deadline(), AS_OF, [player_report(odd)]).html
     assert "O&#x27;Brien &lt;b&gt;" in html and "A&amp;B" in html
     assert "<b>" not in html.replace("<b>1</b>", "")
+
+
+def share_text(html: str) -> str | None:
+    match = re.search(r'href="(https://wa\.me/[^"]*)"', html)
+    if match is None:
+        return None
+    url = urlsplit(unescape(match.group(1)))
+    assert (url.netloc, url.path) == ("wa.me", "/")
+    return parse_qs(url.query)["text"][0]
+
+
+def test_share_button_carries_the_alert_as_whatsapp_text():
+    message = render_alert("digest", deadline(), AS_OF, [full_report()])
+    text = share_text(message.html)
+
+    assert text is not None
+    assert TEMPLATE["whatsapp"]["button"] in message.html
+    whatsapp = TEMPLATE["whatsapp"]
+    assert text.startswith(whatsapp["headline"].format(headline=message.title) + "\n")
+    assert whatsapp["group"].format(heading=TEMPLATE["group"]["out"]) in text
+    club = whatsapp["club"].format(club="Arsenal")
+    assert whatsapp["player"].format(name="Saka", club=club, event=TEMPLATE["event"]["out"]) in text
+    assert TEMPLATE["note"]["reversal"] in text
+    for url in (
+        "https://x.com/anchoracct/status/100",
+        "https://x.com/doubter/status/103",
+    ):
+        assert url in text
+    # the e-mail's own plain-text part keeps its own layout
+    assert text not in message.text
+
+
+def test_share_text_survives_encoding_of_polish_letters_emoji_and_markup():
+    odd = player_ref(9, "Świderski <b>", "A&B #1 ?x=1")
+    message = render_alert("digest", deadline(), AS_OF, [player_report(odd)])
+    text = share_text(message.html)
+
+    assert text is not None
+    whatsapp = TEMPLATE["whatsapp"]
+    club = whatsapp["club"].format(club="A&B #1 ?x=1")
+    event = TEMPLATE["event"]["doubt"]
+    assert whatsapp["player"].format(name="Świderski <b>", club=club, event=event) in text
+    assert TEMPLATE["group"]["doubt"].split()[0] in text  # the emoji of the group
+    assert "<b>" not in message.html.replace("<b>1</b>", "")
+
+
+def test_news_share_text_marks_new_sources():
+    reports = [replace(full_report(), new_x_ids=frozenset({101}))]
+    text = share_text(render_alert("news", deadline(), AS_OF, reports).html)
+    assert text is not None
+    assert f"https://x.com/second/status/101{MARKER}" in text
+
+
+def test_breaking_share_text_leads_with_the_breaking_title():
+    message = render_alert("breaking", deadline(), AS_OF, [player_report(SAKA)])
+    text = share_text(message.html)
+    assert text is not None
+    assert message.title.startswith(TEMPLATE["title"]["breaking"].split("{")[0])
+    assert text.startswith(TEMPLATE["whatsapp"]["headline"].format(headline=message.title))
+
+
+def test_empty_digest_has_no_share_button():
+    html = render_alert("digest", deadline(), AS_OF, []).html
+    assert share_text(html) is None
+    assert TEMPLATE["whatsapp"]["button"] not in html
 
 
 def test_plural_forms_follow_polish_rules():
