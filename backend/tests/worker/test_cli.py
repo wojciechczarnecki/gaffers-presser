@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 from datetime import UTC, datetime, timedelta
+from datetime import time as clock_time
 
 import httpx
 import pytest
@@ -16,6 +17,7 @@ from sqlalchemy import text
 from sqlmodel import Session, select
 from typer.testing import CliRunner
 
+from app.alerts.config import WallClockSlot
 from app.db.engine import make_engine
 from app.db.locks import SCHEDULE_LOCK_KEY
 from app.extraction.schemas import ExtractionOutput
@@ -41,6 +43,7 @@ EXTRACTION_VARIABLE = re.compile(
 )
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 D6 = datetime(2026, 10, 10, 10, 0, tzinfo=UTC)
+DEFAULT_SLOTS_TUPLE = (WallClockSlot(1, clock_time(20, 0)), 60)
 
 
 @pytest.fixture(autouse=True)
@@ -1102,6 +1105,25 @@ def test_status_shows_tweet_ingest_with_polls_in_window(cli, db):
     ]
 
 
+def test_status_next_poll_is_ten_minutes_before_the_digest(cli, db):
+    from app.tweets.store import write_poll
+
+    _seed_d6(db)
+    digest = datetime(2026, 10, 9, 18, 0, tzinfo=UTC)
+    now = digest - timedelta(minutes=20)
+    write_poll(db, _tweet_poll(digest - timedelta(minutes=25), "succeeded", new_posts=0))
+    tweet_ingest = TweetIngest(source_name="twitterapi_io", list_id=1, make_source=lambda: None)
+
+    result = cli(
+        "status",
+        clock=FixedClock(now),
+        tweet_ingest=tweet_ingest,
+        alerts=_alerts_setup(slots=DEFAULT_SLOTS_TUPLE),
+    )
+
+    assert "  next poll: 2026-10-09T17:50:00Z" in _tweet_status_lines(result)
+
+
 def test_status_shows_last_success_before_a_later_failure(cli, db):
     from app.tweets.store import write_poll
 
@@ -1379,8 +1401,9 @@ def test_status_shows_alerts_line(cli, db):
     setup = _alerts_setup()
 
     first = cli("status", clock=FixedClock(D6 - timedelta(hours=5)), alerts=setup)
-    assert "Alerts: next slot: digest 2026-10-10T08:00:00Z  last alert: never  failed: 0" in (
-        first.stdout.splitlines()
+    assert (
+        "Alerts: next slot: digest Sat 2026-10-10 10:00 Warsaw  last alert: never  failed: 0"
+        in (first.stdout.splitlines())
     )
 
     real = alert_deadline()
@@ -1404,23 +1427,55 @@ def test_status_shows_alerts_line(cli, db):
         )
     later = cli("status", clock=FixedClock(D6 - timedelta(minutes=20)), alerts=setup)
     assert (
-        "Alerts: breaking until 2026-10-10T10:00:00Z  last alert: news 2026-10-10T09:30:00Z"
-        " failed  failed: 1"
+        "Alerts: breaking until Sat 2026-10-10 12:00 Warsaw"
+        "  last alert: news Sat 2026-10-10 11:30 Warsaw failed  failed: 1"
     ) in later.stdout.splitlines()
 
 
-def test_status_tweet_window_follows_the_alert_slots(cli, db):
+def test_status_tweet_window_follows_the_last_slot(cli, db):
     _seed_d6(db)
     tweet_ingest = TweetIngest(source_name="twitterapi_io", list_id=1, make_source=lambda: None)
-    now = D6 - timedelta(minutes=120)
+    default = _alerts_setup(slots=DEFAULT_SLOTS_TUPLE)
+    long_last = _alerts_setup(slots=(WallClockSlot(1, clock_time(20, 0)), 100))
 
-    with_alerts = cli(
-        "status", clock=FixedClock(now), tweet_ingest=tweet_ingest, alerts=_alerts_setup()
-    )
-    without = cli("status", clock=FixedClock(now), tweet_ingest=tweet_ingest)
+    def mode_at(minutes_before, alerts):
+        result = cli(
+            "status",
+            clock=FixedClock(D6 - timedelta(minutes=minutes_before)),
+            tweet_ingest=tweet_ingest,
+            alerts=alerts,
+        )
+        return [line for line in result.stdout.splitlines() if line.startswith("  mode:")]
 
-    assert "  mode: window" in with_alerts.stdout.splitlines()
-    assert "  mode: sparse" in without.stdout.splitlines()
+    assert mode_at(100, default) == ["  mode: sparse"]
+    assert mode_at(90, default) == ["  mode: window"]
+    assert mode_at(105, long_last) == ["  mode: window"]
+    assert mode_at(120, None) == ["  mode: sparse"]
+
+
+def test_run_logs_the_configured_slots(cli, db, caplog):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+
+    def run_with(alerts):
+        def stop() -> None:
+            _wait_until(lambda: any(t.name == "alerts" for t in threading.enumerate()), 1.5)
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        threading.Thread(target=stop, daemon=True).start()
+        with caplog.at_level(logging.INFO):
+            return cli(
+                "run",
+                client=fake.client(sleep=lambda _: None),
+                clock=RealClock(far_future),
+                alerts=alerts,
+            )
+
+    run_with(_alerts_setup(slots=DEFAULT_SLOTS_TUPLE))
+    assert "alerts started: slots=D-1@20:00,60" in caplog.text
+    caplog.clear()
+    run_with(_alerts_setup())
+    assert "alerts started: slots=120,30" in caplog.text
 
 
 def test_run_starts_alerts_only_when_enabled(cli, db):
@@ -1462,12 +1517,22 @@ def test_run_starts_alerts_only_when_enabled(cli, db):
 
 def test_worker_rejects_invalid_alert_slots_naming_the_variable(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("ALERT_SLOTS_MINUTES", "30,120")
+    monkeypatch.setenv("ALERT_SLOTS", "30,120")
 
     result = CliRunner().invoke(app, ["status"])
 
     assert result.exit_code == 1
-    assert "ALERT_SLOTS_MINUTES" in result.stderr
+    assert "ALERT_SLOTS" in result.stderr
+
+
+def test_worker_rejects_retired_slots_minutes(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ALERT_SLOTS_MINUTES", "120,30")
+
+    result = CliRunner().invoke(app, ["status"])
+
+    assert result.exit_code == 1
+    assert "ALERT_SLOTS_MINUTES" in result.stderr and "ALERT_SLOTS" in result.stderr
 
 
 def test_worker_rejects_overlapping_rehearsal_naming_the_variable(cli, db):
@@ -1543,13 +1608,18 @@ def test_rehearsal_not_written_to_gameweek_and_polls_fast(cli, db, monkeypatch):
             client=fake.client(sleep=lambda _: None),
             clock=RealClock(far_future),
             tweet_ingest=tweet_ingest,
-            alerts=_alerts_setup(rehearsal=rehearsal),
+            alerts=_alerts_setup(rehearsal=rehearsal, slots=DEFAULT_SLOTS_TUPLE),
         )
     finally:
         timer.cancel()
 
     assert result.exit_code == 0
-    assert captured["window"] == timedelta(minutes=130)
+    assert captured["window"] == timedelta(minutes=90)
+    # the rehearsal is 2027-06-02 02:00 Warsaw: its digest is 2027-06-01 20:00 Warsaw (18:00Z)
+    assert captured["slot_times"](rehearsal) == [
+        datetime(2027, 6, 1, 18, 0, tzinfo=UTC),
+        rehearsal - timedelta(minutes=60),
+    ]
     assert captured["extra_deadlines"] == (rehearsal,)
     assert captured["max_lookback"] == timedelta(days=7)
     with Session(db) as session:
@@ -1596,7 +1666,7 @@ def test_deps_carry_the_alert_setup_or_the_reason(monkeypatch, tmp_path):
     _all_features(monkeypatch)
     enabled = worker_cli._deps_from_settings()
     assert enabled.alerts is not None and enabled.alerts_disabled_reason is None
-    assert enabled.alerts.config.slots == (120, 30)
+    assert enabled.alerts.config.slots == DEFAULT_SLOTS_TUPLE
 
     monkeypatch.setenv("ALERTS_ENABLED", "false")
     off = worker_cli._deps_from_settings()

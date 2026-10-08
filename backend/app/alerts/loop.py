@@ -13,9 +13,10 @@ from app.alerts.schedule import (
     due_slots,
     next_alert_deadline,
     next_wake,
+    resolve_slots,
 )
 from app.alerts.service import AlertsRuntime, run_slot
-from app.alerts.store import done_slots
+from app.alerts.store import done_slots, with_sent_digest
 from app.core.clock import Clock, StopAwareClock
 from app.worker.jobs import Shutdown
 from app.worker.store import load_state
@@ -39,9 +40,9 @@ class AlertLoop:
         self._stop_event = stop_event
         # deadline key -> newest extraction a completed breaking pass has seen
         self._processed_until: dict[str, datetime] = {}
+        self._warned: set[tuple[str, str]] = set()
 
     def tick(self) -> float:
-        slots = self._runtime.config.slots
         state = load_state(self._engine)
         deadlines = alert_deadlines(
             state.season, state.gameweeks, self._runtime.config.rehearsal_deadline
@@ -49,13 +50,24 @@ class AlertLoop:
         deadline = next_alert_deadline(deadlines, self._clock.now())
         if deadline is None:
             return MAX_WAKE_SECONDS
+        resolved = resolve_slots(self._runtime.config.slots, deadline.deadline_at)
+        for skipped in resolved.skipped:
+            if (deadline.key, str(skipped)) not in self._warned:
+                self._warned.add((deadline.key, str(skipped)))
+                logger.warning(
+                    "alert slot %s skipped for deadline %s: not before the next slot"
+                    " or the deadline",
+                    skipped,
+                    deadline.key,
+                )
+        slots = resolved.minutes
         try:
             with Session(self._engine) as session:
-                done = done_slots(session, deadline.key)
+                done = with_sent_digest(done_slots(session, deadline.key), slots)
             for slot in due_slots(deadline, slots, set(done), self._clock.now()):
                 run_slot(self._engine, self._runtime, deadline, slots.index(slot), self._clock)
             with Session(self._engine) as session:
-                done = done_slots(session, deadline.key)
+                done = with_sent_digest(done_slots(session, deadline.key), slots)
             if slots[-1] in done and breaking_open(deadline, True, self._clock.now()):
                 with Session(self._engine) as session:
                     newest = newest_extraction(session)

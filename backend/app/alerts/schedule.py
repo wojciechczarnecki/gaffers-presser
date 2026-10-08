@@ -1,8 +1,10 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from app.alerts.config import AlertConfig
+from app.alerts.config import AlertConfig, Slot, WallClockSlot
 from app.alerts.schemas import AlertDeadline
 from app.core.errors import ConfigError
+from app.core.local_time import WARSAW
 from app.fpl.deadlines import next_deadline_after
 from app.worker.schedule import GameweekState
 
@@ -19,6 +21,39 @@ def deadline_key(season: str, gameweek: int) -> str:
 
 def rehearsal_key(deadline_at: datetime) -> str:
     return f"rehearsal:{deadline_at.astimezone(UTC).strftime('%Y-%m-%dT%H:%MZ')}"
+
+
+@dataclass(frozen=True)
+class ResolvedSlots:
+    minutes: tuple[int, ...]
+    skipped: tuple[WallClockSlot, ...]
+
+
+def _wall_clock_minutes(slot: WallClockSlot, deadline_at: datetime) -> int:
+    day = deadline_at.astimezone(WARSAW).date() - timedelta(days=slot.days_before)
+    moment = datetime.combine(day, slot.at, tzinfo=WARSAW).astimezone(UTC)
+    return int((deadline_at - moment).total_seconds() // 60)
+
+
+def resolve_slots(slots: tuple[Slot, ...], deadline_at: datetime) -> ResolvedSlots:
+    kept: list[int] = []
+    skipped: list[WallClockSlot] = []
+    bound = 0
+    for slot in reversed(slots):
+        minutes = slot if isinstance(slot, int) else _wall_clock_minutes(slot, deadline_at)
+        if isinstance(slot, WallClockSlot) and minutes <= bound:
+            skipped.append(slot)
+            continue
+        kept.append(minutes)
+        bound = minutes
+    return ResolvedSlots(tuple(reversed(kept)), tuple(reversed(skipped)))
+
+
+def slot_moments(slots: tuple[Slot, ...], deadline_at: datetime) -> list[datetime]:
+    return [
+        deadline_at - timedelta(minutes=minutes)
+        for minutes in resolve_slots(slots, deadline_at).minutes
+    ]
 
 
 def alert_deadlines(
@@ -70,18 +105,24 @@ def next_wake(
 
 
 def polling_window(config: AlertConfig | None) -> timedelta:
-    if config is None:
+    # a wall-clock last slot moves per deadline, so breaking runs from it on sparse polling
+    # plus the pre-slot poll; following it would mean hours of fast polling (ban risk)
+    if config is None or not isinstance(config.slots[-1], int):
         return MIN_POLLING_WINDOW
-    return max(MIN_POLLING_WINDOW, timedelta(minutes=config.slots[0]) + POLLING_MARGIN)
+    return max(MIN_POLLING_WINDOW, timedelta(minutes=config.slots[-1]) + POLLING_MARGIN)
+
+
+def alert_span_start(config: AlertConfig, deadline_at: datetime) -> datetime:
+    start = deadline_at - polling_window(config)
+    moments = slot_moments(config.slots, deadline_at)
+    return min(start, moments[0]) if moments else start
 
 
 def check_rehearsal(config: AlertConfig, real_deadlines: list[datetime], now: datetime) -> None:
     rehearsal = config.rehearsal_deadline
     if rehearsal is None or rehearsal <= now:
         return
-    window = timedelta(minutes=config.slots[0]) + POLLING_MARGIN
+    rehearsal_start = alert_span_start(config, rehearsal)
     for deadline in real_deadlines:
-        if rehearsal - window < deadline and deadline - window < rehearsal:
-            raise ConfigError(
-                "ALERT_REHEARSAL_DEADLINE overlaps the alert window of a real deadline"
-            )
+        if rehearsal_start < deadline and alert_span_start(config, deadline) < rehearsal:
+            raise ConfigError("ALERT_REHEARSAL_DEADLINE overlaps the alert span of a real deadline")

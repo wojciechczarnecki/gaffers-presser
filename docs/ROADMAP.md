@@ -54,7 +54,8 @@ and each LLM step that produces data has an evaluation set with recorded results
       The owner builds and tests it locally first (a rehearsal deadline with real e-mails);
       the production deployment (Stage 0) follows it, and BACKLOG #11 is settled after this
       spec and before the deployment (settled by spec 010)
-      (spec: [009](../specs/009-pre-deadline-alerts/SPEC.md)) — **first functional MVP**
+      (spec: [009](../specs/009-pre-deadline-alerts/SPEC.md); slot timing:
+      [011](../specs/011-alert-slot-calendar/SPEC.md)) — **first functional MVP**
 - [x] Off-list posts: the worker keeps the List's membership, posts quoted by a list member
       stay alert sources and count with the quote as one account, conversation context from
       outside the List is stored but never extracted or alerted, and a catch-up is no longer

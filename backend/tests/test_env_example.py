@@ -49,12 +49,15 @@ _DELIVERY_FIELD_TO_VARIABLE = {
 
 _ALERT_FIELD_TO_VARIABLE = {
     "alerts_enabled": "ALERTS_ENABLED",
-    "alert_slots_minutes": "ALERT_SLOTS_MINUTES",
+    "alert_slots": "ALERT_SLOTS",
     "alert_trending_min_accounts": "ALERT_TRENDING_MIN_ACCOUNTS",
     "alert_widely_owned_percent": "ALERT_WIDELY_OWNED_PERCENT",
     "alert_rehearsal_deadline": "ALERT_REHEARSAL_DEADLINE",
     "alert_max_lookback_days": "ALERT_MAX_LOOKBACK_DAYS",
 }
+
+
+_RETIRED_ALERT_FIELDS = {"alert_slots_minutes"}
 
 
 def _lines() -> list[str]:
@@ -146,7 +149,7 @@ def test_every_delivery_variable_is_an_empty_placeholder():
 
 
 def test_every_alert_setting_field_has_its_variable_covered():
-    assert set(AlertSettings.model_fields) == set(_ALERT_FIELD_TO_VARIABLE)
+    assert set(AlertSettings.model_fields) - _RETIRED_ALERT_FIELDS == set(_ALERT_FIELD_TO_VARIABLE)
 
 
 def test_every_alert_variable_is_an_empty_placeholder():
@@ -161,3 +164,7 @@ def test_every_alert_variable_is_an_empty_placeholder():
             seen.add(name)
             assert value == "", f"{name} must be an empty placeholder in .env.example"
     assert seen == alert_variables
+
+
+def test_retired_alert_variable_absent_from_env_example():
+    assert "ALERT_SLOTS_MINUTES" not in ENV_EXAMPLE.read_text(encoding="utf-8")

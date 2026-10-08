@@ -99,3 +99,52 @@ def test_custom_window_and_extra_deadline():
     assert interval([DEADLINE, extra], extra - timedelta(minutes=125), window) == timedelta(
         seconds=20
     )
+
+
+SLOT = DEADLINE - timedelta(hours=22)
+
+
+def _slot_times(offset: timedelta = timedelta(hours=22)):
+    return lambda deadline: [deadline - offset]
+
+
+def test_extra_poll_before_a_slot_outside_the_window():
+    last = _poll(SLOT - timedelta(minutes=25))
+
+    assert next_poll_at([DEADLINE], last, last.started_at, slot_times=_slot_times()) == (
+        SLOT - timedelta(minutes=10)
+    )
+    assert next_poll_at([DEADLINE], last, last.started_at) == SLOT + timedelta(minutes=5)
+
+
+def test_no_extra_poll_when_the_regular_schedule_polls_before_the_slot():
+    times = _slot_times()
+    early = _poll(SLOT - timedelta(minutes=35))
+    assert next_poll_at([DEADLINE], early, early.started_at, slot_times=times) == (
+        SLOT - timedelta(minutes=5)
+    )
+
+    after_extra = _poll(SLOT - timedelta(minutes=5))
+    assert next_poll_at([DEADLINE], after_extra, after_extra.started_at, slot_times=times) == (
+        SLOT + timedelta(minutes=25)
+    )
+
+    # a slot at the window start is not before the window: the window start poll covers it
+    sparse = _poll(DEADLINE - timedelta(minutes=115))
+    assert next_poll_at(
+        [DEADLINE], sparse, sparse.started_at, slot_times=_slot_times(timedelta(minutes=90))
+    ) == (DEADLINE - timedelta(minutes=90))
+
+    exactly = _poll(SLOT - timedelta(minutes=30))
+    assert next_poll_at([DEADLINE], exactly, exactly.started_at, slot_times=times) == (
+        SLOT - timedelta(minutes=10)
+    )
+
+
+def test_a_rate_limit_retry_wins_over_the_extra_poll():
+    started = SLOT - timedelta(minutes=25)
+    last = _poll(started, outcome="rate_limited", retry_after_seconds=1200)
+
+    assert next_poll_at([DEADLINE], last, started, slot_times=_slot_times()) == (
+        started + timedelta(seconds=1200)
+    )

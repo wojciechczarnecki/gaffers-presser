@@ -122,6 +122,15 @@ def done_slots(session: Session, deadline_key: str) -> dict[int, AlertRow]:
     return {row.slot_minutes: _row(row) for row in rows}
 
 
+def with_sent_digest(done: dict[int, AlertRow], slots: tuple[int, ...]) -> dict[int, AlertRow]:
+    # FPL can move a deadline after its digest: a wall-clock first slot then resolves to new
+    # minutes, and the digest row recorded under the old minutes must still count as that slot
+    if not slots or slots[0] in done:
+        return done
+    digest = next((row for row in done.values() if row.kind == "digest"), None)
+    return done if digest is None else {**done, slots[0]: digest}
+
+
 def included_origins(
     session: Session, deadline_key: str, before: datetime | None = None
 ) -> set[int]:

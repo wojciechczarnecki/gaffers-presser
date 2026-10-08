@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 from app.alerts.config import AlertConfig
 from app.alerts.players import listed_players
 from app.alerts.render import render_alert
+from app.alerts.schedule import resolve_slots
 from app.alerts.schemas import AlertDeadline, ListedPlayer, PlayerReport
 from app.alerts.store import (
     IncludedPost,
@@ -179,7 +180,7 @@ def run_slot(
     slot_index: int,
     clock: Clock,
 ) -> str:
-    slot = runtime.config.slots[slot_index]
+    slot = resolve_slots(runtime.config.slots, deadline.deadline_at).minutes[slot_index]
     kind: Literal["digest", "news"] = "digest" if slot_index == 0 else "news"
     key = alert_key(deadline, kind, slot)
     as_of = clock.now()

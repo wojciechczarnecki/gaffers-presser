@@ -163,7 +163,7 @@ def test_deployment_documents_delivery():
 
 ALERT_VARIABLES = [
     "ALERTS_ENABLED",
-    "ALERT_SLOTS_MINUTES",
+    "ALERT_SLOTS",
     "ALERT_TRENDING_MIN_ACCOUNTS",
     "ALERT_WIDELY_OWNED_PERCENT",
     "ALERT_REHEARSAL_DEADLINE",
@@ -189,6 +189,20 @@ def test_deployment_documents_alerts():
         "Alerts:",
     ):
         assert term in section, f"{term!r} missing from docs/DEPLOYMENT.md"
+
+
+def test_deployment_documents_alert_slots():
+    section = DEPLOYMENT.read_text(encoding="utf-8")
+    start = section.index("12. **Alerts")
+    step = (
+        section[start : section.index("\n13.", start)]
+        if "\n13." in section[start:]
+        else section[start:]
+    )
+    for term in ("D-1@20:00,60", "ALERT_SLOTS_MINUTES", "90 minutes", "alert span"):
+        assert term in step, f"{term!r} missing from DEPLOYMENT step 12"
+    removed = step[step.index("ALERT_SLOTS_MINUTES") :][:300].lower()
+    assert "removed" in removed or "replaced" in removed
 
 
 def test_deployment_describes_rehearsal_variable():

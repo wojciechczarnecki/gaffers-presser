@@ -1,6 +1,6 @@
 import os
 import re
-from datetime import timedelta
+from datetime import time, timedelta
 from decimal import Decimal
 
 import pytest
@@ -9,7 +9,7 @@ from sqlmodel import Session
 from typer.testing import CliRunner
 
 from app.alerts.cli import AlertsCliDeps, app
-from app.alerts.config import AlertConfig
+from app.alerts.config import AlertConfig, WallClockSlot
 from app.corroboration.runtime import sql_only_runtime
 from app.delivery.models import DeliveryLog
 from tests.alerts.helpers import deadline
@@ -50,7 +50,7 @@ def test_status_shows_next_slot_last_alert_and_failures(db):
     first = invoke(db, "status", clock=FixedClock(NOW - timedelta(hours=3)))
     assert first.exit_code == 0
     assert "Alert deadline: 2026/27:gw6 (real)  2026-09-29 22:00 Europe/Warsaw" in first.stdout
-    assert "Next slot: digest 2026-09-29 20:00" in first.stdout
+    assert "Next slot: digest Tue 2026-09-29 20:00" in first.stdout
     assert "Last alert: never" in first.stdout
     assert "Failed alerts: 0" in first.stdout
 
@@ -65,7 +65,7 @@ def test_status_shows_next_slot_last_alert_and_failures(db):
         deadline_value=REAL,
     )
     later = invoke(db, "status", clock=FixedClock(NOW + timedelta(minutes=100)))
-    assert "Next slot: none, breaking until 2026-09-29 22:00" in later.stdout
+    assert "Next slot: none, breaking until Tue 2026-09-29 22:00" in later.stdout
     assert "Last alert: news 2026-09-29 21:30 failed" in later.stdout
     assert "Failed alerts: 1" in later.stdout
 
@@ -206,12 +206,22 @@ def test_latency_without_alerts_fails_clearly(db):
 
 def test_cli_rejects_invalid_alert_variable(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("ALERT_SLOTS_MINUTES", "30,120")
+    monkeypatch.setenv("ALERT_SLOTS", "30,120")
 
     result = CliRunner().invoke(app, ["status"])
 
     assert result.exit_code == 1
-    assert "ALERT_SLOTS_MINUTES" in result.stderr
+    assert "ALERT_SLOTS" in result.stderr
+
+
+def test_cli_rejects_retired_slots_minutes(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("ALERT_SLOTS_MINUTES", "120,30")
+
+    result = CliRunner().invoke(app, ["status"])
+
+    assert result.exit_code == 1
+    assert "ALERT_SLOTS_MINUTES" in result.stderr and "ALERT_SLOTS" in result.stderr
 
 
 def row_counts(db) -> dict[str, int]:
@@ -308,7 +318,25 @@ def test_preview_rejects_bad_input(db):
         "news",
         config=AlertConfig((120,), 3, Decimal("15"), None),
     )
-    assert no_news.exit_code == 1 and "no news slot" in no_news.stderr
+    assert no_news.exit_code == 1 and "ALERT_SLOTS has no news slot" in no_news.stderr
+
+
+def test_preview_with_wall_clock_slots(db):
+    preview_world(db)
+    calendar = AlertConfig((WallClockSlot(1, time(20, 0)), 60), 3, Decimal("15"), None)
+    # D-1@20:00 is 1560 minutes before this deadline, so a 1600 slot leaves it out of order
+    clashing = AlertConfig((WallClockSlot(1, time(20, 0)), 1600), 3, Decimal("15"), None)
+
+    digest = invoke(db, "preview", "--at", "2026-09-29 20:00", config=calendar)
+    news = invoke(db, "preview", "--at", "2026-09-29 20:00", "--kind", "news", config=calendar)
+    skipped = invoke(db, "preview", "--at", "2026-09-29 20:00", "--kind", "news", config=clashing)
+
+    assert digest.exit_code == 0, digest.stderr
+    assert "Alert deadline: 2026/27:gw6" in digest.stdout and "Title: " in digest.stdout
+    assert news.exit_code == 0, news.stderr
+    assert "Title: " in news.stdout
+    assert skipped.exit_code == 1
+    assert "ALERT_SLOTS has no news slot for that deadline" in skipped.stderr
 
 
 def test_preview_writes_the_html_part_when_asked(db, tmp_path):

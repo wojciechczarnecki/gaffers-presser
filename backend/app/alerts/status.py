@@ -6,9 +6,9 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.alerts.config import AlertConfig
-from app.alerts.schedule import alert_deadlines, next_alert_deadline
+from app.alerts.schedule import alert_deadlines, next_alert_deadline, resolve_slots
 from app.alerts.schemas import AlertDeadline
-from app.alerts.store import AlertRow, done_slots, status_rows
+from app.alerts.store import AlertRow, done_slots, status_rows, with_sent_digest
 from app.worker.store import load_state
 
 
@@ -28,10 +28,11 @@ def alert_status(engine: Engine, config: AlertConfig, now: datetime) -> AlertSta
     deadline = next_alert_deadline(deadlines, now)
     if deadline is None:
         return AlertStatus(None, None, None, None, None, 0)
+    slots = resolve_slots(config.slots, deadline.deadline_at).minutes
     with Session(engine) as session:
-        done = done_slots(session, deadline.key)
+        done = with_sent_digest(done_slots(session, deadline.key), slots)
         last, failed = status_rows(session, deadline.key)
-    pending = [(index, slot) for index, slot in enumerate(config.slots) if slot not in done]
+    pending = [(index, slot) for index, slot in enumerate(slots) if slot not in done]
     if pending:
         index, slot = pending[0]
         return AlertStatus(

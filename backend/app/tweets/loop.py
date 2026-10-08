@@ -1,6 +1,6 @@
 import logging
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
 
 from sqlalchemy import Engine
@@ -29,6 +29,8 @@ from app.worker.jobs import Shutdown
 
 logger = logging.getLogger(__name__)
 
+SlotTimes = Callable[[datetime], Sequence[datetime]]
+
 
 def _later(stored: PollRecord | None, remembered: PollRecord | None) -> PollRecord | None:
     if stored is None or remembered is None:
@@ -47,6 +49,7 @@ class TweetPoller:
         window: timedelta = WINDOW,
         extra_deadlines: tuple[datetime, ...] = (),
         max_lookback: timedelta = DEFAULT_MAX_LOOKBACK,
+        slot_times: SlotTimes | None = None,
     ) -> None:
         self._engine = engine
         self._make_source = make_source
@@ -56,6 +59,7 @@ class TweetPoller:
         self._window = window
         self._extra_deadlines = list(extra_deadlines)
         self._max_lookback = max_lookback
+        self._slot_times = slot_times
         # The poll log write may fail while reads still work; the in-memory record keeps
         # the schedule from treating an unrecorded poll as never having happened.
         self._last_record: PollRecord | None = None
@@ -106,7 +110,7 @@ class TweetPoller:
                         )
                     last = _later(latest_poll(self._engine, source.name), self._last_record)
                     now = self._clock.now()
-                    next_at = next_poll_at(deadlines, last, now, self._window)
+                    next_at = next_poll_at(deadlines, last, now, self._window, self._slot_times)
                     if next_at <= now:
                         # like the alert window, the previous deadline is a real gameweek
                         # only, never a rehearsal deadline
@@ -140,6 +144,7 @@ def start_poller(
     window: timedelta = WINDOW,
     extra_deadlines: tuple[datetime, ...] = (),
     max_lookback: timedelta = DEFAULT_MAX_LOOKBACK,
+    slot_times: SlotTimes | None = None,
 ) -> threading.Thread:
     poller = TweetPoller(
         engine,
@@ -150,6 +155,7 @@ def start_poller(
         window,
         extra_deadlines,
         max_lookback,
+        slot_times,
     )
 
     def target() -> None:

@@ -147,18 +147,30 @@ below; agents never touch production.
       the time and kind of the last successful send and the number of failed sends in the last
       24 hours.
 12. **Alerts (optional).** Before each deadline the worker e-mails team news about the players
-    that matter to the league: a digest at the first slot, news at the later slots and a breaking
+    that matter to the league: a digest at the first slot (20:00 Warsaw time the day before the deadline by default), news at the later slots (one hour before the deadline by default) and a breaking
     e-mail for every new post from the last slot to the deadline. Alerts run only when delivery
     (step 11), tweet ingest (step 7) and extraction (step 8) are all enabled; otherwise
     `python -m app.worker status` ends with `Alerts: disabled (<reason>)` and the worker runs as
     before. The player scope uses the league IDs from `FPL_LEAGUE_IDS`.
     - Variables (all optional; an invalid value stops the worker and the CLI at start with a
       message naming it): `ALERTS_ENABLED=false` turns alerts off explicitly;
-      `ALERT_SLOTS_MINUTES` (default `120,30`, strictly decreasing positive integers);
+      `ALERT_SLOTS` (default `D-1@20:00,60`: comma-separated slots, each either minutes before
+      the deadline or `D-<n>@HH:MM`, a Warsaw wall-clock time `n` (1 to 7) days before the
+      deadline's Warsaw date; the first slot is the digest, the others are news, and breaking
+      e-mails run from the last slot to the deadline; wall-clock slots are listed from the
+      earliest to the latest, minutes slots are strictly decreasing and come after wall-clock
+      ones; a wall-clock slot that does not fall before the next slot or the deadline is skipped
+      for that deadline with a warning in the log; when FPL moves a deadline after its digest
+      went out, the digest is not sent again);
       `ALERT_TRENDING_MIN_ACCOUNTS` (default `3`); `ALERT_WIDELY_OWNED_PERCENT` (default `15`,
       0-100); `ALERT_MAX_LOOKBACK_DAYS` (default `7`, a positive integer: the alert window starts
-      at the previous deadline but never more than this many days before the alert deadline). Fast tweet polling starts at the first slot plus 10 minutes before the deadline
-      (130 minutes with the defaults) and at least 90 minutes before it.
+      at the previous deadline but never more than this many days before the alert deadline).
+    - `ALERT_SLOTS_MINUTES` was removed (replaced by `ALERT_SLOTS`): a worker or alerts CLI
+      started with it set stops with a message, so delete it from the environment.
+    - Tweet polling: fast polling (every 20 s) starts `max(90, last minutes slot + 10)` minutes
+      before the deadline, that is 90 minutes with the default slots, and no longer depends on
+      the first slot. For every slot that falls before that window the poller makes one extra
+      poll 10 minutes before the slot, so the digest sees posts at most about 10 minutes old.
     - Migrations `0008` (adds `player.selected_by_percent`, refreshed by every reference sync)
       and `0009` (the alert log tables `alert` and `alert_post`) run through the pre-deploy like
       the others. Existing data is unchanged and both migrations downgrade cleanly.
@@ -171,12 +183,15 @@ below; agents never touch production.
       (renders the alert the worker would send at that moment, and with `--html` also writes its
       HTML part to a file; sends and writes nothing to the database).
     - `python -m app.worker status` ends with an `Alerts:` line: the next slot (or the breaking
-      window's end), the last alert and the failed alerts of the current deadline.
+      window's end), the last alert and the failed alerts of the current deadline; its times are
+      Warsaw time and marked `Warsaw`, while the other status lines are UTC.
     - **Rehearsal (optional, for testing).** `ALERT_REHEARSAL_DEADLINE=<Warsaw time>` is an optional
       variable for testing: it makes the worker treat that moment as one extra alert deadline: fast tweet polling, the digest, the
       news slots and breaking e-mails run for it and are sent for real, in any environment. It is
       not written to the gameweek table, so FPL jobs, snapshots and gameweek numbering ignore it,
       and its alerts never affect a real deadline (the alert log is keyed by deadline). A moment
-      in the past does nothing; one whose alert window overlaps a real deadline's alert window
-      stops the worker at start with a message naming the variable. Remove the variable after
-      the test.
+      in the past does nothing; one whose alert span (from its first slot, or the start of fast
+      polling if earlier, to the deadline) overlaps a real deadline's alert span stops the
+      worker at start with a message naming the variable. With the default slots that needs
+      about a day of distance from a real deadline; for a quick test set `ALERT_SLOTS=120,30`
+      alongside it. Remove the variable after the test.
