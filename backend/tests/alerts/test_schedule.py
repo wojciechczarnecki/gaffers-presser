@@ -25,6 +25,7 @@ from app.worker.schedule import GameweekState
 DEADLINE = datetime(2026, 10, 4, 16, 0, tzinfo=UTC)
 SEASON = "2026/27"
 SLOTS = (120, 30)
+DEFAULT_SLOTS = (WallClockSlot(1, clock_time(20, 0)), 60)
 
 
 def at(minutes_before: float) -> datetime:
@@ -108,25 +109,31 @@ def test_next_wake():
 
 def test_polling_window():
     assert polling_window(None) == timedelta(minutes=90)
-    assert polling_window(config()) == timedelta(minutes=130)
+    assert polling_window(config()) == timedelta(minutes=90)
     assert polling_window(config((60, 30))) == timedelta(minutes=90)
-    assert polling_window(config((90, 30))) == timedelta(minutes=100)
+    assert polling_window(config((200, 90))) == timedelta(minutes=100)
+    assert polling_window(config((WallClockSlot(1, clock_time(20, 0)), 100))) == timedelta(
+        minutes=110
+    )
+    assert polling_window(config(DEFAULT_SLOTS)) == timedelta(minutes=90)
+    assert polling_window(config((WallClockSlot(1, clock_time(20, 0)),))) == timedelta(minutes=90)
 
 
-def test_rehearsal_past_ignored_and_overlap_rejected():
+def test_rehearsal_overlap_by_alert_span():
     now = DEADLINE - timedelta(days=3)
-    window = timedelta(minutes=130)
+    window = timedelta(minutes=120)
 
     check_rehearsal(config(rehearsal=None), [DEADLINE], now)
     check_rehearsal(config(rehearsal=now - timedelta(hours=1)), [now - timedelta(hours=1)], now)
     check_rehearsal(config(rehearsal=DEADLINE - timedelta(days=2)), [DEADLINE], now)
-    check_rehearsal(config(rehearsal=DEADLINE + window), [DEADLINE], now)  # adjacent
-    check_rehearsal(config(rehearsal=DEADLINE - window), [DEADLINE], now)  # adjacent
+    check_rehearsal(config(rehearsal=DEADLINE + timedelta(hours=6)), [DEADLINE], now)
+    check_rehearsal(config(rehearsal=DEADLINE + window), [DEADLINE], now)  # spans only touch
+    check_rehearsal(config(rehearsal=DEADLINE - window), [DEADLINE], now)  # spans only touch
 
     for rehearsal in (
         DEADLINE,
-        DEADLINE + timedelta(minutes=129),
-        DEADLINE - timedelta(minutes=129),
+        DEADLINE + timedelta(minutes=60),
+        DEADLINE - timedelta(minutes=60),
     ):
         with pytest.raises(ConfigError, match="ALERT_REHEARSAL_DEADLINE"):
             check_rehearsal(config(rehearsal=rehearsal), [DEADLINE], now)
@@ -138,6 +145,24 @@ def test_rehearsal_past_ignored_and_overlap_rejected():
             [just_passed, DEADLINE],
             just_passed + timedelta(minutes=30),
         )
+
+
+def test_rehearsal_overlap_with_the_default_slots_needs_about_a_day():
+    real = parse_local("2026-10-10 12:00")
+    now = parse_local("2026-10-01 12:00")
+    default = config(DEFAULT_SLOTS)
+
+    with pytest.raises(ConfigError, match="ALERT_REHEARSAL_DEADLINE"):
+        check_rehearsal(
+            AlertConfig(DEFAULT_SLOTS, 3, Decimal("15"), parse_local("2026-10-10 18:00")),
+            [real],
+            now,
+        )
+    for rehearsal in ("2026-10-13 18:00", "2026-10-07 18:00"):
+        check_rehearsal(
+            AlertConfig(DEFAULT_SLOTS, 3, Decimal("15"), parse_local(rehearsal)), [real], now
+        )
+    assert default.slots == DEFAULT_SLOTS
 
 
 DIGEST = WallClockSlot(1, clock_time(20, 0))

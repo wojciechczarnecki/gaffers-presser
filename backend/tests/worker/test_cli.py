@@ -1412,18 +1412,50 @@ def test_status_shows_alerts_line(cli, db):
     ) in later.stdout.splitlines()
 
 
-def test_status_tweet_window_follows_the_alert_slots(cli, db):
+def test_status_tweet_window_follows_the_last_slot(cli, db):
     _seed_d6(db)
     tweet_ingest = TweetIngest(source_name="twitterapi_io", list_id=1, make_source=lambda: None)
-    now = D6 - timedelta(minutes=120)
+    default = _alerts_setup(slots=DEFAULT_SLOTS_TUPLE)
+    long_last = _alerts_setup(slots=(WallClockSlot(1, clock_time(20, 0)), 100))
 
-    with_alerts = cli(
-        "status", clock=FixedClock(now), tweet_ingest=tweet_ingest, alerts=_alerts_setup()
-    )
-    without = cli("status", clock=FixedClock(now), tweet_ingest=tweet_ingest)
+    def mode_at(minutes_before, alerts):
+        result = cli(
+            "status",
+            clock=FixedClock(D6 - timedelta(minutes=minutes_before)),
+            tweet_ingest=tweet_ingest,
+            alerts=alerts,
+        )
+        return [line for line in result.stdout.splitlines() if line.startswith("  mode:")]
 
-    assert "  mode: window" in with_alerts.stdout.splitlines()
-    assert "  mode: sparse" in without.stdout.splitlines()
+    assert mode_at(100, default) == ["  mode: sparse"]
+    assert mode_at(90, default) == ["  mode: window"]
+    assert mode_at(105, long_last) == ["  mode: window"]
+    assert mode_at(120, None) == ["  mode: sparse"]
+
+
+def test_run_logs_the_configured_slots(cli, db, caplog):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+
+    def run_with(alerts):
+        def stop() -> None:
+            _wait_until(lambda: any(t.name == "alerts" for t in threading.enumerate()), 1.5)
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        threading.Thread(target=stop, daemon=True).start()
+        with caplog.at_level(logging.INFO):
+            return cli(
+                "run",
+                client=fake.client(sleep=lambda _: None),
+                clock=RealClock(far_future),
+                alerts=alerts,
+            )
+
+    run_with(_alerts_setup(slots=DEFAULT_SLOTS_TUPLE))
+    assert "alerts started: slots=D-1@20:00,60" in caplog.text
+    caplog.clear()
+    run_with(_alerts_setup())
+    assert "alerts started: slots=120,30" in caplog.text
 
 
 def test_run_starts_alerts_only_when_enabled(cli, db):
@@ -1562,7 +1594,7 @@ def test_rehearsal_not_written_to_gameweek_and_polls_fast(cli, db, monkeypatch):
         timer.cancel()
 
     assert result.exit_code == 0
-    assert captured["window"] == timedelta(minutes=130)
+    assert captured["window"] == timedelta(minutes=90)
     assert captured["extra_deadlines"] == (rehearsal,)
     assert captured["max_lookback"] == timedelta(days=7)
     with Session(db) as session:

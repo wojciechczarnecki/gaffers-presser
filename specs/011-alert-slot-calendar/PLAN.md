@@ -266,7 +266,7 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
         single-slot config.
       Automatic verification: `cd backend && uv run pytest -q tests/core tests/alerts/test_status.py
       tests/alerts/test_cli.py tests/worker/test_cli.py -k "status or preview or local"`
-- [ ] 5. **Fast-polling window, rehearsal span, start log** (AC8, AC10, AC13). Files:
+- [x] 5. **Fast-polling window, rehearsal span, start log** (AC8, AC10, AC13). `iterations: 1` Files:
       `backend/app/alerts/schedule.py` (`polling_window`, `alert_span_start`,
       `check_rehearsal`), `backend/app/worker/cli.py` (start log through `format_slots`),
       `backend/tests/alerts/test_schedule.py`, `backend/tests/worker/test_cli.py`.

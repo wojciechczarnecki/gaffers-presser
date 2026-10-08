@@ -14,6 +14,7 @@ from app.alerts.config import (
     AlertConfig,
     AlertSettings,
     alerts_disabled_reason,
+    format_slots,
     parse_alert_config,
 )
 from app.alerts.loop import start_alerts
@@ -327,7 +328,7 @@ def run(ctx: typer.Context) -> None:
             alerts_thread = start_alerts(
                 deps.engine, alerts_runtime, stop_event, clock=deps.alerts.clock
             )
-            logger.info("alerts started: slots=%s", ",".join(map(str, deps.alerts.config.slots)))
+            logger.info("alerts started: slots=%s", format_slots(deps.alerts.config.slots))
 
         def heartbeat() -> None:
             lock_connection.execute(text("SELECT 1"))

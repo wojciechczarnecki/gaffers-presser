@@ -105,18 +105,22 @@ def next_wake(
 
 
 def polling_window(config: AlertConfig | None) -> timedelta:
-    if config is None:
+    if config is None or not isinstance(config.slots[-1], int):
         return MIN_POLLING_WINDOW
-    return max(MIN_POLLING_WINDOW, timedelta(minutes=config.slots[0]) + POLLING_MARGIN)
+    return max(MIN_POLLING_WINDOW, timedelta(minutes=config.slots[-1]) + POLLING_MARGIN)
+
+
+def alert_span_start(config: AlertConfig, deadline_at: datetime) -> datetime:
+    start = deadline_at - polling_window(config)
+    moments = slot_moments(config.slots, deadline_at)
+    return min(start, moments[0]) if moments else start
 
 
 def check_rehearsal(config: AlertConfig, real_deadlines: list[datetime], now: datetime) -> None:
     rehearsal = config.rehearsal_deadline
     if rehearsal is None or rehearsal <= now:
         return
-    window = timedelta(minutes=config.slots[0]) + POLLING_MARGIN
+    rehearsal_start = alert_span_start(config, rehearsal)
     for deadline in real_deadlines:
-        if rehearsal - window < deadline and deadline - window < rehearsal:
-            raise ConfigError(
-                "ALERT_REHEARSAL_DEADLINE overlaps the alert window of a real deadline"
-            )
+        if rehearsal_start < deadline and alert_span_start(config, deadline) < rehearsal:
+            raise ConfigError("ALERT_REHEARSAL_DEADLINE overlaps the alert span of a real deadline")
