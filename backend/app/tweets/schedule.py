@@ -1,3 +1,4 @@
+from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
 
 from app.fpl.deadlines import next_deadline_after
@@ -7,6 +8,7 @@ WINDOW = timedelta(minutes=90)
 WINDOW_INTERVAL = timedelta(seconds=20)
 SPARSE_INTERVAL = timedelta(minutes=30)
 MAX_SLEEP = timedelta(seconds=60)
+PRE_SLOT_POLL = timedelta(minutes=10)
 
 
 def mode(deadlines: list[datetime], t: datetime, window: timedelta = WINDOW) -> str:
@@ -25,6 +27,7 @@ def next_poll_at(
     last: PollRecord | None,
     now: datetime,
     window: timedelta = WINDOW,
+    slot_times: Callable[[datetime], Sequence[datetime]] | None = None,
 ) -> datetime:
     if last is None:
         return now
@@ -34,6 +37,16 @@ def next_poll_at(
         window_start = deadline - window
         if last.started_at < window_start < candidate:
             candidate = window_start
+    if slot_times is not None:
+        for upcoming in deadlines:
+            for slot_at in slot_times(upcoming):
+                poll_at = slot_at - PRE_SLOT_POLL
+                if (
+                    slot_at < upcoming - window
+                    and last.started_at < poll_at
+                    and candidate >= slot_at
+                ):
+                    candidate = min(candidate, poll_at)
     if last.outcome == "rate_limited" and last.retry_after_seconds is not None:
         wait = min(timedelta(seconds=last.retry_after_seconds), SPARSE_INTERVAL)
         retry_at = last.finished_at + wait

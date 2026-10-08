@@ -18,7 +18,7 @@ from app.alerts.config import (
     parse_alert_config,
 )
 from app.alerts.loop import start_alerts
-from app.alerts.schedule import check_rehearsal, polling_window
+from app.alerts.schedule import check_rehearsal, polling_window, slot_moments
 from app.alerts.service import AlertsRuntime
 from app.alerts.status import alert_status, status_line
 from app.core.clock import Clock, SystemClock
@@ -222,11 +222,18 @@ def _alerts_runtime(
     return AlertsRuntime(setup.config, league_ids, delivery, corroboration), channel
 
 
-def _polling(deps: WorkerDeps) -> tuple[timedelta, tuple[datetime, ...]]:
+def _polling(
+    deps: WorkerDeps,
+) -> tuple[timedelta, tuple[datetime, ...], Callable[[datetime], list[datetime]] | None]:
     if deps.alerts is None:
-        return WINDOW, ()
-    rehearsal = deps.alerts.config.rehearsal_deadline
-    return polling_window(deps.alerts.config), (rehearsal,) if rehearsal is not None else ()
+        return WINDOW, (), None
+    config = deps.alerts.config
+    rehearsal = config.rehearsal_deadline
+    return (
+        polling_window(config),
+        (rehearsal,) if rehearsal is not None else (),
+        lambda deadline_at: slot_moments(config.slots, deadline_at),
+    )
 
 
 def _catch_up_lookback(deps: WorkerDeps) -> timedelta:
@@ -290,7 +297,7 @@ def run(ctx: typer.Context) -> None:
         if deps.tweet_ingest is None:
             logger.info("tweet ingest disabled")
         else:
-            window, extra_deadlines = _polling(deps)
+            window, extra_deadlines, slot_times = _polling(deps)
             tweet_thread = start_poller(
                 deps.engine,
                 deps.tweet_ingest.make_source,
@@ -299,6 +306,7 @@ def run(ctx: typer.Context) -> None:
                 clock=deps.tweet_ingest.clock,
                 window=window,
                 extra_deadlines=extra_deadlines,
+                slot_times=slot_times,
                 max_lookback=_catch_up_lookback(deps),
             )
 
@@ -392,12 +400,12 @@ def status(ctx: typer.Context) -> None:
         typer.echo("Tweet ingest: disabled")
     else:
         source_name = deps.tweet_ingest.source_name
-        window, extra_deadlines = _polling(deps)
+        window, extra_deadlines, slot_times = _polling(deps)
         with Session(deps.engine) as session:
             deadlines = sorted([*upcoming_deadlines(session, now), *extra_deadlines])
         last_success = latest_success_by_source(deps.engine).get(source_name)
         last = latest_poll(deps.engine, source_name)
-        next_at = next_poll_at(deadlines, last, now, window)
+        next_at = next_poll_at(deadlines, last, now, window, slot_times)
         typer.echo("Tweet ingest:")
         typer.echo(f"  source: {source_name}")
         last_success_str = "never" if last_success is None else _fmt(last_success.started_at)

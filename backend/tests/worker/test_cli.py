@@ -1105,6 +1105,25 @@ def test_status_shows_tweet_ingest_with_polls_in_window(cli, db):
     ]
 
 
+def test_status_next_poll_is_ten_minutes_before_the_digest(cli, db):
+    from app.tweets.store import write_poll
+
+    _seed_d6(db)
+    digest = datetime(2026, 10, 9, 18, 0, tzinfo=UTC)
+    now = digest - timedelta(minutes=20)
+    write_poll(db, _tweet_poll(digest - timedelta(minutes=25), "succeeded", new_posts=0))
+    tweet_ingest = TweetIngest(source_name="twitterapi_io", list_id=1, make_source=lambda: None)
+
+    result = cli(
+        "status",
+        clock=FixedClock(now),
+        tweet_ingest=tweet_ingest,
+        alerts=_alerts_setup(slots=DEFAULT_SLOTS_TUPLE),
+    )
+
+    assert "  next poll: 2026-10-09T17:50:00Z" in _tweet_status_lines(result)
+
+
 def test_status_shows_last_success_before_a_later_failure(cli, db):
     from app.tweets.store import write_poll
 

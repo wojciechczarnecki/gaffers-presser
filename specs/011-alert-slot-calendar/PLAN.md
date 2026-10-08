@@ -297,7 +297,7 @@ starts Sun 2027-03-28. For a deadline Sun 2027-03-28 15:30 Warsaw (13:30Z), D-1@
         contains `slots=120,30`.
       Automatic verification: `cd backend && uv run pytest -q tests/alerts/test_schedule.py
       tests/worker/test_cli.py -k "window or rehearsal or slots or polling"`
-- [ ] 6. **Extra tweet poll before a slot outside the window** (AC9). Files:
+- [x] 6. **Extra tweet poll before a slot outside the window** (AC9). `iterations: 1` Files:
       `backend/app/tweets/schedule.py` (`PRE_SLOT_POLL`, the `slot_times` parameter),
       `backend/app/tweets/loop.py` (`TweetPoller`/`start_poller` take `slot_times`),
       `backend/app/worker/cli.py` (`_polling` returns `slot_times`; `run` and `status` pass it),

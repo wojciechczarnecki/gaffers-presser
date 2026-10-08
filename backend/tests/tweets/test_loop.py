@@ -283,6 +283,27 @@ def test_poller_uses_window_and_extra_deadlines(db):
     ]
 
 
+def test_poller_polls_ten_minutes_before_a_slot(db):
+    _seed_gameweek(db, DEADLINE)
+    slot = DEADLINE - timedelta(hours=22)
+    start = slot - timedelta(minutes=12)
+    clock = FakeClock(start, slot - timedelta(minutes=10) + timedelta(seconds=1))
+    source = FakeSource(pages=[[]])
+    poller = TweetPoller(
+        db,
+        lambda: source,
+        list_id=123,
+        clock=clock,
+        stop_event=threading.Event(),
+        slot_times=lambda deadline: [slot],
+    )
+
+    with pytest.raises(Shutdown):
+        poller.run()
+
+    assert [t for t, _ in _poll_times(db)] == [start, slot - timedelta(minutes=10)]
+
+
 def test_poller_without_a_custom_window_stays_sparse_at_two_hours(db):
     rehearsal = DEADLINE + timedelta(days=2)
     start = rehearsal - timedelta(minutes=120)
