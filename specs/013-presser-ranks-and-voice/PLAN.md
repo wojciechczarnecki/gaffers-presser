@@ -423,7 +423,7 @@ Existing patterns to reuse:
           `row.prompt_version == "presser_writer@3"`.
       Automatic verification: `cd backend && uv run pytest -q tests/content tests/presser/test_writer.py tests/presser/test_service.py tests/presser/test_no_polish_literals.py`
 
-- [ ] 9. **Style examples rewritten (AC10).**
+- [x] 9. **Style examples rewritten (AC10).** `iterations: 0`
       - Rewrite `backend/app/content/presser_style_examples.md`. Keep the intro (spec 013,
         made-up managers and numbers) and 3 `## Example` sections:
         - a small league with a modest winning score and a strong GW rank;
