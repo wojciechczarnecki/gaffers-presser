@@ -672,7 +672,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
         - `test_status_says_why_disabled` and `test_invalid_nicknames_stops_cli`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_cli.py`
 
-- [ ] 14. **No Polish literals in presser code (AC15 guard).**
+- [x] 14. **No Polish literals in presser code (AC15 guard).** `iterations: 0`
       - `backend/tests/presser/test_no_polish_literals.py` parses every
         `backend/app/presser/**/*.py`. It asserts that no string constant contains a Polish
         diacritic (`ąćęłńóśźżĄĆĘŁŃÓŚŹŻ`). It also asserts that the files
