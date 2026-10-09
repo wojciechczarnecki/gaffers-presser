@@ -342,7 +342,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
         "2026-10-09"` in `prices.toml`.
       Automatic verification: `cd backend && uv run pytest -q tests/llm`
 
-- [ ] 2. **Migration 0011 and the `presser` model (data migration, its own step).**
+- [x] 2. **Migration 0011 and the `presser` model (data migration, its own step).** `iterations: 0`
       - Add `backend/app/presser/__init__.py` (empty) and `backend/app/presser/models.py`
         with the `Presser` table above.
       - Write `backend/migrations/versions/0011_presser.py` with `down_revision = "0010"`.
