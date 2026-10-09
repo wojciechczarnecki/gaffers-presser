@@ -21,6 +21,7 @@ from app.presser.evaluation.cases import (
     DEFAULT_CASES_PATH,
     HISTORY_PATH,
     PSEUDONYMS_PATH,
+    PresserCase,
     load_cases,
     load_history,
     write_cases,
@@ -30,6 +31,7 @@ from app.presser.evaluation.runner import (
     EvaluationError,
     default_result_path,
     format_totals,
+    load_result,
     run_evaluation,
     write_result,
 )
@@ -176,6 +178,143 @@ def evaluate(
     write_result(path, data)
     typer.echo(format_totals(data))
     typer.echo(f"result: {path}")
+
+
+RULE = "─" * 72
+RATING_PROMPT = "rating 1-5 (s skip, q quit)"
+NOTE_PROMPT = "note (empty for none)"
+VERDICT_PROMPT = "[a]gree  [f]lip  [s]kip  [q]uit"
+
+
+def _facts_summary(case: PresserCase | None) -> str:
+    if case is None:
+        return "facts: (case not found)"
+    facts = case.facts
+    winners = ", ".join(f"{w.manager} {w.net_points}" for w in facts.winners)
+    flops = ", ".join(f"{f.manager} {f.net_points}" for f in facts.flops)
+    best = ", ".join(facts.captaincy.best[:3]) or "-"
+    return f"winners: {winners}  flops: {flops}  best captain: {best}"
+
+
+def _cases_by_id(cases_path: Path) -> dict[str, PresserCase]:
+    return {case.id: case for case in load_cases(cases_path)} if cases_path.exists() else {}
+
+
+def _load_run(run: Path) -> dict:
+    try:
+        return load_result(run)
+    except EvaluationError as exc:
+        raise fail(str(exc)) from None
+
+
+@app.command(help="Rate the style of the pressers of a run, 1-5, with an optional note.")
+def review(
+    run: Annotated[Path, typer.Option("--run", help="The run file written by evaluate.")],
+    all_: Annotated[bool, typer.Option("--all", help="Also the pressers already rated.")] = False,
+    cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
+) -> None:
+    data = _load_run(run)
+    cases = _cases_by_id(cases_path)
+    pressers = data["pressers"]
+    todo = [
+        i
+        for i, item in enumerate(pressers)
+        if item["text"] is not None and (all_ or item["style"] is None)
+    ]
+    if not todo:
+        typer.echo("nothing to review")
+    for done, i in enumerate(todo):
+        item = pressers[i]
+        case = cases.get(item["case_id"])
+        tags = ", ".join(case.tags) if case is not None and case.tags else "-"
+        typer.echo(RULE)
+        typer.echo(f"{done + 1}/{len(todo)}  id: {item['case_id']}  tags: {tags}")
+        typer.echo(_facts_summary(case))
+        typer.echo(item["text"])
+        rating: int | None = None
+        while rating is None:
+            answer = typer.prompt(RATING_PROMPT).strip().lower()
+            if answer == "q":
+                _echo_rating_summary(pressers)
+                return
+            if answer == "s":
+                break
+            if answer in ("1", "2", "3", "4", "5"):
+                rating = int(answer)
+            else:
+                typer.echo(f"unknown rating {answer!r}")
+        if rating is None:
+            continue
+        note = typer.prompt(NOTE_PROMPT, default="", show_default=False).strip()
+        item["style"] = {"rating": rating, "note": note or None}
+        write_result(run, data)
+    _echo_rating_summary(pressers)
+
+
+def _echo_rating_summary(pressers: list[dict]) -> None:
+    ratings = [p["style"]["rating"] for p in pressers if p["style"] is not None]
+    average = f"{sum(ratings) / len(ratings):.2f}" if ratings else "n/a"
+    typer.echo(f"rated: {len(ratings)}/{len(pressers)}  average: {average}")
+
+
+@app.command(name="judge-review", help="Give your own verdict on each claim the judge labelled.")
+def judge_review(
+    run: Annotated[Path, typer.Option("--run", help="The run file written by evaluate.")],
+    limit: Annotated[int | None, typer.Option("--limit", min=1)] = None,
+) -> None:
+    data = _load_run(run)
+    pressers = data["pressers"]
+    todo = [
+        i
+        for i, item in enumerate(pressers)
+        if item["claims"] and all(claim["owner_label"] is None for claim in item["claims"])
+    ]
+    if limit is not None:
+        todo = todo[:limit]
+    if not todo:
+        typer.echo("nothing to review")
+    stop = False
+    for i in todo:
+        item = pressers[i]
+        typer.echo(RULE)
+        typer.echo(f"id: {item['case_id']}")
+        typer.echo(item["text"])
+        for claim in item["claims"]:
+            typer.echo(f"claim: {claim['claim']}  (judge: {claim['label']})")
+            while True:
+                answer = typer.prompt(VERDICT_PROMPT).strip().lower()
+                if answer == "a":
+                    claim["owner_label"] = claim["label"]
+                elif answer == "f":
+                    claim["owner_label"] = (
+                        "unsupported" if claim["label"] == "supported" else "supported"
+                    )
+                elif answer == "s":
+                    pass
+                elif answer == "q":
+                    stop = True
+                else:
+                    typer.echo(f"unknown action {answer!r}")
+                    continue
+                break
+            if stop:
+                break
+        write_result(run, data)
+        if stop:
+            break
+    labelled = [
+        claim for item in pressers for claim in item["claims"] if claim["owner_label"] is not None
+    ]
+    agreement = (
+        sum(claim["owner_label"] == claim["label"] for claim in labelled) / len(labelled)
+        if labelled
+        else None
+    )
+    data["totals"]["reviewed_claims"] = len(labelled)
+    data["totals"]["judge_agreement"] = agreement
+    write_result(run, data)
+    shown = "n/a" if agreement is None else f"{agreement:.2f}"
+    typer.echo(f"reviewed claims: {len(labelled)}  agreement: {shown}")
 
 
 def main() -> None:

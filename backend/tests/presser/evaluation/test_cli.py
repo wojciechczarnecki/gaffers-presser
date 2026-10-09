@@ -92,3 +92,97 @@ def test_evaluate_reports_a_model_outside_the_catalogue(cases_path, tmp_path):
     )
     assert result.exit_code == 1
     assert "model_settings.toml" in result.stderr
+
+
+def recorded_run(tmp_path, claim_labels=("supported", "unsupported", "supported")):
+    built, _, _ = deps(
+        [PresserDraft(text="Pierwszy"), PresserDraft(text="Drugi")],
+        [verdict(*claim_labels[:2]), verdict(*claim_labels[2:])],
+    )
+    path = tmp_path / "cases.jsonl"
+    write_cases(path, [case("c1", "dev", tags=["tie_win"]), case("c2", "dev")])
+    output = tmp_path / "run.json"
+    result = invoke(
+        built, "evaluate", "--split", "dev", "--cases", str(path), "--output", str(output)
+    )
+    assert result.exit_code == 0, result.output
+    return output, path
+
+
+def read(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_review_records_rating_and_note(tmp_path):
+    run, cases_path = recorded_run(tmp_path)
+    result = invoke(
+        EvaluationCliDeps(None, FixedClock(), lambda m: None, lambda m: None),
+        "review",
+        "--run",
+        str(run),
+        "--cases",
+        str(cases_path),
+        input="4\nfajne\n2\n\n",
+    )
+    assert result.exit_code == 0, result.output
+    styles = [p["style"] for p in read(run)["pressers"]]
+    assert styles == [{"rating": 4, "note": "fajne"}, {"rating": 2, "note": None}]
+    assert "rated: 2/2  average: 3.00" in result.stdout
+    assert "tags: tie_win" in result.stdout
+    assert "winners: Bartas 60" in result.stdout
+    assert "Pierwszy" in result.stdout
+
+
+def test_review_rejects_out_of_range(tmp_path):
+    run, cases_path = recorded_run(tmp_path)
+    result = invoke(
+        None,
+        "review",
+        "--run",
+        str(run),
+        "--cases",
+        str(cases_path),
+        input="7\n5\n\n3\n\n",
+    )
+    assert "unknown rating '7'" in result.stdout
+    assert [p["style"]["rating"] for p in read(run)["pressers"]] == [5, 3]
+
+
+def test_review_skips_quits_and_resumes(tmp_path):
+    run, cases_path = recorded_run(tmp_path)
+    first = invoke(None, "review", "--run", str(run), "--cases", str(cases_path), input="s\nq\n")
+    assert "rated: 0/2" in first.stdout
+    assert all(p["style"] is None for p in read(run)["pressers"])
+    invoke(None, "review", "--run", str(run), "--cases", str(cases_path), input="4\n\nq\n")
+    again = invoke(None, "review", "--run", str(run), "--cases", str(cases_path), input="3\n\n")
+    assert [p["style"]["rating"] for p in read(run)["pressers"]] == [4, 3]
+    assert "1/1" in again.stdout
+    rerun = invoke(None, "review", "--run", str(run), "--cases", str(cases_path))
+    assert "nothing to review" in rerun.stdout
+    everything = invoke(
+        None, "review", "--run", str(run), "--all", "--cases", str(cases_path), input="1\n\n5\n\n"
+    )
+    assert "rated: 2/2  average: 3.00" in everything.stdout
+
+
+def test_judge_review_records_verdicts_and_agreement(tmp_path):
+    run, _ = recorded_run(tmp_path)
+    result = invoke(None, "judge-review", "--run", str(run), input="a\nf\na\n")
+    assert result.exit_code == 0, result.output
+    data = read(run)
+    claims = [c for p in data["pressers"] for c in p["claims"]]
+    assert [c["owner_label"] for c in claims] == ["supported", "supported", "supported"]
+    assert "reviewed claims: 3  agreement: 0.67" in result.stdout
+    assert data["totals"]["judge_agreement"] == pytest.approx(2 / 3)
+    assert data["totals"]["reviewed_claims"] == 3
+
+
+def test_judge_review_limit_skip_and_quit(tmp_path):
+    run, _ = recorded_run(tmp_path)
+    limited = invoke(None, "judge-review", "--run", str(run), "--limit", "1", input="s\na\n")
+    data = read(run)
+    assert [c["owner_label"] for c in data["pressers"][0]["claims"]] == [None, "unsupported"]
+    assert "reviewed claims: 1  agreement: 1.00" in limited.stdout
+    quit_run = invoke(None, "judge-review", "--run", str(run), input="q\n")
+    assert quit_run.exit_code == 0
+    assert read(run)["pressers"][1]["claims"][0]["owner_label"] is None

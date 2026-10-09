@@ -830,7 +830,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
           injected deps and `tmp_path` cases and output, and checks the file content.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation/test_runner.py tests/presser/evaluation/test_cli.py tests/presser/test_no_polish_literals.py`
 
-- [ ] 19. **`review` (style) and `judge-review` (AC17 review part, AC18).**
+- [x] 19. **`review` (style) and `judge-review` (AC17 review part, AC18).** `iterations: 0`
       - Add the command `review --run PATH [--all]` to the evaluation CLI. It shows each
         presser without a style rating, or each one with `--all`: the case ID, the tags,
         a short facts summary (winners, flops, best captain) and the text. It asks
