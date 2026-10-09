@@ -707,7 +707,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
         test from a tiny valid `FactSheet` factory in `tests/presser/evaluation/factories.py`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation/test_cases.py`
 
-- [ ] 16. **`build-cases`: real cases from the database, pseudonymised (AC16 real part).**
+- [x] 16. **`build-cases`: real cases from the database, pseudonymised (AC16 real part).** `iterations: 2`
       - Write `backend/evals/presser/v1/pseudonyms.toml` with `managers = [...]`, at least
         30 synthetic Polish first names or nicknames, and `leagues = [...]`, at least 4
         synthetic league names. It is test data, not product content.

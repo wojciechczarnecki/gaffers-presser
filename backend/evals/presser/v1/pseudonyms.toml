@@ -1,0 +1,18 @@
+# Synthetic names that replace every manager and league of the owner's leagues in the presser
+# evaluation set (spec 012). Test data, not product content: none of these is a real person's
+# name from the leagues. `app.presser.evaluation build-cases` draws from `managers` per league
+# with a fixed seed and gives each league one name from `leagues`.
+
+managers = [
+  "Bartas", "Kuba", "Mati", "Zbychu", "Kowal", "Gruby", "Franek", "Heniek", "Rysiek",
+  "Staszek", "Lolek", "Bolek", "Tadek", "Julek", "Olek", "Wiesiek", "Czesiek", "Mietek",
+  "Romek", "Edzio", "Leszek", "Wacek", "Antek", "Zenek", "Ignacy", "Konrad", "Dobromir",
+  "Fabian", "Gustaw", "Hubert", "Alojzy", "Norbert", "Oskar", "Patryk", "Remigiusz",
+]
+
+leagues = [
+  "Liga Pod Złotym Kurem",
+  "Klub Smutnych Kapitanów",
+  "Kółko Różańcowe FPL",
+  "Stowarzyszenie Wolnych Transferów",
+]
