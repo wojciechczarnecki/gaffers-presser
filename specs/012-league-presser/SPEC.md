@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-09"
   - "spec-ready — 2026-10-09"
   - "plan-draft — 2026-10-09"
   - "plan-approved — 2026-10-09"
   - "implemented — 2026-10-09"
+  - "done — 2026-10-09"
 metrics:
   started_at: 2026-10-09T13:06
   plan_steps: 21
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 5
   findings_accepted: 13
   findings_rejected: 0
+  cost_plan_cents: 300
+  cost_plan_review_cents: 175
+  cost_implement_cents: 805
+  cost_final_review_cents: 880
+  finished_at: 2026-10-09T14:34
 ---
 
 # SPEC 012 — League presser
