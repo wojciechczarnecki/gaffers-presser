@@ -185,7 +185,15 @@
   `bench_transfers_chips` is empty when it has no bench, hit, transfer miss, chip or
   auto-sub item.
 - **Ranking:** each list in the sheet is already in the ranked order. The writer picks from
-  the top.
+  the top. The orders not given above, so that the sheet is deterministic:
+  - winners and flops: by manager name;
+  - captain picks: by `points` descending, then manager name; `best` and `worst`: by
+    manager name;
+  - chips: by `effect` descending with `null` last, then manager name;
+  - auto-subs: by `player_in_points` descending, then manager name;
+  - season rows: by `wins` descending, then `flops` ascending, then manager name; records:
+    by gameweek, then manager name;
+  - climbers and fallers: by manager name.
 
 **Fact sheet shape (`app/presser/facts/schema.py`, all models `extra="forbid"`):**
 
@@ -378,8 +386,8 @@ The command in each step is the contract. After a step's own tests pass, the ste
 
 - [ ] 5. **Fact sheet schema, loading, winners, flops and captaincy (AC1, AC2).**
       - Create the package `backend/app/presser/facts/` with these files:
-        - `__init__.py` re-exports `FactSheet`, `build_fact_sheet`, `check_fact_sheet` and
-          `NoFactsError`.
+        - `__init__.py` re-exports `FactSheet`, `build_fact_sheet`, `check_fact_sheet`,
+          `NoFactsError` and `FactSheetError`.
         - `schema.py` holds the models above and `check_fact_sheet`.
         - `load.py` holds the SQL loads. One query each gets the members of league L at
           gameweek g with `manager_gameweek` and the display names. Others get the captain
@@ -422,8 +430,10 @@ The command in each step is the contract. After a step's own tests pass, the ste
       - Write `backend/app/presser/facts/table.py` (table, movement, top 3, climbers and
         fallers) and `facts/season.py` (wins, flops, streaks and records over gameweeks
         1..N).
-      - `build_fact_sheet` now fills every section and `empty_sections`, and it ends with
-        `assert not check_fact_sheet(sheet)`.
+      - `build_fact_sheet` now fills every section and `empty_sections`, and it ends by
+        raising `FactSheetError` (exported next to `NoFactsError`, message without names)
+        when `check_fact_sheet(sheet)` is not empty. It is not an `assert`, which `python
+        -O` strips.
       - Test first: `backend/tests/presser/test_facts_table.py` has these tests:
         - `test_table_from_total_points_with_movement`;
         - `test_no_movement_at_first_gameweek`;
@@ -467,8 +477,11 @@ The command in each step is the contract. After a step's own tests pass, the ste
       - Write `backend/app/presser/tracing.py` in the pattern of
         `app/corroboration/tracing.py`:
         - The `PresserTracer` protocol has `span(name, input)` and
-          `generation(model, input, output, usage, cost_usd, error_class)` (the generation is
-          named `presser-writer`) and `flush()`.
+          `generation(model, input, output, usage, cost_usd, latency_seconds, error_class)`
+          (the generation is named `presser-writer`) and `flush()`. The corroboration
+          pattern starts and ends the generation after the call, so its own duration is
+          about 0. The SPEC asks for latency in the trace, so the generation carries
+          `metadata={"latency_seconds": …}`, and the `presser` span wraps the writer call.
         - The implementations are `NullPresserTracer` and `LangfusePresserTracer`. A tracing
           failure is logged by class name and never fails the work.
         - `make_presser_tracer(tracing)` builds the tracer.
@@ -482,7 +495,8 @@ The command in each step is the contract. After a step's own tests pass, the ste
           sheet JSON, a glossary term, a style-example line and the previous presser text
           labelled "GW4", and that the system message is the prompt.
         - `::test_trace_created` uses `FakeLangfuseClient` and asserts a `presser-writer`
-          generation with model, usage and cost under a `presser` span.
+          generation with model, usage, cost and `metadata.latency_seconds` under a
+          `presser` span.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_writer.py tests/content/test_presser_content.py`
 
 - [ ] 9. **Store and generation service (AC8 stored row, AC10 failure).**
@@ -600,7 +614,11 @@ The command in each step is the contract. After a step's own tests pass, the ste
         - `run` builds the runtime when it is enabled. That is a separate channel from
           `build_channel(delivery_config)`, a `DeliveryService` with the worker's
           `stop_event`, the writer from `resolve_presser_llm` + `build_chat_model` +
-          `StructuredCaller.from_spec`, the tracer and the league IDs. It logs
+          `StructuredCaller.from_spec`, the tracer and the league IDs. `from_spec` gives
+          the caller a fresh stop event, so `run` passes `StopAwareClock(stop_event)` as the
+          caller's clock and sets `caller.stop_event = stop_event`: a SIGTERM then ends the
+          writer's back-off at once and reaches the `PresserStopped` path instead of
+          finishing the retries. It logs
           `presser enabled: model=%s` or `presser disabled: %s` once. It passes
           `after_league_sync=lambda season, gw: run_after_league_sync(...)` to `Worker` and
           closes the channel in `finally`.
@@ -616,9 +634,11 @@ The command in each step is the contract. After a step's own tests pass, the ste
           sent, for GW5 of `LEAGUE_ID`. A second worker run sends nothing and calls the LLM 0
           times.
         - `test_logs_carry_no_names_or_text` uses `caplog` at DEBUG over the same run with a
-          nickname for `ENTRY_IDS[0]`. It asserts that the log has no `Synthetic Manager`, no
-          `Synthetic XI`, no nickname, no `Synthetic League`, no `LEAGUE_ID` and no
-          fake-presser marker text.
+          nickname for `ENTRY_IDS[0]`. It asserts that the log has no `Synthetic` at all
+          (this covers `Synthetic Manager`, `Synthetic XI`, `Synthetic League` and the
+          collision-rule display name of `ENTRY_IDS[1]`, which starts with `Synthetic`), no
+          nickname, no `LEAGUE_ID`, no entry ID from `ENTRY_IDS` and no fake-presser marker
+          text.
         - `backend/tests/worker/test_cli.py::test_presser_disabled_logged_once_and_in_status`
           and `::test_invalid_presser_nicknames_stops_worker` (exit 1, the message names
           the variable, not the value).
@@ -703,10 +723,18 @@ The command in each step is the contract. After a step's own tests pass, the ste
           It reports the missing history entries.
         - It splits the cases deterministically, 5 dev and 5 test, spread over both leagues
           and the gameweeks.
-        - It ends by checking every case's JSON against the real `manager_name` words,
-          `team_name` and league names read from the DB. A word of 3 or more letters that
-          appears and is not in the pseudonym pool is a hit, and on a hit it raises
-          `PseudonymisationError`. The error names the case ID only.
+        - It ends with a leak check over every case, using the real `manager_name`,
+          `team_name` and league names read from the DB. The sheet legitimately holds real
+          player names (captains, transfers, auto-subs), and team names often contain player
+          names ("Salah's Army"), so a plain word search over the whole JSON would raise on
+          clean data. The check has two parts:
+          - Full strings: no real `manager_name`, `team_name` or league name (whole, compared
+            ignoring case) appears anywhere in the case JSON or the case ID.
+          - Words: every name-bearing field (`league`, every `manager` field, and the
+            `best`, `worst`, `climbers` and `fallers` lists) must be a pool entry, and no
+            word of 3 or more letters of a real `manager_name` or league name that is not a
+            pool entry appears as a whole word in the `previous` texts.
+          On a hit it raises `PseudonymisationError`. The error names the case ID only.
       - Add `backend/app/presser/evaluation/cli.py` and `__main__.py`
         (`python -m app.presser.evaluation`) with the command `build-cases [--gameweeks
         1-5] [--output] [--force]`. It merges the real cases with the synthetic cases
@@ -718,6 +746,9 @@ The command in each step is the contract. After a step's own tests pass, the ste
         every manager in the sheets is from the pool, and that the IDs carry no league or
         entry ID. `::test_leak_raises` monkeypatches the pseudonymisation to keep a real
         name and expects `PseudonymisationError`.
+        `::test_team_name_with_player_word_is_not_a_leak` gives a seeded manager the team
+        "<captain's player name> Army" and asserts the build succeeds while the player
+        name stays in the captaincy section.
       - Then run the builder on the local development database (`compose.yaml`: user,
         password and database `presser` on `localhost:5432`). If it is not reachable, end
         with `RESULT: ESCALATE`, `KIND: tooling`. Run these commands, from `backend/`:
@@ -855,7 +886,9 @@ The command in each step is the contract. After a step's own tests pass, the ste
         default true, the default `openai/gpt-6-luna`, and the JSON format with a synthetic
         example. They say that nicknames never go into the repository.
       - `docs/DEPLOYMENT.md`: add step `13. **Presser (optional).**` It covers:
-        - what triggers it (the league sync of the latest finished gameweek);
+        - what triggers it (the league sync of the latest finished gameweek), and that the
+          first-deploy catch-up (step 6) therefore sends the latest finished gameweek's
+          presser once when the presser is enabled at the first start;
         - the three variables and the run conditions;
         - the `presser disabled: …` log line and the `Presser:` status line;
         - migration `0011`;
@@ -917,6 +950,10 @@ The command in each step is the contract. After a step's own tests pass, the ste
   `reasoning_effort` fails at request time, not in tests.
 - **Time zones.** `status` shows Warsaw time through `app/core/local_time.format_local`. The
   stored times are UTC.
+- **Temperature.** `build_chat_model` sends `temperature = 0` to every model that accepts
+  it, so the writer is near-deterministic. This plan keeps the shared factory unchanged. If
+  the pressers read repetitive, a writer temperature is a prompt-tuning decision for
+  BACKLOG #32, not for this spec.
 - **The structured output of a long Polish text.** Some models escape newlines oddly in tool
   arguments. The evaluation shows it. Production keeps the text as returned.
 
@@ -981,7 +1018,33 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+### 2026-10-09 — plan review
+
+Findings:
+
+- `major` — step 16: the leak check searched every word (3+ letters) of the real manager, team and league names in the whole case JSON, but the sheet legitimately holds real player names and team names often contain player names ("Salah's Army"), so the builder would raise `PseudonymisationError` on clean data and push the implementer to an escalation or a weakened check. Changed: full real strings are searched everywhere; name-bearing fields must be pool entries; real-name words are searched only in the `previous` texts; added `test_team_name_with_player_word_is_not_a_leak`.
+- `minor` — step 12: `StructuredCaller.from_spec` gives the writer its own stop event and the plan passed no stop-aware clock, so on SIGTERM the writer's 2 s/4 s back-off ran on and `PresserStopped` was hard to reach. Changed: the worker passes `StopAwareClock(stop_event)` and sets `caller.stop_event`.
+- `minor` — step 12: the log-privacy test listed `Synthetic Manager`/`XI`/`League` but the collision rule turns the second synthetic manager into a display name starting with `Synthetic`, and entry IDs were not checked. Changed: assert no `Synthetic` substring and no `ENTRY_IDS`.
+- `minor` — Approach → Fact rules: "each list is already ranked" but the order of winners, flops, captain picks, chips, auto-subs, season rows, records, climbers and fallers was unspecified, which makes the sheet (and the frozen evaluation cases) non-deterministic. Changed: added the exact orders.
+- `minor` — step 7: `assert not check_fact_sheet(sheet)` in production code is stripped by `python -O`. Changed: raise `FactSheetError` (re-exported in step 5).
+- `minor` — step 8: the corroboration tracer pattern ends the generation right after creating it, so the trace held no latency, while the SPEC asks for tokens, cost and latency per writer call. Changed: the generation carries `metadata.latency_seconds`, the span wraps the call, and `test_trace_created` asserts it.
+- `minor` — step 21: DEPLOYMENT did not say that the first-deploy catch-up sends the latest finished gameweek's presser when the presser is enabled. Changed: added to the step 13 text. Also added a Risks note that the shared factory runs the writer at temperature 0 (a BACKLOG #32 matter).
+
+Checked and found correct:
+
+- Coverage: every AC1–AC20 has steps and a named proving test; the matrix matches the steps; every AC-delivering step writes its test first and its `Automatic verification:` runs exact paths.
+- Owner summary: no new dependency (LangGraph, Langfuse, typer already used); migration 0011 is accepted in SPEC → Owner decisions; the six catalogue rows are accepted there too.
+- Migrations: `0010_off_list_posts.py` is the head, `PRE_0010_TABLES` drives the older migration tests and must exclude `presser` as step 2 says.
+- Worker: `run_job` returns a `RunRecord` with `outcome`; `PlannedAction` for `league_sync` carries `season` and `gameweek`; `_priority_key` orders the catch-up by gameweek with results before league sync, so the hook drops GW1–4 and sends GW5 in `tests/worker/sim.py` (the existing catch-up test lists league syncs 1–5 at 2026-09-27); the hook runs after the job transaction, outside the job lock.
+- Fact data: `player_gameweek_result` is one row per player and gameweek with `minutes` and `total_points` (double gameweeks summed), `manager_transfer` has `gameweek_fpl_id`, `manager_gameweek.total_points` is net of hits; the captain/vice rule (0 minutes → vice, both 0 → captain on 0) and the TC multiplier match FPL; the stored pick multiplier is rightly ignored.
+- Delivery: `DeliveryService.send(key, kind, message)` returns `sent | already_sent | failed | disabled` with `log_id`; its log line carries no key or name; the kind `presser` exists.
+- Settings: `LlmSettings` already has `env_ignore_empty=True`, so empty `.env.example` placeholders fall back to the defaults; `ConfigError` is a `CollectorError`, so `_deps_from_settings`'s `fail(...)` path catches an invalid `PRESSER_NICKNAMES`.
+- Content: the glossary has exactly 70 `[[term]]` entries and the style examples 3 `## Example` headings, as the step 8 test asserts; `load_prompt` requires the `version: N` header.
+- Conventions and decisions: module `app/presser` (2026-09-26/27), shared `app/llm` and retry (2026-09-30), fake LLM in tests and evaluations outside pytest, JSONL dev/test sets, the delivery key and log (2026-10-01), the WhatsApp `wa.me` button (2026-10-08), logs without names or league IDs (league ordinal only).
+- E2E: automatic part is executable by the agent (verify command, migration up/down/up on the development DB, `--help`, invalid nicknames exit, empty `summary`, eval-set test and 6-digit grep); no UI scope; each manual item has a `Pass when:` line and needs the owner's real inbox, real names or his phone.
+- Language: the plan is in English (`language: en`).
+
+The plan is ready for implementation: the one major finding was fixable in the plan and is fixed, no blocker remains, and the only migration and the catalogue additions are accepted in SPEC → Owner decisions.
 
 ## Deviations
 
