@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-09"
   - "spec-ready — 2026-10-09"
+metrics:
+  started_at: 2026-10-09T23:15
 ---
 
 # SPEC 013 — Presser ranks and natural voice
