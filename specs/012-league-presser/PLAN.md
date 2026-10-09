@@ -682,7 +682,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
       - Fix any literal the test finds by moving it to `app/content/`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_no_polish_literals.py`
 
-- [ ] 15. **Evaluation case model (AC16 structure).**
+- [x] 15. **Evaluation case model (AC16 structure).** `iterations: 1`
       - Write `backend/app/presser/evaluation/__init__.py` and `cases.py`:
         - `PresserCase` (`extra="forbid"`) has `id`, `split: Literal["dev","test"]`,
           `source: Literal["real","synthetic"]`, `tags: list[str]`, `facts: FactSheet` and
