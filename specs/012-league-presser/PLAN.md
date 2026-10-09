@@ -852,7 +852,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
           agreement `0.67` printed and stored.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation/test_cli.py`
 
-- [ ] 20. **`summary` with the pass rule (AC17 summary, AC19).**
+- [x] 20. **`summary` with the pass rule (AC17 summary, AC19).** `iterations: 1`
       - Write `backend/app/presser/evaluation/summary.py`:
         - `summarise(results_dir) -> list[RunSummary]` reads the test-split runs, one per
           model (the file is per model).

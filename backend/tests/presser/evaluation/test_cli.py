@@ -186,3 +186,27 @@ def test_judge_review_limit_skip_and_quit(tmp_path):
     quit_run = invoke(None, "judge-review", "--run", str(run), input="q\n")
     assert quit_run.exit_code == 0
     assert read(run)["pressers"][1]["claims"][0]["owner_label"] is None
+
+
+def test_summary_reports_and_applies_thresholds(tmp_path):
+    from tests.presser.evaluation.test_summary import presser, run, write
+
+    write(tmp_path, run("cheap/model", [presser(n, rating=3, cost=0.0001) for n in range(4)]))
+    write(tmp_path, run("mid/model", [presser(n, cost=0.002) for n in range(4)]))
+    result = invoke(None, "summary", "--results-dir", str(tmp_path))
+    assert result.exit_code == 0
+    lines = result.stdout.splitlines()
+    assert any(line.startswith("cheap/model") and line.endswith("fail") for line in lines)
+    assert any(line.startswith("mid/model") and line.endswith("PASS") for line in lines)
+    assert lines[-1] == "winner: mid/model"
+
+
+def test_summary_without_runs_or_winner(tmp_path):
+    from tests.presser.evaluation.test_summary import presser, run, write
+
+    assert "no test runs" in invoke(None, "summary", "--results-dir", str(tmp_path)).stdout
+    assert "no test runs" in invoke(None, "summary", "--results-dir", str(tmp_path / "no")).stdout
+    write(tmp_path, run("a/m", [presser(n, rating=2) for n in range(2)]))
+    assert invoke(None, "summary", "--results-dir", str(tmp_path)).stdout.splitlines()[-1] == (
+        "no model passes"
+    )

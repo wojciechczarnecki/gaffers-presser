@@ -19,6 +19,7 @@ from app.presser.config import DEFAULT_PRESSER_MODEL, PresserSettings
 from app.presser.evaluation.building import PseudonymisationError, build_real_cases, load_pseudonyms
 from app.presser.evaluation.cases import (
     DEFAULT_CASES_PATH,
+    DEFAULT_RESULTS_DIR,
     HISTORY_PATH,
     PSEUDONYMS_PATH,
     PresserCase,
@@ -35,6 +36,7 @@ from app.presser.evaluation.runner import (
     run_evaluation,
     write_result,
 )
+from app.presser.evaluation.summary import choose, format_run, summarise
 from app.presser.store import current_season
 from app.presser.writer import Writer, build_writer
 
@@ -315,6 +317,20 @@ def judge_review(
     write_result(run, data)
     shown = "n/a" if agreement is None else f"{agreement:.2f}"
     typer.echo(f"reviewed claims: {len(labelled)}  agreement: {shown}")
+
+
+@app.command(help="Compare the test-split runs and apply the pass rule.")
+def summary(
+    results_dir: Annotated[Path, typer.Option("--results-dir")] = DEFAULT_RESULTS_DIR,
+) -> None:
+    runs = summarise(results_dir) if results_dir.exists() else []
+    if not runs:
+        typer.echo("no test runs")
+        return
+    for run in runs:
+        typer.echo(format_run(run))
+    winner = choose(runs)
+    typer.echo(f"winner: {winner}" if winner is not None else "no model passes")
 
 
 def main() -> None:
