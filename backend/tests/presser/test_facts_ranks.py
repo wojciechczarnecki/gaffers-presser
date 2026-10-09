@@ -55,3 +55,61 @@ def test_equal_rank_is_not_a_personal_best_or_worst(world):
         world.gw(10, gameweek, 50, gameweek_rank=rank)
     season = sheet(world, 3).season_facts
     assert season.personal_bests == [] and season.personal_worsts == []
+
+
+def _overall(world, gameweek, ranks):
+    for entry_id, rank in ranks.items():
+        world.gw(entry_id, gameweek, 50, overall_rank=rank)
+
+
+def test_overall_section_rows_and_movers(world):
+    world.manager(13, "Dariusz Delta")
+    _overall(world, 4, {10: 300_000, 11: 3_000_000, 12: 900_000, 13: 500_000})
+    _overall(world, 5, {10: 100_000, 11: 1_400_000, 12: 1_900_000, 13: 490_000})
+    overall = sheet(world).overall
+    assert [
+        (
+            r.manager,
+            r.overall_rank,
+            r.previous_overall_rank,
+            r.movement,
+            r.entered,
+            r.left,
+            r.notable,
+        )
+        for r in overall.rows
+    ] == [
+        ("Anna", 100_000, 300_000, 200_000, [100_000], [], True),
+        ("Bartek", 1_400_000, 3_000_000, 1_600_000, [], [], True),
+        ("Cezary", 1_900_000, 900_000, -1_000_000, [], [1_000_000], True),
+        ("Dariusz", 490_000, 500_000, 10_000, [], [], False),
+    ]
+    assert overall.biggest_climbers == ["Anna"]
+    assert overall.biggest_fallers == ["Cezary"]
+    assert "overall" not in sheet(world).empty_sections
+
+
+def test_overall_first_gameweek_has_no_movement(world):
+    _overall(world, 1, {10: 9_000, 11: 2_000_000, 12: 80_000})
+    overall = sheet(world, 1).overall
+    assert [(r.manager, r.movement, r.entered, r.notable) for r in overall.rows] == [
+        ("Anna", None, [1_000_000, 100_000, 10_000], True),
+        ("Cezary", None, [1_000_000, 100_000], True),
+        ("Bartek", None, [], False),
+    ]
+    assert overall.biggest_climbers == [] and overall.biggest_fallers == []
+
+
+def test_overall_empty_when_nothing_notable(world):
+    _overall(world, 4, {10: 2_000_000, 11: 3_000_000, 12: 1_500_000})
+    _overall(world, 5, {10: 1_900_000, 11: 3_100_000, 12: 1_400_000})
+    result = sheet(world)
+    assert "overall" in result.empty_sections
+    assert len(result.overall.rows) == 3
+    assert result.overall.biggest_climbers == [] and result.overall.biggest_fallers == []
+
+
+def test_overall_skips_managers_without_overall_rank(world):
+    _overall(world, 5, {10: 5_000})
+    world.gw(11, 5, 40)
+    assert [r.manager for r in sheet(world).overall.rows] == ["Anna"]

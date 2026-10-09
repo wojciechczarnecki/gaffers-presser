@@ -15,6 +15,7 @@ from app.presser.facts.load import (
     load_squads,
     load_transfers,
 )
+from app.presser.facts.overall import build_overall
 from app.presser.facts.schema import FactSheet, check_fact_sheet, empty_sections
 from app.presser.facts.season import build_season
 from app.presser.facts.table import build_table
@@ -94,6 +95,7 @@ def build_fact_sheet(
     )
     previous = [row for row in all_rows if row.gameweek == gameweek - 1]
     sheet.table = build_table(rows, previous, names)
+    sheet.overall = build_overall(rows, previous, names, gameweek)
     sheet.season_facts = season_facts
     sheet.empty_sections = empty_sections(sheet)
     if check_fact_sheet(sheet):

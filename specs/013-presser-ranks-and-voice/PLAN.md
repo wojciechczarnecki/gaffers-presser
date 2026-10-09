@@ -305,7 +305,7 @@ Existing patterns to reuse:
           earlier one is not flagged.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_ranks.py tests/presser/test_facts_table.py`
 
-- [ ] 5. **The `overall` section (AC6, AC7).**
+- [x] 5. **The `overall` section (AC6, AC7).** `iterations: 0`
       - Add `backend/app/presser/facts/overall.py` with `build_overall(current, previous,
         names, gameweek) -> Overall`, from Approach §2–3. `build.py` sets `sheet.overall`
         before `empty_sections`.
