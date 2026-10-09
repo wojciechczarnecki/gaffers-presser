@@ -28,3 +28,7 @@ def test_product_content_files_exist():
         "presser_style_examples.md",
     ):
         assert (CONTENT / relative).is_file(), relative
+
+
+def test_judge_prompt_exists():
+    assert (CONTENT / "prompts" / "presser_judge.md").is_file()

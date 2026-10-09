@@ -787,7 +787,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
         - The history in `history.jsonl` matches the `previous` of the real cases.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation`
 
-- [ ] 18. **Judge and `evaluate` (AC17 evaluate part).**
+- [x] 18. **Judge and `evaluate` (AC17 evaluate part).** `iterations: 0`
       - Write `backend/app/content/prompts/presser_judge.md` (`version: 1`, English). It
         asks the judge to read the fact sheet, the previous pressers and the presser, and
         to list every factual claim: numbers, who won or flopped, who captained whom and
