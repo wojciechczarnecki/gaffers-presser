@@ -194,6 +194,7 @@ def evaluate(
 RULE = "─" * 72
 RATING_PROMPT = "rating 1-5 (s skip, q quit)"
 NOTE_PROMPT = "note (empty for none)"
+INFLECTION_PROMPT = "inflection errors in names (whole number, Enter = 0)"
 VERDICT_PROMPT = "[a]gree  [f]lip  [s]kip  [q]uit"
 
 
@@ -257,15 +258,38 @@ def review(
         if rating is None:
             continue
         note = typer.prompt(NOTE_PROMPT, default="", show_default=False).strip()
-        item["style"] = {"rating": rating, "note": note or None}
+        item["style"] = {
+            "rating": rating,
+            "note": note or None,
+            "inflection_errors": _ask_inflection_errors(),
+        }
         write_result(run, data)
     _echo_rating_summary(pressers)
+
+
+def _ask_inflection_errors() -> int:
+    while True:
+        answer = typer.prompt(INFLECTION_PROMPT, default="", show_default=False).strip()
+        if not answer:
+            return 0
+        if answer.isdigit():
+            return int(answer)
+        typer.echo(f"unknown count {answer!r}")
 
 
 def _echo_rating_summary(pressers: list[dict]) -> None:
     ratings = [p["style"]["rating"] for p in pressers if p["style"] is not None]
     average = f"{sum(ratings) / len(ratings):.2f}" if ratings else "n/a"
-    typer.echo(f"rated: {len(ratings)}/{len(pressers)}  average: {average}")
+    counts = [
+        p["style"]["inflection_errors"]
+        for p in pressers
+        if p["style"] is not None and "inflection_errors" in p["style"]
+    ]
+    inflection = f"{sum(counts) / len(counts):.2f}" if counts else "n/a"
+    typer.echo(
+        f"rated: {len(ratings)}/{len(pressers)}  average: {average}"
+        f"  inflection errors: {inflection}"
+    )
 
 
 @app.command(name="judge-review", help="Give your own verdict on each claim the judge labelled.")

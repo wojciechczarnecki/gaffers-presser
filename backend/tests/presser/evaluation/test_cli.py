@@ -140,12 +140,15 @@ def test_review_records_rating_and_note(tmp_path):
         str(run),
         "--cases",
         str(cases_path),
-        input="4\nfajne\n2\n\n",
+        input="4\nfajne\n2\n3\n\n\n",
     )
     assert result.exit_code == 0, result.output
     styles = [p["style"] for p in read(run)["pressers"]]
-    assert styles == [{"rating": 4, "note": "fajne"}, {"rating": 2, "note": None}]
-    assert "rated: 2/2  average: 3.00" in result.stdout
+    assert styles == [
+        {"rating": 4, "note": "fajne", "inflection_errors": 2},
+        {"rating": 3, "note": None, "inflection_errors": 0},
+    ]
+    assert "rated: 2/2  average: 3.50  inflection errors: 1.00" in result.stdout
     assert "tags: tie_win" in result.stdout
     assert "winners: Bartas 60" in result.stdout
     assert "Pierwszy" in result.stdout
@@ -160,7 +163,7 @@ def test_review_rejects_out_of_range(tmp_path):
         str(run),
         "--cases",
         str(cases_path),
-        input="7\n5\n\n3\n\n",
+        input="7\n5\n\n\n3\n\n\n",
     )
     assert "unknown rating '7'" in result.stdout
     assert [p["style"]["rating"] for p in read(run)["pressers"]] == [5, 3]
@@ -171,16 +174,51 @@ def test_review_skips_quits_and_resumes(tmp_path):
     first = invoke(None, "review", "--run", str(run), "--cases", str(cases_path), input="s\nq\n")
     assert "rated: 0/2" in first.stdout
     assert all(p["style"] is None for p in read(run)["pressers"])
-    invoke(None, "review", "--run", str(run), "--cases", str(cases_path), input="4\n\nq\n")
-    again = invoke(None, "review", "--run", str(run), "--cases", str(cases_path), input="3\n\n")
+    invoke(None, "review", "--run", str(run), "--cases", str(cases_path), input="4\n\n\nq\n")
+    again = invoke(None, "review", "--run", str(run), "--cases", str(cases_path), input="3\n\n\n")
     assert [p["style"]["rating"] for p in read(run)["pressers"]] == [4, 3]
     assert "1/1" in again.stdout
     rerun = invoke(None, "review", "--run", str(run), "--cases", str(cases_path))
     assert "nothing to review" in rerun.stdout
     everything = invoke(
-        None, "review", "--run", str(run), "--all", "--cases", str(cases_path), input="1\n\n5\n\n"
+        None,
+        "review",
+        "--run",
+        str(run),
+        "--all",
+        "--cases",
+        str(cases_path),
+        input="1\n\n\n5\n\n\n",
     )
     assert "rated: 2/2  average: 3.00" in everything.stdout
+
+
+def test_review_records_inflection_errors(tmp_path):
+    run, cases_path = recorded_run(tmp_path)
+    invoke(
+        None,
+        "review",
+        "--run",
+        str(run),
+        "--cases",
+        str(cases_path),
+        input="4\nfajne\n2\n3\n\n\n",
+    )
+    assert [p["style"]["inflection_errors"] for p in read(run)["pressers"]] == [2, 0]
+
+    (tmp_path / "second").mkdir()
+    other, other_cases = recorded_run(tmp_path / "second")
+    result = invoke(
+        None,
+        "review",
+        "--run",
+        str(other),
+        "--cases",
+        str(other_cases),
+        input="5\n\nx\n-1\n1\n3\n\n\n",
+    )
+    assert "inflection errors" in result.stdout
+    assert [p["style"]["inflection_errors"] for p in read(other)["pressers"]] == [1, 0]
 
 
 def test_judge_review_records_verdicts_and_agreement(tmp_path):

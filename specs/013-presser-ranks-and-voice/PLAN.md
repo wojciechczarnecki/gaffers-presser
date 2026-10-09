@@ -479,7 +479,7 @@ Existing patterns to reuse:
         ranks reached the sheet.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_worker_run.py tests/presser/test_trigger.py`
 
-- [ ] 12. **`review` records inflection errors; `summary` averages them (AC13).**
+- [x] 12. **`review` records inflection errors; `summary` averages them (AC13).** `iterations: 1`
       - `app/presser/evaluation/cli.py` `review`: after the note, prompt
         `INFLECTION_PROMPT = "inflection errors in names (whole number, Enter = 0)"`. It
         re-asks on anything that is not a whole number ≥ 0 and stores
