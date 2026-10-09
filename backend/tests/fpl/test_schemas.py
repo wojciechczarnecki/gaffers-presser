@@ -65,3 +65,13 @@ def test_missing_entry_history_field_names_endpoint_and_field():
     assert exc_info.value.endpoint == "entry/{entry_id}/event/{gw}/picks"
     assert exc_info.value.field == "entry_history.bank"
     assert "987000001" not in str(exc_info.value)
+
+
+def test_entry_history_rank_optional():
+    payload = _synthetic_picks()
+    payload["entry_history"]["bank"] = 5
+    assert parse(Picks, "p", payload).entry_history.rank is None
+    payload["entry_history"]["rank"] = 12345
+    assert parse(Picks, "p", payload).entry_history.rank == 12345
+    payload["entry_history"]["rank"] = None
+    assert parse(Picks, "p", payload).entry_history.rank is None

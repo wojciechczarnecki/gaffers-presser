@@ -209,7 +209,7 @@ Existing patterns to reuse:
 
 ## Steps
 
-- [x] 1. **Migration 0012 and the model column (data migration, its own step) (AC2).**
+- [x] 1. **Migration 0012 and the model column (data migration, its own step) (AC2).** `iterations: 0`
       - Add `gameweek_rank: int | None = None` to `ManagerGameweek` in
         `backend/app/fpl/models/leagues.py`, after `overall_rank`.
       - Add `backend/migrations/versions/0012_gameweek_rank.py` (revision `"0012"`,
@@ -233,9 +233,9 @@ Existing patterns to reuse:
         with `DB=postgresql://presser:presser@localhost:5432/presser`, from `backend/`:
         `env -u OPENROUTER_API_KEY DATABASE_URL=$DB uv run alembic upgrade head`. If the
         database is not reachable, carry on: step 14 checks again and escalates there.
-      Automatic verification: `cd backend && uv run pytest -q tests/db/test_migrations.py` `iterations: 0`
+      Automatic verification: `cd backend && uv run pytest -q tests/db/test_migrations.py`
 
-- [ ] 2. **Collector stores the GW rank (AC1).**
+- [x] 2. **Collector stores the GW rank (AC1).** `iterations: 0`
       - `backend/app/fpl/schemas.py`: `EntryHistory.rank: int | None = None`.
       - `backend/app/fpl/leagues.py`: `"gameweek_rank": eh.rank` in the `_sync_entry` upsert,
         and `"gameweek_rank": None` in `_no_team_gameweek`.

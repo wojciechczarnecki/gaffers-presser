@@ -142,6 +142,7 @@ def _no_team_gameweek(season: str, entry_id: int, gw: int) -> dict:
         "bank": None,
         "value": None,
         "overall_rank": None,
+        "gameweek_rank": None,
     }
 
 
@@ -230,6 +231,7 @@ def _sync_entry(
                     "bank": eh.bank,
                     "value": eh.value,
                     "overall_rank": eh.overall_rank,
+                    "gameweek_rank": eh.rank,
                 }
             ],
             ["season", "entry_id", "gameweek_fpl_id"],
