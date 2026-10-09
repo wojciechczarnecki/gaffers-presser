@@ -446,7 +446,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
           nickname appears and no `manager_name` or `team_name` of the seeded managers does.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_table.py tests/presser/test_facts_gameweek.py`
 
-- [ ] 8. **Writer prompt, writer and tracer (AC8 input and trace, AC15 content).**
+- [x] 8. **Writer prompt, writer and tracer (AC8 input and trace, AC15 content).** `iterations: 0`
       - Write `backend/app/content/prompts/presser_writer.md` with a `version: 1` header.
         The instructions are in English, like the other prompts. The rules:
         - Write in Polish FPL slang, in the language of the style examples and the glossary.
