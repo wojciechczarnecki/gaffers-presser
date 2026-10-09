@@ -1074,3 +1074,60 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 ## Final review
 
 _(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
+
+### 2026-10-09 — report
+
+Three independent perspectives (compliance, quality, tests) ran as parallel subagents; every
+finding below was checked in the code. The verify command is green (ruff clean; the presser,
+worker, content and catalogue tests pass). The tests perspective ran 21 mutations: 8 killed,
+13 survived; the survivors that matter are findings F5–F9.
+
+AC → evidence:
+
+| AC | Evidence | Tests |
+|----|----------|-------|
+| AC1 | `app/presser/facts/{load,gameweek,build}.py`, `cli.py::facts` | `test_facts_gameweek.py::test_winners_by_net_points_with_tie`, `::test_manager_without_team_in_no_section`; `test_cli.py::test_facts_prints_sheet` |
+| AC2 | `facts/gameweek.py::credit_captain`, `captaincy` | `test_facts_gameweek.py::test_captain_points_with_multiplier`, `::test_triple_captain_marked`, `::test_vice_credited_when_captain_played_zero_minutes` |
+| AC3 | `facts/gameweek.py::bench_transfers_chips` | `::test_transfer_misses_ordered_by_difference`, `::test_hits_with_cost` |
+| AC4 | `facts/gameweek.py::_chip_effect` | `::test_chip_effects`, `::test_bench_excludes_bench_boost` |
+| AC5 | `facts/table.py` | `test_facts_table.py::test_table_from_total_points_with_movement`, `::test_no_movement_at_first_gameweek`, `::test_top3_gaps_climber_faller` |
+| AC6 | `facts/season.py` | `::test_season_wins_flops_and_streaks`, `::test_captain_blank_streak_threshold`, `::test_records` |
+| AC7 | `names.py`, `config.py::parse_nicknames`, both CLIs | `test_names.py`, `test_config.py`, `test_facts_table.py::test_nicknames_used_everywhere`, `worker/test_cli.py::test_invalid_presser_nicknames_stops_worker`, `test_cli.py::test_invalid_nicknames_stops_cli` |
+| AC8 | `writer.py`, `service.py::generate_presser`, `store.py::previous_pressers`, `tracing.py` | `test_writer.py`, `test_service.py` (the trace through the service is untested: F6) |
+| AC9 | `service.py::run_after_league_sync`, `worker/loop.py`, `worker/cli.py` | `test_trigger.py`, `test_worker_run.py`, `worker/test_loop.py` (the `run` wiring is untested: F5) |
+| AC10 | `service.py` failure path, `skip_statuses=("sent","failed")` | `test_service.py::test_writer_failure_recorded_failed_and_logged_by_class`, `test_trigger.py::test_failure_carries_on_and_is_not_retried` |
+| AC11 | `config.py::presser_disabled_reason`, worker and presser `status` | `test_config.py::test_disabled_reasons`, `worker/test_cli.py::test_presser_disabled_logged_once_and_in_status`, `test_cli.py::test_status_says_why_disabled` |
+| AC12 | `render.py`, `content/presser_email.toml` | `test_render.py`, `content/test_presser_email.py` |
+| AC13 | `cli.py::preview`/`send`, `service.py::send_presser` | `test_cli.py::test_preview_neither_sends_nor_marks_sent`, `::test_send_older_gameweek_then_already_sent` |
+| AC14 | log lines with the league ordinal only | `test_worker_run.py::test_logs_carry_no_names_or_text` |
+| AC15 | `app/content/` prompts, glossary, examples, e-mail template | `content/test_presser_content.py`, `test_no_polish_literals.py` |
+| AC16 | `evals/presser/v1/*`, `evaluation/{cases,building}.py` | `evaluation/test_eval_set.py`, `test_building.py`, `test_cases.py` |
+| AC17 | `evaluation/{runner,summary,cli}.py` | `test_runner.py`, `evaluation/test_cli.py`, `test_summary.py` |
+| AC18 | `evaluation/cli.py::judge_review` | `evaluation/test_cli.py::test_judge_review_records_verdicts_and_agreement` |
+| AC19 | `config.py`, `llm/model_settings.toml`, `llm/prices.toml`, `summary.py::choose` | `llm/test_presser_catalogue.py`, `test_config.py::test_default_model`, `test_summary.py` |
+| AC20 | `backend/.env.example`, `docs/DEPLOYMENT.md` step 13, `README.md` | `test_env_example.py`, `test_readme.py::test_presser_documented` |
+
+Plan steps: all 21 ticked with the work present; the six `minor` deviations are justified;
+nothing outside the scope is on the branch.
+
+Findings:
+
+- **F1** `worth-fixing` — `backend/app/presser/service.py:86-114`, `:152-154`, `:189-199` — a `preview` whose writer fails inserts a `failed` row under the production key `presser:<season>:gw<N>:league<id>`; when the worker's league sync of that gameweek then succeeds, `send_presser(..., skip_statuses=("sent","failed"))` returns `skipped` and `run_after_league_sync` logs nothing, so the automatic presser is lost silently — keep preview failures out of the worker's skip (e.g. a `preview` flag or status that `key_has_status` ignores) and log the skip with the league ordinal.
+- **F2** `worth-fixing` — `backend/app/presser/writer.py:19-20` — `PresserDraft.text: str` accepts `""` or whitespace, so an empty model reply is stored, e-mailed with an empty body and WhatsApp text, marked `sent` and later fed back as a previous presser — `Field(min_length=1)` with a strip validator, so the retry / `failed` path takes over; a test.
+- **F3** `worth-fixing` — `backend/app/presser/evaluation/cli.py:179-180` — rerunning `evaluate --split test --model M` writes the same default path and overwrites the run file, losing the owner's style ratings and judge-review verdicts (the BACKLOG #32 work) — refuse an existing file unless `--force`, or timestamp the default name; a test.
+- **F4** `worth-fixing` — `backend/app/presser/evaluation/cli.py:269-273` — `judge-review` selects only pressers whose claims are all unlabelled, so after `s` or `q` midway through a presser its remaining claims are never offered again (`test_judge_review_limit_skip_and_quit` pins this) — select on `any(owner_label is None)` and prompt only the unlabelled claims.
+- **F5** `worth-fixing` — `backend/app/worker/cli.py:330-339`, `:411-431`, `:449-450` — the worker `run` path with `deps.presser` set has no test: dropping `after_league_sync=after_league_sync` keeps the suite green (mutation M9), so the production wiring of AC9 is unproven — a `cli("run", presser=PresserSetup(..., make_runtime=fake))` test asserting the `make_runtime` arguments, the `presser enabled: model=…` line, the hook reaching `run_after_league_sync` and the channel closed; plus `make_runtime` raising → exit 1.
+- **F6** `worth-fixing` — `backend/tests/presser/test_service.py` (all on `NULL_PRESSER_TRACER`), `backend/app/presser/service.py:117-136` — AC8's "the Langfuse trace is created" is tested only on the tracer alone; removing the success `tracer.generation(...)` or storing `trace_id=None` stays green (M13, M14) — one `generate_presser` test with `LangfusePresserTracer(FakeLangfuseClient())` asserting the `presser-writer` generation under the `presser` span with usage, cost and `metadata.latency_seconds`, and `row.trace_id`.
+- **F7** `worth-fixing` — `backend/tests/presser/test_facts_gameweek.py`, `backend/tests/presser/test_facts_table.py` — flops (`facts/gameweek.py:44`) and season wins/flops (`facts/season.py:103-107`) are never tested with a hit that changes the order, so computing them from gross points stays green (M6, M15) although AC1/AC6 rest on net points — give a flop candidate and a season gameweek a hit so gross and net ranks differ, and assert `flops`, `wins` and `win_streak`.
+- **F8** `worth-fixing` — `backend/app/presser/service.py:200-206` — no trigger test has a league without fact data; re-raising `NoFactsError` aborts the remaining leagues and stays green (M20) — in `test_trigger.py` configure a league with no team rows and assert no row and no send for it, the other league sent, and the `error=NoFactsError` log line.
+- **F9** `nit` — `backend/app/presser/service.py:163-164` — the delivery `already_sent` branch is untested (M10) and leaves the row `generated`, so after a crash between delivery and `update_presser` each manual `send` makes a new paid call and the gameweek never counts as a previous presser — a test seeding a `delivery_log` row for the key; consider skipping generation when the delivery log already has the key.
+- **F10** `nit` — `backend/app/presser/tracing.py` — a near-verbatim copy of `app/corroboration/tracing.py` (span handles, null/Langfuse spans, error swallowing), which DECISIONS puts in shared `app/llm/` — extract a generic generation tracer into `app/llm/tracing.py` (also lets the generation span the real call instead of ~0 s).
+- **F11** `nit` — `backend/app/presser/cli.py:159`, `:179` — `make_runtime` (an unknown `PRESSER_MODEL` → `ConfigError`) and a `FactSheetError` from `generate_presser` are outside the `except`, so the owner gets a traceback instead of `error: …` exit 1 — catch `CollectorError` as `facts` does.
+- **F12** `nit` — `backend/app/presser/cli.py:130-138` — `preview`/`send` refuse with `PRESSER_ENABLED=false`, while PLAN step 13 makes them fail only on a missing key (and missing delivery for `send`); an unrecorded deviation that blocks a manual preview while the automatic presser is off — check only the key/delivery, or record the deviation.
+- **F13** `nit` — `backend/app/presser/evaluation/runner.py:26-28` — a judge that returns no claims for a non-empty presser scores faithfulness 1.0, which a lazy or broken judge can use to push a model over the 0.95 bar — count it as unjudged (`None`) for a non-empty text.
+
+Rejected:
+
+- The quality perspective's note that a SIGTERM during the hook loses the gameweek's presser for good: accepted by design in DECISIONS 2026-10-09 (manual `send` recovers it), not a defect of this branch.
+
+Left out: 16 nit findings

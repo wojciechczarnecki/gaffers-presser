@@ -19,6 +19,9 @@ metrics:
   implement_iterations: 6
   deviations_minor: 6
   deviations_major: 0
+  final_review_blockers: 0
+  final_review_worth_fixing: 8
+  final_review_nits: 5
 ---
 
 # SPEC 012 — League presser
