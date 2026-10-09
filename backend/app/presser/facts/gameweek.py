@@ -1,7 +1,23 @@
 from dataclasses import dataclass
 
-from app.presser.facts.load import CaptainRef, MemberRow, PlayerResult
-from app.presser.facts.schema import Captaincy, CaptainPick, ManagerScore
+from app.presser.facts.load import (
+    AutoSubRow,
+    CaptainRef,
+    MemberRow,
+    PlayerResult,
+    TransferRow,
+)
+from app.presser.facts.schema import (
+    AutoSub,
+    BenchItem,
+    BenchTransfersChips,
+    Captaincy,
+    CaptainPick,
+    ChipPlay,
+    Hit,
+    ManagerScore,
+    TransferMiss,
+)
 
 BLANK_MAX_POINTS = 2
 
@@ -110,4 +126,111 @@ def captaincy(
         picks=picks,
         best=sorted(pick.manager for pick in picks if pick.points == top),
         worst=sorted(pick.manager for pick in picks if pick.points == bottom),
+    )
+
+
+def _points(results: dict[tuple[int, int], PlayerResult], player_id: int, gameweek: int) -> int:
+    result = results.get((player_id, gameweek))
+    return result.points if result is not None else 0
+
+
+def _chip_effect(
+    row: MemberRow,
+    average: float,
+    bench_ids: list[int],
+    refs: dict[tuple[int, int], CaptainRef],
+    results: dict[tuple[int, int], PlayerResult],
+    gameweek: int,
+) -> float | None:
+    if row.active_chip == "bboost":
+        return float(sum(_points(results, player, gameweek) for player in bench_ids))
+    if row.active_chip == "3xc":
+        ref = refs.get((row.entry_id, gameweek))
+        credit = credit_captain(ref, results, gameweek) if ref is not None else None
+        return float(credit.base_points) if credit is not None else None
+    if row.active_chip in ("freehit", "wildcard"):
+        return round(row.points - average, 1)
+    return None
+
+
+def bench_transfers_chips(
+    rows: list[MemberRow],
+    bench_picks: dict[int, list[int]],
+    transfers: list[TransferRow],
+    auto_subs: list[AutoSubRow],
+    refs: dict[tuple[int, int], CaptainRef],
+    results: dict[tuple[int, int], PlayerResult],
+    names: dict[int, str],
+    player_names: dict[int, str],
+    average: float,
+    gameweek: int,
+) -> BenchTransfersChips:
+    by_entry = {row.entry_id: row for row in rows}
+
+    def player(player_id: int) -> str:
+        return player_names.get(player_id, "?")
+
+    bench = sorted(
+        (
+            BenchItem(manager=names[row.entry_id], points_on_bench=row.points_on_bench)
+            for row in rows
+            if row.points_on_bench > 0 and row.active_chip != "bboost"
+        ),
+        key=lambda item: (-item.points_on_bench, item.manager),
+    )
+    hits = sorted(
+        (
+            Hit(manager=names[row.entry_id], transfers=row.transfers, cost=row.transfers_cost)
+            for row in rows
+            if row.transfers_cost > 0
+        ),
+        key=lambda hit: (-hit.cost, hit.manager),
+    )
+    misses = []
+    for transfer in transfers:
+        if transfer.entry_id not in by_entry:
+            continue
+        points_in = _points(results, transfer.player_in, gameweek)
+        points_out = _points(results, transfer.player_out, gameweek)
+        if points_in < points_out:
+            misses.append(
+                TransferMiss(
+                    manager=names[transfer.entry_id],
+                    player_in=player(transfer.player_in),
+                    player_in_points=points_in,
+                    player_out=player(transfer.player_out),
+                    player_out_points=points_out,
+                    difference=points_out - points_in,
+                )
+            )
+    misses.sort(key=lambda miss: (-miss.difference, miss.manager, miss.player_in))
+    chips = sorted(
+        (
+            ChipPlay(
+                manager=names[row.entry_id],
+                chip=row.active_chip,
+                effect=_chip_effect(
+                    row, average, bench_picks.get(row.entry_id, []), refs, results, gameweek
+                ),
+            )
+            for row in rows
+            if row.active_chip
+        ),
+        key=lambda chip: (chip.effect is None, -(chip.effect or 0.0), chip.manager),
+    )
+    subs = sorted(
+        (
+            AutoSub(
+                manager=names[sub.entry_id],
+                player_out=player(sub.player_out),
+                player_in=player(sub.player_in),
+                player_in_points=_points(results, sub.player_in, gameweek),
+            )
+            for sub in auto_subs
+            if sub.entry_id in by_entry
+        ),
+        key=lambda sub: (-sub.player_in_points, sub.manager, sub.player_out),
+    )
+    return BenchTransfersChips(
+        bench=bench, hits=hits, transfer_misses=misses, chips=chips, auto_subs=subs
     )

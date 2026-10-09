@@ -412,7 +412,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
           covers both captain and vice on 0 minutes.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_gameweek.py`
 
-- [ ] 6. **Bench, hits, transfer misses, chips and auto-subs (AC3, AC4).**
+- [x] 6. **Bench, hits, transfer misses, chips and auto-subs (AC3, AC4).** `iterations: 0`
       - Extend `backend/app/presser/facts/gameweek.py` with the rules above, then fill
         `bench_transfers_chips` and its entry in `empty_sections`.
       - Test first: add these to `test_facts_gameweek.py`:
