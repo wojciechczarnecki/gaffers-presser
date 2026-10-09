@@ -565,7 +565,7 @@ Existing patterns to reuse:
         print real names.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation/test_eval_set.py tests/presser/evaluation`
 
-- [ ] 15. **Documents (AC16, AC2 runbook).**
+- [x] 15. **Documents (AC16, AC2 runbook).** `iterations: 0`
       - `docs/BACKLOG.md` #32:
         - The trigger becomes "spec 013 is merged".
         - The item runs on prompt version 3 and set v2 and adds the inflection measure:
@@ -743,6 +743,10 @@ sync, now with the GW6 privacy gate) is a guarded escalation point at the end.
 ## Deviations
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+
+- `minor` — Step 15 (documents) was done before step 14, because step 14 waits for the owner's league sync and the GW6 privacy gate and the plan says every other step comes first.
+- `minor` — The test `test_writer_gets_temperature_and_judge_zero` (step 7) does not unset `DATABASE_URL`: the guard `tests/core/test_settings.py::test_database_url_not_read_by_tests` forbids that name in tests, and `_deps_from_settings` already tolerates a missing URL.
+- `minor` — In `tests/presser/test_facts_checks.py` the consistent sheet is built from `factories.sheet()` by `ranked_sheet()` in the test file itself rather than by extending the factory.
 
 ## Final review
 

@@ -198,9 +198,9 @@ below; agents never touch production.
 13. **Presser (optional).** After the league sync of the latest finished gameweek, the worker
     generates and e-mails one presser per league in `FPL_LEAGUE_IDS`: a Polish text in FPL
     slang built from the league's facts (the manager and the flop of the gameweek, the
-    captains, the bench, transfers and chips, the table), with a "send to WhatsApp" button. It
-    runs only for the latest finished gameweek, so a catch-up after downtime sends nothing for
-    older ones, and a restart never sends a presser twice (the delivery key is
+    captains, the bench, transfers and chips, the table and the overall-rank moves), with a "send
+    to WhatsApp" button. It runs only for the latest finished gameweek, so a catch-up after
+    downtime sends nothing for older ones, and a restart never sends a presser twice (the delivery key is
     `presser:<season>:gw<N>:league<id>`). The first-deploy catch-up (step 6) therefore sends the
     presser of the latest finished gameweek once when the presser is enabled at the first start.
     - It needs delivery (step 11) and `OPENROUTER_API_KEY`; with either missing the worker logs
@@ -220,6 +220,10 @@ below; agents never touch production.
     - Migration `0011` adds the `presser` table (a row per generation: the fact sheet, the text,
       the model, tokens, cost, latency and the status). It runs through the pre-deploy like the
       others and downgrades cleanly.
+    - Migration `0012` adds the nullable `gameweek_rank` (FPL's gameweek rank) to
+      `manager_gameweek`. Existing rows stay empty until the next league sync of that gameweek;
+      the first-deploy catch-up (step 6) syncs every finished gameweek and so fills them. It runs
+      through the pre-deploy and downgrades cleanly.
     - From a Railway shell (`railway ssh`), with `--league <id> --gameweek <n>`:
       `python -m app.presser facts` prints the fact sheet, `python -m app.presser preview`
       generates and prints without sending, `python -m app.presser send` sends by hand, also

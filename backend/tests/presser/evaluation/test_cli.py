@@ -283,7 +283,6 @@ def test_writer_gets_temperature_and_judge_zero(monkeypatch):
 
     monkeypatch.setattr("app.presser.evaluation.cli._caller", recorder)
     monkeypatch.setenv("OPENROUTER_API_KEY", "dummy")
-    monkeypatch.delenv("DATABASE_URL", raising=False)
     from app.presser.evaluation.cli import _deps_from_settings
 
     built = _deps_from_settings()
