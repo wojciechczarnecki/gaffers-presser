@@ -763,7 +763,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
         print real names.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation/test_building.py`
 
-- [ ] 17. **Synthetic edge cases and the committed set (AC16).**
+- [x] 17. **Synthetic edge cases and the committed set (AC16).** `iterations: 0`
       - Add 6 synthetic cases to `backend/evals/presser/v1/cases.jsonl`, written as
         `FactSheet` JSON with pool names and a synthetic league name, each internally
         consistent:
