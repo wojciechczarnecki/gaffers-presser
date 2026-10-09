@@ -14,8 +14,9 @@ text in FPL slang that names the manager(s) of the gameweek, the flop of the gam
 captaincy hits and misses, the bench, transfer and chip disasters and the season race, with mild
 banter about FPL decisions. It reaches the owner by e-mail, with a "send to WhatsApp" button.
 It works when, after a gameweek's league sync, the owner receives one presser per league whose
-facts all come from the database (faithfulness ≥ 0.95 on the evaluation set), and whose style
-the owner rates at least 3.5/5 on average.
+facts come from the database, and the evaluation tooling can measure a model's faithfulness to
+the facts and the owner's rating of its style. Choosing the default model with that tooling
+(faithfulness ≥ 0.95, style ≥ 3.5/5) is a follow-up run with the owner (BACKLOG #32).
 
 ## Context
 
@@ -156,17 +157,20 @@ the owner rates at least 3.5/5 on average.
     lists every factual claim (numbers, who won, who captained whom, streaks, table
     positions) and labels each `supported` (by the fact sheet or a given previous presser) or
     `unsupported`; faithfulness = supported / all claims per presser, averaged. The judge is
-    `openai/gpt-6.1-sol`; the owner reviews the judge's labels on at least 3 pressers and the
-    agreement is reported.
+    `openai/gpt-6.1-sol`; a judge-review command takes the owner's verdict on each labelled
+    claim and reports the agreement with the judge.
   - Style: an interactive review CLI shows each presser and takes the owner's rating 1–5 and
     an optional note; ratings are stored in the repository next to the run results.
   - Also measured: length (share within 1500 characters), cost and latency per presser.
   - Candidates: `openai/gpt-6-luna`, `anthropic/claude-haiku-5.5`,
-    `deepseek/deepseek-v4.1-flash`, `google/gemini-3.8-flash`, `mistralai/mistral-large-4-0`
-    (each added to `model_settings.toml` and `prices.toml`). A model passes with faithfulness
-    ≥ 0.95 and an average style rating ≥ 3.5 on the test split; the cheapest passing model is
-    the default (`PRESSER_MODEL`, overridable), recorded in a report under `docs/reports/`
-    and an ADR.
+    `deepseek/deepseek-v4.1-flash`, `google/gemini-3.8-flash`, `mistralai/mistral-large-4-0`,
+    each added with the judge to `model_settings.toml` and `prices.toml`. The pass rule, applied
+    by the summary command: faithfulness ≥ 0.95 and an average style rating ≥ 3.5 on the test
+    split; the cheapest passing model wins.
+  - The comparison run itself (paid calls, the owner's style ratings and judge review, the
+    report under `docs/reports/`, the ADR and the new default) is a follow-up with the owner,
+    BACKLOG #32. Until then `PRESSER_MODEL` defaults to `openai/gpt-6-luna`, the extraction
+    default (ADR 0006).
 
 ## Out of scope
 
@@ -179,6 +183,9 @@ the owner rates at least 3.5/5 on average.
   as text) — a future spec if running jokes need a longer memory.
 - A judge running in production on every presser — the owner reads every presser before
   forwarding it; a production guard is a future spec if the evaluation shows a need.
+- The model comparison run, its report, the ADR and the new `PRESSER_MODEL` default — BACKLOG
+  #32 (P1), with the owner after this spec is merged: it needs paid calls and the owner's
+  style ratings, which an agent cannot provide.
 - End-of-season awards (the final top 3 ceremony) — a future spec before GW38.
 - H2H leagues, cup and the overall rank — not configured leagues.
 
@@ -232,9 +239,13 @@ the owner rates at least 3.5/5 on average.
   faithfulness with the labelled claims, length, cost and latency; the review command records
   the owner's 1–5 style rating and note; a summary command reports per model the averages and
   whether the thresholds pass.
-- [ ] AC18: The judge agreement with the owner on at least 3 pressers is reported.
-- [ ] AC19: A report under `docs/reports/` compares the five candidates on the test split, an
-  ADR records the default model, and `PRESSER_MODEL` defaults to it.
+- [ ] AC18: The judge-review command records the owner's verdict on each labelled claim of a
+  run's pressers and reports the agreement with the judge (tested on a recorded run with a fake
+  judge).
+- [ ] AC19: `PRESSER_MODEL` defaults to `openai/gpt-6-luna`; the five candidates and the judge
+  are in `model_settings.toml` and `prices.toml` with the prices checked on 2026-10-09; the
+  summary command applies the pass rule (faithfulness ≥ 0.95, style ≥ 3.5, the cheapest
+  passing model) to recorded results.
 - [ ] AC20: `backend/.env.example`, `docs/DEPLOYMENT.md` and the README document
   `PRESSER_ENABLED`, `PRESSER_MODEL` and `PRESSER_NICKNAMES` and the CLI.
 
@@ -252,6 +263,7 @@ the owner rates at least 3.5/5 on average.
 | A presser table with the fact sheet and text | reading previous pressers from `delivery_log` | the fact sheet, model and cost per presser are needed for the history and the evaluation; a migration accepted by the owner |
 | Faithfulness by an LLM judge (`openai/gpt-6.1-sol`) claim by claim, style by the owner's 1–5 rating | judge only; owner only; a judge for style | an automatic, repeatable faithfulness number to compare models, checked against the owner on a sample; humour cannot be judged automatically (the owner) |
 | Five candidates incl. the newest cheap models; the cheapest passing faithfulness ≥ 0.95 and style ≥ 3.5 wins | the extraction model without comparison; quality first regardless of cost | the presser costs cents a season, but the extraction model was never tested on Polish writing (the owner) |
+| This spec builds the evaluation tooling with `openai/gpt-6-luna` as the provisional default; the comparison run is a follow-up with the owner (BACKLOG #32) | the comparison inside this spec | the run needs about $3–6 of paid calls and about 40 style ratings from the owner, which the autonomous pipeline cannot do; the presser works from the merge on (the owner, as with specs 004 and 005) |
 | Evaluation set: 10 real gameweeks pseudonymised plus ~6 synthetic edge cases | real cases only; waiting for GW8–10 | 10 cases miss ties, all-negative weeks and the first gameweek; waiting delays the stage (the owner) |
 | A starter glossary compiled from public web sources, approved by the owner, before implementation | the owner writing it; no glossary; the full X/podcast glossary first | without examples models write stiff Polish; the full collection is its own roadmap item (the owner) |
 | No vulgar words; jokes only about FPL decisions | light swearing; anything goes | the text goes to a group chat and models overshoot when allowed to swear (the owner) |
