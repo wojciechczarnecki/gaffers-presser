@@ -15,13 +15,24 @@ HISTORY_PATH = EVALS_DIR / "v2" / "history.jsonl"
 PSEUDONYMS_PATH = EVALS_DIR / "v2" / "pseudonyms.toml"
 DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
 
-MIN_CASES = 14
-MAX_CASES = 18
+MIN_CASES = 18
+MAX_CASES = 22
 REAL_CASES = 10
-MIN_SYNTHETIC_CASES = 5
-MIN_TEST_CASES = 8
+MIN_SYNTHETIC_CASES = 10
+MIN_TEST_CASES = 10
 MAX_PREVIOUS = 2
-EDGE_TAGS = ("tie_win", "low_captain", "all_negative", "chip_flop", "first_gameweek", "no_team")
+EDGE_TAGS = (
+    "tie_win",
+    "low_captain",
+    "all_negative",
+    "chip_flop",
+    "first_gameweek",
+    "no_team",
+    "enter_top_10k",
+    "rise_in_top_10k",
+    "drop_out_of_top_1m",
+    "gw_rank_unknown",
+)
 
 
 class PresserCase(BaseModel):

@@ -499,7 +499,7 @@ Existing patterns to reuse:
           `n/a`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation/test_cli.py tests/presser/evaluation/test_summary.py`
 
-- [ ] 13. **Set v2: composition, synthetic cases, leak check (AC12, synthetic part).**
+- [x] 13. **Set v2: composition, synthetic cases, leak check (AC12, synthetic part).** `iterations: 0`
       - `app/presser/evaluation/cases.py`:
         - `MIN_CASES = 18`, `MAX_CASES = 22`, `MIN_SYNTHETIC_CASES = 10` and
           `MIN_TEST_CASES = 10`.

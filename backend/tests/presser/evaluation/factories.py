@@ -88,5 +88,5 @@ def valid_set() -> list[PresserCase]:
         case(f"real-{n}", "dev" if n < 5 else "test", "real", gameweek=n % 5 + 1) for n in range(10)
     ]
     for n, tag in enumerate(EDGE_TAGS):
-        cases.append(case(f"syn-{tag}", "dev" if n < 3 else "test", "synthetic", [tag]))
+        cases.append(case(f"syn-{tag}", "dev" if n % 2 == 0 else "test", "synthetic", [tag]))
     return cases

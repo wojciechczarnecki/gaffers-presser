@@ -1,3 +1,4 @@
+import json
 import re
 
 from app.presser.evaluation.building import _manager_names as manager_names
@@ -21,12 +22,12 @@ def test_the_committed_set_has_no_composition_problems():
     assert composition_problems(CASES) == []
 
 
-def test_split_is_eight_and_eight_with_real_and_synthetic_in_each():
+def test_split_is_ten_and_ten_with_real_and_synthetic_in_each():
     for split in ("dev", "test"):
         in_split = [case for case in CASES if case.split == split]
-        assert len(in_split) == 8
+        assert len(in_split) == 10
         assert sum(case.source == "real" for case in in_split) == 5
-        assert sum(case.source == "synthetic" for case in in_split) == 3
+        assert sum(case.source == "synthetic" for case in in_split) == 5
 
 
 def test_every_sheet_validates():
@@ -45,9 +46,52 @@ def test_edge_cases_cover_every_tag():
     assert set(EDGE_TAGS) <= tags
 
 
+RANK_KEYS = {
+    "gameweek_rank",
+    "overall_rank",
+    "previous_overall_rank",
+    "movement",
+    "entered",
+    "left",
+}
+
+
+def _without_rank_values(value):
+    if isinstance(value, dict):
+        return {k: _without_rank_values(v) for k, v in value.items() if k not in RANK_KEYS}
+    if isinstance(value, list):
+        return [_without_rank_values(item) for item in value]
+    return value
+
+
+def test_the_set_has_20_cases_and_the_rank_cases():
+    assert len(CASES) == 20
+    tags = {tag for case in CASES for tag in case.tags}
+    assert {"enter_top_10k", "rise_in_top_10k", "drop_out_of_top_1m", "gw_rank_unknown"} <= tags
+
+
+def test_rank_cases_show_what_their_tag_says():
+    by_tag = {tag: case for case in CASES for tag in case.tags if case.source == "synthetic"}
+    entered = by_tag["enter_top_10k"].facts.overall.rows
+    assert any(10_000 in row.entered for row in entered)
+    rising = by_tag["rise_in_top_10k"].facts.overall.rows
+    assert any(
+        row.notable and row.movement and row.movement > 0 and row.overall_rank <= 10_000
+        for row in rising
+    )
+    dropped = by_tag["drop_out_of_top_1m"].facts.overall.rows
+    assert any(1_000_000 in row.left for row in dropped)
+    unknown = by_tag["gw_rank_unknown"].facts
+    assert all(score.gameweek_rank is None for score in unknown.winners + unknown.flops)
+    assert unknown.season_facts.best_gameweek == [] and "overall" in unknown.empty_sections
+
+
 def test_no_case_text_holds_an_entry_or_league_id():
-    for line in DEFAULT_CASES_PATH.read_text(encoding="utf-8").splitlines():
-        assert not re.search(r"\d{6,}", line)
+    for case in CASES:
+        stripped = json.dumps(
+            _without_rank_values(case.model_dump(mode="json")), ensure_ascii=False
+        )
+        assert not re.search(r"\d{6,}", stripped), case.id
     assert not re.search(r"\d{6,}", HISTORY_PATH.read_text(encoding="utf-8"))
     assert not re.search(r"\d{6,}", PSEUDONYMS_PATH.read_text(encoding="utf-8"))
 
