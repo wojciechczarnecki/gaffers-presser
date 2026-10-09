@@ -35,7 +35,10 @@ from tests.fpl.payloads import load
 
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OFF_LIST_COLUMNS = {"embedded", "quoted_x_id"}
-BEFORE_OWNERSHIP = DEFAULT_EXCLUDE | {"selected_by_percent"} | OFF_LIST_COLUMNS
+BEFORE_GAMEWEEK_RANK = {"gameweek_rank"}
+BEFORE_OWNERSHIP = (
+    DEFAULT_EXCLUDE | {"selected_by_percent"} | OFF_LIST_COLUMNS | BEFORE_GAMEWEEK_RANK
+)
 ALERT_TABLES = {"alert", "alert_post"}
 PRE_0010_TABLES = set(SQLModel.metadata.tables.keys()) - {"list_membership", "presser"}
 
@@ -513,7 +516,7 @@ def test_alert_log_migration_adds_only_new_tables():
             )
 
         other_tables = PRE_0010_TABLES - ALERT_TABLES
-        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS
+        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS | BEFORE_GAMEWEEK_RANK
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
 
@@ -561,7 +564,7 @@ def test_quote_migration_backfills_and_downgrades():
             insert(conn, 3, {"quotedTweet": {"id": "not-a-number"}})
 
         other_tables = PRE_0010_TABLES - {"tweet"}
-        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS
+        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS | BEFORE_GAMEWEEK_RANK
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
 
@@ -596,7 +599,7 @@ def test_presser_migration_adds_only_new_table():
             _apply_bootstrap_at_revision(session)
 
         other_tables = PRE_0010_TABLES | {"list_membership"}
-        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS
+        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS | BEFORE_GAMEWEEK_RANK
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
 
@@ -611,3 +614,65 @@ def test_presser_migration_adds_only_new_table():
             assert "presser" not in inspect(conn).get_table_names()
         with Session(engine) as session:
             assert table_contents(session, exclude=excluded, tables=other_tables) == before
+
+
+def test_gameweek_rank_migration_adds_empty_column_and_downgrades():
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
+        url = container.get_connection_url()
+        run_alembic(url, "upgrade", "0011")
+        engine = make_engine(url)
+        with Session(engine) as session:
+            _apply_bootstrap_at_revision(session)
+            session.commit()
+        with engine.begin() as conn:
+            season = conn.execute(sa_text("SELECT label FROM season")).scalar_one()
+            gameweek = conn.execute(
+                sa_text("SELECT min(fpl_id) FROM gameweek WHERE season = :s"), {"s": season}
+            ).scalar_one()
+            conn.execute(
+                sa_text(
+                    "INSERT INTO manager (season, entry_id, team_name, manager_name)"
+                    " VALUES (:s, 1, 't', 'm')"
+                ),
+                {"s": season},
+            )
+            for has_team, points in ((True, 50), (False, None)):
+                conn.execute(
+                    sa_text(
+                        "INSERT INTO manager_gameweek (season, entry_id, gameweek_fpl_id,"
+                        " has_team, points, overall_rank) VALUES (:s, 1, :gw, :ht, :p, 123456)"
+                    ),
+                    {
+                        "s": season,
+                        "gw": gameweek + (0 if has_team else 1),
+                        "ht": has_team,
+                        "p": points,
+                    },
+                )
+
+        tables = set(SQLModel.metadata.tables.keys()) - {"presser"}
+        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS | BEFORE_GAMEWEEK_RANK
+        with Session(engine) as session:
+            before = table_contents(session, exclude=excluded, tables=tables)
+
+        run_alembic(url, "upgrade", "0012")
+        with engine.connect() as conn:
+            column = next(
+                c
+                for c in inspect(conn).get_columns("manager_gameweek")
+                if c["name"] == "gameweek_rank"
+            )
+            assert column["nullable"]
+            ranks = (
+                conn.execute(sa_text("SELECT gameweek_rank FROM manager_gameweek")).scalars().all()
+            )
+            assert ranks == [None, None]
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=tables) == before
+
+        run_alembic(url, "downgrade", "0011")
+        with engine.connect() as conn:
+            columns = {c["name"] for c in inspect(conn).get_columns("manager_gameweek")}
+        assert "gameweek_rank" not in columns
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=tables) == before
