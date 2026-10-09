@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-09"
   - "spec-ready — 2026-10-09"
+metrics:
+  started_at: 2026-10-09T13:06
 ---
 
 # SPEC 012 — League presser
