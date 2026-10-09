@@ -539,7 +539,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
         - All of them use `FixedClock`, so no real sleep happens.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_service.py`
 
-- [ ] 10. **E-mail template and renderer (AC12, AC15).**
+- [x] 10. **E-mail template and renderer (AC12, AC15).** `iterations: 0`
       - Write `backend/app/content/presser_email.toml`:
         - `[title] presser = "Presser GW{gameweek} — {league}"`;
         - `[whatsapp] button = "📲 Wyślij na WhatsApp"`;
