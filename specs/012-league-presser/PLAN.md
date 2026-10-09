@@ -324,7 +324,7 @@ Every test step runs with Docker available. Tests that need PostgreSQL use the `
 The command in each step is the contract. After a step's own tests pass, the step also runs
 `cd backend && uv run ruff check . && uv run ruff format --check .`.
 
-- [ ] 1. **Model catalogue: five candidates and the judge.**
+- [x] 1. **Model catalogue: five candidates and the judge.** `iterations: 0`
       - Fetch the public model list (`curl -s https://openrouter.ai/api/v1/models`, no
         credentials) and add rows to `backend/app/llm/model_settings.toml` for
         `anthropic/claude-haiku-5.5`, `deepseek/deepseek-v4.1-flash`,
