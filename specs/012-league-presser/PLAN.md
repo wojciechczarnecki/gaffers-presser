@@ -499,7 +499,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
           `presser` span.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_writer.py tests/content/test_presser_content.py`
 
-- [ ] 9. **Store and generation service (AC8 stored row, AC10 failure).**
+- [x] 9. **Store and generation service (AC8 stored row, AC10 failure).** `iterations: 1`
       - Write `backend/app/presser/store.py` with these functions:
         - `insert_presser(engine, **fields) -> int` and `update_presser(engine, id, **fields)`;
         - `previous_pressers(session, season, league_id, gameweek, limit=2)`, which returns
@@ -1049,6 +1049,8 @@ The plan is ready for implementation: the one major finding was fixable in the p
 ## Deviations
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+
+- `minor` — step 9: `PresserRuntime` gains a `clock` field (default `SystemClock`), which the plan's field list lacked: the `presser.created_at` value and the tests' `FixedClock` need it.
 
 ## Final review
 
