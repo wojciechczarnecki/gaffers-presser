@@ -72,7 +72,8 @@ and each LLM step that produces data has an evaluation set with recorded results
 
 - [x] Post-gameweek presser per league in Polish FPL slang: summary, best manager of the
       gameweek (net points, ties allowed), banter; delivered by e-mail; the model comparison
-      with the owner follows in BACKLOG #32 (spec: [012](../specs/012-league-presser/SPEC.md))
+      with the owner follows in BACKLOG #32 (spec: [012](../specs/012-league-presser/SPEC.md); ranks and voice:
+      [013](../specs/013-presser-ranks-and-voice/SPEC.md))
 - [ ] Slang glossary and style examples (from X and Polish FPL podcasts) (spec: TBD)
 
 ## Stage 4 — Source credibility and Q&A
