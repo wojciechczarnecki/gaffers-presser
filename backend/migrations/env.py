@@ -8,6 +8,7 @@ import app.alerts.models  # noqa: F401
 import app.delivery.models  # noqa: F401
 import app.extraction.models  # noqa: F401
 import app.fpl.models  # noqa: F401
+import app.presser.models  # noqa: F401
 import app.retrieval.models  # noqa: F401
 import app.tweets.models  # noqa: F401
 import app.worker.models  # noqa: F401

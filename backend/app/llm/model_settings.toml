@@ -40,3 +40,28 @@ structured_method = "json_schema"
 reasoning_effort = "low"
 temperature = true
 checked = "2026-09-29"
+
+["anthropic/claude-haiku-5.5"]
+reasoning_effort = "none"
+temperature = false
+checked = "2026-10-09"
+
+["deepseek/deepseek-v4.1-flash"]
+reasoning_effort = "none"
+temperature = true
+checked = "2026-10-09"
+
+["google/gemini-3.8-flash"]
+reasoning_effort = "low"
+temperature = true
+checked = "2026-10-09"
+
+["mistralai/mistral-large-4-0"]
+reasoning_effort = "none"
+temperature = true
+checked = "2026-10-09"
+
+["openai/gpt-6.1-sol"]
+reasoning_effort = "low"
+temperature = false
+checked = "2026-10-09"

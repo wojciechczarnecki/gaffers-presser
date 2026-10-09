@@ -19,6 +19,7 @@ import app.alerts.models  # noqa: F401
 import app.delivery.models  # noqa: F401
 import app.extraction.models  # noqa: F401
 import app.fpl.models  # noqa: F401
+import app.presser.models  # noqa: F401
 import app.retrieval.models  # noqa: F401
 import app.tweets.models  # noqa: F401
 import app.worker.models  # noqa: F401
@@ -36,7 +37,7 @@ NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OFF_LIST_COLUMNS = {"embedded", "quoted_x_id"}
 BEFORE_OWNERSHIP = DEFAULT_EXCLUDE | {"selected_by_percent"} | OFF_LIST_COLUMNS
 ALERT_TABLES = {"alert", "alert_post"}
-PRE_0010_TABLES = set(SQLModel.metadata.tables.keys()) - {"list_membership"}
+PRE_0010_TABLES = set(SQLModel.metadata.tables.keys()) - {"list_membership", "presser"}
 
 
 def _apply_bootstrap_at_revision(session: Session) -> None:
@@ -584,3 +585,29 @@ def test_quote_migration_backfills_and_downgrades():
         run_alembic(url, "upgrade", "0010")
         with engine.connect() as conn:
             assert quotes(conn)[1] == (77, False)
+
+
+def test_presser_migration_adds_only_new_table():
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
+        url = container.get_connection_url()
+        run_alembic(url, "upgrade", "0010")
+        engine = make_engine(url)
+        with Session(engine) as session:
+            _apply_bootstrap_at_revision(session)
+
+        other_tables = PRE_0010_TABLES | {"list_membership"}
+        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS
+        with Session(engine) as session:
+            before = table_contents(session, exclude=excluded, tables=other_tables)
+
+        run_alembic(url, "upgrade", "0011")
+        with engine.connect() as conn:
+            assert "presser" in inspect(conn).get_table_names()
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before
+
+        run_alembic(url, "downgrade", "0010")
+        with engine.connect() as conn:
+            assert "presser" not in inspect(conn).get_table_names()
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=other_tables) == before

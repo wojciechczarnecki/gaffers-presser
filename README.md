@@ -193,6 +193,31 @@ uv run python -m app.alerts preview --at 2026-10-04T16:00 --kind digest
 `ALERT_REHEARSAL_DEADLINE` (a Warsaw time) runs the whole cycle for a made-up deadline with real
 e-mails for testing; remove it after use (see `docs/DEPLOYMENT.md`, step 12).
 
+League presser — after each gameweek the worker sends the owner one press conference per
+league by e-mail, in Polish FPL slang: the manager and the flop of the gameweek, the captains,
+the bench, transfers and chips, and the table. The facts are computed in SQL, an LLM only writes
+the text, and the e-mail has a "send to WhatsApp" button. It runs when delivery is enabled and
+`OPENROUTER_API_KEY` is set. Variables (`backend/.env.example`): `PRESSER_ENABLED` (default true),
+`PRESSER_MODEL` (default `openai/gpt-6-luna`) and `PRESSER_NICKNAMES` (a JSON object of FPL entry
+ID to nickname, kept out of the repository). `uv run python -m app.worker status` ends with a
+`Presser:` line. The CLI works by hand, also for an older gameweek and with `PRESSER_ENABLED=false`
+(which switches off only the automatic presser), and the evaluation tooling
+measures a model's faithfulness to the facts and the owner's rating of its style (the comparison
+run is BACKLOG #32); none of it is run by `pytest`:
+
+```bash
+uv run python -m app.presser facts --league ID --gameweek N     # the fact sheet as JSON
+uv run python -m app.presser preview --league ID --gameweek N   # generate and print, send nothing
+uv run python -m app.presser send --league ID --gameweek N      # generate and send by hand
+uv run python -m app.presser status                             # enabled or why not, latest presser
+
+uv run python -m app.presser.evaluation build-cases --gameweeks 1-5   # real cases, pseudonymised
+uv run python -m app.presser.evaluation evaluate --split test --model openai/gpt-6-luna  # --force overwrites a run
+uv run python -m app.presser.evaluation review --run PATH       # rate the style 1-5
+uv run python -m app.presser.evaluation judge-review --run PATH # check the judge's claim labels
+uv run python -m app.presser.evaluation summary                 # the pass rule over the test runs
+```
+
 The project is built with a spec-driven agentic workflow
 ([agentic-pipeline](https://github.com/wojciechczarnecki/agentic-pipeline)): every feature
 goes from an approved spec through a reviewed plan and implementation to a pull request.

@@ -472,3 +472,73 @@ def test_stop_event_ends_run_after_action(db):
 
     assert len(_rows(db)) == 1
     assert _rows(db)[0].outcome == "succeeded"
+
+
+def test_league_sync_success_calls_hook_once(db):
+    seed_done(db, SEASON, [1, 2, 3, 4, 5], D6 - timedelta(hours=200))
+    start = D6 + timedelta(hours=70)
+    clock = FakeClock(start, D6 + timedelta(hours=95))
+    overrides = {
+        6: [(start - timedelta(hours=22), True, False), (start - timedelta(seconds=1), True, True)]
+    }
+    calls: list[tuple[str, int]] = []
+    worker = Worker(
+        db,
+        SimulatedFpl(clock, gameweek_overrides=overrides).client(),
+        [],
+        clock,
+        after_league_sync=lambda season, gameweek: calls.append((season, gameweek)),
+    )
+    run_until_stopped(worker)
+    assert calls == [(SEASON, 6)]
+
+
+def test_failing_league_sync_calls_no_hook(db):
+    from tests.worker.sim import LEAGUE_ID as KNOWN
+
+    seed_done(db, SEASON, [1, 2, 3, 4, 5], D6 - timedelta(hours=200))
+    start = D6 + timedelta(hours=70)
+    clock = FakeClock(start, start + timedelta(minutes=10))
+    overrides = {6: [(start - timedelta(seconds=1), True, True)]}
+    calls: list[tuple[str, int]] = []
+    worker = Worker(
+        db,
+        SimulatedFpl(clock, gameweek_overrides=overrides).client(),
+        [KNOWN + 1],
+        clock,
+        after_league_sync=lambda season, gameweek: calls.append((season, gameweek)),
+    )
+    run_until_stopped(worker)
+    assert [r.outcome for r in _rows(db, Job.league_sync, gameweek=6)] == ["failed"]
+    assert calls == []
+
+
+def test_a_failing_hook_does_not_stop_the_worker(db, caplog):
+    seed_done(db, SEASON, [1, 2, 3, 4, 5], D6 - timedelta(hours=200))
+    start = D6 + timedelta(hours=70)
+    clock = FakeClock(start, D6 + timedelta(hours=95))
+    overrides = {6: [(start - timedelta(seconds=1), True, True)]}
+
+    def hook(season, gameweek):
+        raise ValueError("secret manager name")
+
+    worker = Worker(
+        db,
+        SimulatedFpl(clock, gameweek_overrides=overrides).client(),
+        [],
+        clock,
+        after_league_sync=hook,
+    )
+    with caplog.at_level(logging.INFO):
+        run_until_stopped(worker)
+    assert "presser hook failed: ValueError" in caplog.text
+    assert "secret manager name" not in caplog.text
+    assert [r.outcome for r in _rows(db, Job.league_sync, gameweek=6)] == ["succeeded"]
+    assert clock.now() >= D6 + timedelta(hours=95)
+
+
+def run_until_stopped(worker) -> None:
+    try:
+        worker.run()
+    except Shutdown:
+        pass

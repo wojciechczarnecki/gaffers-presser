@@ -4,6 +4,8 @@ from app.alerts.config import AlertSettings
 from app.core.settings import TweetSettings
 from app.delivery.config import DeliverySettings
 from app.extraction.config import ExtractionSettings
+from app.llm.settings import LlmSettings
+from app.presser.config import PresserSettings
 from app.retrieval.config import RetrievalSettings
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,6 +58,12 @@ _ALERT_FIELD_TO_VARIABLE = {
     "alert_max_lookback_days": "ALERT_MAX_LOOKBACK_DAYS",
 }
 
+
+_PRESSER_FIELD_TO_VARIABLE = {
+    "presser_enabled": "PRESSER_ENABLED",
+    "presser_model": "PRESSER_MODEL",
+    "presser_nicknames": "PRESSER_NICKNAMES",
+}
 
 _RETIRED_ALERT_FIELDS = {"alert_slots_minutes"}
 
@@ -168,3 +176,22 @@ def test_every_alert_variable_is_an_empty_placeholder():
 
 def test_retired_alert_variable_absent_from_env_example():
     assert "ALERT_SLOTS_MINUTES" not in ENV_EXAMPLE.read_text(encoding="utf-8")
+
+
+def test_every_presser_setting_field_has_its_variable_covered():
+    own_fields = set(PresserSettings.model_fields) - set(LlmSettings.model_fields)
+    assert own_fields == set(_PRESSER_FIELD_TO_VARIABLE)
+
+
+def test_every_presser_variable_is_an_empty_placeholder():
+    presser_variables = set(_PRESSER_FIELD_TO_VARIABLE.values())
+    seen = set()
+    for line in _lines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        name, _, value = stripped.partition("=")
+        if name in presser_variables:
+            seen.add(name)
+            assert value == "", f"{name} must be an empty placeholder in .env.example"
+    assert seen == presser_variables

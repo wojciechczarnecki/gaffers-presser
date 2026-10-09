@@ -215,3 +215,24 @@ def test_deployment_describes_rehearsal_variable():
     assert "ALERT_REHEARSAL_DEADLINE" in example
     comment = example[: example.index("ALERT_REHEARSAL_DEADLINE")][-600:].lower()
     assert "remov" in comment and "test" in comment
+
+
+PRESSER_VARIABLES = ["PRESSER_ENABLED", "PRESSER_MODEL", "PRESSER_NICKNAMES"]
+PRESSER_COMMANDS = [
+    "app.presser facts",
+    "app.presser preview",
+    "app.presser send",
+    "app.presser status",
+    "app.presser.evaluation",
+]
+
+
+def test_presser_documented():
+    deployment = DEPLOYMENT.read_text(encoding="utf-8")
+    for text in (_development_section(), deployment):
+        for variable in PRESSER_VARIABLES:
+            assert variable in text, variable
+        for command in PRESSER_COMMANDS:
+            assert command in text, command
+    assert "0011" in deployment
+    assert "Presser:" in deployment

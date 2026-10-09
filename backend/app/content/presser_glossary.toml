@@ -1,0 +1,420 @@
+# Starter slang glossary for the league presser (spec 012).
+# Compiled 2026-10-09 from public Polish FPL sources (including the fantasypl.pl blog, read
+# through the Wayback Machine) and the English FPL glossaries the Polish community borrows
+# from; the owner removed the terms nobody in the league uses. `source` says where a term was seen; "wiedza ogólna" marks
+# a term from general community usage that no fetched source confirmed.
+# Examples are written for the project, not copied from the sources.
+
+[[term]]
+term = "kolejka / GW"
+meaning = "runda Fantasy Premier League"
+example = "GW7 za nami i nie wszyscy wyszli z niej z twarzą."
+source = "soccerway, avfc.pl"
+
+[[term]]
+term = "dowieźć punkty"
+meaning = "zawodnik albo manager zrobił oczekiwany wynik"
+example = "Haaland dowiózł, kto go nie miał, ten płacze."
+source = "soccerway"
+
+[[term]]
+term = "dwucyfrówka"
+meaning = "wynik zawodnika 10+ punktów"
+example = "Kapitan z dwucyfrówką, czyli opaska trafiona w punkt."
+source = "soccerway"
+
+[[term]]
+term = "haul / wjechał haul"
+meaning = "duży wynik jednego zawodnika"
+example = "Palmer wjechał z haulem akurat w tygodniu, w którym go sprzedałeś."
+source = "fantasyfootballscout (EN, zapożyczenie)"
+
+[[term]]
+term = "blank / zablankować"
+meaning = "zawodnik nie zdobył nic poza punktami za grę (1–2 pkt)"
+example = "Kapitan zablankował, opaska poszła do kosza."
+source = "goal.pl, flashscore (BGW); wiedza ogólna (czasownik)"
+
+[[term]]
+term = "trafiony wybór / pudło"
+meaning = "decyzja, która wypaliła albo nie wypaliła (zwykle o kapitanie)"
+example = "Trafiony wybór u jednego, pudło u pięciu pozostałych."
+source = "sport1.pl"
+
+[[term]]
+term = "odkuć się"
+meaning = "nadrobić straty po słabej kolejce"
+example = "Po zeszłotygodniowej wtopie Kuba odkuł się z nawiązką."
+source = "soccerway"
+
+[[term]]
+term = "zielona strzałka / czerwona strzałka"
+meaning = "awans / spadek w rankingu po kolejce"
+example = "Zielona strzałka zawsze cieszy, nawet malutka."
+source = "goal.pl"
+
+[[term]]
+term = "opaska / opaska kapitańska"
+meaning = "kapitan drużyny (punkty x2)"
+example = "Opaska na Salahu? W tym tygodniu to był hazard."
+source = "soccerway"
+
+[[term]]
+term = "mam go na kapitanie"
+meaning = "wybrałem go na kapitana"
+example = "Mam go na kapitanie — powiedział i zaraz tego pożałował."
+source = "podcast „Mam go na kapitanie” (@FPLPoland)"
+
+[[term]]
+term = "C / VC"
+meaning = "kapitan / wicekapitan (VC punktuje x2, gdy kapitan nie zagra)"
+example = "Kapitan na ławce trenera, ratował VC."
+source = "fantasypl.pl (wynik wyszukiwania)"
+
+[[term]]
+term = "TC / Triple Captain / potrójny kapitan"
+meaning = "chip: punkty kapitana x3"
+example = "TC odpalony, kapitan zrobił 2 pkt. Potrójne nic."
+source = "soccerway, flashscore"
+
+[[term]]
+term = "hit / -4 / -8 / wziąć hita"
+meaning = "kara punktowa za transfery ponad darmowe"
+example = "Wziął -8, żeby kupić dwóch, którzy razem zrobili 3 punkty."
+source = "soccerway (minusowe punkty, strata 4 lub 8)"
+
+[[term]]
+term = "FT / darmowy transfer"
+meaning = "transfer bez kary punktowej"
+example = "Dwa darmowe transfery i oba w płot."
+source = "sport1.pl (bez kary punktowej); wiedza ogólna (FT)"
+
+[[term]]
+term = "przesiąść się na"
+meaning = "zrobić transfer na danego zawodnika"
+example = "Przesiadł się na Isaka dzień przed jego zerówką."
+source = "soccerway"
+
+[[term]]
+term = "rage transfer"
+meaning = "transfer ze złości po słabym meczu zawodnika"
+example = "Rage transfer o 23:47 w sobotę, klasyka."
+source = "wiedza ogólna — do weryfikacji"
+
+[[term]]
+term = "bandwagon / wskoczyć na bandwagon"
+meaning = "masowe kupowanie zawodnika w formie"
+example = "Wskoczył na bandwagon, gdy wszyscy już z niego wysiadali."
+source = "premierleague.com (glosariusz EN)"
+
+[[term]]
+term = "szablon / template"
+meaning = "skład z najpopularniejszymi zawodnikami"
+example = "Grał szablonem, a i tak przegrał z szablonem."
+source = "fantasypl.pl (szablon FPL), fantasyfootballscout (template)"
+
+[[term]]
+term = "differential / hipsterski wybór"
+meaning = "zawodnik z małym posiadaniem, szansa na odskok"
+example = "Hipsterski wybór dowiózł — reszta ligi może tylko patrzeć."
+source = "soccerway (hipsterski wybór), fantasyfootballscout (differential)"
+
+[[term]]
+term = "masowo posiadany"
+meaning = "zawodnik, którego ma większość managerów"
+example = "Masowo posiadany zablankował, więc nikt nikomu nic nie odebrał."
+source = "soccerway"
+
+[[term]]
+term = "EO / effective ownership"
+meaning = "faktyczne posiadanie z uwzględnieniem kapitanów"
+example = "Przy jego EO blank kapitana to zbiorowa żałoba."
+source = "wiedza ogólna — do weryfikacji"
+
+[[term]]
+term = "premium"
+meaning = "drogi zawodnik"
+example = "Trzech premium w składzie i 31 punktów. Drogo wyszło."
+source = "soccerway"
+
+[[term]]
+term = "skarbonka / taniocha"
+meaning = "tani zawodnik (za 4.0–4.5), który zwalnia budżet na drogich"
+example = "Najwięcej punktów w jego składzie zrobiła skarbonka za 4.0."
+source = "fantasypl.pl"
+
+[[term]]
+term = "asset"
+meaning = "zawodnik warty posiadania"
+example = "Najlepszy asset sezonu siedział mu na ławce."
+source = "premierleague.com (glosariusz EN)"
+
+[[term]]
+term = "pewniak (do składu)"
+meaning = "zawodnik grający zawsze, bez rotacji"
+example = "Pewniak do składu, a jednak 0 minut."
+source = "soccerway"
+
+[[term]]
+term = "chip / spalić chipa"
+meaning = "jednorazowe wzmocnienie (WC, FH, BB, TC); zmarnować je"
+example = "Spalił Bench Boosta na ławkę za 3 punkty."
+source = "sport1.pl (chipy); „spalić” — wiedza ogólna, do weryfikacji"
+
+[[term]]
+term = "Wildcard / WC / zagrać Wildcarda"
+meaning = "chip: dowolna liczba transferów bez kary"
+example = "Zagrał Wildcarda i spadł w tabeli. Talent."
+source = "soccerway"
+
+[[term]]
+term = "panic Wildcard"
+meaning = "Wildcard zagrany w panice"
+example = "To nie był plan, to był panic Wildcard."
+source = "avfc.pl"
+
+[[term]]
+term = "Free Hit / FH"
+meaning = "chip: nieograniczone transfery na jedną kolejkę, potem powrót do starego składu"
+example = "Free Hit na jedną kolejkę i wynik poniżej średniej. Bezcenne."
+source = "goal.pl, flashscore"
+
+[[term]]
+term = "Bench Boost / BB"
+meaning = "chip: punkty ławki liczą się w danej kolejce"
+example = "Bench Boost odpalony, ławka dorzuciła całe 4 punkty."
+source = "sport1.pl, premierleague.com"
+
+[[term]]
+term = "ławka / punkty na ławce"
+meaning = "rezerwowi i punkty, które się nie liczyły"
+example = "18 punktów na ławce. Ławka grała lepiej niż wyjściowa jedenastka."
+source = "soccerway"
+
+[[term]]
+term = "wyjściowa jedenastka / startowa 11"
+meaning = "zawodnicy, których punkty się liczą"
+example = "Cała startowa 11 zrobiła mniej niż jego ławka."
+source = "soccerway, sport1.pl"
+
+[[term]]
+term = "autosub"
+meaning = "automatyczne wejście rezerwowego za zawodnika bez minut"
+example = "Uratował go autosub, którego nawet nie planował."
+source = "the owner's league usage"
+
+[[term]]
+term = "rotacja / rotowani"
+meaning = "trener zmienia skład z meczu na mecz"
+example = "Rotacja zebrała kolejną ofiarę: 0 minut i 0 punktów."
+source = "soccerway, fantasypl.pl"
+
+[[term]]
+term = "wyciek składu / wycieknie skład"
+meaning = "skład znany przed oficjalnym ogłoszeniem"
+example = "Skład wyciekł, ale on akurat spał."
+source = "soccerway"
+
+[[term]]
+term = "terminarz / kalendarz"
+meaning = "rozkład meczów; łatwy terminarz = słabi rywale"
+example = "Kupił pod terminarz, terminarz nie przyszedł na mecz."
+source = "soccerway"
+
+[[term]]
+term = "DGW / podwójna kolejka"
+meaning = "kolejka, w której część drużyn gra dwa mecze"
+example = "Podwójna kolejka, pojedyncze punkty."
+source = "avfc.pl, goal.pl"
+
+[[term]]
+term = "BGW / pusta kolejka"
+meaning = "kolejka, w której część drużyn nie gra"
+example = "Pusta kolejka, pusty dorobek."
+source = "goal.pl"
+
+[[term]]
+term = "czyste konto / CS"
+meaning = "mecz bez straconego gola (punkty dla obrońców i bramkarzy)"
+example = "Czyste konto do 89. minuty. Prawie robi wielką różnicę — w złą stronę."
+source = "soccerway, sport1.pl"
+
+[[term]]
+term = "hat-trick / dublet"
+meaning = "trzy / dwa gole w meczu"
+example = "Dublet jego zawodnika na ławce. Zbrodnia doskonała."
+source = "soccerway"
+
+[[term]]
+term = "deadline / grać starym składem"
+meaning = "termin na zmiany; przespany deadline = poprzedni skład"
+example = "Przespał deadline i paradoksalnie wyszedł na tym najlepiej."
+source = "sport1.pl"
+
+[[term]]
+term = "mini-liga"
+meaning = "prywatna liga znajomych"
+example = "W mini-lidze nie ma litości."
+source = "sport1.pl"
+
+[[term]]
+term = "zero litości"
+meaning = "bez taryfy ulgowej"
+example = "Tabela nie zna litości, a my tym bardziej."
+source = "sport1.pl"
+
+[[term]]
+term = "nie kombinuj"
+meaning = "nie przekombinuj, zostań przy prostym wyborze"
+example = "Mówili mu: nie kombinuj. Kombinował."
+source = "sport1.pl"
+
+[[term]]
+term = "ranking globalny / OR"
+meaning = "miejsce w całej grze (overall rank)"
+example = "W mini-lidze bieda, ale OR pod sufitem."
+source = "sport1.pl; OR — wiedza ogólna"
+
+[[term]]
+term = "set and forget"
+meaning = "zawodnik kupiony na stałe, bez myślenia o transferze"
+example = "Set and forget, tylko że zapomniał, że trzeba go wystawić."
+source = "wiedza ogólna — do weryfikacji"
+
+[[term]]
+term = "oczka"
+meaning = "punkty"
+example = "12 oczek na ławce i ani jednego w składzie."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "gruba kolejka"
+meaning = "kolejka z wysokimi wynikami"
+example = "Gruba kolejka, a on akurat z ławką pełną oczek."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "słup"
+meaning = "tani zawodnik, który nie gra, tylko zajmuje miejsce"
+example = "Na ławce słup za 4.0, więc autosuba nie było."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "chytry dwa razy traci"
+meaning = "kto oszczędza (żałuje hita, bierze tańszego zawodnika, odkłada transfer), ten traci podwójnie; nigdy o kimś, kto hita wziął"
+example = "Pożałował -4 na Salaha, a ten wjechał z haulem. Chytry dwa razy traci."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "sentyment"
+meaning = "trzymanie zawodnika, bo kiedyś dał punkty albo się go lubi"
+example = "Sentyment kosztował go 10 punktów."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "kasuję konto"
+meaning = "ironiczna reakcja po złej kolejce"
+example = "Po takiej kolejce każdy normalny kasuje konto. On kupił kolejnego."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "nemezis"
+meaning = "zawodnik, który zawsze punktuje, gdy go nie masz"
+example = "Jego nemezis znów strzelił, oczywiście gdy go sprzedał."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "prospekt"
+meaning = "tani zawodnik w formie, na którego się poluje; często zmarnowany transfer"
+example = "Prospekt tygodnia zagrał 12 minut."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "must have"
+meaning = "zawodnik, bez którego trudno się obejść"
+example = "Nie miał must have i zapłacił za to 20 punktami."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "FPL gold"
+meaning = "bezcenny zawodnik: tani, grający, punktujący"
+example = "Obrońca za 4.5 z bramką i czystym kontem. FPL gold."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "jazda bez trzymanki"
+meaning = "kolejki pełne chaosu i nerwowych decyzji"
+example = "Grudzień w FPL to jazda bez trzymanki."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "dzika karta / klepać WC"
+meaning = "Wildcard po polsku; zagrać go w pośpiechu"
+example = "Po trzech słabych kolejkach już klepie dziką kartę."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "łyknąć minus 4"
+meaning = "wziąć hita za dodatkowy transfer"
+example = "Łyknął minus 4 minutę po ostatnim gwizdku."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "odskoczyć peletonowi"
+meaning = "uciec reszcie ligi w tabeli"
+example = "Z kapitanem za 26 odskoczył peletonowi."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "pod prąd"
+meaning = "wybór inny niż większość ligi"
+example = "Poszedł pod prąd z kapitanem i wygrał kolejkę."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "błąd w matrixie"
+meaning = "popularny wybór, który zawiódł wszystkich"
+example = "Pewniak całej ligi z zerówką. Błąd w matrixie."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "przerwa na repy"
+meaning = "przerwa reprezentacyjna i nerwy o kontuzje"
+example = "Przerwa na repy, czyli dwa tygodnie nerwówki."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "pressy"
+meaning = "konferencje prasowe trenerów przed kolejką"
+example = "Kupił przed pressami. Na pressach okazało się, że kontuzja."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "fixy"
+meaning = "mecze, terminarz"
+example = "Kupił pod fixy, fixy nie dowiozły."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "bańki"
+meaning = "miliony budżetu FPL"
+example = "Sto baniek budżetu i 38 punktów."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "kolor pomarańczowy / czerwony"
+meaning = "flaga zawodnika w FPL: wątpliwy (75%) / kontuzja lub kara"
+example = "Wystawił pomarańczowego i dostał zero."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "samobój"
+meaning = "gol samobójczy (-2 pkt)"
+example = "Obrońca z samobójem, czyli minus dla posiadaczy."
+source = "fantasypl.pl (Wayback Machine)"
+
+[[term]]
+term = "zombie team"
+meaning = "porzucona drużyna w lidze"
+example = "Ostatni w tabeli wygląda na zombie team."
+source = "fantasypl.pl (Wayback Machine)"

@@ -11,7 +11,7 @@ checked = "2026-09-29"
 ["openai/gpt-6-luna"]
 input_per_million = 0.10
 output_per_million = 0.50
-checked = "2026-09-29"
+checked = "2026-10-09"
 
 ["anthropic/claude-haiku-4.5"]
 input_per_million = 1.00
@@ -32,6 +32,31 @@ checked = "2026-09-29"
 input_per_million = 0.15
 output_per_million = 0.50
 checked = "2026-09-29"
+
+["anthropic/claude-haiku-5.5"]
+input_per_million = 0.10
+output_per_million = 0.50
+checked = "2026-10-09"
+
+["deepseek/deepseek-v4.1-flash"]
+input_per_million = 0.30
+output_per_million = 1.20
+checked = "2026-10-09"
+
+["google/gemini-3.8-flash"]
+input_per_million = 0.75
+output_per_million = 3.75
+checked = "2026-10-09"
+
+["mistralai/mistral-large-4-0"]
+input_per_million = 0.68
+output_per_million = 2.09
+checked = "2026-10-09"
+
+["openai/gpt-6.1-sol"]
+input_per_million = 2.00
+output_per_million = 10.00
+checked = "2026-10-09"
 
 ["openai/text-embedding-3-small"]
 input_per_million = 0.02
