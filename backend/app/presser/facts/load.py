@@ -27,6 +27,8 @@ class MemberRow:
     active_chip: str | None
     total_points: int
     transfers: int
+    overall_rank: int | None = None
+    gameweek_rank: int | None = None
 
 
 @dataclass(frozen=True)
@@ -107,6 +109,8 @@ def load_member_rows(
             active_chip=row.active_chip,
             total_points=row.total_points,
             transfers=row.event_transfers or 0,
+            overall_rank=row.overall_rank,
+            gameweek_rank=row.gameweek_rank,
         )
         for row in rows
     ]

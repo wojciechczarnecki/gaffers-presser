@@ -140,6 +140,8 @@ class World:
         vice: int | None = None,
         bench_picks: tuple[int, ...] = (),
         transfers: int | None = None,
+        overall_rank: int | None = None,
+        gameweek_rank: int | None = None,
     ) -> None:
         with Session(self.engine) as session:
             if not has_team:
@@ -166,6 +168,8 @@ class World:
                     event_transfers=transfers if transfers is not None else cost // 4,
                     event_transfers_cost=cost,
                     points_on_bench=bench,
+                    overall_rank=overall_rank,
+                    gameweek_rank=gameweek_rank,
                 )
             )
             session.flush()

@@ -6,17 +6,23 @@ from app.presser.facts.schema import Record, Season, SeasonRow
 
 
 def _records(rows: list[MemberRow], names: dict[int, str]) -> tuple[list[Record], list[Record]]:
-    if not rows:
+    ranked = [row for row in rows if row.gameweek_rank is not None]
+    if not ranked:
         return [], []
-    best = max(net_points(row) for row in rows)
-    worst = min(net_points(row) for row in rows)
+    best = min(row.gameweek_rank for row in ranked)
+    worst = max(row.gameweek_rank for row in ranked)
 
     def pick(value: int) -> list[Record]:
         return sorted(
             (
-                Record(manager=names[row.entry_id], gameweek=row.gameweek, net_points=value)
-                for row in rows
-                if net_points(row) == value
+                Record(
+                    manager=names[row.entry_id],
+                    gameweek=row.gameweek,
+                    gameweek_rank=value,
+                    net_points=net_points(row),
+                )
+                for row in ranked
+                if row.gameweek_rank == value
             ),
             key=lambda record: (record.gameweek, record.manager),
         )

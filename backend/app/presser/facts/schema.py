@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-SECTIONS = ("winners", "flops", "captaincy", "bench_transfers_chips", "table")
+SECTIONS = ("winners", "flops", "captaincy", "bench_transfers_chips", "table", "overall")
 
 
 class Strict(BaseModel):
@@ -15,6 +15,7 @@ class ManagerScore(Strict):
     net_points: int
     # this gameweek's win (in `winners`) or flop (in `flops`) is the Nth of the season
     nth_of_season: int
+    gameweek_rank: int | None = None
 
 
 class CaptainPick(Strict):
@@ -123,17 +124,43 @@ class SeasonRow(Strict):
 class Record(Strict):
     manager: str
     gameweek: int
+    gameweek_rank: int
     net_points: int
+
+
+class PersonalRank(Strict):
+    manager: str
+    gameweek_rank: int
+    ranked_gameweeks: int
 
 
 class Season(Strict):
     rows: list[SeasonRow] = Field(default_factory=list)
     best_gameweek: list[Record] = Field(default_factory=list)
     worst_gameweek: list[Record] = Field(default_factory=list)
+    personal_bests: list[PersonalRank] = Field(default_factory=list)
+    personal_worsts: list[PersonalRank] = Field(default_factory=list)
+
+
+class OverallRow(Strict):
+    manager: str
+    overall_rank: int
+    previous_overall_rank: int | None
+    # previous - now; positive = climbed; None without a previous rank
+    movement: int | None
+    entered: list[int] = Field(default_factory=list)
+    left: list[int] = Field(default_factory=list)
+    notable: bool
+
+
+class Overall(Strict):
+    rows: list[OverallRow] = Field(default_factory=list)
+    biggest_climbers: list[str] = Field(default_factory=list)
+    biggest_fallers: list[str] = Field(default_factory=list)
 
 
 class FactSheet(Strict):
-    version: Literal[1] = 1
+    version: Literal[2] = 2
     league: str
     season: str
     gameweek: int
@@ -144,6 +171,7 @@ class FactSheet(Strict):
     captaincy: Captaincy = Field(default_factory=Captaincy)
     bench_transfers_chips: BenchTransfersChips = Field(default_factory=BenchTransfersChips)
     table: Table = Field(default_factory=Table)
+    overall: Overall = Field(default_factory=Overall)
     season_facts: Season = Field(default_factory=Season)
     empty_sections: list[str] = Field(default_factory=list)
 
@@ -163,6 +191,7 @@ def empty_sections(sheet: FactSheet) -> list[str]:
             or extras.auto_subs
         ),
         "table": not sheet.table.rows,
+        "overall": not any(row.notable for row in sheet.overall.rows),
     }
     return [section for section in SECTIONS if empty[section]]
 
@@ -183,6 +212,12 @@ def _managers_named(sheet: FactSheet) -> set[str]:
         names |= {item.manager for item in group}
     names |= {row.manager for row in sheet.season_facts.rows}
     names |= set(sheet.table.climbers) | set(sheet.table.fallers)
+    names |= {row.manager for row in sheet.overall.rows}
+    names |= set(sheet.overall.biggest_climbers) | set(sheet.overall.biggest_fallers)
+    names |= {item.manager for item in sheet.season_facts.personal_bests}
+    names |= {item.manager for item in sheet.season_facts.personal_worsts}
+    names |= {record.manager for record in sheet.season_facts.best_gameweek}
+    names |= {record.manager for record in sheet.season_facts.worst_gameweek}
     return names
 
 

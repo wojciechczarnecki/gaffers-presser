@@ -255,7 +255,7 @@ Existing patterns to reuse:
           `rank` parses to `None`, and with `rank: 12345` to 12345.
       Automatic verification: `cd backend && uv run pytest -q tests/fpl tests/worker tests/presser/test_worker_run.py`
 
-- [ ] 3. **Fact sheet version 2: schema, loading, winners' and flops' GW rank, records by GW rank, set conversion (AC3, AC4).**
+- [x] 3. **Fact sheet version 2: schema, loading, winners' and flops' GW rank, records by GW rank, set conversion (AC3, AC4).** `iterations: 0`
       - Add `backend/app/presser/facts/ranks.py` with the rules from Approach §2.
       - `schema.py`:
         - Add everything from Approach §3 at once: the `version` literal 2, `ManagerScore.gameweek_rank`,
