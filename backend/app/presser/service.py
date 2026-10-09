@@ -4,14 +4,16 @@ import time
 from dataclasses import dataclass, field
 
 from sqlalchemy import Engine
-from sqlmodel import Session
+from sqlmodel import Session, func, select
 
 from app.core.clock import Clock, SystemClock
 from app.core.errors import CollectorError
 from app.delivery.service import DeliveryService
+from app.fpl.models import Gameweek
 from app.llm.structured import Usage
-from app.presser.facts import FactSheet, build_fact_sheet
-from app.presser.store import insert_presser, previous_pressers
+from app.presser.facts import FactSheet, NoFactsError, build_fact_sheet
+from app.presser.render import render_presser
+from app.presser.store import insert_presser, key_has_status, previous_pressers, update_presser
 from app.presser.tracing import PresserTracer
 from app.presser.writer import PROMPT_VERSION, Writer, WriterInput, human_message
 
@@ -135,3 +137,77 @@ def generate_presser(
     )
     runtime.tracer.flush()
     return GeneratedPresser(row_id, text, facts, reply.usage, reply.cost_usd, latency)
+
+
+def send_presser(
+    engine: Engine,
+    runtime: PresserRuntime,
+    season: str,
+    league_id: int,
+    gameweek: int,
+    *,
+    skip_statuses: tuple[str, ...],
+) -> str:
+    key = presser_key(season, gameweek, league_id)
+    with Session(engine) as session:
+        if key_has_status(session, key, skip_statuses):
+            return "skipped"
+    if runtime.delivery is None:
+        raise PresserFailed("DeliveryDisabled")
+    generated = generate_presser(engine, runtime, season, league_id, gameweek)
+    message = render_presser(generated.facts.league, gameweek, generated.text)
+    outcome = runtime.delivery.send(key, "presser", message)
+    if outcome.status == "sent":
+        update_presser(engine, generated.id, status="sent", delivery_log_id=outcome.log_id)
+        status = "sent"
+    elif outcome.status == "already_sent":
+        status = "already_sent"
+    else:
+        error_class = outcome.error_class or "DeliveryDisabled"
+        update_presser(engine, generated.id, status="failed", error_class=error_class)
+        status = "failed"
+    logger.info(
+        "presser %s: gameweek=%s league=%s", status, gameweek, league_ordinal(runtime, league_id)
+    )
+    return status
+
+
+def latest_finished_gameweek(session: Session, season: str) -> int | None:
+    return session.exec(
+        select(func.max(Gameweek.fpl_id)).where(Gameweek.season == season, Gameweek.finished)
+    ).one()
+
+
+def run_after_league_sync(
+    engine: Engine, runtime: PresserRuntime, season: str, gameweek: int
+) -> None:
+    with Session(engine) as session:
+        latest = latest_finished_gameweek(session, season)
+    if gameweek != latest:
+        logger.info("presser skipped: gameweek=%s is not the latest finished", gameweek)
+        return
+    for league_id in runtime.league_ids:
+        if runtime.stop_event.is_set():
+            return
+        try:
+            send_presser(
+                engine, runtime, season, league_id, gameweek, skip_statuses=("sent", "failed")
+            )
+        except PresserStopped:
+            return
+        except PresserFailed:
+            continue
+        except NoFactsError as exc:
+            logger.error(
+                "presser skipped: gameweek=%s league=%s error=%s",
+                gameweek,
+                league_ordinal(runtime, league_id),
+                type(exc).__name__,
+            )
+        except Exception as exc:
+            logger.error(
+                "presser failed: gameweek=%s league=%s error=%s",
+                gameweek,
+                league_ordinal(runtime, league_id),
+                type(exc).__name__,
+            )

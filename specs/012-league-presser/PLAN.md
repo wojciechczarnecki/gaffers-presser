@@ -562,7 +562,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
           `https://wa.me/?text=`. The URL-decoded text equals the presser.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_render.py tests/content/test_presser_email.py`
 
-- [ ] 11. **Send and the post-league-sync trigger (AC9, AC10 at service level).**
+- [x] 11. **Send and the post-league-sync trigger (AC9, AC10 at service level).** `iterations: 0`
       - Add to `backend/app/presser/service.py`:
         - `send_presser(engine, runtime, season, league_id, gameweek, *, skip_statuses) ->
           str`. It returns `sent`, `failed`, `already_sent` or `skipped`.
