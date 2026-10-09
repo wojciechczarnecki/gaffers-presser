@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy import Engine, func
 from sqlmodel import Session, col, select
 
+from app.delivery.models import DeliveryLog
 from app.fpl.models import Season
 from app.presser.models import Presser
 from app.presser.writer import PreviousPresser
@@ -65,6 +66,30 @@ def key_has_status(session: Session, key: str, statuses: tuple[str, ...]) -> boo
         ).first()
         is not None
     )
+
+
+def sent_delivery_log_id(session: Session, key: str) -> int | None:
+    return session.exec(
+        select(DeliveryLog.id).where(
+            DeliveryLog.idempotency_key == key, DeliveryLog.status == "sent"
+        )
+    ).first()
+
+
+def mark_generated_sent(engine: Engine, key: str, delivery_log_id: int) -> None:
+    with Session(engine) as session:
+        row = session.exec(
+            select(Presser)
+            .where(Presser.idempotency_key == key, Presser.status == "generated")
+            .order_by(col(Presser.created_at).desc(), col(Presser.id).desc())
+            .limit(1)
+        ).first()
+        if row is None:
+            return
+        row.status = "sent"
+        row.delivery_log_id = delivery_log_id
+        session.add(row)
+        session.commit()
 
 
 @dataclass(frozen=True)

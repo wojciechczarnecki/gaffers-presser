@@ -72,6 +72,24 @@ def test_evaluate_writes_result(cases_path, tmp_path):
     assert f"result: {output}" in result.stdout
 
 
+def test_evaluate_never_overwrites_a_run_without_force(cases_path, tmp_path):
+    output = tmp_path / "run.json"
+    output.write_text('{"reviews": "kept"}', encoding="utf-8")
+    built, writer_fake, _ = deps(
+        [PresserDraft(text="Pierwszy"), PresserDraft(text="Drugi")],
+        [verdict("supported"), verdict("supported")],
+    )
+    args = ("evaluate", "--split", "dev", "--cases", str(cases_path), "--output", str(output))
+    refused = invoke(built, *args)
+    assert refused.exit_code == 1
+    assert "--force" in refused.stderr
+    assert output.read_text(encoding="utf-8") == '{"reviews": "kept"}'
+    assert writer_fake.received_messages == []
+    forced = invoke(built, *args, "--force")
+    assert forced.exit_code == 0, forced.output
+    assert [p["text"] for p in read(output)["pressers"]] == ["Pierwszy", "Drugi"]
+
+
 def test_evaluate_rejects_a_bad_split(cases_path):
     built, _, _ = deps()
     result = invoke(built, "evaluate", "--split", "train", "--cases", str(cases_path))
@@ -185,7 +203,13 @@ def test_judge_review_limit_skip_and_quit(tmp_path):
     assert "reviewed claims: 1  agreement: 1.00" in limited.stdout
     quit_run = invoke(None, "judge-review", "--run", str(run), input="q\n")
     assert quit_run.exit_code == 0
+    assert read(run)["pressers"][0]["claims"][0]["owner_label"] is None
     assert read(run)["pressers"][1]["claims"][0]["owner_label"] is None
+    resumed = invoke(None, "judge-review", "--run", str(run), input="a\nf\n")
+    assert resumed.stdout.count("claim: ") == 2
+    claims = [c["owner_label"] for p in read(run)["pressers"] for c in p["claims"]]
+    assert claims == ["supported", "unsupported", "unsupported"]
+    assert "nothing to review" in invoke(None, "judge-review", "--run", str(run)).stdout
 
 
 def test_summary_reports_and_applies_thresholds(tmp_path):

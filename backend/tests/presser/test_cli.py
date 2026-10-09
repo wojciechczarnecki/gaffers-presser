@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import os
 import re
@@ -196,3 +197,44 @@ def test_help_lists_the_commands():
     result = CliRunner().invoke(app, ["--help"])
     for command in ("facts", "preview", "send", "status"):
         assert command in result.stdout
+
+
+def test_preview_and_send_work_while_the_automatic_presser_is_off(db, world):
+    harness = Harness(
+        db, [PresserDraft(text="Tekst"), PresserDraft(text="Tekst GW4")], enabled="false"
+    )
+    preview = harness.invoke("preview", "--league", str(LEAGUE_ID), "--gameweek", "5")
+    assert preview.exit_code == 0, preview.output
+    assert "Tekst" in preview.stdout
+    send = harness.invoke("send", "--league", str(LEAGUE_ID), "--gameweek", "4")
+    assert send.exit_code == 0, send.output
+    assert send.stdout.strip() == "sent"
+
+
+@pytest.mark.parametrize("command", ["preview", "send"])
+def test_runtime_config_error_is_reported_without_a_traceback(db, world, command):
+    from app.core.errors import ConfigError
+
+    harness = Harness(db)
+
+    def broken(with_delivery: bool) -> PresserRuntime:
+        raise ConfigError("PRESSER_MODEL x/unknown is not in model_settings.toml")
+
+    harness.deps = dataclasses.replace(harness.deps, make_runtime=broken)
+    result = harness.invoke(command, "--league", str(LEAGUE_ID), "--gameweek", "5")
+    assert result.exit_code == 1
+    assert "error: ConfigError: PRESSER_MODEL x/unknown" in result.stderr
+    assert "Traceback" not in result.output
+
+
+def test_fact_sheet_error_is_reported_without_a_traceback(db, world, monkeypatch):
+    from app.presser import service
+    from app.presser.facts import FactSheetError
+
+    def broken(*args, **kwargs):
+        raise FactSheetError("a section names an unknown manager")
+
+    monkeypatch.setattr(service, "build_fact_sheet", broken)
+    result = Harness(db).invoke("preview", "--league", str(LEAGUE_ID), "--gameweek", "5")
+    assert result.exit_code == 1
+    assert "error: FactSheetError: a section names an unknown manager" in result.stderr

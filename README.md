@@ -200,7 +200,8 @@ the text, and the e-mail has a "send to WhatsApp" button. It runs when delivery 
 `OPENROUTER_API_KEY` is set. Variables (`backend/.env.example`): `PRESSER_ENABLED` (default true),
 `PRESSER_MODEL` (default `openai/gpt-6-luna`) and `PRESSER_NICKNAMES` (a JSON object of FPL entry
 ID to nickname, kept out of the repository). `uv run python -m app.worker status` ends with a
-`Presser:` line. The CLI works by hand, also for an older gameweek, and the evaluation tooling
+`Presser:` line. The CLI works by hand, also for an older gameweek and with `PRESSER_ENABLED=false`
+(which switches off only the automatic presser), and the evaluation tooling
 measures a model's faithfulness to the facts and the owner's rating of its style (the comparison
 run is BACKLOG #32); none of it is run by `pytest`:
 
@@ -211,7 +212,7 @@ uv run python -m app.presser send --league ID --gameweek N      # generate and s
 uv run python -m app.presser status                             # enabled or why not, latest presser
 
 uv run python -m app.presser.evaluation build-cases --gameweeks 1-5   # real cases, pseudonymised
-uv run python -m app.presser.evaluation evaluate --split test --model openai/gpt-6-luna
+uv run python -m app.presser.evaluation evaluate --split test --model openai/gpt-6-luna  # --force overwrites a run
 uv run python -m app.presser.evaluation review --run PATH       # rate the style 1-5
 uv run python -m app.presser.evaluation judge-review --run PATH # check the judge's claim labels
 uv run python -m app.presser.evaluation summary                 # the pass rule over the test runs

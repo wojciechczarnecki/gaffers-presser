@@ -34,7 +34,7 @@ class Presser(SQLModel, table=True):
     output_tokens: int | None = None
     cost_usd: float | None = None
     latency_seconds: float | None = None
-    status: str  # generated | sent | failed
+    status: str  # generated | sent | failed | preview_failed
     error_class: str | None = None
     delivery_log_id: int | None = Field(default=None, foreign_key="delivery_log.id")
     trace_id: str | None = None

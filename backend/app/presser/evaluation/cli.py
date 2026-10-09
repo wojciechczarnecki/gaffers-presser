@@ -162,9 +162,17 @@ def evaluate(
     judge_model: Annotated[str, typer.Option("--judge-model")] = JUDGE_MODEL,
     cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
     output: Annotated[Path | None, typer.Option("--output")] = None,
+    force: Annotated[
+        bool, typer.Option("--force", help="Overwrite an existing run file and its reviews.")
+    ] = False,
 ) -> None:
     if split not in ("dev", "test"):
         raise fail("--split must be dev or test")
+    path = output or default_result_path(split, model)
+    if path.exists() and not force:
+        raise fail(
+            f"{path} exists and may hold your reviews; pass --output or --force to overwrite"
+        )
     deps = get_deps(ctx)
     cases = load_cases(cases_path)
     try:
@@ -176,7 +184,6 @@ def evaluate(
         data = run_evaluation(cases, writer, judge, split, model, judge_model, deps.clock.now())
     except EvaluationError as exc:
         raise fail(str(exc)) from None
-    path = output or default_result_path(split, model)
     write_result(path, data)
     typer.echo(format_totals(data))
     typer.echo(f"result: {path}")
@@ -269,7 +276,7 @@ def judge_review(
     todo = [
         i
         for i, item in enumerate(pressers)
-        if item["claims"] and all(claim["owner_label"] is None for claim in item["claims"])
+        if any(claim["owner_label"] is None for claim in item["claims"])
     ]
     if limit is not None:
         todo = todo[:limit]
@@ -282,6 +289,8 @@ def judge_review(
         typer.echo(f"id: {item['case_id']}")
         typer.echo(item["text"])
         for claim in item["claims"]:
+            if claim["owner_label"] is not None:
+                continue
             typer.echo(f"claim: {claim['claim']}  (judge: {claim['label']})")
             while True:
                 answer = typer.prompt(VERDICT_PROMPT).strip().lower()

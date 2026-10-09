@@ -15,8 +15,9 @@ from app.presser.service import (
     presser_key,
 )
 from app.presser.store import insert_presser, previous_pressers
-from app.presser.tracing import NULL_PRESSER_TRACER
+from app.presser.tracing import NULL_PRESSER_TRACER, LangfusePresserTracer
 from app.presser.writer import PresserDraft, build_writer
+from tests.corroboration.fakes import FakeLangfuseClient
 from tests.delivery.fakes import FixedClock
 from tests.extraction.fakes import FakeChatModel
 from tests.presser.helpers import LEAGUE_ID, SEASON, World
@@ -25,7 +26,9 @@ MODEL = "openai/gpt-6-luna"
 MARKER = "FAKE-PRESSER-MARKER"
 
 
-def runtime(*responses, nicknames=None, league_ids=None) -> tuple[PresserRuntime, FakeChatModel]:
+def runtime(
+    *responses, nicknames=None, league_ids=None, tracer=NULL_PRESSER_TRACER
+) -> tuple[PresserRuntime, FakeChatModel]:
     fake = FakeChatModel(responses=list(responses))
     clock = FixedClock()
     stop_event = threading.Event()
@@ -34,7 +37,7 @@ def runtime(*responses, nicknames=None, league_ids=None) -> tuple[PresserRuntime
         PresserRuntime(
             writer=build_writer(caller),
             model=MODEL,
-            tracer=NULL_PRESSER_TRACER,
+            tracer=tracer,
             nicknames=nicknames or {},
             delivery=None,
             league_ids=league_ids or [LEAGUE_ID],
@@ -135,3 +138,45 @@ def test_stop_records_nothing(db, world):
         generate_presser(db, rt, SEASON, LEAGUE_ID, 5)
     assert rows(db) == []
     assert fake.received_messages == []
+
+
+def test_generation_is_traced_under_the_presser_span(db, world):
+    client = FakeLangfuseClient(trace_id="trace-42")
+    rt, _ = runtime(PresserDraft(text="Tekst"), tracer=LangfusePresserTracer(client))
+    result = generate_presser(db, rt, SEASON, LEAGUE_ID, 5)
+    (root,) = client.named("presser")
+    assert root["input"] == {"season": SEASON, "gameweek": 5}
+    assert root["updates"] == [{"output": {"characters": 5}}]
+    (generation,) = client.named("presser-writer")
+    assert generation["parent"] == "presser"
+    assert generation["model"] == MODEL
+    assert generation["output"] == "Tekst"
+    assert generation["usage_details"] == {"input": 10, "output": 5}
+    assert generation["cost_details"] == {"total": pytest.approx(result.cost_usd)}
+    assert generation["metadata"]["latency_seconds"] == pytest.approx(result.latency_seconds)
+    assert generation["level"] is None
+    assert client.flushed == 1
+    (row,) = rows(db)
+    assert row.trace_id == "trace-42"
+
+
+def test_failed_generation_is_traced_with_its_error_class(db, world):
+    client = FakeLangfuseClient(trace_id="trace-7")
+    rt, _ = runtime(
+        ValueError("a"), ValueError("b"), ValueError("c"), tracer=LangfusePresserTracer(client)
+    )
+    with pytest.raises(PresserFailed):
+        generate_presser(db, rt, SEASON, LEAGUE_ID, 5)
+    (generation,) = client.named("presser-writer")
+    assert (generation["level"], generation["status_message"]) == ("ERROR", "ValueError")
+    assert generation["parent"] == "presser"
+    (row,) = rows(db)
+    assert row.trace_id == "trace-7"
+
+
+def test_failed_preview_is_kept_apart_from_worker_failures(db, world):
+    rt, _ = runtime(ValueError("a"), ValueError("b"), ValueError("c"))
+    with pytest.raises(PresserFailed):
+        generate_presser(db, rt, SEASON, LEAGUE_ID, 5, preview=True)
+    (row,) = rows(db)
+    assert (row.status, row.error_class) == ("preview_failed", "ValueError")

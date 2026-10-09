@@ -203,3 +203,13 @@ def test_empty_section_marked(world):
     assert "captaincy" in result.empty_sections
     world.gw(12, 5, 40, bench=4)
     assert "bench_transfers_chips" not in sheet(world).empty_sections
+
+
+def test_flops_by_net_points_when_a_hit_changes_the_order(world):
+    world.gw(10, 5, 60)
+    world.gw(11, 5, 44, cost=8)
+    world.gw(12, 5, 40)
+    result = sheet(world)
+    assert [(f.manager, f.points, f.transfers_cost, f.net_points) for f in result.flops] == [
+        ("Bartek", 44, 8, 36)
+    ]

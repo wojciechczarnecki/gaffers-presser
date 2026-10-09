@@ -13,7 +13,14 @@ from app.fpl.models import Gameweek
 from app.llm.structured import Usage
 from app.presser.facts import FactSheet, NoFactsError, build_fact_sheet
 from app.presser.render import render_presser
-from app.presser.store import insert_presser, key_has_status, previous_pressers, update_presser
+from app.presser.store import (
+    insert_presser,
+    key_has_status,
+    mark_generated_sent,
+    previous_pressers,
+    sent_delivery_log_id,
+    update_presser,
+)
 from app.presser.tracing import PresserTracer
 from app.presser.writer import PROMPT_VERSION, Writer, WriterInput, human_message
 
@@ -26,6 +33,9 @@ class PresserFailed(CollectorError):  # noqa: N818
 
 class PresserStopped(CollectorError):  # noqa: N818
     pass
+
+
+PREVIEW_FAILED = "preview_failed"
 
 
 def presser_key(season: str, gameweek: int, league_id: int) -> str:
@@ -61,7 +71,13 @@ def league_ordinal(runtime: PresserRuntime, league_id: int) -> str:
 
 
 def generate_presser(
-    engine: Engine, runtime: PresserRuntime, season: str, league_id: int, gameweek: int
+    engine: Engine,
+    runtime: PresserRuntime,
+    season: str,
+    league_id: int,
+    gameweek: int,
+    *,
+    preview: bool = False,
 ) -> GeneratedPresser:
     key = presser_key(season, gameweek, league_id)
     with Session(engine) as session:
@@ -97,10 +113,11 @@ def generate_presser(
                 latency_seconds=latency,
                 error_class=error_class,
             )
+            # A failed preview must not count as the worker's attempt for this key.
             insert_presser(
                 engine,
                 **common,
-                status="failed",
+                status=PREVIEW_FAILED if preview else "failed",
                 error_class=error_class,
                 latency_seconds=latency,
                 trace_id=span.trace_id,
@@ -149,9 +166,19 @@ def send_presser(
     skip_statuses: tuple[str, ...],
 ) -> str:
     key = presser_key(season, gameweek, league_id)
+    ordinal = league_ordinal(runtime, league_id)
     with Session(engine) as session:
         if key_has_status(session, key, skip_statuses):
+            logger.info(
+                "presser skipped: gameweek=%s league=%s already attempted", gameweek, ordinal
+            )
             return "skipped"
+        delivered_log_id = sent_delivery_log_id(session, key)
+    if delivered_log_id is not None:
+        # Delivered, but the process stopped before the row was marked: mark it, no new call.
+        mark_generated_sent(engine, key, delivered_log_id)
+        logger.info("presser already_sent: gameweek=%s league=%s", gameweek, ordinal)
+        return "already_sent"
     if runtime.delivery is None:
         raise PresserFailed("DeliveryDisabled")
     generated = generate_presser(engine, runtime, season, league_id, gameweek)
@@ -166,9 +193,7 @@ def send_presser(
         error_class = outcome.error_class or "DeliveryDisabled"
         update_presser(engine, generated.id, status="failed", error_class=error_class)
         status = "failed"
-    logger.info(
-        "presser %s: gameweek=%s league=%s", status, gameweek, league_ordinal(runtime, league_id)
-    )
+    logger.info("presser %s: gameweek=%s league=%s", status, gameweek, ordinal)
     return status
 
 

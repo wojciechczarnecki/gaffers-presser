@@ -1133,3 +1133,28 @@ Rejected:
 - The quality perspective's note that a SIGTERM during the hook loses the gameweek's presser for good: accepted by design in DECISIONS 2026-10-09 (manual `send` recovers it), not a defect of this branch.
 
 Left out: 16 nit findings
+
+### 2026-10-09 — apply
+
+The owner accepted F1–F13 (see `## Owner decisions`); all are fixed. The verify command is
+green (ruff clean, 1631 tests pass). The new tests for F5, F7 and F8 were checked against the
+mutations they target (dropping the hook, gross points for flops and season, re-raising
+`NoFactsError`): each turns red.
+
+Fixed:
+
+- **F1** — `generate_presser(..., preview=True)` stores a failed preview as `preview_failed`, which the worker's `skip_statuses=("sent", "failed")` ignores; `send_presser` logs `presser skipped: gameweek=N league=#k already attempted`. Tests: `test_service.py::test_failed_preview_is_kept_apart_from_worker_failures`, `test_trigger.py::test_failed_preview_does_not_stop_the_automatic_presser`.
+- **F2** — `PresserDraft.text` strips whitespace and needs at least one character, so a blank reply fails validation and is retried, then recorded `failed`. Tests: `test_writer.py::test_blank_reply_is_rejected_and_retried`, `::test_only_blank_replies_fail_the_writer`.
+- **F3** — `evaluate` refuses an existing run file unless `--force`. Test: `evaluation/test_cli.py::test_evaluate_never_overwrites_a_run_without_force`.
+- **F4** — `judge-review` selects every presser with an unlabelled claim and prompts only those claims. Test: `::test_judge_review_limit_skip_and_quit` now resumes after a quit and labels the rest.
+- **F5** — `worker/test_cli.py::test_run_wires_the_presser_hook_and_closes_its_channel` (the `make_runtime` arguments, the `presser enabled` line, the hook reaching `run_after_league_sync`, the channel closed), `::test_run_without_a_presser_passes_no_hook`, `::test_run_stops_when_the_presser_runtime_cannot_start`.
+- **F6** — `test_service.py::test_generation_is_traced_under_the_presser_span` and `::test_failed_generation_is_traced_with_its_error_class` run `generate_presser` with `LangfusePresserTracer(FakeLangfuseClient())` and assert the generation, its parent, usage, cost, latency and `row.trace_id`.
+- **F7** — `test_facts_gameweek.py::test_flops_by_net_points_when_a_hit_changes_the_order`, `test_facts_table.py::test_season_wins_and_flops_by_net_points_when_a_hit_changes_the_order`.
+- **F8** — `test_trigger.py::test_league_without_facts_is_skipped_and_the_next_one_sent`.
+- **F9** — `send_presser` checks the delivery log first: a key already delivered marks the latest `generated` row `sent` with the log ID and returns `already_sent` with no LLM call. Tests: `test_trigger.py::test_delivered_but_unmarked_presser_is_marked_without_a_new_call`, `::test_delivery_already_sent_after_generation_leaves_the_row_generated`.
+- **F10** — the span/generation tracer moved to `app/llm/tracing.py` (`LangfuseGenerationTracer`, `NullGenerationTracer`, `make_generation_tracer`); `app/presser/tracing.py` and `app/corroboration/tracing.py` are thin subclasses with their names and labels. The generation still records its latency in `metadata`; it is not timed over the real call.
+- **F11** — `preview` and `send` build the runtime inside the `try` and turn any `CollectorError` into `error: <class>: <message>`, exit 1. Tests: `test_cli.py::test_runtime_config_error_is_reported_without_a_traceback`, `::test_fact_sheet_error_is_reported_without_a_traceback`.
+- **F12** — `preview` and `send` check only the key (and delivery for `send`), as PLAN step 13 says; `PRESSER_ENABLED` switches only the automatic presser. Test: `test_cli.py::test_preview_and_send_work_while_the_automatic_presser_is_off`; README and DEPLOYMENT say so.
+- **F13** — a judge reply with no claims leaves `faithfulness` `None` (unjudged), so the run cannot pass. Test: `test_runner.py::test_no_claims_leaves_the_presser_unjudged`; DECISIONS 2026-10-09 records it.
+
+Backlog: no new items; no backlog trigger fired by this branch.

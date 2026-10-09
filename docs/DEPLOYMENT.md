@@ -225,7 +225,9 @@ below; agents never touch production.
       generates and prints without sending, `python -m app.presser send` sends by hand, also
       for a missed gameweek, with the same key (a second `send` reports `already_sent`), and
       `python -m app.presser status` (no options) says whether the presser is enabled and shows
-      the latest presser per league.
+      the latest presser per league. `preview` and `send` need only the OpenRouter key (and
+      delivery for `send`), so they work with `PRESSER_ENABLED=false`; a failed `preview` is
+      stored as `preview_failed` and does not stop the worker's presser of that gameweek.
     - The evaluation tooling is `python -m app.presser.evaluation
       build-cases|evaluate|review|judge-review|summary`. The comparison of the candidate models
       with the owner's ratings is BACKLOG #32.

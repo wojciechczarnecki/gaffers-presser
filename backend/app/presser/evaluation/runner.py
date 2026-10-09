@@ -23,9 +23,10 @@ def default_result_path(split: str, model: str, results_dir: Path = DEFAULT_RESU
     return results_dir / f"{split}-{model.replace('/', '-')}.json"
 
 
-def _faithfulness(labels: Sequence[str]) -> float:
+def _faithfulness(labels: Sequence[str]) -> float | None:
+    # A non-empty presser with no claims was not judged; it must not score a perfect 1.0.
     if not labels:
-        return 1.0
+        return None
     return sum(label == "supported" for label in labels) / len(labels)
 
 

@@ -130,3 +130,17 @@ def test_error_generation_level(error):
     )
     (generation,) = client.named("presser-writer")
     assert (generation["level"], generation["status_message"]) == ("ERROR", error)
+
+
+@pytest.mark.parametrize("blank", ["", "   \n "])
+def test_blank_reply_is_rejected_and_retried(blank):
+    structured_caller, fake = caller({"text": blank}, {"text": "  Presser  "})
+    reply = build_writer(structured_caller).run(WriterInput(facts(), []))
+    assert reply.parsed.text == "Presser"
+    assert len(fake.received_messages) == 2
+
+
+def test_only_blank_replies_fail_the_writer():
+    structured_caller, _ = caller({"text": ""}, {"text": " "}, {"text": "\n"})
+    with pytest.raises(ValueError, match="failed validation"):
+        build_writer(structured_caller).run(WriterInput(facts(), []))

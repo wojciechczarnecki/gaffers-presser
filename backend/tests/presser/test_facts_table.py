@@ -128,3 +128,20 @@ def test_nicknames_used_everywhere(world):
         assert forbidden not in text
     assert "Bartek" in text
     assert check_fact_sheet(result) == []
+
+
+def test_season_wins_and_flops_by_net_points_when_a_hit_changes_the_order(world):
+    world.gw(10, 1, 64, cost=8)
+    world.gw(11, 1, 60)
+    world.gw(12, 1, 40)
+    world.gw(10, 2, 60)
+    world.gw(11, 2, 64, cost=8)
+    world.gw(12, 2, 30)
+    world.gw(10, 3, 70)
+    world.gw(11, 3, 30)
+    world.gw(12, 3, 34, cost=8)
+    rows = {r.manager: r for r in sheet(world, 3).season_facts.rows}
+    assert (rows["Anna"].wins, rows["Anna"].win_streak) == (2, 2)
+    assert (rows["Bartek"].wins, rows["Bartek"].win_streak) == (1, 0)
+    assert (rows["Cezary"].flops, rows["Cezary"].flop_streak) == (3, 3)
+    assert (rows["Bartek"].flops, rows["Anna"].flops) == (0, 0)

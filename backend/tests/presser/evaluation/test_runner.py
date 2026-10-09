@@ -69,10 +69,14 @@ def test_faithfulness_is_supported_over_all_claims():
     assert result["judge_prompt_version"].startswith("presser_judge@")
 
 
-def test_no_claims_counts_as_fully_faithful():
+def test_no_claims_leaves_the_presser_unjudged():
     writer, _ = writer_for(PresserDraft(text="Tekst"))
     judge, _ = judge_for(claims())
-    assert run(ONE, writer, judge)["pressers"][0]["faithfulness"] == 1.0
+    result = run(ONE, writer, judge)
+    record = result["pressers"][0]
+    assert record["text"] == "Tekst" and record["claims"] == []
+    assert record["faithfulness"] is None
+    assert result["totals"]["faithfulness"] is None
 
 
 @pytest.mark.parametrize(("length", "within"), [(1500, True), (1501, False)])

@@ -127,15 +127,13 @@ def _season(deps: PresserCliDeps) -> str:
     return season
 
 
-def _require_enabled(deps: PresserCliDeps, *, delivery: bool) -> None:
-    try:
-        reason = presser_disabled_reason(
-            deps.settings, delivery=deps.delivery_enabled or not delivery
-        )
-    except CollectorError as exc:
-        raise fail(str(exc)) from None
-    if reason is not None:
-        raise fail(f"presser disabled: {reason}")
+def _require_ready(deps: PresserCliDeps, *, delivery: bool) -> None:
+    # PRESSER_ENABLED switches the automatic presser only; a manual run needs the key
+    # (and delivery for `send`).
+    if deps.settings.openrouter_api_key is None:
+        raise fail("presser disabled: OPENROUTER_API_KEY is not set")
+    if delivery and not deps.delivery_enabled:
+        raise fail("presser disabled: delivery disabled")
 
 
 @app.command(help="Print the fact sheet of a league and gameweek.")
@@ -153,15 +151,17 @@ def facts(ctx: typer.Context, league: LeagueOption, gameweek: GameweekOption) ->
 @app.command(help="Generate a presser and print it; nothing is sent or marked as sent.")
 def preview(ctx: typer.Context, league: LeagueOption, gameweek: GameweekOption) -> None:
     deps = get_deps(ctx)
-    _require_enabled(deps, delivery=False)
+    _require_ready(deps, delivery=False)
     season = _season(deps)
-    runtime = deps.make_runtime(False)
     try:
-        generated = generate_presser(deps.engine, runtime, season, league, gameweek)
+        runtime = deps.make_runtime(False)
+        generated = generate_presser(deps.engine, runtime, season, league, gameweek, preview=True)
     except NoFactsError as exc:
         raise fail(f"no facts: {exc}") from None
     except PresserFailed as exc:
         raise fail(f"the writer failed: {exc}") from None
+    except CollectorError as exc:
+        raise fail(type(exc).__name__ + ": " + str(exc)) from None
     typer.echo(generated.text)
     cost = "unknown" if generated.cost_usd is None else f"${generated.cost_usd:.4f}"
     typer.echo(f"chars={len(generated.text)} cost={cost} latency={generated.latency_seconds:.1f}s")
@@ -170,10 +170,10 @@ def preview(ctx: typer.Context, league: LeagueOption, gameweek: GameweekOption) 
 @app.command(help="Generate and send a presser by hand, also for an older gameweek.")
 def send(ctx: typer.Context, league: LeagueOption, gameweek: GameweekOption) -> None:
     deps = get_deps(ctx)
-    _require_enabled(deps, delivery=True)
+    _require_ready(deps, delivery=True)
     season = _season(deps)
-    runtime = deps.make_runtime(True)
     try:
+        runtime = deps.make_runtime(True)
         result = send_presser(
             deps.engine, runtime, season, league, gameweek, skip_statuses=("sent",)
         )
@@ -181,6 +181,8 @@ def send(ctx: typer.Context, league: LeagueOption, gameweek: GameweekOption) -> 
         raise fail(f"no facts: {exc}") from None
     except PresserFailed as exc:
         raise fail(f"the writer failed: {exc}") from None
+    except CollectorError as exc:
+        raise fail(type(exc).__name__ + ": " + str(exc)) from None
     typer.echo("already_sent" if result == "skipped" else result)
     if result == "failed":
         raise typer.Exit(1)

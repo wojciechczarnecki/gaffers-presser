@@ -1,10 +1,10 @@
 import tomllib
 from dataclasses import dataclass
 from functools import cache
-from typing import Any, TypedDict
+from typing import Annotated, Any, TypedDict
 
 from langgraph.graph import END, StateGraph
-from pydantic import BaseModel
+from pydantic import BaseModel, StringConstraints
 
 from app.content import PROMPTS_DIR, load_prompt
 from app.llm.structured import StructuredCaller, StructuredReply
@@ -17,7 +17,7 @@ NO_PREVIOUS = "none"
 
 
 class PresserDraft(BaseModel):
-    text: str
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 @dataclass(frozen=True)
