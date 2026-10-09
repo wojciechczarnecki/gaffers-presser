@@ -333,7 +333,7 @@ Existing patterns to reuse:
           are still listed.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_ranks.py tests/presser/test_facts_ranks.py tests/presser`
 
-- [ ] 6. **`check_fact_sheet` for the rank facts (AC8).**
+- [x] 6. **`check_fact_sheet` for the rank facts (AC8).** `iterations: 0`
       - `schema.py`: `check_fact_sheet` adds the checks of Approach §6, using `ranks.py`.
       - Test first: new `tests/presser/test_facts_checks.py`. It builds a consistent v2 sheet
         through the evaluation `factories.sheet()`, extended with ranks, records, personal

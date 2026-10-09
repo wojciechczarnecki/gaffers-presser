@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.presser.facts import ranks
+
 SECTIONS = ("winners", "flops", "captaincy", "bench_transfers_chips", "table", "overall")
 
 
@@ -221,8 +223,65 @@ def _managers_named(sheet: FactSheet) -> set[str]:
     return names
 
 
-def check_fact_sheet(sheet: FactSheet) -> list[str]:
+def _check_ranks(sheet: FactSheet) -> list[str]:
     problems: list[str] = []
+    season = sheet.season_facts
+    scores = sheet.winners + sheet.flops
+    known = [score.gameweek_rank for score in scores if score.gameweek_rank is not None]
+    positive = known + [r.gameweek_rank for r in season.best_gameweek + season.worst_gameweek]
+    positive += [p.gameweek_rank for p in season.personal_bests + season.personal_worsts]
+    for row in sheet.overall.rows:
+        positive.append(row.overall_rank)
+        if row.previous_overall_rank is not None:
+            positive.append(row.previous_overall_rank)
+    if any(rank <= 0 for rank in positive):
+        problems.append("a rank is not positive")
+
+    first = sheet.gameweek == 1
+    moves = []
+    for row in sheet.overall.rows:
+        now, before = row.overall_rank, row.previous_overall_rank
+        if now <= 0 or (before is not None and before <= 0):
+            continue
+        if row.movement != (None if before is None else before - now):
+            problems.append("overall: a movement does not match the ranks")
+        if row.entered != ranks.thresholds_entered(now, before, first):
+            problems.append("overall: entered thresholds do not match the ranks")
+        if row.left != ranks.thresholds_left(now, before):
+            problems.append("overall: left thresholds do not match the ranks")
+        if row.notable != ranks.is_notable(now, before, first):
+            problems.append("overall: notable does not match the ranks")
+        if row.notable and before is not None:
+            moves.append((row.manager, now, before))
+    if sheet.overall.biggest_climbers != ranks.leaders(moves, rising=True):
+        problems.append("overall: biggest climbers do not match the rows")
+    if sheet.overall.biggest_fallers != ranks.leaders(moves, rising=False):
+        problems.append("overall: biggest fallers do not match the rows")
+
+    best = {record.gameweek_rank for record in season.best_gameweek}
+    worst = {record.gameweek_rank for record in season.worst_gameweek}
+    if len(best) > 1 or len(worst) > 1:
+        problems.append("records: tied records on different ranks")
+    if best and worst and min(best) > max(worst):
+        problems.append("records: the best rank is worse than the worst")
+    if any(r.gameweek > sheet.gameweek for r in season.best_gameweek + season.worst_gameweek):
+        problems.append("records: a record is from a later gameweek")
+    if known and not (best and worst):
+        problems.append("records: a known gameweek rank without season records")
+    if best and worst and any(not min(best) <= rank <= max(worst) for rank in known):
+        problems.append("records: a gameweek rank lies outside the season records")
+    for item in season.personal_bests + season.personal_worsts:
+        if item.ranked_gameweeks < 3:
+            problems.append("personal ranks: fewer than 3 ranked gameweeks")
+    if best and any(item.gameweek_rank < min(best) for item in season.personal_bests):
+        problems.append("personal ranks: a personal best beats the league best")
+    if worst and any(item.gameweek_rank > max(worst) for item in season.personal_worsts):
+        problems.append("personal ranks: a personal worst is below the league worst")
+    return problems
+
+
+def check_fact_sheet(sheet: FactSheet) -> list[str]:
+    problems: list[str] = _check_ranks(sheet)
     for label, scores in (("winners", sheet.winners), ("flops", sheet.flops)):
         if len({score.net_points for score in scores}) > 1:
             problems.append(f"{label}: managers on different net points")

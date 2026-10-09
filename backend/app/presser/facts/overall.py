@@ -19,22 +19,12 @@ def _row(now: int, before: int | None, name: str, gameweek: int) -> OverallRow:
 
 
 def _leaders(rows: list[OverallRow], rising: bool) -> list[str]:
-    moved = [
-        row
+    moves = [
+        (row.manager, row.overall_rank, row.previous_overall_rank)
         for row in rows
-        if row.notable
-        and row.movement is not None
-        and (row.movement > 0) == rising
-        and row.movement != 0
+        if row.notable and row.previous_overall_rank is not None
     ]
-    if not moved:
-        return []
-    best = max(ranks.move_ratio(r.overall_rank, r.previous_overall_rank) for r in moved)
-    return sorted(
-        r.manager
-        for r in moved
-        if ranks.move_ratio(r.overall_rank, r.previous_overall_rank) == best
-    )
+    return ranks.leaders(moves, rising)
 
 
 def build_overall(
