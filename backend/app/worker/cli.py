@@ -55,6 +55,7 @@ from app.presser.config import (
     parse_nicknames,
     presser_disabled_reason,
     resolve_presser_llm,
+    writer_chat_model,
 )
 from app.presser.service import PresserRuntime, run_after_league_sync
 from app.presser.store import current_season, presser_status
@@ -231,7 +232,7 @@ def _deps_from_settings() -> WorkerDeps:
             engine: Engine, stop_event: threading.Event, league_ids: list[int]
         ) -> tuple[PresserRuntime, Channel]:
             caller = StructuredCaller.from_spec(
-                build_chat_model(presser_llm), load_prices(), StopAwareClock(stop_event)
+                writer_chat_model(presser_llm), load_prices(), StopAwareClock(stop_event)
             )
             caller.stop_event = stop_event
             channel = build_channel(delivery_config)

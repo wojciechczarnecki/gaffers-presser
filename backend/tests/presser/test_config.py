@@ -3,15 +3,18 @@ import os
 import re
 
 import pytest
+from pydantic import SecretStr
 
 from app.core.errors import ConfigError
-from app.llm.chat import LlmConfig
+from app.llm.chat import LlmConfig, single_model_config
 from app.presser.config import (
     DEFAULT_PRESSER_MODEL,
+    WRITER_TEMPERATURE,
     PresserSettings,
     parse_nicknames,
     presser_disabled_reason,
     resolve_presser_llm,
+    writer_chat_model,
 )
 
 
@@ -96,3 +99,13 @@ def test_disabled_reasons():
 def test_invalid_enabled_value_is_a_config_error():
     with pytest.raises(ConfigError, match="PRESSER_ENABLED"):
         presser_disabled_reason(settings(presser_enabled="maybe"), delivery=True)
+
+
+def test_writer_chat_model_temperature():
+    key = SecretStr("dummy-key")
+    accepting = single_model_config(key, "google/gemini-3.1-flash-lite")
+    params = writer_chat_model(accepting).chat_model._default_params
+    assert WRITER_TEMPERATURE == 0.8
+    assert params["temperature"] == 0.8
+    refusing = single_model_config(key, "openai/gpt-6-luna")
+    assert "temperature" not in writer_chat_model(refusing).chat_model._default_params

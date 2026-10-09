@@ -355,7 +355,7 @@ Existing patterns to reuse:
         - an overall row naming a manager outside the table.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_checks.py tests/presser`
 
-- [ ] 7. **Writer temperature (AC11).**
+- [x] 7. **Writer temperature (AC11).** `iterations: 0`
       - `backend/app/llm/chat.py`: `build_chat_model(config: LlmConfig, temperature: float =
         0.0)`. It sends `kwargs["temperature"] = temperature` under the existing
         `accepts_temperature` condition.

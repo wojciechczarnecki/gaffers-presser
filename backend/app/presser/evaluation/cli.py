@@ -15,7 +15,7 @@ from app.llm.chat import build_chat_model, single_model_config
 from app.llm.pricing import load_prices
 from app.llm.settings import load_llm_settings
 from app.llm.structured import StructuredCaller
-from app.presser.config import DEFAULT_PRESSER_MODEL, PresserSettings
+from app.presser.config import DEFAULT_PRESSER_MODEL, WRITER_TEMPERATURE, PresserSettings
 from app.presser.evaluation.building import PseudonymisationError, build_real_cases, load_pseudonyms
 from app.presser.evaluation.cases import (
     DEFAULT_CASES_PATH,
@@ -68,11 +68,13 @@ class EvaluationCliDeps:
     make_judge: Callable[[str], PresserJudge]
 
 
-def _caller(settings: PresserSettings, clock: Clock, model: str) -> StructuredCaller:
+def _caller(
+    settings: PresserSettings, clock: Clock, model: str, temperature: float
+) -> StructuredCaller:
     if settings.openrouter_api_key is None:
         raise ConfigError("OPENROUTER_API_KEY is not set")
     config = single_model_config(settings.openrouter_api_key, model)
-    return StructuredCaller.from_spec(build_chat_model(config), load_prices(), clock)
+    return StructuredCaller.from_spec(build_chat_model(config, temperature), load_prices(), clock)
 
 
 def _deps_from_settings() -> EvaluationCliDeps:
@@ -88,8 +90,8 @@ def _deps_from_settings() -> EvaluationCliDeps:
     return EvaluationCliDeps(
         engine=engine,
         clock=clock,
-        make_writer=lambda model: build_writer(_caller(settings, clock, model)),
-        make_judge=lambda model: build_presser_judge(_caller(settings, clock, model)),
+        make_writer=lambda model: build_writer(_caller(settings, clock, model, WRITER_TEMPERATURE)),
+        make_judge=lambda model: build_presser_judge(_caller(settings, clock, model, 0.0)),
     )
 
 
