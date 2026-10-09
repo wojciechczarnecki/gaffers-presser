@@ -30,8 +30,24 @@ def facts() -> FactSheet:
             "gameweek": 5,
             "managers": 1,
             "average_points": 50.0,
-            "winners": [{"manager": "Bartas", "points": 50, "transfers_cost": 0, "net_points": 50}],
-            "flops": [{"manager": "Bartas", "points": 50, "transfers_cost": 0, "net_points": 50}],
+            "winners": [
+                {
+                    "manager": "Bartas",
+                    "points": 50,
+                    "transfers_cost": 0,
+                    "net_points": 50,
+                    "nth_of_season": 1,
+                }
+            ],
+            "flops": [
+                {
+                    "manager": "Bartas",
+                    "points": 50,
+                    "transfers_cost": 0,
+                    "net_points": 50,
+                    "nth_of_season": 1,
+                }
+            ],
             "empty_sections": ["captaincy", "bench_transfers_chips", "table"],
         }
     )
@@ -69,7 +85,7 @@ def test_first_presser_says_none():
 
 def test_glossary_lines_have_three_parts():
     lines = load_glossary().splitlines()
-    assert len(lines) == 70
+    assert len(lines) == 69
     assert all(line.count(" — ") >= 2 for line in lines)
 
 

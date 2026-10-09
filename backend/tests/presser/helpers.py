@@ -61,7 +61,13 @@ class World:
             session.add(League(season=self.season, fpl_id=league_id, name=name))
             session.commit()
 
-    def player(self, fpl_id: int, name: str, results: dict[int, tuple[int, int]] | None = None):
+    def player(
+        self,
+        fpl_id: int,
+        name: str,
+        results: dict[int, tuple[int, int]] | None = None,
+        position: int = 3,
+    ):
         with Session(self.engine) as session:
             session.add(
                 Player(
@@ -71,7 +77,7 @@ class World:
                     first_name=name,
                     second_name=name,
                     team_fpl_id=1,
-                    position=3,
+                    position=position,
                 )
             )
             session.commit()
@@ -169,6 +175,33 @@ class World:
                 session.add(self._pick(entry_id, gameweek, 2, vice, False, True))
             for offset, player_id in enumerate(bench_picks):
                 session.add(self._pick(entry_id, gameweek, 12 + offset, player_id, False, False))
+            session.commit()
+
+    def squad(
+        self,
+        entry_id: int,
+        gameweek: int,
+        starters: list[int],
+        bench: list[int] = (),
+        *,
+        captain: int | None = None,
+        vice: int | None = None,
+    ) -> None:
+        """Picks at positions 1..n for the starters and 12.. for the bench."""
+        placed = [(index + 1, player) for index, player in enumerate(starters)]
+        placed += [(12 + index, player) for index, player in enumerate(bench)]
+        with Session(self.engine) as session:
+            for position, player_id in placed:
+                session.add(
+                    self._pick(
+                        entry_id,
+                        gameweek,
+                        position,
+                        player_id,
+                        player_id == captain,
+                        player_id == vice,
+                    )
+                )
             session.commit()
 
     def _pick(self, entry_id, gameweek, position, player_id, is_captain, is_vice):

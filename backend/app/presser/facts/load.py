@@ -49,6 +49,14 @@ class TransferRow:
 
 
 @dataclass(frozen=True)
+class SquadPick:
+    position: int
+    player: int
+    is_captain: bool
+    is_vice: bool
+
+
+@dataclass(frozen=True)
 class AutoSubRow:
     entry_id: int
     player_out: int
@@ -198,3 +206,39 @@ def load_auto_subs(
         )
     ).all()
     return [AutoSubRow(row.entry_id, row.player_out_fpl_id, row.player_in_fpl_id) for row in rows]
+
+
+def load_squads(
+    session: Session, season: str, keys: set[tuple[int, int]]
+) -> dict[tuple[int, int], list[SquadPick]]:
+    """The picks of the given (entry ID, gameweek) pairs, in position order."""
+    if not keys:
+        return {}
+    rows = session.exec(
+        select(ManagerPick)
+        .where(
+            ManagerPick.season == season,
+            col(ManagerPick.entry_id).in_({entry_id for entry_id, _ in keys}),
+            col(ManagerPick.gameweek_fpl_id).in_({gameweek for _, gameweek in keys}),
+        )
+        .order_by(ManagerPick.entry_id, ManagerPick.gameweek_fpl_id, ManagerPick.position)
+    ).all()
+    squads: dict[tuple[int, int], list[SquadPick]] = {}
+    for row in rows:
+        key = (row.entry_id, row.gameweek_fpl_id)
+        if key in keys:
+            squads.setdefault(key, []).append(
+                SquadPick(row.position, row.player_fpl_id, row.is_captain, row.is_vice_captain)
+            )
+    return squads
+
+
+def load_player_positions(session: Session, season: str, player_ids: set[int]) -> dict[int, int]:
+    if not player_ids:
+        return {}
+    rows = session.exec(
+        select(Player.fpl_id, Player.position).where(
+            Player.season == season, col(Player.fpl_id).in_(player_ids)
+        )
+    ).all()
+    return dict(rows)

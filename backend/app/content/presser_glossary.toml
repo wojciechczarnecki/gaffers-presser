@@ -54,12 +54,6 @@ example = "Zielona strzałka zawsze cieszy, nawet malutka."
 source = "goal.pl"
 
 [[term]]
-term = "tygodniowa trauma"
-meaning = "tydzień rozpamiętywania złej decyzji"
-example = "Kapitan za 2 punkty to gwarantowana tygodniowa trauma."
-source = "sport1.pl"
-
-[[term]]
 term = "opaska / opaska kapitańska"
 meaning = "kapitan drużyny (punkty x2)"
 example = "Opaska na Salahu? W tym tygodniu to był hazard."
@@ -306,9 +300,9 @@ example = "Na ławce słup za 4.0, więc autosuba nie było."
 source = "fantasypl.pl (Wayback Machine)"
 
 [[term]]
-term = "chytry traci dwa razy"
-meaning = "hity i kombinowanie zwykle się mszczą"
-example = "Wziął -8, żeby gonić punkty. Chytry traci dwa razy."
+term = "chytry dwa razy traci"
+meaning = "kto oszczędza (żałuje hita, bierze tańszego zawodnika, odkłada transfer), ten traci podwójnie; nigdy o kimś, kto hita wziął"
+example = "Pożałował -4 na Salaha, a ten wjechał z haulem. Chytry dwa razy traci."
 source = "fantasypl.pl (Wayback Machine)"
 
 [[term]]

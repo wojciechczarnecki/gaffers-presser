@@ -78,9 +78,17 @@ def test_season_wins_flops_and_streaks(world):
     play(world, 4, {11: 60, 12: 20})
     play(world, 5, {10: 60, 11: 40, 12: 20})
     rows = {r.manager: r for r in sheet(world).season_facts.rows}
-    assert (rows["Anna"].wins, rows["Anna"].flops, rows["Anna"].win_streak) == (3, 0, 1)
-    assert (rows["Bartek"].wins, rows["Bartek"].win_streak) == (3, 0)
-    assert (rows["Cezary"].wins, rows["Cezary"].flops, rows["Cezary"].flop_streak) == (0, 5, 5)
+    assert (
+        rows["Anna"].gameweek_wins_to_date,
+        rows["Anna"].gameweek_flops_to_date,
+        rows["Anna"].win_streak,
+    ) == (3, 0, 1)
+    assert (rows["Bartek"].gameweek_wins_to_date, rows["Bartek"].win_streak) == (3, 0)
+    assert (
+        rows["Cezary"].gameweek_wins_to_date,
+        rows["Cezary"].gameweek_flops_to_date,
+        rows["Cezary"].flop_streak,
+    ) == (0, 5, 5)
     ordered = [r.manager for r in sheet(world).season_facts.rows]
     assert ordered == ["Anna", "Bartek", "Cezary"]
 
@@ -141,7 +149,7 @@ def test_season_wins_and_flops_by_net_points_when_a_hit_changes_the_order(world)
     world.gw(11, 3, 30)
     world.gw(12, 3, 34, cost=8)
     rows = {r.manager: r for r in sheet(world, 3).season_facts.rows}
-    assert (rows["Anna"].wins, rows["Anna"].win_streak) == (2, 2)
-    assert (rows["Bartek"].wins, rows["Bartek"].win_streak) == (1, 0)
-    assert (rows["Cezary"].flops, rows["Cezary"].flop_streak) == (3, 3)
-    assert (rows["Bartek"].flops, rows["Anna"].flops) == (0, 0)
+    assert (rows["Anna"].gameweek_wins_to_date, rows["Anna"].win_streak) == (2, 2)
+    assert (rows["Bartek"].gameweek_wins_to_date, rows["Bartek"].win_streak) == (1, 0)
+    assert (rows["Cezary"].gameweek_flops_to_date, rows["Cezary"].flop_streak) == (3, 3)
+    assert (rows["Bartek"].gameweek_flops_to_date, rows["Anna"].gameweek_flops_to_date) == (0, 0)

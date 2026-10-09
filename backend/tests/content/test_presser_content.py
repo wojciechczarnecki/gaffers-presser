@@ -12,9 +12,9 @@ def test_writer_prompt_loads_with_a_version():
     assert "1500" in prompt.text
 
 
-def test_glossary_has_70_complete_terms():
+def test_glossary_has_69_complete_terms():
     terms = tomllib.loads((CONTENT / "presser_glossary.toml").read_text(encoding="utf-8"))["term"]
-    assert len(terms) == 70
+    assert len(terms) == 69
     for term in terms:
         for field in ("term", "meaning", "example", "source"):
             assert term[field].strip(), field

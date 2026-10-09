@@ -59,6 +59,7 @@ def _manager_names(facts: FactSheet) -> set[str]:
         extras.hits,
         extras.transfer_misses,
         extras.chips,
+        extras.chip_squad_changes,
         extras.auto_subs,
     ):
         names |= {item.manager for item in group}

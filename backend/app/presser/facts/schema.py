@@ -14,6 +14,8 @@ class ManagerScore(Strict):
     points: int
     transfers_cost: int
     net_points: int
+    # this gameweek's win (in `winners`) or flop (in `flops`) is the Nth of the season
+    nth_of_season: int
 
 
 class CaptainPick(Strict):
@@ -56,7 +58,22 @@ class TransferMiss(Strict):
 class ChipPlay(Strict):
     manager: str
     chip: str
-    effect: float | None
+    effect: int | None
+
+
+class SquadPlayer(Strict):
+    player: str
+    points: int
+    # whether the points counted (players in) or would have counted (players out) for the manager
+    points_counted: bool
+
+
+class ChipSquadChange(Strict):
+    manager: str
+    chip: str
+    replaced: int
+    players_out: list[SquadPlayer] = Field(default_factory=list)
+    players_in: list[SquadPlayer] = Field(default_factory=list)
 
 
 class AutoSub(Strict):
@@ -71,6 +88,7 @@ class BenchTransfersChips(Strict):
     hits: list[Hit] = Field(default_factory=list)
     transfer_misses: list[TransferMiss] = Field(default_factory=list)
     chips: list[ChipPlay] = Field(default_factory=list)
+    chip_squad_changes: list[ChipSquadChange] = Field(default_factory=list)
     auto_subs: list[AutoSub] = Field(default_factory=list)
 
 
@@ -96,8 +114,8 @@ class Table(Strict):
 
 class SeasonRow(Strict):
     manager: str
-    wins: int
-    flops: int
+    gameweek_wins_to_date: int
+    gameweek_flops_to_date: int
     win_streak: int
     flop_streak: int
     captain_blank_streak: int
@@ -142,6 +160,7 @@ def empty_sections(sheet: FactSheet) -> list[str]:
             or extras.hits
             or extras.transfer_misses
             or extras.chips
+            or extras.chip_squad_changes
             or extras.auto_subs
         ),
         "table": not sheet.table.rows,
@@ -159,6 +178,7 @@ def _managers_named(sheet: FactSheet) -> set[str]:
         extras.hits,
         extras.transfer_misses,
         extras.chips,
+        extras.chip_squad_changes,
         extras.auto_subs,
     ):
         names |= {item.manager for item in group}

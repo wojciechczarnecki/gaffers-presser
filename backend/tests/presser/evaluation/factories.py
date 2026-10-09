@@ -12,8 +12,24 @@ def sheet(gameweek: int = 5, league: str = "League One") -> FactSheet:
             "gameweek": gameweek,
             "managers": 2,
             "average_points": 55.0,
-            "winners": [{"manager": "Bartas", "points": 60, "transfers_cost": 0, "net_points": 60}],
-            "flops": [{"manager": "Kuba", "points": 50, "transfers_cost": 0, "net_points": 50}],
+            "winners": [
+                {
+                    "manager": "Bartas",
+                    "points": 60,
+                    "transfers_cost": 0,
+                    "net_points": 60,
+                    "nth_of_season": 1,
+                }
+            ],
+            "flops": [
+                {
+                    "manager": "Kuba",
+                    "points": 50,
+                    "transfers_cost": 0,
+                    "net_points": 50,
+                    "nth_of_season": 1,
+                }
+            ],
             "table": {
                 "rows": [
                     {"rank": 1, "manager": "Bartas", "total_points": 120, "movement": None},
@@ -28,12 +44,20 @@ def sheet(gameweek: int = 5, league: str = "League One") -> FactSheet:
                 "rows": [
                     {
                         "manager": "Bartas",
-                        "wins": 1,
-                        "flops": 0,
+                        "gameweek_wins_to_date": 1,
+                        "gameweek_flops_to_date": 0,
                         "win_streak": 1,
                         "flop_streak": 0,
                         "captain_blank_streak": 0,
-                    }
+                    },
+                    {
+                        "manager": "Kuba",
+                        "gameweek_wins_to_date": 0,
+                        "gameweek_flops_to_date": 1,
+                        "win_streak": 0,
+                        "flop_streak": 1,
+                        "captain_blank_streak": 0,
+                    },
                 ]
             },
         }

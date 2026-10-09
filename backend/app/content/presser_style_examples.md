@@ -10,7 +10,7 @@ order, jokes only about FPL decisions and uses no vulgar words.
 
 🏆 *Manager kolejki:* Bartas, 84 punkty netto. Opaska na Haalandzie, dwucyfrówka i zero kombinowania. Trzecie zwycięstwo w sezonie, lider pełną gębą i reszta ligi już szuka na niego sposobu.
 
-🤦 *Wtopa kolejki:* Kowal, 41 punktów, a w tym -8 za transfery. Kupił dwóch, którzy razem zrobili 3 punkty. Drugi tydzień z rzędu na dnie. Chytry traci dwa razy.
+🤦 *Wtopa kolejki:* Kowal, 41 punktów, a w tym -8 za transfery. Kupił dwóch, którzy razem zrobili 3 punkty. Drugi tydzień z rzędu na dnie, a hit nie zwrócił się ani trochę.
 
 ©️ *Kapitanowie:* Pięciu z sześciu miało Haalanda i odebrało po 24. Jedyny hipsterski wybór, Palmer u Zbycha, zablankował. Odwaga w FPL kosztuje, w tym tygodniu 20 punktów.
 
@@ -24,7 +24,7 @@ order, jokes only about FPL decisions and uses no vulgar words.
 
 🏆 *Managerowie kolejki:* remis na szczycie! Ola i Grzesiek po 77 punktów netto. Ola bez hita, Grzesiek z -4, które zwróciło się z nawiązką. Chwała dzielona po równo, kłótnia o to, kto lepszy, już trwa.
 
-🤦 *Wtopa kolejki:* Piotrek, 28 punktów. Kapitan za 2, a na ławce 14. Klasyczna tygodniowa trauma.
+🤦 *Wtopa kolejki:* Piotrek, 28 punktów. Kapitan za 2, a na ławce 14. Ławka grała, opaska nie.
 
 ©️ *Kapitanowie:* Salah dał 26 tym, którzy w niego wierzyli. Trzech managerów postawiło na Isaka i odebrało po 4. Najlepsza opaska ligi: TC Ani na Salahu, 39 punktów od jednego zawodnika.
 
