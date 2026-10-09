@@ -381,7 +381,7 @@ Existing patterns to reuse:
           `.make_judge("j")` and asserts the recorded temperatures 0.8 and 0.0.
       Automatic verification: `cd backend && uv run pytest -q tests/llm/test_providers.py tests/presser/test_config.py tests/presser/evaluation/test_cli.py tests/extraction/test_openrouter_payload.py`
 
-- [ ] 8. **Writer prompt version 3 (AC9).**
+- [x] 8. **Writer prompt version 3 (AC9).** `iterations: 0`
       - Rewrite `backend/app/content/prompts/presser_writer.md` with the header `version: 3`.
         Keep the rules of version 2 (net points, counts that include this gameweek, chips,
         `null` = unknown, autosub, names exactly as in the sheet, banter limits, at most 1500

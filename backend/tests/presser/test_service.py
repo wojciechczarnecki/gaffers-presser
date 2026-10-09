@@ -78,7 +78,7 @@ def test_generated_presser_stored_with_usage(db, world):
     assert row.idempotency_key == presser_key(SEASON, 5, LEAGUE_ID)
     assert row.facts["gameweek"] == 5
     assert row.facts["winners"][0]["manager"] == "Bartek"
-    assert row.prompt_version.startswith("presser_writer@")
+    assert row.prompt_version == "presser_writer@3"
 
 
 def test_previous_pressers_latest_two_sent_before_gameweek(db, world):

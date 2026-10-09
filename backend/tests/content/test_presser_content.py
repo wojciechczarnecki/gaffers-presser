@@ -12,6 +12,22 @@ def test_writer_prompt_loads_with_a_version():
     assert "1500" in prompt.text
 
 
+def test_writer_prompt_v3_rules():
+    prompt = load_prompt("presser_writer")
+    assert prompt.version == 3
+    for needle in (
+        "only where it sounds natural",
+        "never copy",
+        "gameweek_rank",
+        "not a source of phrases",
+        "🌍",
+        "1500",
+        "autosub",
+    ):
+        assert needle in prompt.text, needle
+    assert prompt.text.index("`table`") < prompt.text.index("`overall`")
+
+
 def test_glossary_has_69_complete_terms():
     terms = tomllib.loads((CONTENT / "presser_glossary.toml").read_text(encoding="utf-8"))["term"]
     assert len(terms) == 69
