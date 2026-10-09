@@ -293,7 +293,7 @@ Existing patterns to reuse:
           `overall`. The factories already compute it, and the writer test lists it by hand.
       Automatic verification: `cd backend && uv run pytest -q tests/presser`
 
-- [ ] 4. **Personal season bests and worsts (AC5).**
+- [x] 4. **Personal season bests and worsts (AC5).** `iterations: 0`
       - `season.py`: `build_season` fills `personal_bests` / `personal_worsts`
         (Approach §4), sorted by rank (best: ascending; worst: descending), then manager.
       - Test first: `tests/presser/test_facts_ranks.py::test_personal_best_and_worst_need_three_ranked_gameweeks`.

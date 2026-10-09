@@ -2,7 +2,7 @@ from collections import defaultdict
 
 from app.presser.facts.gameweek import credit_captain, net_points
 from app.presser.facts.load import CaptainRef, MemberRow, PlayerResult
-from app.presser.facts.schema import Record, Season, SeasonRow
+from app.presser.facts.schema import PersonalRank, Record, Season, SeasonRow
 
 
 def _records(rows: list[MemberRow], names: dict[int, str]) -> tuple[list[Record], list[Record]]:
@@ -28,6 +28,33 @@ def _records(rows: list[MemberRow], names: dict[int, str]) -> tuple[list[Record]
         )
 
     return pick(best), pick(worst)
+
+
+MIN_RANKED_GAMEWEEKS = 3
+
+
+def _personal_ranks(
+    all_rows: list[MemberRow], names: dict[int, str], gameweek: int
+) -> tuple[list[PersonalRank], list[PersonalRank]]:
+    history: dict[int, dict[int, int]] = defaultdict(dict)
+    for row in all_rows:
+        if row.gameweek_rank is not None and row.gameweek <= gameweek:
+            history[row.entry_id][row.gameweek] = row.gameweek_rank
+    bests: list[PersonalRank] = []
+    worsts: list[PersonalRank] = []
+    for entry_id, ranks in history.items():
+        if gameweek not in ranks or len(ranks) < MIN_RANKED_GAMEWEEKS:
+            continue
+        now = ranks[gameweek]
+        earlier = [rank for number, rank in ranks.items() if number != gameweek]
+        item = PersonalRank(manager=names[entry_id], gameweek_rank=now, ranked_gameweeks=len(ranks))
+        if now < min(earlier):
+            bests.append(item)
+        elif now > max(earlier):
+            worsts.append(item)
+    bests.sort(key=lambda item: (item.gameweek_rank, item.manager))
+    worsts.sort(key=lambda item: (-item.gameweek_rank, item.manager))
+    return bests, worsts
 
 
 def _streak(flags: dict[int, bool], gameweek: int) -> int:
@@ -86,4 +113,11 @@ def build_season(
         key=lambda item: (-item.gameweek_wins_to_date, item.gameweek_flops_to_date, item.manager),
     )
     best_records, worst_records = _records(all_rows, names)
-    return Season(rows=rows, best_gameweek=best_records, worst_gameweek=worst_records)
+    bests, worsts = _personal_ranks(all_rows, names, gameweek)
+    return Season(
+        rows=rows,
+        best_gameweek=best_records,
+        worst_gameweek=worst_records,
+        personal_bests=bests,
+        personal_worsts=worsts,
+    )

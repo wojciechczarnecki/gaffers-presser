@@ -28,3 +28,30 @@ def test_unknown_gameweek_rank_is_null(world):
     result = sheet(world)
     assert result.winners[0].gameweek_rank is None
     assert result.flops[0].gameweek_rank is None
+
+
+def test_personal_best_and_worst_need_three_ranked_gameweeks(world):
+    for gameweek, rank in {1: 500_000, 2: 400_000, 3: 100_000}.items():
+        world.gw(10, gameweek, 50, gameweek_rank=rank)
+    world.gw(11, 1, 50, gameweek_rank=300_000)
+    world.gw(11, 2, 50, gameweek_rank=100_000)
+    world.gw(11, 3, 50, gameweek_rank=900_000)
+    world.gw(12, 1, 50, gameweek_rank=300_000)
+    world.gw(12, 2, 50)
+    world.gw(12, 3, 50, gameweek_rank=100_000)
+    season = sheet(world, 3).season_facts
+    assert [(p.manager, p.gameweek_rank, p.ranked_gameweeks) for p in season.personal_bests] == [
+        ("Anna", 100_000, 3)
+    ]
+    assert [(p.manager, p.gameweek_rank, p.ranked_gameweeks) for p in season.personal_worsts] == [
+        ("Bartek", 900_000, 3)
+    ]
+    two = sheet(world, 2).season_facts
+    assert two.personal_bests == [] and two.personal_worsts == []
+
+
+def test_equal_rank_is_not_a_personal_best_or_worst(world):
+    for gameweek, rank in {1: 400_000, 2: 400_000, 3: 400_000}.items():
+        world.gw(10, gameweek, 50, gameweek_rank=rank)
+    season = sheet(world, 3).season_facts
+    assert season.personal_bests == [] and season.personal_worsts == []
