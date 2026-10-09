@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-10-09"
   - "spec-ready — 2026-10-09"
   - "plan-draft — 2026-10-09"
   - "plan-approved — 2026-10-09"
+  - "implemented — 2026-10-09"
 metrics:
   started_at: 2026-10-09T13:06
   plan_steps: 21
@@ -14,6 +15,10 @@ metrics:
   escalations_tooling: 0
   plan_review_blockers: 0
   plan_review_majors: 1
+  implement_steps: 21
+  implement_iterations: 6
+  deviations_minor: 6
+  deviations_major: 0
 ---
 
 # SPEC 012 — League presser

@@ -1004,13 +1004,27 @@ The command in each step is the contract. After a step's own tests pass, the ste
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
-      fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/DEPLOYMENT.md`, `README.md`,
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+      fully green (ruff clean, 384 files formatted, 1611 passed)
+- [x] end-to-end verification (automatic) performed, result recorded here:
+      1. the verify command: green, 1611 passed.
+      2. migration on the local development database: `upgrade head`, `downgrade 0010`,
+         `upgrade head` each exited 0; `alembic current` printed `0011 (head)`.
+      3. `python -m app.presser --help` lists `facts`, `preview`, `send`, `status`;
+         `python -m app.presser.evaluation --help` lists `build-cases`, `evaluate`, `review`,
+         `judge-review`, `summary`.
+      4. `PRESSER_NICKNAMES='not json' ... python -m app.presser status` exited 1; stderr read
+         `error: PRESSER_NICKNAMES must be a JSON object of FPL entry ID to nickname`, with no
+         trace of the value.
+      5. `summary --results-dir <empty dir>` printed `no test runs`.
+      6. `tests/presser/evaluation/test_eval_set.py` passes on the committed set (16 cases: 8 dev,
+         8 test); `git grep -n -E '[0-9]{6,}' backend/evals/presser` returned nothing.
+      The builder ran on the development database (10 real cases) without printing a name; its
+      leak check passed.
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/DEPLOYMENT.md`, `README.md`,
       `backend/.env.example` updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -1050,6 +1064,11 @@ The plan is ready for implementation: the one major finding was fixable in the p
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
 
+- `minor` — step 1: the plan said `reasoning_effort` follows the file header rules; for `anthropic/claude-haiku-5.5` the live model list has `mandatory: false` without `none` among `supported_efforts`, and the header rule still gives `"none"`, so the row says `"none"` (the same as the existing haiku-4.5 row).
+- `minor` — step 12: `tests/worker/test_cli.py` — the autouse environment filter also deletes `PRESSER_.*` variables and the `cli` fixture takes `presser` and `presser_disabled_reason`, so a developer's `.env` cannot leak into the worker tests.
+- `minor` — step 12: the worker status helper `current_season` lives in `app/presser/store.py` (the worker and the presser CLI both read it), next to the other store functions.
+- `minor` — step 16: the leak check's word rule also skips words that are part of any pseudonym (for example `Liga` of a pseudonym league name), which a real league name can share; without it the committed history texts, which carry the pseudonym league name, would be rejected. `test_word_shared_with_a_pseudonym_is_not_a_leak` covers it.
+- `minor` — step 16: the builder tags the real GW1 cases with `first_gameweek` itself, so step 17 needed no edit of the real cases.
 - `minor` — step 9: `PresserRuntime` gains a `clock` field (default `SystemClock`), which the plan's field list lacked: the `presser.created_at` value and the tests' `FixedClock` need it.
 
 ## Final review
