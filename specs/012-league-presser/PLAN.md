@@ -357,7 +357,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
         checks that `presser` exists after the upgrade and is gone after `downgrade 0010`.
       Automatic verification: `cd backend && uv run pytest -q tests/db/test_migrations.py`
 
-- [ ] 3. **Presser configuration (AC7 parsing, AC11 reasons, AC19 default).**
+- [x] 3. **Presser configuration (AC7 parsing, AC11 reasons, AC19 default).** `iterations: 0`
       - Write `backend/app/presser/config.py` as specified in Approach → Configuration. It
         has `PresserSettings`, `DEFAULT_PRESSER_MODEL`, `parse_nicknames`,
         `presser_disabled_reason` and `resolve_presser_llm(settings) -> LlmConfig | None`
