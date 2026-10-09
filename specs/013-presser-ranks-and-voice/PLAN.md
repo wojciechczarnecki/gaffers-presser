@@ -469,7 +469,7 @@ Existing patterns to reuse:
           overall row.
       Automatic verification: `cd backend && uv run pytest -q tests/content tests/presser/evaluation/test_runner.py`
 
-- [ ] 11. **Logs carry no names or ranks (AC15).**
+- [x] 11. **Logs carry no names or ranks (AC15).** `iterations: 0`
       - No product change is expected: the presser facts code does not log. Only the
         existing log lines (gameweek, league ordinal, error class) remain.
       - Test first: extend `tests/presser/test_worker_run.py::test_logs_carry_no_names_or_text`.
