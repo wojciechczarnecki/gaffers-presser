@@ -384,7 +384,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
         initial too ("… 2") and a nickname that keeps priority.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_names.py`
 
-- [ ] 5. **Fact sheet schema, loading, winners, flops and captaincy (AC1, AC2).**
+- [x] 5. **Fact sheet schema, loading, winners, flops and captaincy (AC1, AC2).** `iterations: 0`
       - Create the package `backend/app/presser/facts/` with these files:
         - `__init__.py` re-exports `FactSheet`, `build_fact_sheet`, `check_fact_sheet`,
           `NoFactsError` and `FactSheetError`.
