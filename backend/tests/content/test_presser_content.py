@@ -30,6 +30,13 @@ def test_writer_prompt_v3_rules():
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")
 
 
+def test_judge_prompt_checks_ranks():
+    prompt = load_prompt("presser_judge")
+    assert prompt.version == 2
+    for needle in ("rank", "threshold", "rounded", "1,2 mln"):
+        assert needle in prompt.text, needle
+
+
 def test_glossary_has_69_complete_terms():
     terms = tomllib.loads((CONTENT / "presser_glossary.toml").read_text(encoding="utf-8"))["term"]
     assert len(terms) == 69
@@ -71,8 +78,9 @@ def test_style_examples_six_headers_no_shared_sentence():
     for paragraphs in examples:
         title, *sections = paragraphs
         assert title.startswith("🎙️")
-        assert [p[0 : len(mark)] for p, mark in zip(sections, HEADER_MARKS)] == list(HEADER_MARKS)
         assert len(sections) == 6
+        starts = [p[0 : len(mark)] for p, mark in zip(sections, HEADER_MARKS, strict=True)]
+        assert starts == list(HEADER_MARKS)
         assert sum(len(p) for p in paragraphs) + 2 * len(paragraphs) < 1500
         assert "gw rank" in "\n".join(sections).casefold()
         sentence_sets.append(set(_sentences(sections)))

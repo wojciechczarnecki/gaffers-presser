@@ -451,7 +451,7 @@ Existing patterns to reuse:
         - none of the flagged phrases above appears.
       Automatic verification: `cd backend && uv run pytest -q tests/content/test_presser_content.py tests/presser/test_writer.py`
 
-- [ ] 10. **Judge prompt version 2 (AC14).**
+- [x] 10. **Judge prompt version 2 (AC14).** `iterations: 0`
       - `backend/app/content/prompts/presser_judge.md` → `version: 2`. "What is a claim"
         adds GW ranks, overall ranks, movements in places, thresholds entered or left ("w top
         10k"), and personal and season bests by GW rank. "Labels" adds that a rank rounded

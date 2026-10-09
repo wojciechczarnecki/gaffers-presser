@@ -4,6 +4,7 @@ import pytest
 
 from app.llm.pricing import load_prices
 from app.llm.structured import StructuredCaller
+from app.presser.evaluation.cases import PresserCase
 from app.presser.evaluation.judge import (
     JudgedClaim,
     JudgeInput,
@@ -17,10 +18,11 @@ from app.presser.evaluation.runner import (
     default_result_path,
     run_evaluation,
 )
+from app.presser.facts.schema import empty_sections
 from app.presser.writer import PresserDraft, PreviousPresser, Writer, build_writer
 from tests.delivery.fakes import FixedClock
 from tests.extraction.fakes import FakeChatModel
-from tests.presser.evaluation.factories import case, valid_set
+from tests.presser.evaluation.factories import case, sheet, valid_set
 
 NOW = datetime(2026, 10, 9, tzinfo=UTC)
 WRITER_MODEL = "openai/gpt-6-luna"
@@ -149,3 +151,41 @@ def test_judge_input_holds_sheet_previous_and_presser():
 
 def test_default_result_path_replaces_the_slash():
     assert default_result_path("test", "openai/gpt-6-luna").name == "test-openai-gpt-6-luna.json"
+
+
+def test_recorded_rank_verdict_counted():
+    facts = sheet().model_copy(deep=True)
+    facts.overall = facts.overall.model_validate(
+        {
+            "rows": [
+                {
+                    "manager": "Bartas",
+                    "overall_rank": 1_234_567,
+                    "previous_overall_rank": 2_000_000,
+                    "movement": 765_433,
+                    "entered": [],
+                    "left": [],
+                    "notable": True,
+                }
+            ],
+            "biggest_climbers": ["Bartas"],
+            "biggest_fallers": [],
+        }
+    )
+    facts.empty_sections = empty_sections(facts)
+    item = PresserCase(id="rank", split="dev", source="real", tags=[], facts=facts, previous=[])
+    writer, _ = writer_for(
+        PresserDraft(text="Bartas w top 1,2 mln overall, Kuba wszedł do top 10k")
+    )
+    recorded = JudgeVerdict(
+        claims=[
+            JudgedClaim(claim="Bartas w top 1,2 mln overall", label="supported"),
+            JudgedClaim(claim="Kuba wszedł do top 10k", label="unsupported"),
+        ]
+    )
+    judge, fake = judge_for(recorded)
+    result = run([item], writer, judge)
+    (record,) = result["pressers"]
+    assert [c["label"] for c in record["claims"]] == ["supported", "unsupported"]
+    assert record["faithfulness"] == 0.5
+    assert '"overall_rank": 1234567' in fake.received_messages[0][1].content
