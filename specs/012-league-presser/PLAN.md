@@ -371,7 +371,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
         and an invalid `PRESSER_ENABLED`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_config.py`
 
-- [ ] 4. **Display names (AC7).**
+- [x] 4. **Display names (AC7).** `iterations: 0`
       - Write `backend/app/presser/names.py` with `display_names(managers: dict[int, str],
         nicknames: dict[int, str]) -> dict[int, str]`. The argument maps entry ID to
         `manager_name`.
