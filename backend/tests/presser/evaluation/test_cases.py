@@ -101,7 +101,7 @@ def test_small_test_split():
 def test_inconsistent_sheet_is_reported():
     def mutate(cases):
         facts = cases[0].facts.model_copy(deep=True)
-        facts.winners[0].net_points = 99
+        facts.table.rows[0].rank = 5
         cases[0] = cases[0].model_copy(update={"facts": facts})
 
     assert any("real-0: the fact sheet is inconsistent" in p for p in problems_with(mutate))

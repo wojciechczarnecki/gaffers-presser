@@ -67,13 +67,13 @@ def build_fact_sheet(
 
     season_facts = build_season(all_rows, refs, results, names, gameweek)
     winners, flops = gw_rules.winners_and_flops(rows, names, season_facts)
-    average = gw_rules.average_points(rows)
+    average = gw_rules.average_net_points(rows)
     sheet = FactSheet(
         league=league_name,
         season=season,
         gameweek=gameweek,
         managers=len(rows),
-        average_points=average,
+        average_net_points=average,
         winners=winners,
         flops=flops,
         captaincy=gw_rules.captaincy(rows, refs, results, names, player_names, gameweek),

@@ -11,11 +11,10 @@ def sheet(gameweek: int = 5, league: str = "League One") -> FactSheet:
             "season": "2026/27",
             "gameweek": gameweek,
             "managers": 2,
-            "average_points": 55.0,
+            "average_net_points": 55,
             "winners": [
                 {
                     "manager": "Bartas",
-                    "points": 60,
                     "transfers_cost": 0,
                     "net_points": 60,
                     "nth_of_season": 1,
@@ -24,7 +23,6 @@ def sheet(gameweek: int = 5, league: str = "League One") -> FactSheet:
             "flops": [
                 {
                     "manager": "Kuba",
-                    "points": 50,
                     "transfers_cost": 0,
                     "net_points": 50,
                     "nth_of_season": 1,

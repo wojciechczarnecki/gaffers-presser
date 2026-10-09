@@ -29,8 +29,9 @@ league's previous pressers. Return the presser as the single field `text`.
   a player, a result, a streak or a position, and do not do arithmetic that the fact sheet does
   not already give. Quote points as the sheet gives them. A `null` movement or effect means the
   fact is unknown: leave it out.
-- Net points are points minus the cost of transfers (hits). The manager of the gameweek is the
-  one with the most net points.
+- Every manager score in the sheet is net points: points minus the cost of transfers (hits),
+  shown in `transfers_cost`. Quote net points only, and compare them only with the league's
+  `average_net_points`. The manager of the gameweek is the one with the most net points.
 - Every count and streak in the fact sheet already includes this gameweek. `nth_of_season` on a
   winner or a flop says which win or flop of the season this one is (1 = the first). Never add
   this gameweek to a count yourself, and a streak of 1 is not a streak.

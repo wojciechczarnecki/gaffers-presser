@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 
 from app.presser.facts.load import (
@@ -39,7 +40,6 @@ def net_points(row: MemberRow) -> int:
 def to_score(row: MemberRow, names: dict[int, str], nth_of_season: int) -> ManagerScore:
     return ManagerScore(
         manager=names[row.entry_id],
-        points=row.points,
         transfers_cost=row.transfers_cost,
         net_points=net_points(row),
         nth_of_season=nth_of_season,
@@ -72,10 +72,11 @@ def winners_and_flops(
     )
 
 
-def average_points(rows: list[MemberRow]) -> float:
+def average_net_points(rows: list[MemberRow]) -> int:
+    """The league's mean net points, rounded half up to a whole point like FPL's own average."""
     if not rows:
-        return 0.0
-    return round(sum(row.points for row in rows) / len(rows), 1)
+        return 0
+    return math.floor(sum(net_points(row) for row in rows) / len(rows) + 0.5)
 
 
 @dataclass(frozen=True)
@@ -248,7 +249,7 @@ def _chip_effect(
     if row.active_chip in SQUAD_CHIPS:
         if not previous_squad:
             return None
-        return row.points - squad_points(previous_squad, results, positions, gameweek)
+        return net_points(row) - squad_points(previous_squad, results, positions, gameweek)
     return None
 
 

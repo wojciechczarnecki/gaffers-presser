@@ -29,11 +29,10 @@ def facts() -> FactSheet:
             "season": "2026/27",
             "gameweek": 5,
             "managers": 1,
-            "average_points": 50.0,
+            "average_net_points": 50,
             "winners": [
                 {
                     "manager": "Bartas",
-                    "points": 50,
                     "transfers_cost": 0,
                     "net_points": 50,
                     "nth_of_season": 1,
@@ -42,7 +41,6 @@ def facts() -> FactSheet:
             "flops": [
                 {
                     "manager": "Bartas",
-                    "points": 50,
                     "transfers_cost": 0,
                     "net_points": 50,
                     "nth_of_season": 1,

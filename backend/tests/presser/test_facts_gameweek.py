@@ -24,13 +24,13 @@ def test_winners_by_net_points_with_tie(world):
     world.gw(11, 5, 64, cost=4)
     world.gw(12, 5, 41, cost=0)
     result = sheet(world)
-    assert [(w.manager, w.points, w.transfers_cost, w.net_points) for w in result.winners] == [
-        ("Anna", 60, 0, 60),
-        ("Bartek", 64, 4, 60),
+    assert [(w.manager, w.transfers_cost, w.net_points) for w in result.winners] == [
+        ("Anna", 0, 60),
+        ("Bartek", 4, 60),
     ]
     assert [(f.manager, f.net_points) for f in result.flops] == [("Cezary", 41)]
     assert result.managers == 3
-    assert result.average_points == 55.0
+    assert result.average_net_points == 54  # (60 + 60 + 41) / 3 = 53.67, net of the hit
 
 
 def test_flops_tie_gives_several(world):
@@ -349,6 +349,12 @@ def test_flops_by_net_points_when_a_hit_changes_the_order(world):
     world.gw(11, 5, 44, cost=8)
     world.gw(12, 5, 40)
     result = sheet(world)
-    assert [(f.manager, f.points, f.transfers_cost, f.net_points) for f in result.flops] == [
-        ("Bartek", 44, 8, 36)
+    assert [(f.manager, f.transfers_cost, f.net_points) for f in result.flops] == [
+        ("Bartek", 8, 36)
     ]
+
+
+def test_average_is_net_and_rounded_half_up(world):
+    world.gw(10, 5, 61)
+    world.gw(11, 5, 52, cost=4)
+    assert sheet(world).average_net_points == 55  # (61 + 48) / 2 = 54.5

@@ -11,7 +11,6 @@ class Strict(BaseModel):
 
 class ManagerScore(Strict):
     manager: str
-    points: int
     transfers_cost: int
     net_points: int
     # this gameweek's win (in `winners`) or flop (in `flops`) is the Nth of the season
@@ -139,7 +138,7 @@ class FactSheet(Strict):
     season: str
     gameweek: int
     managers: int
-    average_points: float
+    average_net_points: int
     winners: list[ManagerScore]
     flops: list[ManagerScore]
     captaincy: Captaincy = Field(default_factory=Captaincy)
@@ -190,9 +189,6 @@ def _managers_named(sheet: FactSheet) -> set[str]:
 def check_fact_sheet(sheet: FactSheet) -> list[str]:
     problems: list[str] = []
     for label, scores in (("winners", sheet.winners), ("flops", sheet.flops)):
-        for score in scores:
-            if score.net_points != score.points - score.transfers_cost:
-                problems.append(f"{label}: net points do not match points and hits")
         if len({score.net_points for score in scores}) > 1:
             problems.append(f"{label}: managers on different net points")
     if sheet.winners and sheet.flops and sheet.winners[0].net_points < sheet.flops[0].net_points:
