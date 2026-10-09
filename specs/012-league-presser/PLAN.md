@@ -426,7 +426,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
           `test_empty_section_marked`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_gameweek.py`
 
-- [ ] 7. **Table, season facts and the complete sheet (AC5, AC6, AC7 in the sheet).**
+- [x] 7. **Table, season facts and the complete sheet (AC5, AC6, AC7 in the sheet).** `iterations: 0`
       - Write `backend/app/presser/facts/table.py` (table, movement, top 3, climbers and
         fallers) and `facts/season.py` (wins, flops, streaks and records over gameweeks
         1..N).

@@ -1,7 +1,7 @@
 from sqlmodel import Session
 
 from app.presser.facts import gameweek as gw_rules
-from app.presser.facts.errors import NoFactsError
+from app.presser.facts.errors import FactSheetError, NoFactsError
 from app.presser.facts.load import (
     load_auto_subs,
     load_bench_picks,
@@ -13,7 +13,9 @@ from app.presser.facts.load import (
     load_results,
     load_transfers,
 )
-from app.presser.facts.schema import FactSheet, empty_sections
+from app.presser.facts.schema import FactSheet, check_fact_sheet, empty_sections
+from app.presser.facts.season import build_season
+from app.presser.facts.table import build_table
 from app.presser.names import display_names
 
 
@@ -66,5 +68,10 @@ def build_fact_sheet(
             gameweek,
         ),
     )
+    previous = [row for row in all_rows if row.gameweek == gameweek - 1]
+    sheet.table = build_table(rows, previous, names)
+    sheet.season_facts = build_season(all_rows, refs, results, names, gameweek)
     sheet.empty_sections = empty_sections(sheet)
+    if check_fact_sheet(sheet):
+        raise FactSheetError("the fact sheet is internally inconsistent")
     return sheet
