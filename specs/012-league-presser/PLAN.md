@@ -644,7 +644,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
           the variable, not the value).
       Automatic verification: `cd backend && uv run pytest -q tests/worker tests/presser/test_worker_run.py`
 
-- [ ] 13. **Presser CLI (AC1 via `facts`, AC7, AC11 and AC13).**
+- [x] 13. **Presser CLI (AC1 via `facts`, AC7, AC11 and AC13).** `iterations: 0`
       - Write `backend/app/presser/cli.py` and `__main__.py` (`python -m app.presser`), a
         typer app with injectable `PresserCliDeps` like `app/alerts/cli.py`. The deps are
         engine, settings, nicknames, `make_runtime(with_delivery: bool)`, clock and league
