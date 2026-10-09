@@ -21,7 +21,7 @@ from app.alerts.loop import start_alerts
 from app.alerts.schedule import check_rehearsal, polling_window, slot_moments
 from app.alerts.service import AlertsRuntime
 from app.alerts.status import alert_status, status_line
-from app.core.clock import Clock, SystemClock
+from app.core.clock import Clock, StopAwareClock, SystemClock
 from app.core.errors import CollectorError
 from app.core.local_time import format_local_day
 from app.core.settings import (
@@ -46,8 +46,20 @@ from app.extraction.store import extraction_status
 from app.fpl.client import FplClient
 from app.fpl.deadlines import DEFAULT_MAX_LOOKBACK, upcoming_deadlines
 from app.llm.chat import PROVIDER, build_chat_model, resolve_llm
+from app.llm.pricing import load_prices
 from app.llm.settings import load_llm_settings
+from app.llm.structured import StructuredCaller
 from app.llm.tracing import resolve_tracing
+from app.presser.config import (
+    PresserSettings,
+    parse_nicknames,
+    presser_disabled_reason,
+    resolve_presser_llm,
+)
+from app.presser.service import PresserRuntime, run_after_league_sync
+from app.presser.store import current_season, presser_status
+from app.presser.tracing import make_presser_tracer
+from app.presser.writer import build_writer
 from app.retrieval.config import load_retrieval_settings, resolve_embedding
 from app.retrieval.embedder import build_embedder
 from app.retrieval.indexing import IndexingRuntime
@@ -86,6 +98,13 @@ class AlertsSetup:
 
 
 @dataclass(frozen=True)
+class PresserSetup:
+    config_model: str
+    nicknames: dict[int, str]
+    make_runtime: Callable[[Engine, threading.Event, list[int]], tuple[PresserRuntime, Channel]]
+
+
+@dataclass(frozen=True)
 class WorkerDeps:
     engine: Engine
     client: FplClient
@@ -97,6 +116,8 @@ class WorkerDeps:
     delivery_channel: str | None = None
     alerts: AlertsSetup | None = None
     alerts_disabled_reason: str | None = None
+    presser: PresserSetup | None = None
+    presser_disabled_reason: str | None = None
 
 
 app = typer.Typer(
@@ -159,6 +180,12 @@ def _deps_from_settings() -> WorkerDeps:
         corroboration_settings = (
             load_llm_settings(CorroborationSettings) if disabled_reason is None else None
         )
+        presser_settings = load_llm_settings(PresserSettings)
+        nicknames = parse_nicknames(presser_settings)
+        presser_reason = presser_disabled_reason(
+            presser_settings, delivery=delivery_config is not None
+        )
+        presser_llm = resolve_presser_llm(presser_settings) if presser_reason is None else None
         settings = load_settings()
     except CollectorError as exc:
         raise fail(str(exc)) from None
@@ -196,6 +223,30 @@ def _deps_from_settings() -> WorkerDeps:
             make_channel=lambda: build_channel(delivery_config),
             make_corroboration=lambda: build_runtime(corroboration_settings, SystemClock()),
         )
+    presser = None
+    if presser_llm is not None:
+        assert delivery_config is not None
+
+        def make_presser_runtime(
+            engine: Engine, stop_event: threading.Event, league_ids: list[int]
+        ) -> tuple[PresserRuntime, Channel]:
+            caller = StructuredCaller.from_spec(
+                build_chat_model(presser_llm), load_prices(), StopAwareClock(stop_event)
+            )
+            caller.stop_event = stop_event
+            channel = build_channel(delivery_config)
+            runtime = PresserRuntime(
+                writer=build_writer(caller),
+                model=presser_llm.model,
+                tracer=make_presser_tracer(resolve_tracing(presser_settings)),
+                nicknames=nicknames,
+                delivery=DeliveryService(engine, channel, SystemClock(), stop_event),
+                league_ids=league_ids,
+                stop_event=stop_event,
+            )
+            return runtime, channel
+
+        presser = PresserSetup(presser_llm.model, nicknames, make_presser_runtime)
     return WorkerDeps(
         engine=make_engine(settings.database_url),
         client=FplClient(),
@@ -207,6 +258,8 @@ def _deps_from_settings() -> WorkerDeps:
         delivery_channel=delivery_config.provider if delivery_config else None,
         alerts=alerts,
         alerts_disabled_reason=disabled_reason,
+        presser=presser,
+        presser_disabled_reason=presser_reason,
     )
 
 
@@ -261,10 +314,23 @@ def run(ctx: typer.Context) -> None:
     signalled = threading.Event()
     alerts_runtime: AlertsRuntime | None = None
     alerts_channel: Channel | None = None
+    presser_runtime: PresserRuntime | None = None
+    presser_channel: Channel | None = None
     if deps.alerts is not None:
         try:
             alerts_runtime, alerts_channel = _alerts_runtime(
                 deps, deps.alerts, league_ids, stop_event
+            )
+        except CollectorError as exc:
+            raise fail(str(exc)) from None
+        except Exception as exc:
+            logger.error("worker failed: %s", type(exc).__name__)
+            raise typer.Exit(1) from None
+
+    if deps.presser is not None:
+        try:
+            presser_runtime, presser_channel = deps.presser.make_runtime(
+                deps.engine, stop_event, league_ids
             )
         except CollectorError as exc:
             raise fail(str(exc)) from None
@@ -342,6 +408,16 @@ def run(ctx: typer.Context) -> None:
             )
             logger.info("alerts started: slots=%s", format_slots(deps.alerts.config.slots))
 
+        after_league_sync = None
+        if presser_runtime is None:
+            logger.info("presser disabled: %s", deps.presser_disabled_reason)
+        else:
+            runtime = presser_runtime
+            logger.info("presser enabled: model=%s", runtime.model)
+
+            def after_league_sync(season: str, gameweek: int) -> None:
+                run_after_league_sync(deps.engine, runtime, season, gameweek)
+
         def heartbeat() -> None:
             lock_connection.execute(text("SELECT 1"))
 
@@ -352,6 +428,7 @@ def run(ctx: typer.Context) -> None:
             deps.clock,
             stop_event=stop_event,
             heartbeat=heartbeat,
+            after_league_sync=after_league_sync,
         )
         worker.run()
     except Shutdown:
@@ -369,6 +446,8 @@ def run(ctx: typer.Context) -> None:
                     thread.join(timeout=max(0.0, deadline - time.monotonic()))
         if alerts_channel is not None:
             alerts_channel.close()
+        if presser_channel is not None:
+            presser_channel.close()
         signal.signal(signal.SIGTERM, previous_sigterm)
         signal.signal(signal.SIGINT, previous_sigint)
         if lock_connection is not None:
@@ -459,6 +538,28 @@ def status(ctx: typer.Context) -> None:
         typer.echo(f"Alerts: disabled ({deps.alerts_disabled_reason or 'not configured'})")
     else:
         typer.echo(status_line(alert_status(deps.engine, deps.alerts.config, now), _fmt_warsaw))
+
+    typer.echo(_presser_line(deps))
+
+
+def _presser_line(deps: WorkerDeps) -> str:
+    if deps.presser is None:
+        return f"Presser: disabled ({deps.presser_disabled_reason or 'not configured'})"
+    try:
+        league_ids = parse_league_ids(deps.league_ids_raw)
+    except CollectorError:
+        league_ids = []
+    with Session(deps.engine) as session:
+        season = current_season(session)
+        statuses = presser_status(session, season, league_ids) if season else []
+    latest = [item.latest for item in statuses if item.latest is not None]
+    failed = sum(item.failed for item in statuses)
+    if latest:
+        newest = max(latest, key=lambda row: row.created_at)
+        last = f"GW{newest.gameweek} {newest.status}"
+    else:
+        last = "never"
+    return f"Presser: model={deps.presser.config_model}  last: {last}  failed: {failed}"
 
 
 def main() -> None:

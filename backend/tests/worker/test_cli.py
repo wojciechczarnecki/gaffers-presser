@@ -39,7 +39,7 @@ from tests.tweets.fakes import FakeSource
 from tests.worker.sim import FakeClock
 
 EXTRACTION_VARIABLE = re.compile(
-    r"(LLM_.*|LANGFUSE_.*|.*_API_KEY|USD_PLN_RATE|EMBEDDING_MODEL|DELIVERY_.*|ALERT.*)"
+    r"(LLM_.*|LANGFUSE_.*|.*_API_KEY|USD_PLN_RATE|EMBEDDING_MODEL|DELIVERY_.*|ALERT.*|PRESSER_.*)"
 )
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 D6 = datetime(2026, 10, 10, 10, 0, tzinfo=UTC)
@@ -112,6 +112,8 @@ def cli(db):
         delivery_channel=None,
         alerts=None,
         alerts_disabled_reason=None,
+        presser=None,
+        presser_disabled_reason=None,
     ):
         deps = WorkerDeps(
             engine=db,
@@ -124,6 +126,8 @@ def cli(db):
             delivery_channel=delivery_channel,
             alerts=alerts,
             alerts_disabled_reason=alerts_disabled_reason,
+            presser=presser,
+            presser_disabled_reason=presser_disabled_reason,
         )
         return CliRunner().invoke(app, list(args), obj=deps)
 
@@ -1671,3 +1675,105 @@ def test_deps_carry_the_alert_setup_or_the_reason(monkeypatch, tmp_path):
     monkeypatch.setenv("ALERTS_ENABLED", "false")
     off = worker_cli._deps_from_settings()
     assert off.alerts is None and off.alerts_disabled_reason == "ALERTS_ENABLED=false"
+
+
+def test_presser_disabled_logged_once_and_in_status(cli, db, caplog):
+    far_future = datetime(2027, 6, 1, tzinfo=UTC)
+    fake = FakeFpl({"bootstrap-static/": load("bootstrap-static"), "fixtures/": load("fixtures")})
+
+    timer = threading.Timer(1, os.kill, args=(os.getpid(), signal.SIGTERM))
+    timer.start()
+    try:
+        with caplog.at_level(logging.INFO):
+            result = cli(
+                "run",
+                client=fake.client(sleep=lambda _: None),
+                clock=RealClock(far_future),
+                presser_disabled_reason="OPENROUTER_API_KEY is not set",
+            )
+    finally:
+        timer.cancel()
+
+    assert result.exit_code == 0
+    assert caplog.text.count("presser disabled: OPENROUTER_API_KEY is not set") == 1
+
+    status = cli("status", presser_disabled_reason="delivery disabled")
+    assert "Presser: disabled (delivery disabled)" in status.stdout.splitlines()
+
+
+def test_status_shows_presser_model_and_last_presser(cli, db):
+    from app.presser.service import presser_key
+    from app.presser.store import insert_presser
+    from app.worker.cli import PresserSetup
+    from tests.presser.helpers import World
+
+    world = World(db, league_id=1)
+    insert_presser(
+        db,
+        season="2026/27",
+        league_fpl_id=world.league_id,
+        gameweek_fpl_id=3,
+        idempotency_key=presser_key("2026/27", 3, 1),
+        facts={},
+        text="t",
+        model="openai/gpt-6-luna",
+        prompt_version="presser_writer@1",
+        status="failed",
+        created_at=NOW,
+    )
+    never = cli("status", presser=PresserSetup("openai/gpt-6-luna", {}, lambda *_: None))
+    assert "Presser: model=openai/gpt-6-luna  last: GW3 failed  failed: 1" in never.stdout
+    empty = cli(
+        "status", league_ids_raw="2", presser=PresserSetup("openai/gpt-6-luna", {}, lambda *_: None)
+    )
+    assert "Presser: model=openai/gpt-6-luna  last: never  failed: 0" in empty.stdout
+
+
+def test_invalid_presser_nicknames_stops_worker(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PRESSER_NICKNAMES", "not json {secret}")
+
+    result = CliRunner().invoke(app, ["status"])
+
+    assert result.exit_code == 1
+    assert "PRESSER_NICKNAMES" in result.stderr
+    assert "not json" not in result.stderr and "secret" not in result.stderr
+
+
+def test_deps_enable_the_presser_with_key_and_delivery(monkeypatch, tmp_path):
+    from app.core.settings import Settings
+    from app.worker import cli as worker_cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-sentinel-value")
+    monkeypatch.setenv("DELIVERY_PROVIDER", "resend")
+    monkeypatch.setenv("RESEND_API_KEY", "re_synthetic_key")
+    monkeypatch.setenv("DELIVERY_EMAIL_TO", "owner@example.test")
+    monkeypatch.setenv("PRESSER_NICKNAMES", '{"7": "Bartas"}')
+    monkeypatch.setattr(
+        worker_cli,
+        "load_settings",
+        lambda: Settings(_env_file=None, database_url="postgresql+psycopg://u@localhost/x"),
+    )
+
+    deps = worker_cli._deps_from_settings()
+
+    assert deps.presser is not None and deps.presser_disabled_reason is None
+    assert deps.presser.config_model == "openai/gpt-6-luna"
+    assert deps.presser.nicknames == {7: "Bartas"}
+
+
+def test_deps_disable_the_presser_with_a_reason(monkeypatch, tmp_path):
+    from app.core.settings import Settings
+    from app.worker import cli as worker_cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        worker_cli,
+        "load_settings",
+        lambda: Settings(_env_file=None, database_url="postgresql+psycopg://u@localhost/x"),
+    )
+
+    deps = worker_cli._deps_from_settings()
+    assert deps.presser is None
+    assert deps.presser_disabled_reason == "OPENROUTER_API_KEY is not set"

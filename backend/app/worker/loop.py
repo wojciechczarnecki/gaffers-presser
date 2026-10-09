@@ -1,5 +1,6 @@
 import logging
 import threading
+from collections.abc import Callable
 
 from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -7,7 +8,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.clock import Clock
 from app.fpl.client import FplClient
 from app.worker.jobs import Shutdown, run_job
-from app.worker.schedule import Job, PlannedAction, due_actions, missed_snapshot, plan
+from app.worker.schedule import (
+    Job,
+    PlannedAction,
+    RunRecord,
+    due_actions,
+    missed_snapshot,
+    plan,
+)
 from app.worker.store import load_state
 
 logger = logging.getLogger(__name__)
@@ -24,6 +32,7 @@ class Worker:
         clock: Clock,
         stop_event: threading.Event | None = None,
         heartbeat=None,
+        after_league_sync: Callable[[str, int], None] | None = None,
     ) -> None:
         self._engine = engine
         self._client = client
@@ -31,6 +40,7 @@ class Worker:
         self._clock = clock
         self._stop_event = stop_event if stop_event is not None else threading.Event()
         self._heartbeat = heartbeat
+        self._after_league_sync = after_league_sync
         self._logged_missed: set[int] = set()
 
     def _check_stop(self) -> None:
@@ -38,7 +48,7 @@ class Worker:
             raise Shutdown
 
     def _run_job(self, action: PlannedAction) -> None:
-        run_job(
+        record = run_job(
             self._engine,
             self._client,
             self._league_ids,
@@ -46,6 +56,22 @@ class Worker:
             self._clock.now,
             self._stop_event,
         )
+        self._notify_league_sync(action, record)
+
+    def _notify_league_sync(self, action: PlannedAction, record: RunRecord) -> None:
+        hook = self._after_league_sync
+        if (
+            hook is None
+            or action.job is not Job.league_sync
+            or record.outcome != "succeeded"
+            or action.season is None
+            or action.gameweek is None
+        ):
+            return
+        try:
+            hook(action.season, action.gameweek)
+        except Exception as exc:
+            logger.error("presser hook failed: %s", type(exc).__name__)
 
     def run(self) -> None:
         start_now = self._clock.now()

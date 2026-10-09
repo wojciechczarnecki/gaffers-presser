@@ -5,8 +5,13 @@ from typing import Any
 from sqlalchemy import Engine, func
 from sqlmodel import Session, col, select
 
+from app.fpl.models import Season
 from app.presser.models import Presser
 from app.presser.writer import PreviousPresser
+
+
+def current_season(session: Session) -> str | None:
+    return session.exec(select(Season.label).order_by(col(Season.label).desc())).first()
 
 
 def insert_presser(engine: Engine, **fields: Any) -> int:

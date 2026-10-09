@@ -596,7 +596,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
         - `test_delivery_failure_marks_failed`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_trigger.py`
 
-- [ ] 12. **Worker wiring (AC9 end to end, AC11 and AC7 in the worker, AC14).**
+- [x] 12. **Worker wiring (AC9 end to end, AC11 and AC7 in the worker, AC14).** `iterations: 1`
       - `backend/app/worker/loop.py`:
         - `Worker.__init__` takes `after_league_sync: Callable[[str, int], None] | None =
           None`.
