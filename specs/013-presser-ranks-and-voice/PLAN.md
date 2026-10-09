@@ -17,7 +17,8 @@
   ranks of your leagues' managers under pseudonyms. The SPEC treats FPL ranks as public data,
   but an overall rank that is still current can be looked up on FPL's overall standings pages,
   which would undo the pseudonym for that manager. After GW6 the GW1–5 ranks are no longer
-  current. (3) The temperature change has no effect on the current default writer
+  current, so step 14 builds and commits the real cases only once GW6 is finished, and
+  otherwise escalates (wait, or accept committing current ranks). (3) The temperature change has no effect on the current default writer
   (`openai/gpt-6-luna` accepts no temperature) until BACKLOG #32 picks a model.
 - **New dependency:** no.
 - **Data migration:** yes. Migration `0012` adds the nullable column `gameweek_rank` to
@@ -110,7 +111,8 @@
        left: list[int]
        notable: bool
    class Overall(Strict):
-       rows: list[OverallRow]      # notable first, then by move ratio desc, then manager
+       rows: list[OverallRow]      # notable first, then by move ratio desc (rows without a
+                                   # previous rank after those with one), then overall rank, then manager
        biggest_climbers: list[str] # among notable rises, the highest ratio; ties give several
        biggest_fallers: list[str]
    class FactSheet: version: Literal[2] = 2; ... overall: Overall (after `table`)
@@ -140,7 +142,8 @@
    - The climbers and fallers are exactly the recomputed sets.
    - All best records share one rank, and so do all worst records. The best rank is at most
      the worst rank. No record is from a gameweek after the sheet's.
-   - Every winner's and flop's known GW rank lies within [best, worst].
+   - Every winner's and flop's known GW rank lies within [best, worst]; a known GW rank with
+     no best or worst record is itself a problem (the records are built from the same rows).
    - Every personal best or worst has `ranked_gameweeks >= 3`, a personal best is no better
      than the league best, and a personal worst is no worse than the league worst.
    - `_managers_named` adds the overall rows and the personal ranks.
@@ -250,7 +253,7 @@ Existing patterns to reuse:
           payload's `rank` added.
         - `tests/fpl/test_schemas.py::test_entry_history_rank_optional`: a payload without
           `rank` parses to `None`, and with `rank: 12345` to 12345.
-      Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_league_sync.py tests/fpl/test_schemas.py tests/worker`
+      Automatic verification: `cd backend && uv run pytest -q tests/fpl tests/worker tests/presser/test_worker_run.py`
 
 - [ ] 3. **Fact sheet version 2: schema, loading, winners' and flops' GW rank, records by GW rank, set conversion (AC3, AC4).**
       - Add `backend/app/presser/facts/ranks.py` with the rules from Approach §2.
@@ -347,6 +350,7 @@ Existing patterns to reuse:
         - a best rank worse than the worst;
         - a record from a later gameweek;
         - a winner's GW rank better than the best record;
+        - a winner's known GW rank with empty `best_gameweek` / `worst_gameweek`;
         - a personal best with `ranked_gameweeks` 2;
         - an overall row naming a manager outside the table.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_checks.py tests/presser`
@@ -542,6 +546,16 @@ Existing patterns to reuse:
           the owner to run `python -m app.fpl league-sync --gameweek N` for N = 1..5 (or
           `python -m app.fpl backfill`) in `backend/` with their `.env`, then resume.
         - Do not run the league sync yourself.
+        - Privacy gate (the repository is public): a current overall rank maps to one manager
+          on FPL's overall standings pages (page = rank ÷ 50), which would undo the pseudonym
+          and, through that manager's leagues, reveal the league. The GW5 overall ranks stop
+          being current once GW6 is finished. Check it the same way, printing only a boolean:
+          `SELECT finished FROM gameweek WHERE fpl_id = 6 AND season = '<current season>'`
+          (the owner's league sync refreshes the reference data). If GW6 is not finished, end
+          with `RESULT: ESCALATE`, `KIND: decision`, before building or committing the real
+          cases. Options: (a) wait until GW6 is finished, the owner re-runs the league sync,
+          then resume (recommended); (b) the owner accepts committing the current GW5 overall
+          ranks. The orchestrator records the answer in `## Owner decisions`.
       - Run `env -u OPENROUTER_API_KEY DATABASE_URL=$DB uv run python -m app.presser.evaluation build-cases --gameweeks 1-5 --force`.
         - It must report 10 real cases, 10 synthetic kept and no missing history.
         - Check the real cases for a 5/5 split and the `first_gameweek` tags.
@@ -609,7 +623,8 @@ Existing patterns to reuse:
   between managers. It compares only against the season records.
 - **Privacy.** Logs stay limited to the gameweek, the league ordinal and the error class
   (AC15 test). The real overall ranks in set v2 are tied to pseudonyms only. This is the risk
-  flagged in the owner summary.
+  flagged in the owner summary; step 14's GW6 gate keeps current overall ranks out of the
+  public repository.
 - **Polish in code.** The thresholds are integers, and the headers and phrases live only in
   the prompt and the examples. `tests/presser/test_no_polish_literals.py` must stay green,
   and test files may contain Polish.
@@ -671,7 +686,59 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+2026-10-09 — plan review (fresh eye, anti-anchoring on the SPEC first).
+
+Findings:
+
+- `major` — Step 14 committed the real cases' GW5 overall ranks to a public repository
+  (`gh repo view`: PUBLIC) while they are still current. A current overall rank points to one
+  manager on FPL's overall standings pages, undoing the pseudonym and, through that manager's
+  leagues, the league itself (PROJECT privacy: manager names and league IDs never in the
+  repository). The plan only flagged it. Changed: step 14 gets a privacy gate (GW6 must be
+  `finished` in the local `gameweek` table before the real cases are built and committed,
+  otherwise `ESCALATE` / `decision` with wait vs. accept); the owner summary risk (2) and the
+  privacy risk mention the gate.
+- `minor` — Step 2 changes `synthetic_league`, which `tests/fpl/test_backfill.py`,
+  `tests/fpl/test_cli.py` and `tests/worker/sim.py` also use, but its verification ran only two
+  `tests/fpl` files. Changed to `tests/fpl tests/worker tests/presser/test_worker_run.py`.
+- `minor` — The `Overall.rows` order ("by move ratio desc") was undefined for rows without a
+  previous rank (every row at GW1). Changed: those rows come after the ones with a ratio, then
+  by overall rank, then manager.
+- `minor` — The §6 check "a winner's known GW rank lies within [best, worst]" said nothing
+  when the records are empty while a winner has a rank. Changed: that is a problem, and step 6
+  gets a mutation test for it.
+
+Checked and found correct:
+
+- Coverage: AC1–AC16 each have a step and a named proving test; the matrix matches the steps.
+  Referenced existing tests and helpers exist (`test_records`, `test_prompt_version_label`,
+  `test_generated_presser_stored_with_usage`, `test_previous_pressers_latest_two_sent_before_gameweek`,
+  `test_review_records_rating_and_note`, `test_logs_carry_no_names_or_text`,
+  `test_upgrade_downgrade_upgrade`, `table_contents` / `DEFAULT_EXCLUDE` / `BEFORE_OWNERSHIP`,
+  `_apply_bootstrap_at_revision`, `World.gw`, `FakeChatModel`).
+- Compliance: Polish text only in `app/content/` (prompt, examples); the writer and judge
+  prompts are English with Polish examples, so the English assertions of steps 8 and 10 match;
+  no DECISIONS row is broken (2026-10-09 presser rows extended; set v1 row superseded by the
+  step 15 row); temperature stays a step parameter, not a `model_settings.toml` key.
+- Feasibility: the order has no forward dependency (column in step 1 before the sync in step 2;
+  schema in step 3 before overall/checks; set converted in step 3 so every step stays green);
+  `build-cases --force` keeps the synthetic cases; real split `(gameweek + index) % 2` gives
+  5/5; the migration-test trap with `table_contents` is real and handled; stored `presser`
+  rows are never re-parsed into `FactSheet`, so `Literal[2]` breaks nothing outside the set;
+  no writer/render code enforces the header list.
+- Temperature: `build_chat_model` is the single place, its current `accepts_temperature`
+  rule covers the fallback; `gemini-3.1-flash-lite` accepts a temperature and `gpt-6-luna`
+  does not, as the step 7 test assumes; all other call sites keep 0.
+- Rank rules: integer comparisons and `Fraction` give exact AC6 edges; climbers only among
+  notable rows keeps AC7 consistent.
+- Owner summary: new dependency no, migration 0012 yes and accepted in SPEC → Owner decisions;
+  the owner-dependent league sync is an escalation in step 14, not a step for the owner.
+- E2E: automatic part runnable by the implementer; both manual items have `Pass when:`; no
+  UI scope. Language: English throughout.
+
+Decision: the plan is ready — every AC is covered by a test-first step, the migration is
+accepted by the owner, no dependency is added, and the only owner-dependent action (the league
+sync, now with the GW6 privacy gate) is a guarded escalation point at the end.
 
 ## Deviations
 
