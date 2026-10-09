@@ -880,7 +880,7 @@ The command in each step is the contract. After a step's own tests pass, the ste
         - `test_cli.py::test_summary_reports_and_applies_thresholds`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation`
 
-- [ ] 21. **Documentation and roadmap (AC20).**
+- [x] 21. **Documentation and roadmap (AC20).** `iterations: 0`
       - `backend/.env.example`: add a presser block with the empty placeholders
         `PRESSER_ENABLED=`, `PRESSER_MODEL=` and `PRESSER_NICKNAMES=`. Its comments give the
         default true, the default `openai/gpt-6-luna`, and the JSON format with a synthetic

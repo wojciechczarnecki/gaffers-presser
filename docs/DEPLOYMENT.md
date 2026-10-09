@@ -195,3 +195,37 @@ below; agents never touch production.
       worker at start with a message naming the variable. With the default slots that needs
       about a day of distance from a real deadline; for a quick test set `ALERT_SLOTS=120,30`
       alongside it. Remove the variable after the test.
+13. **Presser (optional).** After the league sync of the latest finished gameweek, the worker
+    generates and e-mails one presser per league in `FPL_LEAGUE_IDS`: a Polish text in FPL
+    slang built from the league's facts (the manager and the flop of the gameweek, the
+    captains, the bench, transfers and chips, the table), with a "send to WhatsApp" button. It
+    runs only for the latest finished gameweek, so a catch-up after downtime sends nothing for
+    older ones, and a restart never sends a presser twice (the delivery key is
+    `presser:<season>:gw<N>:league<id>`). The first-deploy catch-up (step 6) therefore sends the
+    presser of the latest finished gameweek once when the presser is enabled at the first start.
+    - It needs delivery (step 11) and `OPENROUTER_API_KEY`; with either missing the worker logs
+      `presser disabled: <reason>` once and `python -m app.worker status` ends with
+      `Presser: disabled (<reason>)`. When enabled, the line reads `Presser: model=<m>  last:
+      GW<n> <status>  failed: <k>` and the worker logs `presser enabled: model=<m>`.
+    - Variables (all optional; an invalid value stops the worker and the CLI at start with a
+      message naming it, never its value): `PRESSER_ENABLED=false` turns it off explicitly;
+      `PRESSER_MODEL` (default `openai/gpt-6-luna`; a model needs rows in
+      `app/llm/model_settings.toml` and `prices.toml`); `PRESSER_NICKNAMES`, a JSON object of
+      FPL entry ID to nickname (`{"123": "Bartas"}`), at most 30 characters each and unique
+      ignoring case. Without a nickname a manager appears under the first word of the FPL name.
+      Nicknames are set only in the environment, never in the repository.
+    - A failed generation is retried in-call, then recorded as `failed` and not retried by the
+      worker; send it by hand. A worker crash between the league sync and the presser loses
+      that presser the same way.
+    - Migration `0011` adds the `presser` table (a row per generation: the fact sheet, the text,
+      the model, tokens, cost, latency and the status). It runs through the pre-deploy like the
+      others and downgrades cleanly.
+    - From a Railway shell (`railway ssh`), with `--league <id> --gameweek <n>`:
+      `python -m app.presser facts` prints the fact sheet, `python -m app.presser preview`
+      generates and prints without sending, `python -m app.presser send` sends by hand, also
+      for a missed gameweek, with the same key (a second `send` reports `already_sent`), and
+      `python -m app.presser status` (no options) says whether the presser is enabled and shows
+      the latest presser per league.
+    - The evaluation tooling is `python -m app.presser.evaluation
+      build-cases|evaluate|review|judge-review|summary`. The comparison of the candidate models
+      with the owner's ratings is BACKLOG #32.
