@@ -9,7 +9,7 @@ form only: the writer never copies a phrase or a joke from them.
 
 🎙️ *Presser GW9 — Liga Kawiarniana*
 
-🏆 *Manager kolejki:* Kowal wygrywa kolejkę z 58 punktami netto. W zwykły tydzień to byłby wynik na środek stawki, ale GW rank 41 tys. mówi co innego: w całej grze niewielu zrobiło więcej. Słaby tydzień dla wszystkich, więc skromna zdobycz wystarczyła na szczyt.
+🏆 *Manager kolejki:* Kowal wygrywa kolejkę z 58 punktami netto. W zwykły tydzień to byłby wynik na środek stawki, ale GW rank 41k mówi co innego: w całej grze niewielu zrobiło więcej. Słaby tydzień dla wszystkich, więc skromna zdobycz wystarczyła na szczyt.
 
 🤦 *Wtopa kolejki:* Lena, 39 punktów i GW rank 5,2 mln. Dwa transfery za -8, a obaj kupieni zawodnicy usiedli na ławce. Wyszło pechowo, ale też trochę uparcie.
 
@@ -19,13 +19,13 @@ form only: the writer never copies a phrase or a joke from them.
 
 📊 *Tabela:* Kowal skacze na drugie miejsce i traci do prowadzącego Marka 7 punktów. Jacek schodzi o dwa miejsca. Lena trzyma ostatnią lokatę, 26 punktów za resztą.
 
-🌍 *Overall:* Marek wchodzi do top 100k, bo poprawił się ze 140 tys. na 96 tys. Lena wypadła z top 1M: była 900 tys., jest 2,3 mln. Reszta ligi stoi w miejscu.
+🌍 *Overall:* Marek wchodzi do top 100k, bo poprawił się ze 140k na 96k. Lena wypadła z top 1M: była 900k, jest 2,3 mln. Reszta ligi stoi w miejscu.
 
 ## Example 2 — a big league, a tie, a manager enters the top 10k
 
 🎙️ *Presser GW12 — Liga Biurowa*
 
-🏆 *Managerowie kolejki:* Remis: Ola i Grzesiek mają po 77 netto. Ola dojechała tam bez hita, Grzesiek zapłacił 4 punkty i mimo to się zrównał. Ich GW rank to odpowiednio 8 tys. i 9 tys., czyli oboje w ścisłej czołówce całej gry.
+🏆 *Managerowie kolejki:* Remis: Ola i Grzesiek mają po 77 netto. Ola dojechała tam bez hita, Grzesiek zapłacił 4 punkty i mimo to się zrównał. Ich GW rank to odpowiednio 8 214. i 9 087., czyli oboje w ścisłej czołówce całej gry.
 
 🤦 *Wtopa kolejki:* Piotrek, 28 punktów, GW rank 6,9 mln. Opaska na zawodniku, który dał 2, i 14 punktów na ławce. Ktoś tu pomylił kolejność.
 
@@ -35,13 +35,13 @@ form only: the writer never copies a phrase or a joke from them.
 
 📊 *Tabela:* Ania wraca na pierwsze miejsce. Grzesiek awansuje o sześć pozycji, najwięcej w lidze. Między pierwszym a trzecim jest tylko 9 punktów.
 
-🌍 *Overall:* Grzesiek wchodzi do top 10k: jest 9 412., a tydzień temu był 16 tys. Ola też mocno zyskała, z 30 tys. na 14 tys., ale do progu jeszcze trochę brakuje. Piotrek spadł z 1,4 mln na 3,1 mln.
+🌍 *Overall:* Grzesiek wchodzi do top 10k: jest 9 412., a tydzień temu był 16k. Ola też mocno zyskała, z 30k na 14k, ale do progu jeszcze trochę brakuje. Piotrek spadł z 1,4 mln na 3,1 mln.
 
 ## Example 3 — the first gameweek of the season
 
 🎙️ *Presser GW1 — Liga Zakładowa*
 
-🏆 *Manager kolejki:* Zbychu otwiera sezon 79 punktami, GW rank 120 tys. To dobry start, choć bez fajerwerków. Serii jeszcze nie ma, więc na razie jest tylko jedno zwycięstwo.
+🏆 *Manager kolejki:* Zbychu otwiera sezon 79 punktami, GW rank 120k. To dobry start, choć bez fajerwerków. Serii jeszcze nie ma, więc na razie jest tylko jedno zwycięstwo.
 
 🤦 *Wtopa kolejki:* Mati zaczyna od 46 punktów i GW rank 6 mln. Jest co poprawiać.
 

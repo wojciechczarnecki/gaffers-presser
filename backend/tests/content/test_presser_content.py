@@ -14,9 +14,9 @@ def test_writer_prompt_loads_with_a_version():
     assert "1500" in prompt.text
 
 
-def test_writer_prompt_v3_rules():
+def test_writer_prompt_v4_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 3
+    assert prompt.version == 4
     for needle in (
         "only where it sounds natural",
         "never copy",
@@ -25,6 +25,12 @@ def test_writer_prompt_v3_rules():
         "🌍",
         "1500",
         "autosub",
+        "średnia ligowa",
+        "from 10 000 is never quoted exactly",
+        "fewer than 1 000 places is quoted exactly",
+        'never "tys."',
+        'never write "1000k"',
+        "never cross a threshold",
     ):
         assert needle in prompt.text, needle
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")
@@ -32,8 +38,8 @@ def test_writer_prompt_v3_rules():
 
 def test_judge_prompt_checks_ranks():
     prompt = load_prompt("presser_judge")
-    assert prompt.version == 2
-    for needle in ("rank", "threshold", "rounded", "1,2 mln"):
+    assert prompt.version == 3
+    for needle in ("rank", "threshold", "rounded", "1,2 mln", "o 15k miejsc", "tuż za top 10k"):
         assert needle in prompt.text, needle
 
 
@@ -92,3 +98,13 @@ def test_style_examples_six_headers_no_shared_sentence():
     whole = "\n".join("\n".join(p) for p in examples).casefold()
     for phrase in FLAGGED_PHRASES:
         assert phrase not in whole, phrase
+
+
+def test_style_examples_round_ranks_like_the_prompt():
+    whole = "\n".join("\n".join(p) for p in _examples())
+    assert "tys." not in whole
+    exact = [int(n.replace(" ", "")) for n in re.findall(r"\b\d{1,3}(?: \d{3})+\b|\d{4,}", whole)]
+    assert exact
+    assert all(n < 10_000 for n in exact), exact
+    assert not re.search(r",0 ?(k|mln)\b|\b1000k\b", whole)
+    assert not re.search(r"średni\w*(?! lig)", whole)

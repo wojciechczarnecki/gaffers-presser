@@ -226,6 +226,9 @@ decide the name-inflection problem.
   phrases or jokes from the style examples, explains the GW rank, covers the six sections in
   order with "Overall" after the table and skipped when empty, and keeps at most 2 previous
   pressers; the stored presser records `presser_writer@3`.
+  (Follow-up 2026-10-10, before the merge: the owner's review raised the writer prompt to
+  version 4 and the judge prompt to version 3 — rounded ranks and movements, "średnia ligowa";
+  see `docs/DECISIONS.md`.)
 - [ ] AC10: The 3 style examples carry the six headers, each under 1500 characters; a test
   checks that no sentence of one example is repeated in another and that each has a GW-rank
   and an overall line. The owner approves the text at the final review.
@@ -265,7 +268,7 @@ decide the name-inflection problem.
 
 - A migration adding the GW rank column to `manager_gameweek`: accepted up front.
 - No new dependency expected; a new one still needs the owner's approval.
-- This spec runs before BACKLOG #32; #32 runs on prompt version 3 and set v2.
+- This spec runs before BACKLOG #32; #32 runs on prompt version 3 and set v2 (version 4 after the 2026-10-10 follow-up).
 - The owner fills the local GW1–5 GW ranks by a manual league sync before the evaluation set
   v2 is built. A migration on the local development database is allowed for agents; production
   stays the owner's.

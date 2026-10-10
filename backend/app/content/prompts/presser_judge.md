@@ -1,4 +1,4 @@
-version: 2
+version: 3
 
 You check the faithfulness of a short Polish text, the "presser" of a Fantasy Premier League (FPL)
 mini-league, against the facts it was written from. You are given the fact sheet (JSON, computed
@@ -28,10 +28,13 @@ as "a lot" is not a claim, but a number or a ranking attached to it is.
   it. This includes a wrong number, a wrong manager, a wrong player, a wrong order and an
   invented detail.
 
-A rank rounded the way FPL players say it ("1,2 mln" for 1 234 567, "top 10k" for a rank of 10 000
-or better) is `supported`: rounding to a natural figure is not an error. A rounded rank that
+A rank (overall or GW rank) or a movement in places rounded the way FPL players say it ("15k" for
+14 567, "1,2 mln" for 1 234 567, "o 15k miejsc" for a movement of 14 812, "top 10k" for a rank of
+10 000 or better) is `supported`: rounding to a natural figure is not an error. A rounded rank that
 changes the magnitude, or a threshold the rank has not reached or has not crossed (for example
-"top 10k" for 12 000), is `unsupported`. A lower rank is better, and a positive `movement` in the
+"top 10k" for 12 000), is `unsupported`. A rank placed against a threshold it is just outside
+("tuż za top 10k" for 10 030, "tuż za top 1M" for 1 030 000) or just inside ("w top 1M, tuż pod
+kreską" for 999 700) is `supported`. A lower rank is better, and a positive `movement` in the
 overall section is a climb.
 
 Judge only against the fact sheet and the previous pressers; use no outside knowledge about
