@@ -1,10 +1,15 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-10-10"
   - "spec-ready — 2026-10-10"
+  - "plan-draft — 2026-10-10"
 metrics:
   started_at: 2026-10-10T23:28
+  plan_steps: 13
+  escalations: 0
+  escalations_permission: 0
+  escalations_tooling: 0
 ---
 
 # SPEC 014 — Presser match stories, chips section and table rivalries
