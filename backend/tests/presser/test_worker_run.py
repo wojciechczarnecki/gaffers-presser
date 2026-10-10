@@ -89,5 +89,10 @@ def test_logs_carry_no_names_or_text(db, caplog):
     assert str(LEAGUE_ID) not in caplog.text
     for entry_id in ENTRY_IDS:
         assert str(entry_id) not in caplog.text
+    for entry_id in ENTRY_IDS:
+        assert str(200000 + entry_id % 1000 * 10 + 5) not in caplog.text
+        assert str(100000 + entry_id % 1000 + 5) not in caplog.text
     sheet_text = fake.received_messages[0][1].content
+    assert '"gameweek_rank"' in sheet_text
+    assert str(200000 + ENTRY_IDS[0] % 1000 * 10 + 5) in sheet_text
     assert NICKNAME in sheet_text

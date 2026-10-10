@@ -1,47 +1,54 @@
-# Presser style examples (spec 012)
+# Presser style examples (spec 013)
 
 Written for the project as style references for the presser writer. The managers, leagues and
-numbers are made up. Each example is under 1500 characters, follows the five sections in
-order, jokes only about FPL decisions and uses no vulgar words.
+numbers are made up. Each example is under 1500 characters, follows the six sections in order,
+uses slang sparingly, jokes only about FPL decisions and uses no vulgar words. They show tone and
+form only: the writer never copies a phrase or a joke from them.
 
-## Example 1 — a small league, a clear winner
+## Example 1 — a small league, a modest score with a strong GW rank
 
-🎙️ *Presser GW7 — Liga Pod Złotym Kurem*
+🎙️ *Presser GW9 — Liga Kawiarniana*
 
-🏆 *Manager kolejki:* Bartas, 84 punkty netto. Opaska na Haalandzie, dwucyfrówka i zero kombinowania. Trzecie zwycięstwo w sezonie, lider pełną gębą i reszta ligi już szuka na niego sposobu.
+🏆 *Manager kolejki:* Kowal wygrywa kolejkę z 58 punktami netto. W zwykły tydzień to byłby wynik na środek stawki, ale GW rank 41k mówi co innego: w całej grze niewielu zrobiło więcej. Słaby tydzień dla wszystkich, więc skromna zdobycz wystarczyła na szczyt.
 
-🤦 *Wtopa kolejki:* Kowal, 41 punktów, a w tym -8 za transfery. Kupił dwóch, którzy razem zrobili 3 punkty. Drugi tydzień z rzędu na dnie, a hit nie zwrócił się ani trochę.
+🤦 *Wtopa kolejki:* Lena, 39 punktów i GW rank 5,2 mln. Dwa transfery za -8, a obaj kupieni zawodnicy usiedli na ławce. Wyszło pechowo, ale też trochę uparcie.
 
-©️ *Kapitanowie:* Pięciu z sześciu miało Haalanda i odebrało po 24. Jedyny hipsterski wybór, Palmer u Zbycha, zablankował. Odwaga w FPL kosztuje, w tym tygodniu 20 punktów.
+©️ *Kapitanowie:* Czterech z sześciu dało opaskę Salahowi i wzięło po 12. Marek postawił na Palmera i dostał 18, najlepiej w lidze. Lenie Isak dał 4.
 
-🪑 *Ławka, transfery, chipy:* Mati zostawił na ławce 17 punktów, w tym dublet obrońcy. Ławka grała lepiej niż jego startowa 11. Zbychu zagrał Bench Boosta i ławka dorzuciła całe 4 punkty. Chip spalony, lekcja odrobiona? Zobaczymy.
+🪑 *Ławka, transfery, chipy:* Nikt nie zagrał chipa. Jacek zostawił na ławce 13 punktów, a jedyny autosub dorzucił mu 2.
 
-📊 *Tabela:* Bartas odskakuje na 21 punktów, Mati drugi, Zbychu spada z podium po czerwonej strzałce o dwa miejsca. Największy awans: Kuba, z piątego na trzecie. Kowal zamyka tabelę i wygląda na to, że się tam urządza.
+📊 *Tabela:* Kowal skacze na drugie miejsce i traci do prowadzącego Marka 7 punktów. Jacek schodzi o dwa miejsca. Lena trzyma ostatnią lokatę, 26 punktów za resztą.
 
-## Example 2 — a big league, a tie for the win
+🌍 *Overall:* Marek wchodzi do top 100k, bo poprawił się ze 140k na 96k. Lena wypadła z top 1M: była 900k, jest 2,3 mln. Reszta ligi stoi w miejscu.
+
+## Example 2 — a big league, a tie, a manager enters the top 10k
 
 🎙️ *Presser GW12 — Liga Biurowa*
 
-🏆 *Managerowie kolejki:* remis na szczycie! Ola i Grzesiek po 77 punktów netto. Ola bez hita, Grzesiek z -4, które zwróciło się z nawiązką. Chwała dzielona po równo, kłótnia o to, kto lepszy, już trwa.
+🏆 *Managerowie kolejki:* Remis: Ola i Grzesiek mają po 77 netto. Ola dojechała tam bez hita, Grzesiek zapłacił 4 punkty i mimo to się zrównał. Ich GW rank to odpowiednio 8 214. i 9 087., czyli oboje w ścisłej czołówce całej gry.
 
-🤦 *Wtopa kolejki:* Piotrek, 28 punktów. Kapitan za 2, a na ławce 14. Ławka grała, opaska nie.
+🤦 *Wtopa kolejki:* Piotrek, 28 punktów, GW rank 6,9 mln. Opaska na zawodniku, który dał 2, i 14 punktów na ławce. Ktoś tu pomylił kolejność.
 
-©️ *Kapitanowie:* Salah dał 26 tym, którzy w niego wierzyli. Trzech managerów postawiło na Isaka i odebrało po 4. Najlepsza opaska ligi: TC Ani na Salahu, 39 punktów od jednego zawodnika.
+©️ *Kapitanowie:* Salah zebrał 26 u tych, którzy mu zaufali, a Isak dał 4 trzem managerom. Rekord opaski ma Ania: potrójna opaska na Salahu i 39 punktów od jednego zawodnika.
 
-🪑 *Ławka, transfery, chipy:* Transfer tygodnia na odwrót: Marek sprzedał Saka (15 pkt) i kupił Gordona (2 pkt). Sentyment by go uratował. Rekord ławki: Piotrek, 14 punktów, czyli połowa jego wyniku.
+🪑 *Ławka, transfery, chipy:* Marek zamienił Saka (15) na Gordona (2) i sam sobie narobił kłopotu. Wildcard Kuby wyszedł lepiej, bo nowy skład zrobił o 6 punktów więcej niż stary.
 
-📊 *Tabela:* Ania wraca na pierwsze miejsce dzięki TC. Grzesiek awansuje o 6 pozycji, największa zielona strzałka kolejki. Wyścig o podium: między pierwszym a trzecim miejscem tylko 9 punktów. Na dole bez zmian, Piotrek trzeci tydzień zamyka stawkę.
+📊 *Tabela:* Ania wraca na pierwsze miejsce. Grzesiek awansuje o sześć pozycji, najwięcej w lidze. Między pierwszym a trzecim jest tylko 9 punktów.
+
+🌍 *Overall:* Grzesiek wchodzi do top 10k: jest 9 412., a tydzień temu był 16k. Ola też mocno zyskała, z 30k na 14k, ale do progu jeszcze trochę brakuje. Piotrek spadł z 1,4 mln na 3,1 mln.
 
 ## Example 3 — the first gameweek of the season
 
-🎙️ *Presser GW1 — Liga Pod Złotym Kurem*
+🎙️ *Presser GW1 — Liga Zakładowa*
 
-🏆 *Manager kolejki:* Zbychu, 79 punktów. Pierwsza kolejka sezonu i od razu odskok od peletonu. Na razie bez serii i bez historii, ale apetyt rośnie.
+🏆 *Manager kolejki:* Zbychu otwiera sezon 79 punktami, GW rank 120k. To dobry start, choć bez fajerwerków. Serii jeszcze nie ma, więc na razie jest tylko jedno zwycięstwo.
 
-🤦 *Wtopa kolejki:* Mati, 46 punktów. Sezon długi, ale start jak spóźniony autobus.
+🤦 *Wtopa kolejki:* Mati zaczyna od 46 punktów i GW rank 6 mln. Jest co poprawiać.
 
-©️ *Kapitanowie:* Większość postawiła na Salaha i zebrała po 16. Kuba poszedł w Isaka i dostał 4. Hipsterski wybór na otwarcie sezonu: odwaga jest, punktów brak.
+©️ *Kapitanowie:* Salah u większości, po 16. Kuba wybrał Isaka i zebrał 4. Na otwarcie odwaga nie wystarczyła.
 
-🪑 *Ławka, transfery, chipy:* Bez transferów i bez chipów, to dopiero GW1. Najwięcej na ławce zostawił Bartas, 11 punktów, a bramkarz rezerwowy obronił karnego. Tylko komu, skoro siedział na ławce.
+🪑 *Ławka, transfery, chipy:* Bez transferów i bez chipów. Bartas zostawił na ławce 11 punktów, a rezerwowy bramkarz obronił karnego. Szkoda, że z ławki.
 
-📊 *Tabela:* Pierwsza tabela sezonu: Zbychu, Kowal, Bartas. Do końca jeszcze 37 kolejek, więc nikt nie otwiera szampana, a przynajmniej nie powinien.
+📊 *Tabela:* Pierwsza tabela sezonu: Zbychu, Kowal, Bartas. Za wcześnie na plany, ale na stres już nie.
+
+🌍 *Overall:* Na starcie Zbychu jest w top 100k, a Kowal w top 1M. Wszystkie progi to na razie wejścia, spadków nie ma.

@@ -130,6 +130,7 @@ def synthetic_league(
                     "bank": 5 + gw,
                     "value": 1000 + gw,
                     "overall_rank": 100000 + entry_id % 1000 + gw,
+                    "rank": 200000 + entry_id % 1000 * 10 + gw,
                 },
                 "picks": picks,
             }

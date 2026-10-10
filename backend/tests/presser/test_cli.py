@@ -238,3 +238,33 @@ def test_fact_sheet_error_is_reported_without_a_traceback(db, world, monkeypatch
     result = Harness(db).invoke("preview", "--league", str(LEAGUE_ID), "--gameweek", "5")
     assert result.exit_code == 1
     assert "error: FactSheetError: a section names an unknown manager" in result.stderr
+
+
+class _SpecSeenError(Exception):
+    pass
+
+
+def test_make_runtime_writer_gets_temperature(monkeypatch, tmp_path):
+    from app.core.settings import Settings
+    from app.presser import cli as presser_cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-sentinel-value")
+    monkeypatch.setenv("PRESSER_MODEL", "google/gemini-3.1-flash-lite")
+    monkeypatch.setattr(
+        presser_cli,
+        "load_settings",
+        lambda: Settings(_env_file=None, database_url="postgresql+psycopg://u@localhost/x"),
+    )
+    seen = []
+
+    def record(spec, *args, **kwargs):
+        seen.append(spec)
+        raise _SpecSeenError
+
+    monkeypatch.setattr(presser_cli.StructuredCaller, "from_spec", record)
+
+    with pytest.raises(_SpecSeenError):
+        presser_cli._deps_from_settings().make_runtime(False)
+
+    assert seen[0].chat_model._default_params["temperature"] == 0.8

@@ -126,3 +126,42 @@ def test_small_pool_is_an_error(db, world):
 def test_word_shared_with_a_pseudonym_is_not_a_leak(db, world):
     history = [HistoryEntry(league="l1", gameweek=1, text="Liga Pierwsza, pierwsza kolejka")]
     assert build(db, history).cases
+
+
+def test_build_pseudonymises_overall_and_personal_names(db):
+    world = World(db, gameweeks=3, league_id=LEAGUE_1, league_name="Prawdziwa Liga")
+    ranked = {
+        880000011: ("Zenobiusz Realny", [500_000, 400_000, 100_000], [900_000, 800_000, 8_000]),
+        880000012: (
+            "Aurelia Prawdziwa",
+            [300_000, 250_000, 900_000],
+            [1_500_000, 1_000_000, 4_000_000],
+        ),
+        880000013: (
+            "Bonifacy Kowalski",
+            [600_000, 600_000, 590_000],
+            [2_000_000, 2_000_000, 1_990_000],
+        ),
+    }
+    for entry, (name, gw_ranks, overall_ranks) in ranked.items():
+        world.manager(entry, name, team_name=f"Realni FC {entry}")
+        for gameweek in (1, 2, 3):
+            world.gw(
+                entry,
+                gameweek,
+                50,
+                gameweek_rank=gw_ranks[gameweek - 1],
+                overall_rank=overall_ranks[gameweek - 1],
+            )
+    case = next(c for c in build(db).cases if c.facts.gameweek == 3)
+    facts = case.facts
+    assert facts.overall.biggest_climbers and facts.overall.biggest_fallers
+    assert facts.season_facts.personal_bests and facts.season_facts.personal_worsts
+    pool = set(POOL)
+    named = {row.manager for row in facts.overall.rows}
+    named |= set(facts.overall.biggest_climbers) | set(facts.overall.biggest_fallers)
+    named |= {
+        p.manager for p in facts.season_facts.personal_bests + facts.season_facts.personal_worsts
+    }
+    assert named and named <= pool
+    assert "Zenobiusz" not in case.model_dump_json()

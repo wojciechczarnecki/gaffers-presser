@@ -83,6 +83,14 @@ def test_temperature_only_where_listed():
     assert "temperature" not in params
 
 
+def test_temperature_argument_sent_only_where_accepted():
+    assert build_chat_model(_config(), 0.8).chat_model._default_params["temperature"] == 0.8
+    refusing = build_chat_model(_config(row=_row(temperature=False)), 0.8)
+    assert "temperature" not in refusing.chat_model._default_params
+    pair = _config(fallback="b/f", fallback_row=_row(temperature=False))
+    assert "temperature" not in build_chat_model(pair, 0.8).chat_model._default_params
+
+
 def test_require_parameters_sent():
     params = build_chat_model(_config()).chat_model._default_params
     assert params["provider"] == {"require_parameters": True}

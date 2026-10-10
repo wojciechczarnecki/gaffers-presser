@@ -5,12 +5,13 @@ from app.presser.evaluation.summary import (
     FAITHFULNESS_THRESHOLD,
     STYLE_THRESHOLD,
     choose,
+    format_run,
     summarise,
     summarise_run,
 )
 
 
-def presser(n, faithfulness=1.0, rating=4, cost=0.001, error=None, within=True):
+def presser(n, faithfulness=1.0, rating=4, cost=0.001, error=None, within=True, inflection=None):
     return {
         "case_id": f"c{n}",
         "text": "t",
@@ -24,7 +25,10 @@ def presser(n, faithfulness=1.0, rating=4, cost=0.001, error=None, within=True):
         "faithfulness": faithfulness,
         "judge_cost_usd": 0.01,
         "error_class": error,
-        "style": None if rating is None else {"rating": rating, "note": None},
+        "style": None
+        if rating is None
+        else {"rating": rating, "note": None}
+        | ({} if inflection is None else {"inflection_errors": inflection}),
     }
 
 
@@ -105,3 +109,14 @@ def test_summary_fields():
     assert summary.avg_latency_seconds == 2.0
     assert summary.judge_agreement == 0.9
     assert summary.pressers == 2
+
+
+def test_summary_averages_inflection_errors():
+    rated = summarise_run(run("a/m", [presser(1, inflection=2), presser(2, inflection=0)]))
+    assert rated.inflection_errors == 1.0
+    assert "inflection errors 1.00" in format_run(rated)
+    legacy = summarise_run(run("a/m", [presser(1), presser(2)]))
+    assert legacy.inflection_errors is None
+    assert "inflection errors n/a" in format_run(legacy)
+    mixed = summarise_run(run("a/m", [presser(1, inflection=3), presser(2)]))
+    assert mixed.inflection_errors == 3.0

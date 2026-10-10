@@ -43,6 +43,7 @@ def to_score(row: MemberRow, names: dict[int, str], nth_of_season: int) -> Manag
         transfers_cost=row.transfers_cost,
         net_points=net_points(row),
         nth_of_season=nth_of_season,
+        gameweek_rank=row.gameweek_rank,
     )
 
 

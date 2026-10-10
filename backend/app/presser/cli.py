@@ -14,7 +14,6 @@ from app.db.engine import make_engine
 from app.delivery.channels import build_channel
 from app.delivery.config import DeliverySettings, resolve_delivery
 from app.delivery.service import DeliveryService
-from app.llm.chat import build_chat_model
 from app.llm.pricing import load_prices
 from app.llm.settings import load_llm_settings
 from app.llm.structured import StructuredCaller
@@ -24,6 +23,7 @@ from app.presser.config import (
     parse_nicknames,
     presser_disabled_reason,
     resolve_presser_llm,
+    writer_chat_model,
 )
 from app.presser.facts import NoFactsError, build_fact_sheet
 from app.presser.service import (
@@ -89,7 +89,7 @@ def _deps_from_settings() -> PresserCliDeps:
     def make_runtime(with_delivery: bool) -> PresserRuntime:
         llm = resolve_presser_llm(settings)
         assert llm is not None
-        caller = StructuredCaller.from_spec(build_chat_model(llm), load_prices(), clock)
+        caller = StructuredCaller.from_spec(writer_chat_model(llm), load_prices(), clock)
         delivery = None
         if with_delivery:
             assert delivery_config is not None

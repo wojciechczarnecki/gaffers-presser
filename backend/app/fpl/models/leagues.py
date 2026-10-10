@@ -72,6 +72,7 @@ class ManagerGameweek(SQLModel, table=True):
     bank: int | None = None
     value: int | None = None
     overall_rank: int | None = None
+    gameweek_rank: int | None = None
 
 
 class ManagerPick(SQLModel, table=True):

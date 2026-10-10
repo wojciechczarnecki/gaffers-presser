@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import text
 from sqlmodel import select
 
 from app.fpl.errors import JobError
@@ -130,6 +131,7 @@ def test_manager_gameweek_data(db_session):
         "overall_rank",
     ):
         assert getattr(gw, field) == history[field], field
+    assert gw.gameweek_rank == history["rank"]
 
     subs = db_session.exec(select(ManagerAutoSub).where(ManagerAutoSub.entry_id == 880000001)).all()
     assert sorted((s.player_out_fpl_id, s.player_in_fpl_id) for s in subs) == sorted(
@@ -238,6 +240,66 @@ def test_manager_without_team_for_gameweek(db_session):
     assert complete.has_team is True
     picks = db_session.exec(select(ManagerPick).where(ManagerPick.entry_id == 880000002)).all()
     assert len(picks) == 15
+
+
+def test_gameweek_rank_stored_and_none_without_team(db_session):
+    _load_reference(db_session)
+    routes = synthetic_league(
+        LEAGUE_1,
+        [880000001, 880000002],
+        gameweeks=[1],
+        player_ids=_player_ids(),
+        no_team_for={880000001: {1}},
+    )
+    sync_leagues(db_session, FakeFpl(routes).client(sleep=lambda _: None), [LEAGUE_1], [1], NOW)
+    db_session.commit()
+
+    assert db_session.get(ManagerGameweek, ("2026/27", 880000001, 1)).gameweek_rank is None
+    stored = db_session.get(ManagerGameweek, ("2026/27", 880000002, 1)).gameweek_rank
+    assert stored == _picks_route(routes, 880000002, 1)["entry_history"]["rank"]
+    assert stored is not None
+
+
+def test_resync_fills_an_empty_gameweek_rank(db_session):
+    _load_reference(db_session)
+    routes = synthetic_league(LEAGUE_1, [880000001], gameweeks=[1], player_ids=_player_ids())
+    client = FakeFpl(routes).client(sleep=lambda _: None)
+    sync_leagues(db_session, client, [LEAGUE_1], [1], NOW)
+    db_session.commit()
+    db_session.execute(text("UPDATE manager_gameweek SET gameweek_rank = NULL"))
+    db_session.commit()
+    db_session.expire_all()
+    assert db_session.get(ManagerGameweek, ("2026/27", 880000001, 1)).gameweek_rank is None
+
+    sync_leagues(db_session, client, [LEAGUE_1], [1], NOW)
+    db_session.commit()
+    db_session.expire_all()
+
+    expected = _picks_route(routes, 880000001, 1)["entry_history"]["rank"]
+    assert db_session.get(ManagerGameweek, ("2026/27", 880000001, 1)).gameweek_rank == expected
+
+
+def test_resync_without_team_clears_the_gameweek_rank(db_session):
+    _load_reference(db_session)
+    routes = synthetic_league(LEAGUE_1, [880000001], gameweeks=[1], player_ids=_player_ids())
+    sync_leagues(db_session, FakeFpl(routes).client(sleep=lambda _: None), [LEAGUE_1], [1], NOW)
+    db_session.commit()
+    assert db_session.get(ManagerGameweek, ("2026/27", 880000001, 1)).gameweek_rank is not None
+
+    no_team = synthetic_league(
+        LEAGUE_1,
+        [880000001],
+        gameweeks=[1],
+        player_ids=_player_ids(),
+        no_team_for={880000001: {1}},
+    )
+    sync_leagues(db_session, FakeFpl(no_team).client(sleep=lambda _: None), [LEAGUE_1], [1], NOW)
+    db_session.commit()
+    db_session.expire_all()
+
+    row = db_session.get(ManagerGameweek, ("2026/27", 880000001, 1))
+    assert row.has_team is False
+    assert row.gameweek_rank is None
 
 
 def test_at_exact_deadline_is_accepted(db_session):

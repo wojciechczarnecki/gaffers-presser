@@ -1,11 +1,12 @@
 import json
 
 from app.core.errors import ConfigError
-from app.llm.chat import LlmConfig, single_model_config
+from app.llm.chat import ChatModelSpec, LlmConfig, build_chat_model, single_model_config
 from app.llm.settings import LlmSettings
 
 DEFAULT_PRESSER_MODEL = "openai/gpt-6-luna"
 MAX_NICKNAME_LENGTH = 30
+WRITER_TEMPERATURE = 0.8
 
 _SHAPE = "PRESSER_NICKNAMES must be a JSON object of FPL entry ID to nickname"
 
@@ -71,3 +72,7 @@ def resolve_presser_llm(settings: PresserSettings) -> LlmConfig | None:
     return single_model_config(
         settings.openrouter_api_key, settings.presser_model, variable="PRESSER_MODEL"
     )
+
+
+def writer_chat_model(config: LlmConfig) -> ChatModelSpec:
+    return build_chat_model(config, WRITER_TEMPERATURE)

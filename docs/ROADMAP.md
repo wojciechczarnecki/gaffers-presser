@@ -70,9 +70,17 @@ and each LLM step that produces data has an evaluation set with recorded results
 
 ## Stage 3 — League presser
 
-- [x] Post-gameweek presser per league in Polish FPL slang: summary, best manager of the
-      gameweek (net points, ties allowed), banter; delivered by e-mail; the model comparison
-      with the owner follows in BACKLOG #32 (spec: [012](../specs/012-league-presser/SPEC.md))
+- [x] Post-gameweek presser per league in Polish FPL slang: a fact sheet computed by the
+      database, the writer, the presser log, the worker trigger and the e-mail; best manager of
+      the gameweek by net points, ties allowed; evaluation tooling with set v1
+      (spec: [012](../specs/012-league-presser/SPEC.md))
+- [x] GW ranks and a natural voice: winners, flops and season records judged by FPL's GW
+      rank, the "🌍 Overall" section with threshold moves, the writer at temperature 0.8 with
+      sparing slang and rewritten style examples, ranks rounded the way FPL players say them,
+      evaluation set v2 with an inflection-error count
+      (spec: [013](../specs/013-presser-ranks-and-voice/SPEC.md))
+- [ ] Presser model comparison with the owner's ratings: report, ADR and the new
+      `PRESSER_MODEL` default; decides the name-inflection problem (BACKLOG #32, after spec 013)
 - [ ] Slang glossary and style examples (from X and Polish FPL podcasts) (spec: TBD)
 
 ## Stage 4 — Source credibility and Q&A

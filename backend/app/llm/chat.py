@@ -134,7 +134,7 @@ class ChatModelSpec:
     settings: ModelSettings | None = None
 
 
-def build_chat_model(config: LlmConfig) -> ChatModelSpec:
+def build_chat_model(config: LlmConfig, temperature: float = 0.0) -> ChatModelSpec:
     # The `models` list shares one request's parameters between the primary and the fallback,
     # so the fallback runs at the primary's reasoning level and `temperature` is sent only
     # when both rows allow it.
@@ -150,7 +150,7 @@ def build_chat_model(config: LlmConfig) -> ChatModelSpec:
         config.fallback_settings is None or config.fallback_settings.temperature
     )
     if accepts_temperature:
-        kwargs["temperature"] = 0
+        kwargs["temperature"] = temperature
     if config.fallback_model is not None:
         kwargs["model_kwargs"] = {"models": [config.model, config.fallback_model]}
     chat_model = ChatOpenRouter(**kwargs)

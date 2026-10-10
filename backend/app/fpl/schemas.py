@@ -116,6 +116,7 @@ class EntryHistory(StrictModel):
     bank: int
     value: int
     overall_rank: int
+    rank: int | None = None
 
 
 class Pick(StrictModel):

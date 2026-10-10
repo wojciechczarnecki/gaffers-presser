@@ -75,3 +75,20 @@ def test_decisions_cover_alert_slots():
         line for line in decisions.splitlines() if "ALERT_SLOTS`" in line and "D-1@20:00" in line
     ]
     assert "2026-10-02" in row and "supersedes" in row.lower()
+
+
+def test_backlog_32_after_spec_013_with_inflection():
+    (row,) = [row for row in _rows() if row.startswith("| 32 |")]
+    assert "spec 013 is merged" in row
+    assert "inflection" in row
+
+
+def test_decisions_cover_gameweek_rank_and_overall():
+    text = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")
+    for needle in ("GW rank", "Overall", "10k"):
+        assert needle in text, needle
+
+
+def test_deployment_lists_migration_0012():
+    text = (ROOT / "docs" / "DEPLOYMENT.md").read_text(encoding="utf-8")
+    assert "0012" in text and "gameweek_rank" in text

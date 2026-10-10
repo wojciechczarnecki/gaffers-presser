@@ -17,6 +17,7 @@ class RunSummary:
     errored: int
     faithfulness: float | None
     style: float | None
+    inflection_errors: float | None
     rated: int
     within_limit_share: float | None
     avg_cost_usd: float | None
@@ -30,6 +31,12 @@ def summarise_run(data: dict) -> RunSummary:
     totals = compute_totals(pressers)
     ratings = [p["style"]["rating"] for p in pressers if p["style"] is not None]
     style = sum(ratings) / len(ratings) if ratings else None
+    counts = [
+        p["style"]["inflection_errors"]
+        for p in pressers
+        if p["style"] is not None and "inflection_errors" in p["style"]
+    ]
+    inflection = sum(counts) / len(counts) if counts else None
     judged = all(p["faithfulness"] is not None for p in pressers)
     passes = (
         bool(pressers)
@@ -47,6 +54,7 @@ def summarise_run(data: dict) -> RunSummary:
         errored=totals["errored"],
         faithfulness=totals["faithfulness"],
         style=style,
+        inflection_errors=inflection,
         rated=len(ratings),
         within_limit_share=totals["within_limit_share"],
         avg_cost_usd=totals["avg_cost_usd"],
@@ -80,7 +88,9 @@ def format_run(run: RunSummary) -> str:
     return (
         f"{run.model}: pressers {run.pressers}  errored {run.errored}"
         f"  faithfulness {fmt(run.faithfulness)}  style {fmt(run.style, '{:.2f}')}"
-        f" ({run.rated} rated)  within limit {fmt(run.within_limit_share)}"
+        f" ({run.rated} rated)"
+        f"  inflection errors {fmt(run.inflection_errors, '{:.2f}')}"
+        f"  within limit {fmt(run.within_limit_share)}"
         f"  cost {fmt(run.avg_cost_usd, '${:.6f}')}"
         f"  latency {fmt(run.avg_latency_seconds, '{:.1f}s')}"
         f"  judge agreement {fmt(run.judge_agreement, '{:.2f}')}"

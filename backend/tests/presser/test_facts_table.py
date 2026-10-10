@@ -107,18 +107,49 @@ def test_captain_blank_streak_threshold(world):
     assert rows["Cezary"].captain_blank_streak == 0
 
 
-def test_records(world):
-    play(world, 1, {10: 80, 11: 50, 12: 10})
-    play(world, 2, {10: 80, 11: 50, 12: 10})
+def test_records_by_gameweek_rank_with_ties(world):
+    world.gw(10, 1, 60, gameweek_rank=50_000)
+    world.gw(11, 1, 90, gameweek_rank=900_000)
+    world.gw(12, 1, 20, gameweek_rank=3_000_000)
+    world.gw(10, 2, 70, gameweek_rank=400_000)
+    world.gw(11, 2, 40, gameweek_rank=50_000)
+    world.gw(12, 2, 55, gameweek_rank=3_000_000)
     season = sheet(world, 2).season_facts
-    assert [(r.manager, r.gameweek, r.net_points) for r in season.best_gameweek] == [
-        ("Anna", 1, 80),
-        ("Anna", 2, 80),
+    assert [
+        (r.manager, r.gameweek, r.gameweek_rank, r.net_points) for r in season.best_gameweek
+    ] == [
+        ("Anna", 1, 50_000, 60),
+        ("Bartek", 2, 50_000, 40),
     ]
-    assert [(r.manager, r.gameweek, r.net_points) for r in season.worst_gameweek] == [
-        ("Cezary", 1, 10),
-        ("Cezary", 2, 10),
+    assert [
+        (r.manager, r.gameweek, r.gameweek_rank, r.net_points) for r in season.worst_gameweek
+    ] == [
+        ("Cezary", 1, 3_000_000, 20),
+        ("Cezary", 2, 3_000_000, 55),
     ]
+
+
+def test_records_skip_rows_without_gameweek_rank(world):
+    play(world, 1, {10: 80, 11: 50, 12: 10})
+    assert sheet(world, 1).season_facts.best_gameweek == []
+    assert sheet(world, 1).season_facts.worst_gameweek == []
+    world.gw(10, 2, 80, gameweek_rank=700_000)
+    world.gw(11, 2, 50)
+    world.gw(12, 2, 10)
+    season = sheet(world, 2).season_facts
+    assert [(r.manager, r.gameweek) for r in season.best_gameweek] == [("Anna", 2)]
+    assert [(r.manager, r.gameweek) for r in season.worst_gameweek] == [("Anna", 2)]
+
+
+def test_records_ignore_managers_absent_this_gameweek(world):
+    world.gw(10, 1, 60, gameweek_rank=400_000)
+    world.gw(11, 1, 40, gameweek_rank=900_000)
+    world.gw(12, 1, 90, gameweek_rank=5_000)
+    world.gw(10, 2, 70, gameweek_rank=200_000)
+    world.gw(11, 2, 20, gameweek_rank=3_000_000)
+    season = sheet(world, 2).season_facts
+    assert [(r.manager, r.gameweek) for r in season.best_gameweek] == [("Anna", 2)]
+    assert [(r.manager, r.gameweek) for r in season.worst_gameweek] == [("Bartek", 2)]
 
 
 def test_nicknames_used_everywhere(world):

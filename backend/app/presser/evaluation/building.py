@@ -71,6 +71,12 @@ def _manager_names(facts: FactSheet) -> set[str]:
         record.manager
         for record in facts.season_facts.best_gameweek + facts.season_facts.worst_gameweek
     }
+    names |= {row.manager for row in facts.overall.rows}
+    names |= set(facts.overall.biggest_climbers) | set(facts.overall.biggest_fallers)
+    names |= {
+        item.manager
+        for item in facts.season_facts.personal_bests + facts.season_facts.personal_worsts
+    }
     return names
 
 
