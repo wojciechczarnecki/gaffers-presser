@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-09"
   - "spec-ready — 2026-10-09"
   - "plan-draft — 2026-10-09"
   - "plan-approved — 2026-10-09"
   - "implemented — 2026-10-10"
+  - "done — 2026-10-10"
 metrics:
   started_at: 2026-10-09T23:15
   plan_steps: 15
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 5
   findings_accepted: 11
   findings_rejected: 0
+  cost_plan_cents: 282
+  cost_plan_review_cents: 138
+  cost_implement_cents: 517
+  cost_final_review_cents: 916
+  finished_at: 2026-10-10T13:47
 ---
 
 # SPEC 013 — Presser ranks and natural voice
