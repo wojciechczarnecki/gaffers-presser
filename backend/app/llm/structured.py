@@ -79,6 +79,8 @@ class StructuredCaller:
     structured_kwargs: dict[str, Any] = field(
         default_factory=lambda: {"method": "function_calling"}
     )
+    # alert slots call one caller from several threads
+    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
 
     @classmethod
     def from_spec(
@@ -111,8 +113,10 @@ class StructuredCaller:
 
         outcome = with_retries(once, self.clock, self.stop_event, what="chat")
         if outcome.result is None:
-            self.failures += 1
+            with self._lock:
+                self.failures += 1
             raise outcome.error or RuntimeError("stopped")
         if outcome.result.cost_usd is not None:
-            self.cost_usd = (self.cost_usd or 0.0) + outcome.result.cost_usd
+            with self._lock:
+                self.cost_usd = (self.cost_usd or 0.0) + outcome.result.cost_usd
         return outcome.result

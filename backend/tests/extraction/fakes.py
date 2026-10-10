@@ -21,6 +21,8 @@ class FakeChatModel(BaseChatModel):
     - an `Exception` instance → raised;
     - a `threading.Event` → the call blocks on `.wait()` until it is set, then the next
       scripted entry is used for that same call.
+
+    Entries are handed out under a lock, so concurrent calls never share one.
     """
 
     responses: list[Any]
@@ -31,6 +33,7 @@ class FakeChatModel(BaseChatModel):
     generation_id: str | None = None
 
     _index: int = PrivateAttr(default=0)
+    _lock: threading.Lock = PrivateAttr(default_factory=threading.Lock)
     _bound_tool_name: str | None = PrivateAttr(default=None)
     _received_messages: list[list[BaseMessage]] = PrivateAttr(default_factory=list)
 
@@ -55,8 +58,9 @@ class FakeChatModel(BaseChatModel):
 
     def _next_response(self) -> Any:
         while True:
-            item = self.responses[self._index]
-            self._index += 1
+            with self._lock:
+                item = self.responses[self._index]
+                self._index += 1
             if isinstance(item, threading.Event):
                 item.wait()
                 continue

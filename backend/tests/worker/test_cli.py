@@ -1384,7 +1384,7 @@ def _alerts_setup(rehearsal=None, slots=(120, 30)) -> AlertsSetup:
     return AlertsSetup(
         config=AlertConfig(slots, 3, Decimal("15"), rehearsal),
         make_channel=lambda: FakeChannel(["msg-1"]),
-        make_corroboration=lambda: sql_only_runtime("test"),
+        make_corroboration=lambda stop_event: sql_only_runtime("test"),
     )
 
 
@@ -1897,3 +1897,28 @@ def test_presser_runtime_writer_gets_temperature(monkeypatch, tmp_path):
         presser.make_runtime(None, threading.Event(), [])
 
     assert seen[0].chat_model._default_params["temperature"] == 0.8
+
+
+def test_the_alerts_runtime_and_its_judge_share_the_worker_stop_event(db):
+    from app.worker import cli as worker_cli
+
+    given = []
+    setup = dataclasses.replace(
+        _alerts_setup(),
+        make_corroboration=lambda stop_event: (
+            given.append(stop_event) or _alerts_setup().make_corroboration(stop_event)
+        ),
+    )
+    deps = WorkerDeps(
+        engine=db,
+        client=FakeFpl({}).client(sleep=lambda _: None),
+        league_ids_raw="1",
+        clock=FixedClock(NOW),
+        alerts=setup,
+    )
+    stop_event = threading.Event()
+
+    runtime, _ = worker_cli._alerts_runtime(deps, setup, [1], stop_event)
+
+    assert runtime.stop_event is stop_event
+    assert given == [stop_event]

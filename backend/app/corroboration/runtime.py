@@ -1,3 +1,5 @@
+import threading
+
 from app.core.clock import Clock
 from app.corroboration.config import CorroborationSettings
 from app.corroboration.judge import build_judge
@@ -23,7 +25,9 @@ def sql_only_runtime(
     return CorroborationRuntime(embedder=None, judge=None, tracer=tracer, skipped_reason=reason)
 
 
-def build_runtime(settings: CorroborationSettings, clock: Clock) -> CorroborationRuntime:
+def build_runtime(
+    settings: CorroborationSettings, clock: Clock, stop_event: threading.Event | None = None
+) -> CorroborationRuntime:
     tracer = make_corroboration_tracer(resolve_tracing(settings))
     if settings.openrouter_api_key is None:
         return sql_only_runtime(NOT_CONFIGURED, tracer)
@@ -32,7 +36,11 @@ def build_runtime(settings: CorroborationSettings, clock: Clock) -> Corroboratio
     llm = resolve_llm(settings)
     assert embedding is not None and llm is not None
     spec = build_chat_model(llm)
-    judge = build_judge(StructuredCaller.from_spec(spec, prices, clock))
+    caller = StructuredCaller.from_spec(spec, prices, clock)
+    if stop_event is not None:
+        # a shutdown ends a player's remaining judge calls instead of waiting them out
+        caller.stop_event = stop_event
+    judge = build_judge(caller)
     return CorroborationRuntime(
         embedder=build_embedder(embedding), judge=judge, tracer=tracer, prices=prices
     )

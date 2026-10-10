@@ -1,6 +1,9 @@
 import logging
-from dataclasses import dataclass
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from datetime import datetime
+from functools import partial
 from typing import Literal
 
 from sqlalchemy import Engine
@@ -28,10 +31,15 @@ from app.delivery.channels.base import Message
 from app.delivery.service import DeliveryService
 from app.fpl.deadlines import window_floor
 from app.fpl.models.reference import Season
+from app.worker.jobs import Shutdown
 
 logger = logging.getLogger(__name__)
 
 SEARCH_FAILED_REASON = "the search part failed"
+# players corroborated at once: each runs ~10 sequential judge calls, and one at a time a
+# 47-player digest took 13 minutes; with the worker's other threads 6 stays within SQLAlchemy's
+# default pool (5 + 10 overflow), so raising it means sizing the pool in `make_engine` too
+CORROBORATION_WORKERS = 6
 
 
 @dataclass(frozen=True)
@@ -40,6 +48,8 @@ class AlertsRuntime:
     league_ids: list[int]
     delivery: DeliveryService
     corroboration: CorroborationRuntime
+    corroboration_workers: int = CORROBORATION_WORKERS
+    stop_event: threading.Event = field(default_factory=threading.Event)
 
 
 @dataclass(frozen=True)
@@ -163,12 +173,35 @@ def build_slot_alert(
         if not listed:
             return SlotDraft(kind, as_of, None, [], [])
 
-    reports = [
-        corroborate_player(
-            engine, runtime.corroboration, item, as_of, start, new_since, included, origins
-        )
-        for item in listed
-    ]
+    corroborate_one = partial(
+        corroborate_player,
+        engine,
+        runtime.corroboration,
+        as_of=as_of,
+        since=start,
+        new_since=new_since,
+        included=included,
+        origins=origins,
+    )
+
+    def corroborate_unless_stopped(item: ListedPlayer) -> PlayerReport:
+        if runtime.stop_event.is_set():
+            raise Shutdown
+        return corroborate_one(item)
+
+    # every player is its own trace, so the tracing context of a worker thread is its own;
+    # `map` keeps the order of `listed`, so the alert reads the same as one built in turn
+    pool = ThreadPoolExecutor(max_workers=runtime.corroboration_workers)
+    try:
+        reports = list(pool.map(corroborate_unless_stopped, listed))
+    except BaseException:
+        # the pool's threads are joined at exit: queued players must not run after a failure
+        pool.shutdown(wait=False, cancel_futures=True)
+        raise
+    pool.shutdown()
+    if runtime.stop_event.is_set():
+        # judge calls stopped mid-player leave posts unjudged: such an alert is never sent
+        raise Shutdown
     message = render_alert(kind, deadline, as_of, reports)
     return SlotDraft(kind, as_of, message, reports, included_rows(reports))
 

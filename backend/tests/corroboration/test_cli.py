@@ -325,3 +325,20 @@ def test_the_settings_add_no_variable_to_the_existing_ones():
     assert set(CorroborationSettings.model_fields) == set(ChatSettings.model_fields) | set(
         RetrievalSettings.model_fields
     )
+
+
+def test_a_set_stop_event_ends_the_judge_without_a_call():
+    import threading
+
+    from app.corroboration.judge import JudgeInput
+    from app.corroboration.runtime import build_runtime
+    from tests.corroboration.test_judge import ANCHOR, PLAYER, POST
+
+    settings = CorroborationSettings(_env_file=None, openrouter_api_key="dummy-key")
+    stop_event = threading.Event()
+    runtime = build_runtime(settings, FixedClock(), stop_event)
+    stop_event.set()
+
+    assert runtime.judge is not None
+    with pytest.raises(RuntimeError, match="stopped"):
+        runtime.judge.run(JudgeInput(PLAYER, ANCHOR, POST))
