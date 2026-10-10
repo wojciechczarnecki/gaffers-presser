@@ -534,7 +534,7 @@ Existing patterns to reuse:
         - The existing leak test still passes.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation`
 
-- [ ] 14. **Set v2: real cases rebuilt with GW ranks (AC12, real part).**
+- [x] 14. **Set v2: real cases rebuilt with GW ranks (AC12, real part).** `iterations: 0`
       - Precondition (owner decision: the owner fills GW1–5 by a manual league sync).
         - With `DB=postgresql://presser:presser@localhost:5432/presser`, from `backend/`:
           `env -u OPENROUTER_API_KEY DATABASE_URL=$DB uv run alembic upgrade head`.
@@ -671,14 +671,14 @@ Existing patterns to reuse:
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
-      fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q`
+      fully green (1694 passed)
+- [x] end-to-end verification (automatic) performed, result recorded here: (1) full verify green, 1694 passed; (2) local DB `alembic current` = `0012 (head)`, 0 rows with a team in GW1-5 lack a GW rank; (3) `python -m app.presser.evaluation --help` lists the five commands, `build-cases` help names set v2; (4) `build-cases --gameweeks 1-5 --force` reported 10 real + 10 synthetic kept, real split 5 dev / 5 test, and `tests/presser/evaluation` (67 tests) passes on the 20-case set. Step 14: the owner's decision (sync done, GW6 privacy gate waived) is in Owner decisions.
 - [ ] `docs/ROADMAP.md`: n/a, because Stage 3 item 1 already links spec 013 and no new item
       is completed. `docs/DECISIONS.md`, `docs/BACKLOG.md` #32 and `docs/DEPLOYMENT.md` are
       updated (step 15).
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
