@@ -35,7 +35,7 @@ form only: the writer never copies a phrase or a joke from them.
 
 📊 *Tabela:* Ania wraca na pierwsze miejsce. Grzesiek awansuje o sześć pozycji, najwięcej w lidze. Między pierwszym a trzecim jest tylko 9 punktów.
 
-🌍 *Overall:* Grzesiek wchodzi do top 10k: jest 9 412., a tydzień temu był 16 tys. Ola też zyskała, z 21 tys. na 12 tys., ale do progu jeszcze trochę brakuje. Piotrek spadł z 1,4 mln na 3,1 mln.
+🌍 *Overall:* Grzesiek wchodzi do top 10k: jest 9 412., a tydzień temu był 16 tys. Ola też mocno zyskała, z 30 tys. na 14 tys., ale do progu jeszcze trochę brakuje. Piotrek spadł z 1,4 mln na 3,1 mln.
 
 ## Example 3 — the first gameweek of the season
 
@@ -51,4 +51,4 @@ form only: the writer never copies a phrase or a joke from them.
 
 📊 *Tabela:* Pierwsza tabela sezonu: Zbychu, Kowal, Bartas. Za wcześnie na plany, ale na stres już nie.
 
-🌍 *Overall:* Na starcie Zbychu jest w top 100k, Kowal w top 1M, a Bartas z rangą 2,4 mln musi gonić. Wszystkie progi to na razie wejścia, spadków nie ma.
+🌍 *Overall:* Na starcie Zbychu jest w top 100k, a Kowal w top 1M. Wszystkie progi to na razie wejścia, spadków nie ma.

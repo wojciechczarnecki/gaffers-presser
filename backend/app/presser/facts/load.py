@@ -86,6 +86,10 @@ def load_manager_names(session: Session, season: str, league_id: int) -> dict[in
     return dict(rows)
 
 
+def _known_rank(rank: int | None) -> int | None:
+    return rank if rank is not None and rank > 0 else None
+
+
 def load_member_rows(
     session: Session, season: str, league_id: int, gameweeks: range
 ) -> list[MemberRow]:
@@ -109,8 +113,8 @@ def load_member_rows(
             active_chip=row.active_chip,
             total_points=row.total_points,
             transfers=row.event_transfers or 0,
-            overall_rank=row.overall_rank,
-            gameweek_rank=row.gameweek_rank,
+            overall_rank=_known_rank(row.overall_rank),
+            gameweek_rank=_known_rank(row.gameweek_rank),
         )
         for row in rows
     ]

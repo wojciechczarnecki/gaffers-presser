@@ -272,7 +272,7 @@ def _ask_inflection_errors() -> int:
         answer = typer.prompt(INFLECTION_PROMPT, default="", show_default=False).strip()
         if not answer:
             return 0
-        if answer.isdigit():
+        if answer.isascii() and answer.isdigit():
             return int(answer)
         typer.echo(f"unknown count {answer!r}")
 

@@ -141,6 +141,17 @@ def test_records_skip_rows_without_gameweek_rank(world):
     assert [(r.manager, r.gameweek) for r in season.worst_gameweek] == [("Anna", 2)]
 
 
+def test_records_ignore_managers_absent_this_gameweek(world):
+    world.gw(10, 1, 60, gameweek_rank=400_000)
+    world.gw(11, 1, 40, gameweek_rank=900_000)
+    world.gw(12, 1, 90, gameweek_rank=5_000)
+    world.gw(10, 2, 70, gameweek_rank=200_000)
+    world.gw(11, 2, 20, gameweek_rank=3_000_000)
+    season = sheet(world, 2).season_facts
+    assert [(r.manager, r.gameweek) for r in season.best_gameweek] == [("Anna", 2)]
+    assert [(r.manager, r.gameweek) for r in season.worst_gameweek] == [("Bartek", 2)]
+
+
 def test_nicknames_used_everywhere(world):
     world.result(1, 5, 90, 8)
     world.result(2, 5, 90, 3)

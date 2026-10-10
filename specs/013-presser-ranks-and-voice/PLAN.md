@@ -802,3 +802,19 @@ Rejected:
 - AC14 "proves only the plumbing": the AC asks for a fake judge on a recorded reply plus the prompt text check, which is what the test does; not a defect.
 
 Left out: 12 nit findings
+
+2026-10-10 — final review (apply). Owner decision: F1–F11 accepted, none rejected. Fixed:
+
+- **F1** → `season.py` `build_season` builds the GW-rank records only from managers with a row in this gameweek; test `tests/presser/test_facts_table.py::test_records_ignore_managers_absent_this_gameweek` (failed with `FactSheetError` before the fix). DECISIONS 2026-10-09 GW-rank row updated.
+- **F2** → `presser_style_examples.md`: example 2 now reports Ola 30 tys. → 14 tys. (a 2× move); example 3 drops the non-notable Bartas line.
+- **F3** → `test_facts_checks.py` parametrised with the expected problem message (`expected in problems`), plus a personal-worst-below-the-league-worst case.
+- **F4** → `tests/worker/test_cli.py::test_presser_runtime_writer_gets_temperature` and `tests/presser/test_cli.py::test_make_runtime_writer_gets_temperature`; both fail when the site is reverted to `build_chat_model`.
+- **F5** → `test_ranks.py`: unchanged 8 000 and 10 001 → 10 002 are not notable; `test_leaders_keep_every_manager_tied_on_the_biggest_ratio`.
+- **F6** → `test_facts_ranks.py::test_unranked_gameweek_after_three_ranked_has_no_personal_flags` (fails with the guard removed).
+- **F7** → `load.py` `_known_rank`: a non-positive overall or GW rank loads as unknown; `test_facts_ranks.py::test_non_positive_ranks_are_unknown`.
+- **F8** → `tests/fpl/test_league_sync.py::test_resync_without_team_clears_the_gameweek_rank`.
+- **F9** → `_ask_inflection_errors` accepts ASCII digits only; `test_review_records_inflection_errors` feeds `²`.
+- **F10** → `MIN_RANKED_GAMEWEEKS` moved to `ranks.py`, used by `season.py` and `check_fact_sheet` (message now "too few ranked gameweeks").
+- **F11** → docstring removed from `ranks.leaders`.
+
+Verification: `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` — green, 1702 passed. BACKLOG: no new items, none delivered; #32's trigger (spec 013 merged) fires at the merge.

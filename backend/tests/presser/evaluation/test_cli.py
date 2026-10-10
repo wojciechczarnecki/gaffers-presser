@@ -215,8 +215,10 @@ def test_review_records_inflection_errors(tmp_path):
         str(other),
         "--cases",
         str(other_cases),
-        input="5\n\nx\n-1\n1\n3\n\n\n",
+        input="5\n\nx\n-1\n²\n1\n3\n\n\n",
     )
+    assert result.exit_code == 0, result.output
+    assert "unknown count '²'" in result.stdout
     assert "inflection errors" in result.stdout
     assert [p["style"]["inflection_errors"] for p in read(other)["pressers"]] == [1, 0]
 

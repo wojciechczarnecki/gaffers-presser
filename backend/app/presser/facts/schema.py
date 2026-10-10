@@ -271,8 +271,8 @@ def _check_ranks(sheet: FactSheet) -> list[str]:
     if best and worst and any(not min(best) <= rank <= max(worst) for rank in known):
         problems.append("records: a gameweek rank lies outside the season records")
     for item in season.personal_bests + season.personal_worsts:
-        if item.ranked_gameweeks < 3:
-            problems.append("personal ranks: fewer than 3 ranked gameweeks")
+        if item.ranked_gameweeks < ranks.MIN_RANKED_GAMEWEEKS:
+            problems.append("personal ranks: too few ranked gameweeks")
     if best and any(item.gameweek_rank < min(best) for item in season.personal_bests):
         problems.append("personal ranks: a personal best beats the league best")
     if worst and any(item.gameweek_rank > max(worst) for item in season.personal_worsts):

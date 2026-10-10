@@ -3,6 +3,7 @@ from fractions import Fraction
 
 THRESHOLDS = (1_000_000, 100_000, 10_000)
 TOP_TIER = 10_000
+MIN_RANKED_GAMEWEEKS = 3
 
 
 def thresholds_entered(now: int, before: int | None, first_gameweek: bool) -> list[int]:
@@ -34,7 +35,6 @@ def move_ratio(now: int, before: int) -> Fraction:
 
 
 def leaders(moves: Iterable[tuple[str, int, int]], rising: bool) -> list[str]:
-    """Managers with the biggest rank ratio among (manager, rank now, rank before) moves."""
     moved = [(name, now, before) for name, now, before in moves if (now < before) == rising]
     moved = [(name, now, before) for name, now, before in moved if now != before]
     if not moved:

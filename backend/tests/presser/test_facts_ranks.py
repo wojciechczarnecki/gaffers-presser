@@ -50,6 +50,23 @@ def test_personal_best_and_worst_need_three_ranked_gameweeks(world):
     assert two.personal_bests == [] and two.personal_worsts == []
 
 
+def test_unranked_gameweek_after_three_ranked_has_no_personal_flags(world):
+    for gameweek, rank in {1: 500_000, 2: 400_000, 3: 100_000}.items():
+        world.gw(10, gameweek, 50, gameweek_rank=rank)
+    world.gw(10, 4, 50)
+    season = sheet(world, 4).season_facts
+    assert season.personal_bests == [] and season.personal_worsts == []
+
+
+def test_non_positive_ranks_are_unknown(world):
+    world.gw(10, 4, 50, overall_rank=900_000)
+    world.gw(10, 5, 60, overall_rank=0, gameweek_rank=0)
+    world.gw(11, 5, 40, overall_rank=500_000, gameweek_rank=800_000)
+    result = sheet(world)
+    assert [s.gameweek_rank for s in result.winners] == [None]
+    assert [row.manager for row in result.overall.rows] == ["Bartek"]
+
+
 def test_equal_rank_is_not_a_personal_best_or_worst(world):
     for gameweek, rank in {1: 400_000, 2: 400_000, 3: 400_000}.items():
         world.gw(10, gameweek, 50, gameweek_rank=rank)

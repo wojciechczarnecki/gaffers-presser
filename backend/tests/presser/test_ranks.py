@@ -1,6 +1,12 @@
 from fractions import Fraction
 
-from app.presser.facts.ranks import is_notable, move_ratio, thresholds_entered, thresholds_left
+from app.presser.facts.ranks import (
+    is_notable,
+    leaders,
+    move_ratio,
+    thresholds_entered,
+    thresholds_left,
+)
 
 
 def test_ten_thousand_is_inside_the_top_10k_and_ten_thousand_one_is_not():
@@ -18,6 +24,8 @@ def test_entering_and_leaving_several_thresholds_in_threshold_order():
 def test_rise_inside_the_top_10k_is_notable():
     assert is_notable(7_990, 8_000, False)
     assert not is_notable(8_000, 7_990, False)
+    assert not is_notable(8_000, 8_000, False)
+    assert not is_notable(10_001, 10_002, False)
 
 
 def test_halving_is_notable_without_a_threshold():
@@ -58,3 +66,10 @@ def test_move_ratio_is_exact_and_ranks_by_ratio_not_places():
     assert move_ratio(100_000, 300_000) > move_ratio(1_400_000, 3_000_000)
     assert move_ratio(1_400_000, 3_000_000) == Fraction(15, 7)
     assert move_ratio(1_900_000, 900_000) == Fraction(19, 9)
+
+
+def test_leaders_keep_every_manager_tied_on_the_biggest_ratio():
+    moves = [("Bartek", 50, 100), ("Anna", 500, 1_000), ("Cezary", 900, 1_000)]
+    assert leaders(moves, rising=True) == ["Anna", "Bartek"]
+    falls = [("Bartek", 200, 100), ("Anna", 2_000, 1_000), ("Cezary", 1_100, 1_000)]
+    assert leaders(falls, rising=False) == ["Anna", "Bartek"]

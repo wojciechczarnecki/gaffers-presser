@@ -2,6 +2,7 @@ from collections import defaultdict
 
 from app.presser.facts.gameweek import credit_captain, net_points
 from app.presser.facts.load import CaptainRef, MemberRow, PlayerResult
+from app.presser.facts.ranks import MIN_RANKED_GAMEWEEKS
 from app.presser.facts.schema import PersonalRank, Record, Season, SeasonRow
 
 
@@ -28,9 +29,6 @@ def _records(rows: list[MemberRow], names: dict[int, str]) -> tuple[list[Record]
         )
 
     return pick(best), pick(worst)
-
-
-MIN_RANKED_GAMEWEEKS = 3
 
 
 def _personal_ranks(
@@ -112,7 +110,10 @@ def build_season(
         ),
         key=lambda item: (-item.gameweek_wins_to_date, item.gameweek_flops_to_date, item.manager),
     )
-    best_records, worst_records = _records(all_rows, names)
+    present = {row.entry_id for row in current}
+    best_records, worst_records = _records(
+        [row for row in all_rows if row.entry_id in present], names
+    )
     bests, worsts = _personal_ranks(all_rows, names, gameweek)
     return Season(
         rows=rows,

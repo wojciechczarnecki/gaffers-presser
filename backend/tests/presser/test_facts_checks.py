@@ -85,21 +85,39 @@ def test_first_gameweek_sheet_with_entered_thresholds_is_consistent():
 
 
 @pytest.mark.parametrize(
-    ("label", "mutate"),
+    ("expected", "mutate"),
     [
-        ("zero gameweek rank", lambda v: setattr(v.winners[0], "gameweek_rank", 0)),
+        ("a rank is not positive", lambda v: setattr(v.winners[0], "gameweek_rank", 0)),
         (
-            "negative overall rank",
+            "a rank is not positive",
             lambda v: setattr(v.overall.rows[0], "overall_rank", -5),
         ),
-        ("movement", lambda v: setattr(v.overall.rows[0], "movement", 3_999)),
-        ("entered", lambda v: setattr(v.overall.rows[0], "entered", [])),
-        ("left", lambda v: setattr(v.overall.rows[0], "left", [10_000])),
-        ("notable", lambda v: setattr(v.overall.rows[1], "notable", False)),
-        ("climber", lambda v: setattr(v.overall, "biggest_climbers", ["Kuba"])),
-        ("faller", lambda v: setattr(v.overall, "biggest_fallers", [])),
         (
-            "best records on different ranks",
+            "overall: a movement does not match the ranks",
+            lambda v: setattr(v.overall.rows[0], "movement", 3_999),
+        ),
+        (
+            "overall: entered thresholds do not match the ranks",
+            lambda v: setattr(v.overall.rows[0], "entered", []),
+        ),
+        (
+            "overall: left thresholds do not match the ranks",
+            lambda v: setattr(v.overall.rows[0], "left", [10_000]),
+        ),
+        (
+            "overall: notable does not match the ranks",
+            lambda v: setattr(v.overall.rows[1], "notable", False),
+        ),
+        (
+            "overall: biggest climbers do not match the rows",
+            lambda v: setattr(v.overall, "biggest_climbers", ["Kuba"]),
+        ),
+        (
+            "overall: biggest fallers do not match the rows",
+            lambda v: setattr(v.overall, "biggest_fallers", []),
+        ),
+        (
+            "records: tied records on different ranks",
             lambda v: v.season_facts.best_gameweek.append(
                 v.season_facts.best_gameweek[0].model_copy(
                     update={"gameweek": 4, "gameweek_rank": 41_000}
@@ -107,37 +125,45 @@ def test_first_gameweek_sheet_with_entered_thresholds_is_consistent():
             ),
         ),
         (
-            "best worse than worst",
+            "records: the best rank is worse than the worst",
             lambda v: setattr(v.season_facts.best_gameweek[0], "gameweek_rank", 2_000_000),
         ),
         (
-            "record from a later gameweek",
+            "records: a record is from a later gameweek",
             lambda v: setattr(v.season_facts.best_gameweek[0], "gameweek", 6),
         ),
         (
-            "winner better than the best record",
+            "records: a gameweek rank lies outside the season records",
             lambda v: setattr(v.winners[0], "gameweek_rank", 39_999),
         ),
         (
-            "known rank without records",
+            "records: a known gameweek rank without season records",
             lambda v: (
                 setattr(v.season_facts, "best_gameweek", []),
                 setattr(v.season_facts, "worst_gameweek", []),
             ),
         ),
         (
-            "personal best with two ranked gameweeks",
+            "personal ranks: too few ranked gameweeks",
             lambda v: setattr(v.season_facts.personal_bests[0], "ranked_gameweeks", 2),
         ),
         (
-            "personal best better than the league best",
+            "personal ranks: a personal best beats the league best",
             lambda v: setattr(v.season_facts.personal_bests[0], "gameweek_rank", 39_000),
         ),
         (
-            "overall row for a manager outside the table",
+            "a section names a manager who is not in the table",
             lambda v: setattr(v.overall.rows[0], "manager", "Obcy"),
+        ),
+        (
+            "personal ranks: a personal worst is below the league worst",
+            lambda v: v.season_facts.personal_worsts.append(
+                v.season_facts.personal_bests[0].model_copy(
+                    update={"manager": "Kuba", "gameweek_rank": 1_600_000}
+                )
+            ),
         ),
     ],
 )
-def test_inconsistent_rank_fact_is_reported(label, mutate):
-    assert problems_after(mutate), label
+def test_inconsistent_rank_fact_is_reported(expected, mutate):
+    assert expected in problems_after(mutate)

@@ -1873,3 +1873,27 @@ def test_run_stops_when_the_presser_runtime_cannot_start(cli, db, caplog):
         crashed = cli("run", presser=PresserSetup("m", {}, crash))
     assert crashed.exit_code == 1
     assert "worker failed: RuntimeError" in caplog.text
+
+
+class _SpecSeenError(Exception):
+    pass
+
+
+def test_presser_runtime_writer_gets_temperature(monkeypatch, tmp_path):
+    worker_cli = _alert_environment(monkeypatch, tmp_path)
+    _all_features(monkeypatch)
+    monkeypatch.setenv("PRESSER_MODEL", "google/gemini-3.1-flash-lite")
+    seen = []
+
+    def record(spec, *args, **kwargs):
+        seen.append(spec)
+        raise _SpecSeenError
+
+    monkeypatch.setattr(worker_cli.StructuredCaller, "from_spec", record)
+    presser = worker_cli._deps_from_settings().presser
+    assert presser is not None
+
+    with pytest.raises(_SpecSeenError):
+        presser.make_runtime(None, threading.Event(), [])
+
+    assert seen[0].chat_model._default_params["temperature"] == 0.8

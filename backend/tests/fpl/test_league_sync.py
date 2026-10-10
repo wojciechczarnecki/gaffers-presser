@@ -279,6 +279,29 @@ def test_resync_fills_an_empty_gameweek_rank(db_session):
     assert db_session.get(ManagerGameweek, ("2026/27", 880000001, 1)).gameweek_rank == expected
 
 
+def test_resync_without_team_clears_the_gameweek_rank(db_session):
+    _load_reference(db_session)
+    routes = synthetic_league(LEAGUE_1, [880000001], gameweeks=[1], player_ids=_player_ids())
+    sync_leagues(db_session, FakeFpl(routes).client(sleep=lambda _: None), [LEAGUE_1], [1], NOW)
+    db_session.commit()
+    assert db_session.get(ManagerGameweek, ("2026/27", 880000001, 1)).gameweek_rank is not None
+
+    no_team = synthetic_league(
+        LEAGUE_1,
+        [880000001],
+        gameweeks=[1],
+        player_ids=_player_ids(),
+        no_team_for={880000001: {1}},
+    )
+    sync_leagues(db_session, FakeFpl(no_team).client(sleep=lambda _: None), [LEAGUE_1], [1], NOW)
+    db_session.commit()
+    db_session.expire_all()
+
+    row = db_session.get(ManagerGameweek, ("2026/27", 880000001, 1))
+    assert row.has_team is False
+    assert row.gameweek_rank is None
+
+
 def test_at_exact_deadline_is_accepted(db_session):
     payload = load("bootstrap-static")
     apply_bootstrap(db_session, Bootstrap.model_validate(payload), NOW)
