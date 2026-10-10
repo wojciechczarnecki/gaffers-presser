@@ -94,7 +94,7 @@ class TweetIngest:
 class AlertsSetup:
     config: AlertConfig
     make_channel: Callable[[], Channel]
-    make_corroboration: Callable[[], CorroborationRuntime]
+    make_corroboration: Callable[[threading.Event], CorroborationRuntime]
     clock: Clock | None = None
 
 
@@ -222,7 +222,9 @@ def _deps_from_settings() -> WorkerDeps:
         alerts = AlertsSetup(
             config=alert_config,
             make_channel=lambda: build_channel(delivery_config),
-            make_corroboration=lambda: build_runtime(corroboration_settings, SystemClock()),
+            make_corroboration=lambda stop_event: build_runtime(
+                corroboration_settings, StopAwareClock(stop_event), stop_event
+            ),
         )
     presser = None
     if presser_llm is not None:
@@ -270,10 +272,13 @@ def _alerts_runtime(
     now = deps.clock.now()
     real_deadlines = [g.deadline_at for g in load_state(deps.engine).gameweeks]
     check_rehearsal(setup.config, real_deadlines, now)
-    corroboration = setup.make_corroboration()
+    corroboration = setup.make_corroboration(stop_event)
     channel = setup.make_channel()
     delivery = DeliveryService(deps.engine, channel, setup.clock or SystemClock(), stop_event)
-    return AlertsRuntime(setup.config, league_ids, delivery, corroboration), channel
+    runtime = AlertsRuntime(
+        setup.config, league_ids, delivery, corroboration, stop_event=stop_event
+    )
+    return runtime, channel
 
 
 def _polling(

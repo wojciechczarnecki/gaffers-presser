@@ -1,16 +1,19 @@
+import threading
 from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 
+import pytest
 from sqlmodel import Session, select
 
 from app.alerts.config import AlertConfig
 from app.alerts.models import Alert, AlertPost
 from app.alerts.render import load_template
 from app.alerts.schemas import AlertDeadline
-from app.alerts.service import run_slot
+from app.alerts.service import build_slot_alert, run_slot
 from app.delivery.channels.base import ChannelRejectedError
 from app.delivery.models import DeliveryLog
+from app.worker.jobs import Shutdown
 from tests.alerts.helpers import (
     SEASON,
     alerts_runtime,
@@ -50,10 +53,10 @@ def seed(db):
     )
 
 
-def setup(db, corroboration=None, channel=None, at=NOW, config=None):
+def setup(db, corroboration=None, channel=None, at=NOW, config=None, workers=1):
     clock = FixedClock(at)
     channel = channel or FakeChannel(["msg-1"])
-    runtime = alerts_runtime(db, channel, clock, corroboration, config=config)
+    runtime = alerts_runtime(db, channel, clock, corroboration, config=config, workers=workers)
     return runtime, channel, clock
 
 
@@ -243,7 +246,8 @@ def test_failed_delivery_recorded_and_not_retried(db):
     assert alert_posts(db, DIGEST_KEY) == {(SAKA, 1): "new"}
 
 
-def test_failed_corroboration_falls_back_to_sql_with_note(db, monkeypatch):
+@pytest.mark.parametrize("workers", [1, 2])
+def test_failed_corroboration_falls_back_to_sql_with_note(db, monkeypatch, workers):
     seed(db)
     add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="a1")
     add_claim(
@@ -252,7 +256,7 @@ def test_failed_corroboration_falls_back_to_sql_with_note(db, monkeypatch):
     add_tweet(db, 10, "Saka and Isak news", created_at=NOW - timedelta(hours=1), author="j1")
     embed_tweet(db, 10)
     corroboration, _ = scripted_corroboration("supports", "supports")
-    runtime, channel, clock = setup(db, corroboration)
+    runtime, channel, clock = setup(db, corroboration, workers=workers)
     from app.alerts import service
 
     real = service.corroborate
@@ -375,3 +379,113 @@ def test_quoted_post_included_once_across_slots(db):
     clock.advance(timedelta(minutes=90))
     assert run_slot(db, runtime, REAL, 1, clock) == "skipped"
     assert channel.keys == [DIGEST_KEY]
+
+
+def test_players_are_corroborated_at_once_in_the_order_of_one_at_a_time(db, monkeypatch):
+    seed(db)
+    add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="a1")
+    add_claim(
+        db, 2, ISAK, "doubt", created_at=NOW - timedelta(hours=2), author="a2", mention="Isak"
+    )
+    from app.alerts import service
+
+    in_turn, _, _ = setup(db)
+    expected = build_slot_alert(db, in_turn, REAL, "digest", 120, NOW, set())
+
+    real = service.corroborate
+    both_running = threading.Barrier(2, timeout=5)
+    alone = []
+
+    def together(engine, player, as_of, new_since=None, **kwargs):
+        # breaks after 5 s unless the other player is being corroborated at the same time
+        try:
+            both_running.wait()
+        except threading.BrokenBarrierError:
+            alone.append(player.fpl_id)
+        return real(engine, player, as_of, new_since, **kwargs)
+
+    monkeypatch.setattr(service, "corroborate", together)
+    at_once, _, _ = setup(db, workers=2)
+    draft = build_slot_alert(db, at_once, REAL, "digest", 120, NOW, set())
+
+    assert alone == []
+    assert [r.listed.player.fpl_id for r in draft.reports] == [
+        r.listed.player.fpl_id for r in expected.reports
+    ]
+    assert draft.message == expected.message
+    assert draft.posts == expected.posts
+
+
+def seed_two_players(db):
+    seed(db)
+    add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="a1")
+    add_claim(
+        db, 2, ISAK, "doubt", created_at=NOW - timedelta(hours=2), author="a2", mention="Isak"
+    )
+
+
+def test_a_stop_mid_digest_sends_nothing_and_starts_no_more_players(db, monkeypatch):
+    seed_two_players(db)
+    runtime, channel, clock = setup(db)
+    from app.alerts import service
+
+    real = service.corroborate
+    started = []
+
+    def stopping(engine, player, as_of, new_since=None, **kwargs):
+        started.append(player.fpl_id)
+        runtime.stop_event.set()
+        return real(engine, player, as_of, new_since, **kwargs)
+
+    monkeypatch.setattr(service, "corroborate", stopping)
+
+    with pytest.raises(Shutdown):
+        run_slot(db, runtime, REAL, 0, clock)
+
+    assert len(started) == 1
+    assert channel.calls == []
+    assert alerts(db) == []
+
+
+def test_a_stop_after_the_last_player_still_sends_nothing(db, monkeypatch):
+    seed_two_players(db)
+    runtime, channel, clock = setup(db, workers=2)
+    from app.alerts import service
+
+    real = service.corroborate
+    started = []
+
+    def stopping_last(engine, player, as_of, new_since=None, **kwargs):
+        started.append(player.fpl_id)
+        if len(started) == 2:
+            runtime.stop_event.set()
+        return real(engine, player, as_of, new_since, **kwargs)
+
+    monkeypatch.setattr(service, "corroborate", stopping_last)
+
+    with pytest.raises(Shutdown):
+        run_slot(db, runtime, REAL, 0, clock)
+
+    assert sorted(started) == sorted([SAKA, ISAK])
+    assert channel.calls == []
+    assert alerts(db) == []
+
+
+def test_a_player_failing_even_without_search_fails_the_slot_unsent(db, monkeypatch):
+    seed_two_players(db)
+    runtime, channel, clock = setup(db, workers=2)
+    from app.alerts import service
+
+    def broken(engine, player, as_of, new_since=None, **kwargs):
+        if player.fpl_id == SAKA:
+            raise RuntimeError("database gone")
+        return service_real(engine, player, as_of, new_since, **kwargs)
+
+    service_real = service.corroborate
+    monkeypatch.setattr(service, "corroborate", broken)
+
+    with pytest.raises(RuntimeError, match="database gone"):
+        run_slot(db, runtime, REAL, 0, clock)
+
+    assert channel.calls == []
+    assert alerts(db) == []

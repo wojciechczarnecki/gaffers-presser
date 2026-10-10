@@ -239,7 +239,8 @@ def scripted_corroboration(*labels):
     return runtime, fake
 
 
-def alerts_runtime(db, channel, clock, corroboration=None, league_ids=(1,), config=None):
+def alerts_runtime(db, channel, clock, corroboration=None, league_ids=(1,), config=None, workers=1):
+    # one worker by default: a scripted judge answers in call order, which threads would shuffle
     from app.alerts.config import AlertConfig
     from app.alerts.service import AlertsRuntime
     from app.corroboration.runtime import sql_only_runtime
@@ -250,6 +251,7 @@ def alerts_runtime(db, channel, clock, corroboration=None, league_ids=(1,), conf
         league_ids=list(league_ids),
         delivery=DeliveryService(db, channel, clock),
         corroboration=corroboration or sql_only_runtime("test"),
+        corroboration_workers=workers,
     )
 
 
