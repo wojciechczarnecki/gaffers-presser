@@ -685,6 +685,7 @@ Existing patterns to reuse:
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
 - 2026-10-09 — implement — `decision` — Step 14 is blocked: GW1–5 `gameweek_rank` is empty locally and GW6 is not finished, so the GW5 overall ranks are still current (privacy gate) — The owner runs the league sync of GW1–5 now and accepts committing the current GW5 overall ranks under pseudonyms; the GW6 privacy gate is waived for this spec
+- 2026-10-10 — final-review — `gate` — Which final-review findings to fix? — `accepted`: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11; `rejected`: none
 
 ## Review log
 
