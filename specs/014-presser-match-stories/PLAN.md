@@ -258,7 +258,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
 
 ## Steps
 
-- [ ] 1. **Loaders and test-world helpers.** Files: `backend/app/presser/facts/load.py`,
+- [x] 1. **Loaders and test-world helpers.** Files: `backend/app/presser/facts/load.py`, `iterations: 0`
       `backend/tests/presser/helpers.py`, new `backend/tests/presser/test_facts_load.py`.
       - Test first, in `test_facts_load.py`, through `World`:
         - `explain` is parsed per fixture, with a double gameweek giving two fixtures;
