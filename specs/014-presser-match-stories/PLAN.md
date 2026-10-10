@@ -183,8 +183,11 @@ gameweek, ordered like the table: `(-total_points, display name)`.
     or `None` if nobody left.
   - `left`: in the top 3 before and not now; no `other`.
   - `swap`: two managers in both top 3s whose order reversed and who are not the
-    `new_leader` pair; `manager` = now ahead.
+    `new_leader` pair; `manager` = now ahead, `other` = the manager now behind.
   - `gap` = total(manager) − total(other) when `other` is set.
+  - `new_leader`, `entered` and `swap` always carry `other`, so each gives a key-moment pair;
+    a `left` change has no `other`, and its story is the pair of the matching `entered`
+    change (the same two managers).
 
 **Key moments** (`moments.py`). Pairs (ahead, behind, margin), deduplicated by
 (ahead, behind) with the first source kept:
@@ -198,7 +201,8 @@ Events per pair, with ahead_points / behind_points per manager and swing = ahead
 
 - `player`: one per player counted for either manager, contribution × multiplier;
 - `clean_sheet_lost`: a club's lost clean sheets in one fixture, grouped, each player worth
-  `−CLEAN_SHEET_POINTS × multiplier`;
+  `−CLEAN_SHEET_POINTS × multiplier`; `players` lists only the players whose multiplier
+  differs between the two managers (a defender both hold alike moves nothing);
 - `red_card` / `own_goal` / `penalty_missed`: event points × multiplier.
 
 An event is listed when `swing > 0` and `swing ≥ margin`. The order is winner pairs, then
@@ -302,6 +306,10 @@ the synthetic cases, step 12 rebuilds the real ones). The full
         - `test_bench_transfers_holds_no_chip_facts`: the model has no chip fields;
         - `test_rows_carry_team_name` in `test_facts_table.py` checks `team_name` per row, and
           that `team_names=` overrides it.
+        - in `test_facts_checks.py`, the new parametrised
+          `test_inconsistent_v3_fact_is_reported` starts with "empty_sections does not match
+          the sections": a sheet with a chip play whose `empty_sections` lists `chips`, and
+          one with no pitch items and no key moments that omits `pitch`.
       - Migrate the existing tests from `bench_transfers_chips.X` to
         `bench_transfers.X` / `chips.plays` / `chips.squad_changes`.
       - Code:
@@ -394,7 +402,8 @@ the synthetic cases, step 12 rebuilds the real ones). The full
         - `test_two_neighbour_gameweeks_no_swap`;
         - `test_no_swap_before_gw4`;
         - `test_tie_now_is_not_a_swap`;
-        - `test_podium_new_leader_entered_left_swap`;
+        - `test_podium_new_leader_entered_left_swap` (a `swap` carries `other` = the manager
+          now behind and its `gap`);
         - `test_podium_ties_ranked_as_in_table`;
         - `test_no_podium_changes_at_gw1`.
       - In `test_facts_checks.py`, add the rules:
@@ -444,6 +453,9 @@ the synthetic cases, step 12 rebuilds the real ones). The full
           - `2500`, `empty_sections`, `transfer_wins`, `paid_off`, `key_moments`, `swing`,
             `neighbour_gameweeks`, `podium_changes`, `team_name`;
           - every v4 needle except `1500`.
+        - `test_writer_prompt_v5_rules` replaces `test_writer_prompt_v4_rules` (it asserts
+          `version == 4`), and `test_writer_prompt_loads_with_a_version` asserts `2500`
+          instead of `1500`.
         - The test asserts that the header `⚽` comes before `🪑` in the text.
         - `test_prompt_version_label` and the `test_service.py` stored version use `@5`.
         - `test_length_flag_at_the_limit` uses (2500, True) and (2501, False).
@@ -647,6 +659,10 @@ the synthetic cases, step 12 rebuilds the real ones). The full
   - They never reach logs: the step 8 test covers this.
   - In the repository they appear only as pseudonyms: the step 11 leak check covers this.
   - Never print a real fact sheet in the agent session.
+  - `check_for_leaks` matches every real full team name as a whole word. A real team named
+    like a club or a player ("Arsenal") would now trip it on a pitch item or key moment in
+    step 12. If it does, end with `RESULT: ESCALATE`, `KIND: decision`, naming the case id
+    only; never weaken the check or print the name.
   - Run the DB commands with `env -u OPENROUTER_API_KEY`.
 - **Prompt size.** The sheet JSON grows (8 pitch items, 5 moments, pairs). Watch the input
   tokens in #32; the caps are one constant each (open question in SPEC).
@@ -697,7 +713,56 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+2026-10-10 — plan review (fresh context, under `/pipeline:ship`).
+
+Findings:
+
+- `major` — Approach, podium changes: a `swap` had no `other`, so a podium swap gave no
+  key-moment pair (AC9 "for each podium change") and no gap to check. Now `other` = the
+  manager now behind, with its `gap`; stated that `left` is covered by the matching `entered`
+  pair; step 6's podium test asserts it.
+- `minor` — Approach, key moments: a grouped `clean_sheet_lost` did not say which defenders
+  it lists; now only those whose multiplier differs between the two managers.
+- `minor` — Step 2: AC13's "`empty_sections` against the sections" rule had no case for the
+  new `chips` / `pitch` emptiness; added as the first case of the parametrised test.
+- `minor` — Step 8: `tests/content/test_presser_content.py::test_writer_prompt_loads_with_a_version`
+  asserts `1500` and `test_writer_prompt_v4_rules` asserts version 4; the step now says both
+  change (to `2500`, and replaced by the v5 test).
+- `minor` — Risks: `check_for_leaks` matches real full team names as whole words, so a real
+  team named like a club or player could trip it on the new pitch / key-moment facts in
+  step 12; added the escalation rule (never weaken the check).
+
+Checked and found correct:
+
+- Every AC1–AC19 has steps and a named proving test; the matrix matches the steps.
+- Step order has no forward dependency: loaders (1) → schema (2) → transfers (3) → match facts
+  (4) → pitch with an empty moment set (5) → table stories (6) → moments wiring the pitch
+  ranking (7) → prompts, examples, set, docs.
+- Every user of `bench_transfers_chips` (`schema.py`, `gameweek.py`, `build.py`,
+  `evaluation/building.py`, `presser_writer.md`, `test_facts_gameweek.py`, `test_writer.py`)
+  is in step 2 or step 8; stored presser JSONB is never re-validated against `FactSheet`, so
+  version 3 needs no migration.
+- `LENGTH_LIMIT` / "1500" appear only in `runner.py`, the writer prompt and the style
+  examples, all covered by steps 8 and 10.
+- The interim red `test_eval_set.py` (module-level `load_cases`) is the only test reading the
+  committed set; `build-cases --force` keeps the synthetic cases, so dropping the real v2
+  cases in step 11 lets step 12 rebuild them; the real dev/test split
+  (`(gameweek + index) % 2`) gives 5 / 5 for 2 leagues × GW1–5.
+- `World` already has club 1 "Synthetic FC" and team names "Synthetic XI {id}"; `Fixture`,
+  `Team`, `DeadlineSnapshotPlayer.selected_by_percent` (`Numeric(5,1)`) and `starts` exist
+  as the loaders assume; `current_season`, `League` and `preview` exist for the E2E commands.
+- No new dependency, no migration, no new environment variable; the owner summary flags
+  match. Manual items both have `Pass when:`; nothing automatable is left to the owner.
+- Conventions: Polish only in `app/content/` and `evals/`, English kinds and keys, tests
+  first in every step, logs checked for manager, team, club and player names.
+- DECISIONS: the 2026-10-09 "no team names" row is amended explicitly in step 13 as the SPEC
+  decides; net points, chip effects, temperature and the pass rule are untouched.
+- The GW6 gate in step 12 escalates rather than committing current overall ranks, which
+  matches the spec 013 owner decision.
+
+Approval: the plan covers every AC with tests-first steps and exact commands, needs no new
+dependency or migration, and its findings were fixable in place, so it is ready for
+implementation.
 
 ## Deviations
 
