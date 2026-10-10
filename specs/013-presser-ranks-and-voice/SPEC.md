@@ -19,6 +19,9 @@ metrics:
   implement_iterations: 1
   deviations_minor: 3
   deviations_major: 0
+  final_review_blockers: 1
+  final_review_worth_fixing: 5
+  final_review_nits: 5
 ---
 
 # SPEC 013 — Presser ranks and natural voice

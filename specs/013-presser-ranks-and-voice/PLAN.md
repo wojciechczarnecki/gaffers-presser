@@ -753,3 +753,51 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 ## Final review
 
 _(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
+
+2026-10-10 — final review (report). Three independent perspectives (compliance, quality,
+tests with 59 mutations: 46 killed, 4 equivalent, the rest listed as gaps below); every finding
+checked in the code.
+
+AC → evidence:
+
+| AC | Evidence | Status |
+|----|----------|--------|
+| AC1 | `tests/fpl/test_league_sync.py::test_gameweek_rank_stored_and_none_without_team`, `::test_resync_fills_an_empty_gameweek_rank`; `tests/fpl/test_schemas.py::test_entry_history_rank_optional` | ok |
+| AC2 | `tests/db/test_migrations.py::test_gameweek_rank_migration_adds_empty_column_and_downgrades`; `tests/test_docs.py::test_deployment_lists_migration_0012` | ok |
+| AC3 | `tests/presser/test_facts_ranks.py::test_winners_and_flops_carry_gameweek_rank`, `::test_unknown_gameweek_rank_is_null` | ok |
+| AC4 | `tests/presser/test_facts_table.py::test_records_by_gameweek_rank_with_ties`, `::test_records_skip_rows_without_gameweek_rank` | ok (F1) |
+| AC5 | `test_facts_ranks.py::test_personal_best_and_worst_need_three_ranked_gameweeks`, `::test_equal_rank_is_not_a_personal_best_or_worst` | ok (F6) |
+| AC6 | `tests/presser/test_ranks.py`; `test_facts_ranks.py::test_overall_section_rows_and_movers`, `::test_overall_first_gameweek_has_no_movement` | ok (F5) |
+| AC7 | `test_facts_ranks.py::test_overall_empty_when_nothing_notable` | ok |
+| AC8 | `tests/presser/test_facts_checks.py` | weak assertions (F3) |
+| AC9 | `tests/content/test_presser_content.py::test_writer_prompt_v3_rules`; `test_writer.py::test_prompt_version_label`; `test_service.py::test_generated_presser_stored_with_usage` | ok |
+| AC10 | `test_presser_content.py::test_style_examples_six_headers_no_shared_sentence`; owner approval pending | examples break the notable-only rule (F2) |
+| AC11 | `tests/llm/test_providers.py::test_temperature_argument_sent_only_where_accepted`; `tests/presser/test_config.py::test_writer_chat_model_temperature`; `evaluation/test_cli.py::test_writer_gets_temperature_and_judge_zero` | production call sites untested (F4) |
+| AC12 | `evaluation/test_eval_set.py`; `test_building.py::test_build_pseudonymises_overall_and_personal_names` | ok |
+| AC13 | `evaluation/test_cli.py::test_review_records_inflection_errors`; `test_summary.py::test_summary_averages_inflection_errors` | ok |
+| AC14 | `test_presser_content.py::test_judge_prompt_checks_ranks`; `evaluation/test_runner.py::test_recorded_rank_verdict_counted` | ok |
+| AC15 | `tests/presser/test_worker_run.py::test_logs_carry_no_names_or_text` | ok |
+| AC16 | `tests/test_docs.py::test_backlog_32_after_spec_013_with_inflection`, `::test_decisions_cover_gameweek_rank_and_overall` | ok |
+
+Plan steps: all 15 delivered as described; the 3 minor deviations are justified; nothing
+outside the scope; owner decisions (migration, GW6 privacy gate waived) honoured.
+
+Findings:
+
+- **F1** `blocker` — `backend/app/presser/facts/schema.py:221-222` (with `season.py` `_records`, `build.py:33`) — a manager who leaves the league after holding the season's best or worst GW rank keeps old `manager_gameweek` rows (memberships are only upserted), is named in `best_gameweek` / `worst_gameweek` but not in the table, so `check_fact_sheet` reports "a section names a manager who is not in the table" and `build_fact_sheet` raises `FactSheetError` for every later gameweek: the league gets no presser for the rest of the season (reproduced with a scratch test) — in `build_fact_sheet` keep only the entries present this gameweek before building the season facts, and add a test.
+- **F2** `worth-fixing` — `backend/app/content/presser_style_examples.md:38,54` — example 2 reports Ola 21 tys. → 12 tys. (no threshold, under 2×) and example 3 reports Bartas at 2,4 mln at GW1 (no threshold entered): both rows are not `notable`, so the examples teach the writer to break the prompt's "Report the `notable` rows only" rule — replace those sentences with notable moves (the owner approves the texts at this review).
+- **F3** `worth-fixing` — `backend/tests/presser/test_facts_checks.py:143` — each mutation case asserts only that the problem list is non-empty, so the "rank is not positive", "notable does not match", "best worse than worst" and overall-row naming checks can be deleted with the suite green (mutation-proven), and "a personal worst is below the league worst" has no case — parametrise the expected message and assert it is in the list; add a personal-worst case.
+- **F4** `worth-fixing` — `backend/app/worker/cli.py:235`, `backend/app/presser/cli.py:92` — reverting either production writer site from `writer_chat_model` to `build_chat_model` keeps the suite green, so AC11's temperature 0.8 is proven only for the evaluation CLI — add a test per module that records the temperature requested by `make_presser_runtime` / `make_runtime`.
+- **F5** `worth-fixing` — `backend/tests/presser/test_ranks.py`, `test_facts_ranks.py` — `now < before` → `<=` in the top-10k rule (an unchanged 8 000 becomes notable), `TOP_TIER = 10_001` and truncating `ranks.leaders` to one name all survive — add `not is_notable(8_000, 8_000, False)`, `not is_notable(10_001, 10_002, False)` and a tie of two climbers with the same ratio.
+- **F6** `worth-fixing` — `backend/tests/presser/test_facts_ranks.py` — no case with ≥ 3 earlier ranked gameweeks and a null GW rank this gameweek; removing the `gameweek not in ranks` guard in `season.py` `_personal_ranks` survives and would raise `KeyError` in production — add GW1–3 ranked, GW4 null, `sheet(world, 4)` without flags or error.
+- **F7** `nit` — `backend/app/presser/facts/ranks.py:30-33`, `overall.py` — an `overall_rank` of 0 (`EntryHistory.overall_rank` is a plain `int`) raises `ZeroDivisionError` in `move_ratio` before `check_fact_sheet` can report it; the service's generic handler contains it, so the effect is the same failed presser — treat a non-positive rank as unknown at load time.
+- **F8** `nit` — `backend/app/fpl/leagues.py:145` — removing `"gameweek_rank": None` from `_no_team_gameweek` survives; a gameweek re-synced as no-team would keep a stale rank — add a re-sync test with `no_team_for`.
+- **F9** `nit` — `backend/app/presser/evaluation/cli.py:275` — `answer.isdigit()` accepts `"²"`, then `int()` raises and `review` crashes — `answer.isascii() and answer.isdigit()` plus a test.
+- **F10** `nit` — `backend/app/presser/facts/schema.py:274` vs `season.py` `MIN_RANKED_GAMEWEEKS` — the 3-gameweek rule is a literal in the check and a constant in the builder, so they can drift — move the constant into `ranks.py` and use it in both.
+- **F11** `nit` — `backend/app/presser/facts/ranks.py:37` — `leaders` has a docstring, which CONVENTIONS forbids — remove it.
+
+Rejected:
+
+- AC14 "proves only the plumbing": the AC asks for a fake judge on a recorded reply plus the prompt text check, which is what the test does; not a defect.
+
+Left out: 12 nit findings
