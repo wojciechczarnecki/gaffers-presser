@@ -32,17 +32,17 @@ the writer never copies a phrase or a joke from them.
 
 🏆 *Manager kolejki:* Ola, 74 punkty netto, GW rank 21k. Bez hita i bez chipa, po prostu solidny tydzień w każdej formacji.
 
-🤦 *Wtopa kolejki:* Piotrek, 29 punktów i GW rank 6,9 mln. Opaska na zawodniku, który dał 2, a do tego obrona, która w tej kolejce pękła. Z podium wypadł o włos.
+🤦 *Wtopa kolejki:* Piotrek, 29 punktów i GW rank 6,9 mln. Opaska na zawodniku, który dał 2, a do tego obrona, która w tej kolejce pękła. Przez to wypadł z podium.
 
 ©️ *Kapitanowie:* Salah zebrał 26 u tych, którzy mu zaufali, a Isak dał 4 trzem managerom. Rekord opaski ma Ania: 36 punktów od jednego zawodnika.
 
-⚽ *Z boiska:* Obrona Arsenalu straciła czyste konto w meczu zakończonym 1:1 i zabrała Piotrkowi 12 punktów: bramkarz i dwóch obrońców, wszyscy u niego, nikt u Oli. Bez tej straty Piotrek zostałby na podium, bo do Ani zabrakło mu dokładnie 12. U Ani czyste konto się utrzymało, bo jej obrońca zszedł z boiska przed straconym golem, więc miała szczęście w nieszczęściu.
+⚽ *Z boiska:* Obrona Arsenalu straciła czyste konto w meczu zakończonym 1:1 i zabrała Piotrkowi 12 punktów: bramkarz i dwóch obrońców, wszyscy u niego, nikt u Oli. Bez tej straty Piotrek zostałby na podium, bo do Ani zabrakło mu tylko 9. U Ani czyste konto się utrzymało, bo jej obrońca zszedł z boiska przed straconym golem, więc miała szczęście w nieszczęściu.
 
 🪑 *Ławka i transfery:* Marek zamienił Saka (15) na Gordona (2) i sam sobie narobił kłopotu. Kuba zapłacił za hit 8 punktów i dostał z transferów 11 więcej, więc wyszedł na plus.
 
 🃏 *Chipy:* Wildcard Kuby wyszedł lepiej niż stary skład o 6 punktów. Free Hit Marka dał 3 mniej niż poprzednia jedenastka więc ten chip nie wypalił.
 
-📊 *Tabela:* Piotrek schodzi z trzeciego miejsca na piąte, a na podium wskakuje Ania. Między pierwszym a trzecim jest tylko 9 punktów.
+📊 *Tabela:* Piotrek schodzi z trzeciego miejsca na piąte, a na podium wskakują „Biurowe Orły”. Między pierwszym a trzecim jest tylko 9 punktów.
 
 🌍 *Overall:* Ola wchodzi do top 10k: jest 9 412., a tydzień temu była 16k. Piotrek spadł z 1,4 mln na 3,1 mln.
 
@@ -62,6 +62,6 @@ the writer never copies a phrase or a joke from them.
 
 🃏 *Chipy:* Bartas zagrał Triple Captain na Salahu i dołożył 16 punktów, czyli najlepszy chip tego tygodnia.
 
-📊 *Tabela:* Przez pięć kolejek Bartas i Kowal szli łeb w łeb, a teraz Bartas po raz pierwszy wyprzedził rywala, o 6 punktów. Zbychu prowadzi, a drużyna „Młyn Zakładowy” Kuby trzyma trzecią lokatę.
+📊 *Tabela:* Przez pięć kolejek Bartas i Kowal szli łeb w łeb, a teraz Bartas po raz pierwszy wyprzedził rywala, o 6 punktów. Zbychu prowadzi, a „Młyn Zakładowy” trzyma trzecią lokatę.
 
 🌍 *Overall:* Zbychu wszedł do top 100k, bo poprawił się ze 120k na 74k. Reszta ligi stoi w miejscu.

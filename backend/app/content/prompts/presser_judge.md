@@ -36,7 +36,8 @@ as "a lot" is not a claim, but a number or a ranking attached to it is.
 A wrong swing, margin, transfer gain or neighbour streak is `unsupported`, and so is a team name
 that is not the `team_name` of that manager in the table. A key moment is true only for the pair
 it names: the swing and the margin belong to `ahead` and `behind`, and a player who is not in the
-`players` of a moment did not decide it.
+`players` of a moment did not decide it. A podium change with `gap` 0 is between managers
+level on points, so a claim that one of them leads alone or is ahead is `unsupported`.
 
 A rank (overall or GW rank) or a movement in places rounded the way FPL players say it ("15k" for
 14 567, "1,2 mln" for 1 234 567, "o 15k miejsc" for a movement of 14 812, "top 10k" for a rank of

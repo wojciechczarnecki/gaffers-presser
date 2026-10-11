@@ -261,6 +261,33 @@ def add_moments(*moments):
     return mutate
 
 
+def table_of(*totals: tuple[str, int]):
+    """Replace the table with these managers and totals, ranks and top 3 recomputed."""
+
+    def mutate(value):
+        points = [total for _, total in totals]
+        rows = [
+            {
+                "rank": 1 + sum(other > total for other in points),
+                "manager": manager,
+                "team_name": f"Drużyna {manager}",
+                "total_points": total,
+                "movement": None,
+            }
+            for manager, total in totals
+        ]
+        top3 = [
+            {"manager": m, "total_points": t, "behind_leader": points[0] - t} for m, t in totals[:3]
+        ]
+        value.table = value.table.model_validate({"rows": rows, "top3": top3})
+        value.managers = len(rows)
+
+    return mutate
+
+
+FOUR = table_of(("Bartas", 120), ("Kuba", 100), ("Ola", 90), ("Dawid", 80))
+
+
 def add_hit(**changes):
     def mutate(value):
         value.bench_transfers = value.bench_transfers.model_validate({"hits": [HIT | changes]})
@@ -318,6 +345,44 @@ def add_hit(**changes):
         (
             "key moments: a pair is not a winner, a swap or a podium change",
             add_moments({"ahead": "Kuba", "behind": "Bartas"}),
+        ),
+        (
+            "key moments: a pair is not a winner, a swap or a podium change",
+            add_moments({"pair": "rivalry"}),
+        ),
+        (
+            "key moments: a pair is not a winner, a swap or a podium change",
+            lambda v: (add_swap()(v), add_moments({"pair": "rivalry", "margin": 12})(v)),
+        ),
+        (
+            "key moments: a pair is not a winner, a swap or a podium change",
+            lambda v: (add_podium()(v), add_moments({"pair": "podium", "margin": 12})(v)),
+        ),
+        ("key moments: a margin is not positive", add_moments({"margin": 0})),
+        (
+            "key moments: winner pairs on different margins",
+            add_moments({}, {"players": ["Beta"], "margin": 12}),
+        ),
+        (
+            "table: a rivalry swap does not match the table",
+            lambda v: (
+                table_of(("Bartas", 120), ("Kuba", 120))(v),
+                add_swap(ahead_rank=1, behind_rank=1, gap=0)(v),
+            ),
+        ),
+        (
+            "table: a podium change does not match the top 3",
+            lambda v: (
+                FOUR(v),
+                add_podium(kind="entered", manager="Dawid", previous_rank=3, rank=4, gap=-20)(v),
+            ),
+        ),
+        (
+            "table: a podium change does not match the top 3",
+            lambda v: (
+                FOUR(v),
+                add_podium(kind="swap", manager="Dawid", previous_rank=3, rank=4, gap=-20)(v),
+            ),
         ),
         ("key moments: more than 5", add_moments(*[{}] * 6)),
         ("hits: a transfer gain does not match its transfers", add_hit(transfer_gain=6)),

@@ -127,6 +127,7 @@ PitchKind = Literal[
     "red_card",
     "own_goal",
     "penalty_missed",
+    "penalty_saved",
     "lucky_sub",
     "unlucky_sub",
 ]
@@ -139,10 +140,12 @@ class PitchOwner(Strict):
 
 
 class PitchEvent(Strict):
-    kind: Literal["red_card", "own_goal", "penalty_missed", "lucky_sub", "unlucky_sub"]
+    kind: Literal[
+        "red_card", "own_goal", "penalty_missed", "penalty_saved", "lucky_sub", "unlucky_sub"
+    ]
     count: int
-    # the stat's points for a card, own goal or missed penalty (negative); the clean-sheet
-    # points kept (lucky sub) or missed (unlucky sub)
+    # the stat's points for a card, own goal or missed penalty (negative) or a saved penalty
+    # (positive); the clean-sheet points kept (lucky sub) or missed (unlucky sub)
     points: int
 
 
@@ -169,7 +172,9 @@ class KeyMoment(Strict):
     ahead: str
     behind: str
     margin: int
-    kind: Literal["player", "clean_sheet_lost", "red_card", "own_goal", "penalty_missed"]
+    kind: Literal[
+        "player", "clean_sheet_lost", "red_card", "own_goal", "penalty_missed", "penalty_saved"
+    ]
     players: list[str]
     club: str | None = None
     ahead_points: int

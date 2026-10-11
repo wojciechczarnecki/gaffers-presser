@@ -837,3 +837,42 @@ Rejected:
 
 Left out: 21 nit findings
 
+
+Fixed (apply mode, 2026-10-11, per the owner's gate decision: `accepted` F1–F10, `rejected` F11):
+
+- F1 → `moments.py`: every pair gives its own moments; the moments, not the pairs, are
+  deduplicated by (ahead, behind, kind, players), keeping the first pair in the winner →
+  podium → rivalry order; `test_podium_story_of_the_winner_pair_keeps_its_own_margin`.
+- F2 → `moments.py`: a podium change with `gap` 0 gives no pair; writer prompt v5 says a
+  `gap` 0 change is between managers level on points, and judge prompt v4 marks a claim that
+  one of them leads alone `unsupported`; `test_podium_change_level_on_points_has_no_moments`.
+- F3 → per the owner's rule the fact stays deduced from the clean-sheet points and the club's
+  result (a goal while he was not on the pitch does not cost it; FPL's own clean-sheet stat
+  covers the red-card exception); writer prompt v5 now says "kept the clean sheet although his
+  club conceded"; the SPEC Context and `docs/DECISIONS.md` carry the same definition.
+- Penalty saves (owner's request) were missing: `penalties_saved` is now a `penalty_saved`
+  event in `matches.py`, a pitch kind and event, and a key-moment kind; the writer prompt
+  lists it; `test_goalkeeper_penalty_save_with_points`, `test_penalty_save_is_a_pitch_event`,
+  `test_penalty_save_is_a_moment`. The real cases of set v3 were rebuilt
+  (`build-cases --gameweeks 1-5 --force`): GW4 and GW5 of league 1 and GW4 of league 2 gain
+  the saved penalties, and the F1, F2 and F8 changes show in GW2 and GW4.
+- F4 → `test_inconsistent_v3_fact_is_reported`: a rivalry moment with no swap, rivalry and
+  podium moments with a margin other than the gap, a swap with `gap` 0 between managers level
+  on points, `entered` and `swap` changes outside the top 3.
+- F5 → `test_podium_moments_before_rivalry_moments`,
+  `test_captained_defender_doubles_the_lost_clean_sheet` (swing 8), the gap-0 test of F2;
+  `swing > 0` in `_pair_moments` is dropped, since every pair now has a margin of at least 1.
+- F6 → `test_lost_clean_sheet_alone_keeps_the_pitch_section`,
+  `test_no_pitch_items_and_no_moments_leave_the_pitch_section_empty`.
+- F7 → `presser_style_examples.md`: example 2 uses a team name in place of a manager, its
+  swing (12) now exceeds the margin (9) and the flop line no longer says "o włos"; example 3
+  uses the team name instead of the manager's name.
+- F8 → `table.py`: the i-th manager entering the top 3 pairs with the i-th one who left;
+  `test_two_entered_paired_with_the_two_who_left`.
+- F9 → `checks.py`: a key moment's margin must be positive and all winner moments share one
+  margin; two new cases in `test_inconsistent_v3_fact_is_reported`.
+- F10 → `moments.py`: an event of a player without a `Player` row is skipped;
+  `test_event_of_a_player_without_a_player_row_is_skipped`.
+
+Each new test was checked against a mutation of the line it covers (17 mutations, all
+killed). Full `verify.command` green (1824 passed).

@@ -6,7 +6,7 @@ from app.presser.facts.matches import CLEAN_SHEET_POINTS, FixtureFact
 from app.presser.facts.schema import KeyMoment, Table
 
 MAX_KEY_MOMENTS = 5
-EVENT_KINDS = ("red_card", "own_goal", "penalty_missed")
+EVENT_KINDS = ("red_card", "own_goal", "penalty_missed", "penalty_saved")
 PAIR_ORDER = {"winner": 0, "podium": 1, "rivalry": 2}
 
 
@@ -30,17 +30,12 @@ def _pairs(rows: list[MemberRow], names: dict[int, str], table: Table) -> list[P
             for second in sorted(e for e, value in nets.items() if value == runner_up):
                 pairs.append(Pair("winner", winner, second, best - runner_up))
     for change in table.podium_changes:
-        if change.other is not None and change.gap is not None:
+        # a gap of 0 is a tie broken by the name: no event decided it
+        if change.other is not None and change.gap is not None and change.gap > 0:
             pairs.append(Pair("podium", by_name[change.manager], by_name[change.other], change.gap))
     for swap in table.rivalry_swaps:
         pairs.append(Pair("rivalry", by_name[swap.ahead], by_name[swap.behind], swap.gap))
-    seen: set[tuple[int, int]] = set()
-    unique = []
-    for pair in pairs:
-        if (pair.ahead, pair.behind) not in seen:
-            seen.add((pair.ahead, pair.behind))
-            unique.append(pair)
-    return unique
+    return pairs
 
 
 def _pair_moments(
@@ -111,16 +106,20 @@ def _pair_moments(
             )
         )
     for (player_id, kind), points in sorted(events.items()):
+        info = players.get(player_id)
+        if info is None:
+            continue
         found.append(
             moment(
                 kind,
-                [players[player_id].name],
+                [info.name],
                 club(player_id),
                 points * ahead.get(player_id, 0),
                 points * behind.get(player_id, 0),
             )
         )
-    return [m for m in found if m.swing > 0 and m.swing >= pair.margin]
+    # every pair has a margin of at least 1, so a kept moment always has a positive swing
+    return [m for m in found if m.swing >= pair.margin]
 
 
 def build_key_moments(
@@ -139,4 +138,12 @@ def build_key_moments(
             pair, names, contributions, match_results, players, club_names, facts
         )
     moments.sort(key=lambda m: (PAIR_ORDER[m.pair], -m.swing, m.ahead, m.behind, m.players))
-    return moments[:MAX_KEY_MOMENTS]
+    # the same event between the same two managers is told once, under its first pair
+    seen: set[tuple[str, str, str, tuple[str, ...]]] = set()
+    unique: list[KeyMoment] = []
+    for moment in moments:
+        key = (moment.ahead, moment.behind, moment.kind, tuple(moment.players))
+        if key not in seen:
+            seen.add(key)
+            unique.append(moment)
+    return unique[:MAX_KEY_MOMENTS]

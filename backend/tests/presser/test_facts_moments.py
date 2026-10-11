@@ -1,6 +1,10 @@
 import pytest
 
 from app.presser.facts import build_fact_sheet, check_fact_sheet
+from app.presser.facts.load import MemberRow
+from app.presser.facts.matches import FixtureFact
+from app.presser.facts.moments import build_key_moments
+from app.presser.facts.schema import Table
 from tests.presser.helpers import LEAGUE_ID, SEASON, World, stats
 
 
@@ -186,3 +190,135 @@ def test_key_moment_player_ranked_first_on_pitch(world):
     result = sheet(world)
     assert [i.player for i in result.pitch.items] == ["InMoment", "Bigger"]
     assert [m.players for m in result.key_moments] == [["InMoment"]]
+
+
+def test_lost_clean_sheet_alone_keeps_the_pitch_section(world):
+    world.fixture(501, 5, 2, 1, 0, 2)
+    player(world, 1, "Keeper", 3, position=1, club=2, explain=[stats(501, minutes=(90, 2))])
+    pick(world, 10, 60, [])
+    pick(world, 11, 56, [1])
+    pick(world, 12, 40, [])
+    result = sheet(world)
+    assert result.pitch.items == []
+    assert [(m.kind, m.players, m.swing) for m in result.key_moments] == [
+        ("clean_sheet_lost", ["Keeper"], 4)
+    ]
+    assert "pitch" not in result.empty_sections
+
+
+def test_no_pitch_items_and_no_moments_leave_the_pitch_section_empty(world):
+    player(world, 1, "Filler", 5)
+    pick(world, 10, 60, [1])
+    pick(world, 11, 51, [1])
+    pick(world, 12, 40, [])
+    result = sheet(world)
+    assert (result.pitch.items, result.key_moments) == ([], [])
+    assert "pitch" in result.empty_sections
+
+
+def test_captained_defender_doubles_the_lost_clean_sheet(world):
+    world.fixture(501, 5, 2, 1, 0, 2)
+    lost = [stats(501, minutes=(90, 2))]
+    player(world, 1, "Captain", 2, position=2, club=2, explain=lost)
+    pick(world, 10, 60, [])
+    pick(world, 11, 53, [1], captain=1)
+    pick(world, 12, 40, [])
+    (moment,) = [m for m in moments(world) if m.kind == "clean_sheet_lost"]
+    assert (moment.ahead_points, moment.behind_points, moment.swing, moment.margin) == (
+        0,
+        -8,
+        8,
+        7,
+    )
+
+
+def test_penalty_save_is_a_moment(world):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    saved = [stats(501, minutes=(90, 2), clean_sheets=(1, 4), penalties_saved=(1, 5))]
+    player(world, 1, "Saver", 11, position=1, explain=saved)
+    pick(world, 10, 60, [1])
+    pick(world, 11, 55, [])
+    pick(world, 12, 40, [])
+    result = moments(world)
+    assert [(m.kind, m.players, m.swing) for m in result] == [
+        ("player", ["Saver"], 11),
+        ("penalty_saved", ["Saver"], 5),
+    ]
+
+
+def test_event_of_a_player_without_a_player_row_is_skipped():
+    rows = [
+        MemberRow(entry_id, 5, points, 0, 0, None, points, 0)
+        for entry_id, points in [(10, 60), (11, 58)]
+    ]
+    result = build_key_moments(
+        rows,
+        {10: "Anna", 11: "Bartek"},
+        Table(),
+        {10: {}, 11: {9: 1}},
+        {},
+        {},
+        {},
+        [FixtureFact(9, 501, "red_card", 1, -3)],
+    )
+    assert result == []
+
+
+@pytest.fixture
+def duel(db):
+    world = World(db, gameweeks=2, finished=2)
+    for entry_id, name in [(10, "Anna Alfa"), (11, "Bartek Beta"), (12, "Cezary Ceta")]:
+        world.manager(entry_id, name)
+    return world
+
+
+def test_podium_story_of_the_winner_pair_keeps_its_own_margin(duel):
+    for entry_id, value in {10: 50, 11: 57, 12: 0}.items():
+        duel.gw(entry_id, 1, value)
+    duel.player(1, "Twelve")
+    duel.result(1, 2, 90, 12)
+    duel.player(2, "Six")
+    duel.result(2, 2, 90, 6)
+    for entry_id, value in {10: 80, 11: 70, 12: 10}.items():
+        duel.gw(entry_id, 2, value)
+        duel.squad(entry_id, 2, [1, 2] if entry_id == 10 else [])
+    result = sheet(duel, 2)
+    assert [(c.kind, c.manager, c.other, c.gap) for c in result.table.podium_changes] == [
+        ("new_leader", "Anna", "Bartek", 3)
+    ]
+    assert [(m.pair, m.margin, m.players, m.swing) for m in result.key_moments] == [
+        ("winner", 10, ["Twelve"], 12),
+        ("podium", 3, ["Six"], 6),
+    ]
+    assert check_fact_sheet(result) == []
+
+
+def test_podium_change_level_on_points_has_no_moments(duel):
+    for entry_id, value in {10: 50, 11: 60, 12: 0}.items():
+        duel.gw(entry_id, 1, value)
+    duel.player(1, "Five")
+    duel.result(1, 2, 90, 5)
+    for entry_id, value in {10: 60, 11: 50, 12: 0}.items():
+        duel.gw(entry_id, 2, value)
+        duel.squad(entry_id, 2, [1] if entry_id == 10 else [])
+    result = sheet(duel, 2)
+    assert [(c.kind, c.manager, c.other, c.gap) for c in result.table.podium_changes] == [
+        ("new_leader", "Anna", "Bartek", 0)
+    ]
+    assert result.key_moments == []
+
+
+def test_podium_moments_before_rivalry_moments(race):
+    race.player(1, "Leader")
+    race.result(1, 4, 90, 22)
+    race.player(2, "Riser")
+    race.result(2, 4, 90, 25)
+    for entry_id, value in {12: 0, 13: 50, 14: 0, 10: 0, 11: 20, 15: 0}.items():
+        race.gw(entry_id, 4, value)
+        race.squad(entry_id, 4, {13: [1], 11: [2]}.get(entry_id, []))
+    result = sheet(race, 4)
+    assert [(m.pair, m.ahead, m.behind, m.players[0], m.swing) for m in result.key_moments] == [
+        ("podium", "Dawid", "Cezary", "Leader", 22),
+        ("rivalry", "Bartek", "Anna", "Riser", 25),
+    ]
+    assert check_fact_sheet(result) == []

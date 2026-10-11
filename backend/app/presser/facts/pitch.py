@@ -10,7 +10,7 @@ GLOBAL_DIFFERENTIAL_BELOW = Decimal("10")
 LEAGUE_DIFFERENTIAL_MAX_MANAGERS = 2
 MAX_PITCH_ITEMS = 8
 
-EVENT_KINDS = ("red_card", "own_goal", "penalty_missed")
+EVENT_KINDS = ("red_card", "own_goal", "penalty_missed", "penalty_saved")
 SUB_KINDS = ("lucky_sub", "unlucky_sub")
 SCORE_KINDS = ("differential_haul", "template_haul", "template_blank")
 

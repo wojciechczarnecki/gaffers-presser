@@ -177,6 +177,18 @@ def test_cap_and_ranking(db):
     ]
 
 
+def test_penalty_save_is_a_pitch_event(db):
+    world = league(db)
+    world.fixture(501, 5, 1, 2, 0, 0)
+    world.player(1, "Saver", position=1)
+    saved = [stats(501, minutes=(90, 2), clean_sheets=(1, 4), penalties_saved=(1, 5))]
+    world.result(1, 5, 90, 11, explain=saved)
+    squads(world, {10: [1]})
+    (item,) = sheet(world).pitch.items
+    assert "penalty_saved" in item.kinds
+    assert [(e.kind, e.count, e.points) for e in item.events] == [("penalty_saved", 1, 5)]
+
+
 def test_cap_of_eight_items(db):
     world = league(db)
     ids = list(range(1, 11))

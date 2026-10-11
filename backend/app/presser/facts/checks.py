@@ -154,7 +154,12 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
     problems: list[str] = []
     if len(sheet.key_moments) > MAX_KEY_MOMENTS:
         problems.append("key moments: more than 5")
+    winner_margins = {m.margin for m in sheet.key_moments if m.pair == "winner"}
+    if len(winner_margins) > 1:
+        problems.append("key moments: winner pairs on different margins")
     for moment in sheet.key_moments:
+        if moment.margin <= 0:
+            problems.append("key moments: a margin is not positive")
         if moment.swing < moment.margin:
             problems.append("key moments: a swing is below its margin")
         if moment.swing != moment.ahead_points - moment.behind_points or moment.swing <= 0:

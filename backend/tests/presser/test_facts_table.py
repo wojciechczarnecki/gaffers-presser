@@ -283,6 +283,18 @@ def test_podium_new_leader_entered_left_swap(rivals):
     ]
 
 
+def test_two_entered_paired_with_the_two_who_left(rivals):
+    play(rivals, 1, {10: 90, 11: 100, 12: 80, 13: 70, 14: 10})
+    play(rivals, 2, {10: 0, 11: 0, 12: 0, 13: 50, 14: 100})
+    assert podium(rivals, 2) == [
+        ("new_leader", "Dawid", 4, 1, "Bartek", 20),
+        ("entered", "Dawid", 4, 1, "Anna", 30),
+        ("entered", "Ewa", 5, 2, "Cezary", 30),
+        ("left", "Anna", 2, 4, None, None),
+        ("left", "Cezary", 3, 5, None, None),
+    ]
+
+
 def test_podium_swap_carries_the_manager_now_behind(rivals):
     play(rivals, 1, {10: 90, 11: 100, 12: 80, 13: 70, 14: 10})
     play(rivals, 2, {10: 20, 11: 0, 12: 25, 13: 0, 14: 0})

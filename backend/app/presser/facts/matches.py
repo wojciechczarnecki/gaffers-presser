@@ -20,6 +20,7 @@ EVENT_STATS = (
     ("red_cards", "red_card"),
     ("own_goals", "own_goal"),
     ("penalties_missed", "penalty_missed"),
+    ("penalties_saved", "penalty_saved"),
 )
 
 

@@ -53,6 +53,13 @@ def test_red_card_own_goal_penalty_missed_with_points():
     ]
 
 
+def test_goalkeeper_penalty_save_with_points():
+    result = match(fx(501, minutes=(90, 2), clean_sheets=(1, 4), penalties_saved=(1, 5)))
+    assert facts(result, info(GOALKEEPER), {501: FixtureScore(1, 2, 0, 0)}) == [
+        FixtureFact(1, 501, "penalty_saved", 1, 5),
+    ]
+
+
 def test_double_gameweek_events_per_fixture():
     result = match(
         fx(501, minutes=(90, 2), red_cards=(1, -3)),

@@ -147,9 +147,10 @@ def podium_changes(
         changes.append(change("new_leader", top_now[0], top_before[0]))
         new_leader_pair = {top_now[0], top_before[0]}
     left = [entry_id for entry_id in top_before if entry_id not in top_now and entry_id in now]
-    for entry_id in top_now:
-        if entry_id not in top_before:
-            changes.append(change("entered", entry_id, left[0] if left else None))
+    entered = [entry_id for entry_id in top_now if entry_id not in top_before]
+    for index, entry_id in enumerate(entered):
+        # the i-th manager in is paired with the i-th one out, so each one out has a pair
+        changes.append(change("entered", entry_id, left[index] if index < len(left) else None))
     changes += [change("left", entry_id) for entry_id in left]
     both = [entry_id for entry_id in top_now if entry_id in top_before]
     for ahead in both:

@@ -22,6 +22,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 6
   final_review_nits: 5
+  findings_accepted: 10
+  findings_rejected: 1
 ---
 
 # SPEC 014 — Presser match stories, chips section and table rivalries
@@ -74,7 +76,9 @@ models on the presser the owner wants.
   - A goalkeeper or defender who played at least 60 minutes and has no clean-sheet entry
     lost the clean sheet.
   - One who has a clean-sheet entry while his team conceded in that fixture kept the clean
-    sheet because he went off before the goal ("lucky sub").
+    sheet because the goal fell while he was not on the pitch, before he came on or after he
+    went off ("lucky sub"; the owner's wording at the final review: "kept the clean sheet
+    although his club conceded").
   - One who started, played fewer than 60 minutes, while his team kept a clean sheet lost
     it by going off early ("unlucky sub").
 
@@ -266,8 +270,8 @@ models on the presser the owner wants.
   of the league managers (6 of 12 is, 5 of 12 is not), with at least 10 or at most 2 points.
   The item lists the managers with and without him.
 - [ ] AC6: Red cards, own goals and penalties missed are read from `explain` per fixture,
-  with their points. A player who played in two fixtures (a double gameweek) has each
-  fixture's events.
+  with their points (penalties saved too, added by the owner's decision at the final
+  review). A player who played in two fixtures (a double gameweek) has each fixture's events.
 - [ ] AC7: A goalkeeper or defender is a `lucky_sub` when he has the clean-sheet points
   while his club conceded in that fixture, and an `unlucky_sub` when he started, played under
   60 minutes and his club kept a clean sheet. A player with 60+ minutes and no clean-sheet

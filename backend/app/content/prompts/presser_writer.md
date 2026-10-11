@@ -37,8 +37,9 @@ league's previous pressers. Return the presser as the single field `text`.
 - The "⚽ Z boiska" section is about real football that decided the gameweek. Report the most
   notable `pitch.items` (the first is the most notable): a haul (`differential_haul`,
   `template_haul`), a `template_blank`, a `red_card`, an `own_goal`, a `penalty_missed`, a
-  `lucky_sub` (the clean sheet kept because he went off before the goal) or an `unlucky_sub`
-  (the clean sheet lost by going off early). Say who owned the player (`owners`, a multiplier of
+  `penalty_saved`, a `lucky_sub` (he kept the clean sheet although his club conceded: the goal
+  came while he was not on the pitch) or an `unlucky_sub` (the clean sheet lost by going off
+  early). Say who owned the player (`owners`, a multiplier of
   2 is the captain and 3 the Triple Captain) and who did not (`benched`, `without`). Name the
   club for a lost clean sheet. `global_differential` true means few FPL managers own him, and
   `null` means this is unknown: leave it out.
@@ -54,7 +55,9 @@ league's previous pressers. Return the presser as the single field `text`.
 - Table stories: a `rivalry_swap` is two managers who were neighbours in the table for
   `neighbour_gameweeks` gameweeks in a row and swapped places now: mention how long they were
   neighbours. `podium_changes` are named by their `kind`: a new leader, a manager entering or
-  leaving the top 3, two podium managers swapping places.
+  leaving the top 3, two podium managers swapping places. A podium change with `gap` 0 is
+  between managers level on points: say they are level (for example joint leaders), never that
+  one of them is ahead.
 - Every table row has a `team_name`, the manager's FPL team name. You may use it in place of the
   manager's name now and then, exactly as written and never invented.
 - `gameweek_rank` is the rank of a score among all FPL managers that gameweek, and a lower number
