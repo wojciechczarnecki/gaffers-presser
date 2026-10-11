@@ -395,6 +395,102 @@ def test_inconsistent_v3_fact_is_reported(expected, mutate):
     assert expected in problems_after(mutate, recompute=False)
 
 
+CAPTAIN_PICK = {
+    "manager": "Bartas",
+    "player": "Alpha",
+    "base_points": 12,
+    "multiplier": 2,
+    "points": 24,
+    "triple_captain": False,
+    "vice_stepped_in": False,
+    "blank": False,
+}
+
+
+def add_pitch(**changes):
+    def mutate(value):
+        value.pitch = value.pitch.model_validate({"items": [PITCH_ITEM | changes]})
+
+    return mutate
+
+
+def add_captain(**changes):
+    def mutate(value):
+        value.captaincy = value.captaincy.model_validate({"picks": [CAPTAIN_PICK | changes]})
+
+    return mutate
+
+
+def breakdown_of(*entries):
+    return [{"identifier": i, "value": v, "points": p} for i, v, p in entries]
+
+
+@pytest.mark.parametrize(
+    ("expected", "mutate"),
+    [
+        (
+            "breakdown: does not sum to the player's points",
+            add_pitch(breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 9))),
+        ),
+        (
+            "breakdown: does not sum to the player's points",
+            add_captain(breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 9))),
+        ),
+        (
+            "xG: a flag does not match the thresholds",
+            add_pitch(
+                points=3,
+                breakdown=breakdown_of(("minutes", 90, 3)),
+                expected_goals="0.90",
+                big_miss=True,
+                goal_from_nothing=False,
+            ),
+        ),
+        (
+            "xG: a flag does not match the thresholds",
+            add_pitch(
+                points=7,
+                breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 5)),
+                expected_goals="0.15",
+                big_miss=False,
+                goal_from_nothing=True,
+            ),
+        ),
+        ("xG: a flag does not match the thresholds", add_pitch(big_miss=True)),
+        (
+            "xG: a flag does not match the thresholds",
+            add_captain(expected_goals="0.80", big_miss=True, goal_from_nothing=False),
+        ),
+    ],
+)
+def test_inconsistent_v4_fact_is_reported(expected, mutate):
+    assert expected in problems_after(mutate, recompute=False)
+
+
+def test_consistent_v4_stats_have_no_problems():
+    full = breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 10))
+    assert (
+        problems_after(
+            lambda v: (
+                add_pitch(
+                    breakdown=full,
+                    expected_goals="0.10",
+                    expected_assists="0.00",
+                    big_miss=False,
+                    goal_from_nothing=True,
+                )(v),
+                add_captain(
+                    breakdown=full,
+                    expected_goals="0.10",
+                    big_miss=False,
+                    goal_from_nothing=True,
+                )(v),
+            )
+        )
+        == []
+    )
+
+
 def test_chips_and_pitch_sections_consistent_when_listed():
     assert (
         problems_after(

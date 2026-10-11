@@ -1,7 +1,11 @@
+from decimal import Decimal
+
 from app.presser.facts import ranks
+from app.presser.facts.gameweek import BLANK_MAX_POINTS
 from app.presser.facts.moments import MAX_KEY_MOMENTS
 from app.presser.facts.pitch import MAX_PITCH_ITEMS
-from app.presser.facts.schema import FactSheet, empty_sections
+from app.presser.facts.schema import FactSheet, PlayerStats, empty_sections
+from app.presser.facts.stats import BIG_MISS_MIN_XG, GOAL_FROM_NOTHING_BELOW_XG
 from app.presser.facts.table import RIVALRY_MIN_NEIGHBOUR_GAMEWEEKS
 
 
@@ -169,6 +173,26 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
     return problems
 
 
+def _check_player_stats(points: int, facts: PlayerStats) -> list[str]:
+    problems: list[str] = []
+    if facts.breakdown is not None and sum(entry.points for entry in facts.breakdown) != points:
+        problems.append("breakdown: does not sum to the player's points")
+    goals = 0
+    if facts.breakdown is not None:
+        goals = sum(e.value for e in facts.breakdown if e.identifier == "goals_scored")
+    xg: Decimal | None = facts.expected_goals
+    if xg is None:
+        expected = (None, None)
+    else:
+        expected = (
+            points <= BLANK_MAX_POINTS and xg >= BIG_MISS_MIN_XG,
+            goals >= 1 and xg < GOAL_FROM_NOTHING_BELOW_XG,
+        )
+    if (facts.big_miss, facts.goal_from_nothing) != expected:
+        problems.append("xG: a flag does not match the thresholds")
+    return problems
+
+
 def check_fact_sheet(sheet: FactSheet) -> list[str]:
     problems: list[str] = _check_ranks(sheet)
     for label, scores in (("winners", sheet.winners), ("flops", sheet.flops)):
@@ -220,6 +244,9 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
     for pick in sheet.captaincy.picks:
         if pick.points != pick.base_points * pick.multiplier:
             problems.append("captaincy: points do not match base points and multiplier")
+        problems += _check_player_stats(pick.base_points, pick)
+    for item in sheet.pitch.items:
+        problems += _check_player_stats(item.points, item)
 
     if sheet.empty_sections != empty_sections(sheet):
         problems.append("empty_sections does not match the sections")

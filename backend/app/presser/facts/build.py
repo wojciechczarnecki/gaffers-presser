@@ -30,6 +30,7 @@ from app.presser.facts.overall import build_overall
 from app.presser.facts.pitch import build_pitch
 from app.presser.facts.schema import FactSheet, empty_sections
 from app.presser.facts.season import build_season
+from app.presser.facts.stats import player_stat_facts
 from app.presser.facts.table import build_table, podium_changes, rivalry_swaps
 from app.presser.names import display_names
 
@@ -90,6 +91,9 @@ def build_fact_sheet(
         {item.fixture_id for result in match_results.values() for item in result.fixtures},
     )
     facts = fixture_facts(match_results, player_info, fixtures)
+    player_facts = {
+        player_id: player_stat_facts(result) for player_id, result in match_results.items()
+    }
     gameweek_squads = {
         row.entry_id: squads[(row.entry_id, gameweek)]
         for row in rows
@@ -122,7 +126,9 @@ def build_fact_sheet(
         average_net_points=average,
         winners=winners,
         flops=flops,
-        captaincy=gw_rules.captaincy(rows, refs, results, names, player_names, gameweek),
+        captaincy=gw_rules.captaincy(
+            rows, refs, results, names, player_names, gameweek, player_facts
+        ),
         bench_transfers=gw_rules.build_bench_transfers(
             rows, bench_picks, transfers, auto_subs, results, names, player_names, gameweek
         ),
@@ -167,6 +173,7 @@ def build_fact_sheet(
         load_ownership(session, season, gameweek),
         {player for moment in sheet.key_moments for player in moment.players},
         len(rows),
+        player_facts,
     )
     sheet.overall = build_overall(rows, previous, names, gameweek)
     sheet.season_facts = season_facts

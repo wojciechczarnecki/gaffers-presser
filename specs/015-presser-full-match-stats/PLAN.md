@@ -365,8 +365,8 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
         - `fixture_stat(fixture_id, player_id, identifier, value, side="h")`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_load.py tests/presser/test_facts_gameweek.py tests/presser/test_facts_pitch.py tests/presser/test_facts_moments.py`
 
-- [ ] 4. **Fact sheet v4: breakdown and xG flags on pitch items and captain picks (AC3, the
-      AC8 flags, AC9, AC10, AC11 rules).** Files: `backend/app/presser/facts/schema.py`, new
+- [x] 4. **Fact sheet v4: breakdown and xG flags on pitch items and captain picks (AC3, the
+      AC8 flags, AC9, AC10, AC11 rules).** `iterations: 1` Files: `backend/app/presser/facts/schema.py`, new
       `backend/app/presser/facts/stats.py`, `backend/app/presser/facts/gameweek.py`
       (`captaincy` takes the per-player stat facts), `backend/app/presser/facts/pitch.py`,
       `backend/app/presser/facts/build.py`, `backend/app/presser/facts/checks.py`, new
