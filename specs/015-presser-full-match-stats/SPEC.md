@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-11"
   - "spec-ready — 2026-10-11"
+metrics:
+  started_at: 2026-10-11T18:52
 ---
 
 # SPEC 015 — Full FPL match stats in the presser
