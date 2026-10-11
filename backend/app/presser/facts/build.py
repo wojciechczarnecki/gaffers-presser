@@ -161,6 +161,7 @@ def build_fact_sheet(
         player_info,
         club_names,
         facts,
+        player_facts,
     )
     sheet.pitch = build_pitch(
         {row.entry_id: names[row.entry_id] for row in rows},

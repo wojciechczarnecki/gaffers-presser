@@ -10,6 +10,7 @@ from app.presser.facts.stats import (
     GOAL_FROM_NOTHING_BELOW_XG,
     HAT_TRICK_MIN_GOALS,
     KEEPER_WALL_MIN_SAVE_POINTS,
+    OWN_KIND_STATS,
 )
 from app.presser.facts.table import RIVALRY_MIN_NEIGHBOUR_GAMEWEEKS
 
@@ -159,6 +160,34 @@ def _pair_exists(sheet: FactSheet, moment) -> bool:
     )
 
 
+def _check_moment_breakdown(moment) -> list[str]:
+    problems: list[str] = []
+    if moment.kind != "player" and moment.breakdown is not None:
+        problems.append("key moments: breakdown or multipliers on a kind that has none")
+    if moment.kind not in ("player", "bonus_missed_by_one") and (
+        moment.ahead_multiplier is not None or moment.behind_multiplier is not None
+    ):
+        problems.append("key moments: breakdown or multipliers on a kind that has none")
+    if moment.breakdown is None:
+        return problems
+    ahead, behind = moment.ahead_multiplier, moment.behind_multiplier
+    if ahead is None or behind is None:
+        return problems + ["breakdown: does not sum to the player's points"]
+    total = sum(entry.points for entry in moment.breakdown)
+    if moment.ahead_points != total * ahead or moment.behind_points != total * behind:
+        problems.append("breakdown: does not sum to the player's points")
+    for entry in moment.breakdown:
+        if entry.swing != entry.points * (ahead - behind):
+            problems.append(
+                "key moments: a breakdown swing does not match its points and multipliers"
+            )
+        if entry.decisive != (
+            entry.swing >= moment.margin and entry.identifier not in OWN_KIND_STATS
+        ):
+            problems.append("key moments: decisive does not match the swing and the margin")
+    return problems
+
+
 def _check_key_moments(sheet: FactSheet) -> list[str]:
     problems: list[str] = []
     if len(sheet.key_moments) > MAX_KEY_MOMENTS:
@@ -167,12 +196,16 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
     if len(winner_margins) > 1:
         problems.append("key moments: winner pairs on different margins")
     for moment in sheet.key_moments:
+        decided = any(entry.decisive for entry in moment.breakdown or [])
         if moment.margin <= 0:
             problems.append("key moments: a margin is not positive")
-        if moment.swing < moment.margin:
+        if moment.swing < moment.margin and not decided:
             problems.append("key moments: a swing is below its margin")
-        if moment.swing != moment.ahead_points - moment.behind_points or moment.swing <= 0:
+        if moment.swing != moment.ahead_points - moment.behind_points or (
+            moment.swing <= 0 and not decided
+        ):
             problems.append("key moments: a swing does not match the points")
+        problems += _check_moment_breakdown(moment)
         if not _pair_exists(sheet, moment):
             problems.append("key moments: a pair is not a winner, a swap or a podium change")
     return problems

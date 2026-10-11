@@ -440,8 +440,8 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
       - Code as in Approach (hat-trick and keeper wall).
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_stats.py tests/presser/test_facts_matches.py tests/presser/test_facts_pitch.py tests/presser/test_facts_checks.py`
 
-- [ ] 6. **Key moments: breakdown, swing per stat and the decisive stat (AC3 moments, AC4,
-      AC5, the AC11 rules).** Files: `backend/app/presser/facts/moments.py`,
+- [x] 6. **Key moments: breakdown, swing per stat and the decisive stat (AC3 moments, AC4,
+      AC5, the AC11 rules).** `iterations: 1` Files: `backend/app/presser/facts/moments.py`,
       `backend/app/presser/facts/stats.py` (`moment_breakdown(entries, ahead_multiplier,
       behind_multiplier, margin) -> list[MomentStat]`), `backend/app/presser/facts/build.py`,
       `backend/app/presser/facts/checks.py`, `backend/tests/presser/test_facts_moments.py`,

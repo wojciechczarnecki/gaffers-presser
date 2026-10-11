@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from app.presser.facts.gameweek import BLANK_MAX_POINTS
 from app.presser.facts.load import MatchResult
-from app.presser.facts.schema import PlayerStats, StatPoints
+from app.presser.facts.schema import MomentStat, PlayerStats, StatPoints
 
 BIG_MISS_MIN_XG = Decimal("0.70")
 GOAL_FROM_NOTHING_BELOW_XG = Decimal("0.15")
@@ -40,3 +40,21 @@ def player_stat_facts(result: MatchResult) -> PlayerStats:
         and result.live.expected_goals >= BIG_MISS_MIN_XG,
         goal_from_nothing=goals >= 1 and result.live.expected_goals < GOAL_FROM_NOTHING_BELOW_XG,
     )
+
+
+def moment_breakdown(
+    entries: list[StatPoints] | None, ahead_multiplier: int, behind_multiplier: int, margin: int
+) -> list[MomentStat] | None:
+    if entries is None:
+        return None
+    result = []
+    for entry in entries:
+        swing = entry.points * (ahead_multiplier - behind_multiplier)
+        result.append(
+            MomentStat(
+                **dict(entry),
+                swing=swing,
+                decisive=swing >= margin and entry.identifier not in OWN_KIND_STATS,
+            )
+        )
+    return result

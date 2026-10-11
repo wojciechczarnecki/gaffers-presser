@@ -5,7 +5,7 @@ from app.presser.facts.load import MemberRow
 from app.presser.facts.matches import FixtureFact
 from app.presser.facts.moments import build_key_moments
 from app.presser.facts.schema import Table
-from tests.presser.helpers import LEAGUE_ID, SEASON, World, stats
+from tests.presser.helpers import LEAGUE_ID, SEASON, World, live, stats
 
 
 def sheet(world: World, gameweek: int = 5):
@@ -22,9 +22,11 @@ def world(db):
     return world
 
 
-def player(world, player_id, name, points, position=3, club=1, explain=None, minutes=90):
+def player(
+    world, player_id, name, points, position=3, club=1, explain=None, minutes=90, live_stats=None
+):
     world.player(player_id, name, position=position, club=club)
-    world.result(player_id, 5, minutes, points, explain=explain)
+    world.result(player_id, 5, minutes, points, explain=explain, live=live_stats)
 
 
 def pick(world, entry_id, points, starters, captain=None):
@@ -322,3 +324,97 @@ def test_podium_moments_before_rivalry_moments(race):
         ("rivalry", "Bartek", "Anna", "Riser", 25),
     ]
     assert check_fact_sheet(result) == []
+
+
+def entries(moment):
+    return {e.identifier: e for e in moment.breakdown}
+
+
+def test_player_moment_carries_breakdown_and_multipliers(world):
+    explain = [stats(501, minutes=(90, 2), goals_scored=(2, 10), bonus=(2, 2))]
+    player(world, 1, "Haulman", 14, explain=explain, live_stats=live(goals=2))
+    pick(world, 10, 70, [1], captain=1)
+    pick(world, 11, 60, [1])
+    pick(world, 12, 40, [])
+    (moment,) = moments(world)
+    assert (moment.ahead_multiplier, moment.behind_multiplier) == (2, 1)
+    assert (moment.ahead_points, moment.behind_points, moment.swing) == (28, 14, 14)
+    assert sum(e.points for e in moment.breakdown) == 14
+    assert [(e.identifier, e.value, e.points, e.swing, e.decisive) for e in moment.breakdown] == [
+        ("goals_scored", 2, 10, 10, True),
+        ("bonus", 2, 2, 2, False),
+        ("minutes", 90, 2, 2, False),
+    ]
+
+
+@pytest.mark.parametrize(("margin", "decisive"), [(3, True), (4, False), (5, False)])
+def test_breakdown_swing_and_decisive_boundary(world, margin, decisive):
+    explain = [stats(501, minutes=(90, 2), bonus=(3, 3))]
+    player(world, 1, "Captain", 5, explain=explain, live_stats=live())
+    pick(world, 10, 60, [1], captain=1)
+    pick(world, 11, 60 - margin, [1])
+    pick(world, 12, 10, [])
+    (moment,) = moments(world)
+    assert (moment.margin, moment.swing) == (margin, 5)
+    assert entries(moment)["bonus"].swing == 3
+    assert entries(moment)["bonus"].decisive is decisive
+
+
+def test_trailing_captains_yellow_card_decides_at_margin_1(world):
+    explain = [stats(501, minutes=(90, 2), yellow_cards=(1, -1))]
+    player(world, 1, "Booked", 1, explain=explain, live_stats=live())
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1], captain=1)
+    pick(world, 12, 10, [])
+    (moment,) = moments(world)
+    assert (moment.pair, moment.ahead, moment.behind, moment.margin) == (
+        "winner",
+        "Anna",
+        "Bartek",
+        1,
+    )
+    assert (moment.kind, moment.players, moment.swing) == ("player", ["Booked"], -2)
+    assert (moment.ahead_multiplier, moment.behind_multiplier) == (0, 2)
+    assert entries(moment)["yellow_cards"].swing == 2
+    assert entries(moment)["yellow_cards"].decisive is True
+    assert entries(moment)["minutes"].swing == -4
+    assert entries(moment)["minutes"].decisive is False
+
+
+def test_red_card_entry_never_decisive(world):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    explain = [stats(501, minutes=(40, 1), red_cards=(1, -3))]
+    player(world, 1, "Sent", -2, explain=explain, live_stats=live())
+    pick(world, 10, 60, [])
+    pick(world, 11, 58, [1])
+    pick(world, 12, 10, [])
+    result = moments(world)
+    (player_moment,) = [m for m in result if m.kind == "player"]
+    assert entries(player_moment)["red_cards"].swing == 3
+    assert entries(player_moment)["red_cards"].decisive is False
+    assert [m.kind for m in result if m.kind == "red_card"] == ["red_card"]
+
+
+def test_decisive_moment_ranks_by_its_decisive_swing(world):
+    booked = [stats(501, minutes=(90, 2), yellow_cards=(1, -1))]
+    zed = [stats(501, minutes=(90, 2), bonus=(1, 1))]
+    player(world, 1, "Apple", 1, explain=booked, live_stats=live())
+    player(world, 2, "Wee", 2, explain=[stats(501, minutes=(90, 2))], live_stats=live())
+    player(world, 3, "Zed", 3, explain=zed, live_stats=live())
+    pick(world, 10, 60, [2, 3])
+    pick(world, 11, 58, [1], captain=1)
+    pick(world, 12, 10, [])
+    assert [m.players[0] for m in moments(world)] == ["Zed", "Apple", "Wee"]
+
+
+def test_player_moment_without_live_stats_has_no_breakdown(world):
+    explain = [stats(501, minutes=(90, 2), yellow_cards=(1, -1))]
+    player(world, 1, "Booked", 1, explain=explain)
+    player(world, 2, "Haulman", 14)
+    pick(world, 10, 60, [2])
+    pick(world, 11, 59, [1], captain=1)
+    pick(world, 12, 10, [])
+    (moment,) = moments(world)
+    assert moment.players == ["Haulman"]
+    assert moment.breakdown is None
+    assert (moment.ahead_multiplier, moment.behind_multiplier) == (1, 0)

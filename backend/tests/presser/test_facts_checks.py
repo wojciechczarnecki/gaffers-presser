@@ -485,6 +485,103 @@ def test_inconsistent_v4_fact_is_reported(expected, mutate):
     assert expected in problems_after(mutate, recompute=False)
 
 
+def moment_entries(*entries):
+    return [
+        {"identifier": i, "value": v, "points": p, "swing": w, "decisive": d}
+        for i, v, p, w, d in entries
+    ]
+
+
+BREAKDOWN_MOMENT = {
+    "ahead_multiplier": 1,
+    "behind_multiplier": 0,
+    "breakdown": moment_entries(("minutes", 90, 2, 2, False), ("goals_scored", 1, 12, 12, True)),
+}
+
+
+def with_entry(index: int, **changes):
+    entries = [dict(entry) for entry in BREAKDOWN_MOMENT["breakdown"]]
+    entries[index] |= changes
+    return BREAKDOWN_MOMENT | {"breakdown": entries}
+
+
+RED_ENTRY_MOMENT = {
+    "margin": 2,
+    "ahead_multiplier": 0,
+    "behind_multiplier": 1,
+    "ahead_points": 0,
+    "behind_points": -2,
+    "swing": 2,
+}
+
+
+@pytest.mark.parametrize(
+    ("expected", "mutate"),
+    [
+        (
+            "breakdown: does not sum to the player's points",
+            add_moments(BREAKDOWN_MOMENT | {"ahead_points": 15, "swing": 15}),
+        ),
+        (
+            "breakdown: does not sum to the player's points",
+            add_moments(BREAKDOWN_MOMENT | {"behind_multiplier": 1}),
+        ),
+        (
+            "key moments: a breakdown swing does not match its points and multipliers",
+            add_moments(with_entry(1, swing=11)),
+        ),
+        (
+            "key moments: decisive does not match the swing and the margin",
+            add_moments(with_entry(0, decisive=True)),
+        ),
+        (
+            "key moments: decisive does not match the swing and the margin",
+            add_moments(with_entry(1, decisive=False)),
+        ),
+        (
+            "key moments: decisive does not match the swing and the margin",
+            add_moments(
+                RED_ENTRY_MOMENT
+                | {
+                    "breakdown": moment_entries(
+                        ("minutes", 40, 1, -1, False), ("red_cards", 1, -3, 3, True)
+                    )
+                }
+            ),
+        ),
+        (
+            "key moments: a swing is below its margin",
+            add_moments(with_entry(1, decisive=False) | {"margin": 15}),
+        ),
+        (
+            "key moments: breakdown or multipliers on a kind that has none",
+            add_moments(BREAKDOWN_MOMENT | {"kind": "red_card"}),
+        ),
+        (
+            "key moments: breakdown or multipliers on a kind that has none",
+            add_moments({"kind": "clean_sheet_lost", "ahead_multiplier": 1}),
+        ),
+    ],
+)
+def test_inconsistent_v4_moment_is_reported(expected, mutate):
+    assert expected in problems_after(mutate, recompute=False)
+
+
+def test_negative_swing_moment_with_a_decisive_stat_is_consistent():
+    moment = {
+        "margin": 1,
+        "ahead_multiplier": 0,
+        "behind_multiplier": 2,
+        "ahead_points": 0,
+        "behind_points": 2,
+        "swing": -2,
+        "breakdown": moment_entries(
+            ("minutes", 90, 2, -4, False), ("yellow_cards", 1, -1, 2, True)
+        ),
+    }
+    assert problems_after(add_moments(moment)) == []
+
+
 def test_consistent_v4_stats_have_no_problems():
     full = breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 10))
     assert (
