@@ -534,7 +534,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
         - the header note at the top of the file is updated to eight sections and 2500.
       Automatic verification: `cd backend && uv run pytest -q tests/content/test_presser_content.py`
 
-- [ ] 11. **Evaluation set v3: layout, team pseudonyms, synthetic cases (AC17 synthetic
+- [x] 11. **Evaluation set v3: layout, team pseudonyms, synthetic cases (AC17 synthetic `iterations: 0`
       part).** Files: `git mv backend/evals/presser/v2 backend/evals/presser/v3`,
       `app/presser/evaluation/cases.py`, `app/presser/evaluation/building.py`,
       `app/presser/evaluation/cli.py` (help texts "set v3"),

@@ -6,6 +6,7 @@ from app.presser.evaluation import building
 from app.presser.evaluation.building import (
     PseudonymisationError,
     Pseudonyms,
+    assign_pseudonyms,
     build_real_cases,
 )
 from app.presser.evaluation.cases import HistoryEntry
@@ -167,3 +168,22 @@ def test_build_pseudonymises_overall_and_personal_names(db):
     }
     assert named and named <= pool
     assert "Zenobiusz" not in case.model_dump_json()
+
+
+def test_build_pseudonymises_team_names(db, world):
+    built = build(db)
+    for case in built.cases:
+        assert {row.team_name for row in case.facts.table.rows} <= set(TEAMS)
+
+
+def test_real_team_name_left_raises(db, world, monkeypatch):
+    real = assign_pseudonyms
+
+    def leaky(entry_ids, pool, seed, alias):
+        if alias.endswith("-teams"):
+            return {entry: "Haaland Army" for entry in entry_ids}
+        return real(entry_ids, pool, seed, alias)
+
+    monkeypatch.setattr(building, "assign_pseudonyms", leaky)
+    with pytest.raises(PseudonymisationError):
+        build(db)
