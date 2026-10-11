@@ -9,7 +9,9 @@ from app.presser.facts.load import (
     load_auto_subs,
     load_bench_picks,
     load_captain_refs,
+    load_club_fixture_counts,
     load_club_names,
+    load_fixture_bonus,
     load_fixtures,
     load_league_name,
     load_manager_names,
@@ -30,6 +32,7 @@ from app.presser.facts.overall import build_overall
 from app.presser.facts.pitch import build_pitch
 from app.presser.facts.schema import FactSheet, empty_sections
 from app.presser.facts.season import build_season
+from app.presser.facts.stats import bonus_near_misses, player_stat_facts
 from app.presser.facts.table import build_table, podium_changes, rivalry_swaps
 from app.presser.names import display_names
 
@@ -84,12 +87,13 @@ def build_fact_sheet(
     positions = load_player_positions(session, season, squad_players)
     match_results = load_match_results(session, season, gameweek, squad_players)
     player_info = load_player_info(session, season, squad_players)
-    fixtures = load_fixtures(
-        session,
-        season,
-        {item.fixture_id for result in match_results.values() for item in result.fixtures},
-    )
+    fixture_ids = {item.fixture_id for result in match_results.values() for item in result.fixtures}
+    fixtures = load_fixtures(session, season, fixture_ids)
+    near_misses = bonus_near_misses(load_fixture_bonus(session, season, fixture_ids))
     facts = fixture_facts(match_results, player_info, fixtures)
+    player_facts = {
+        player_id: player_stat_facts(result) for player_id, result in match_results.items()
+    }
     gameweek_squads = {
         row.entry_id: squads[(row.entry_id, gameweek)]
         for row in rows
@@ -122,7 +126,9 @@ def build_fact_sheet(
         average_net_points=average,
         winners=winners,
         flops=flops,
-        captaincy=gw_rules.captaincy(rows, refs, results, names, player_names, gameweek),
+        captaincy=gw_rules.captaincy(
+            rows, refs, results, names, player_names, gameweek, player_facts
+        ),
         bench_transfers=gw_rules.build_bench_transfers(
             rows, bench_picks, transfers, auto_subs, results, names, player_names, gameweek
         ),
@@ -155,6 +161,9 @@ def build_fact_sheet(
         player_info,
         club_names,
         facts,
+        player_facts,
+        near_misses,
+        load_club_fixture_counts(session, season, gameweek),
     )
     sheet.pitch = build_pitch(
         {row.entry_id: names[row.entry_id] for row in rows},
@@ -167,6 +176,7 @@ def build_fact_sheet(
         load_ownership(session, season, gameweek),
         {player for moment in sheet.key_moments for player in moment.players},
         len(rows),
+        player_facts,
     )
     sheet.overall = build_overall(rows, previous, names, gameweek)
     sheet.season_facts = season_facts

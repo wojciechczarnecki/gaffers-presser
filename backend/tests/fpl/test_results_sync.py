@@ -5,7 +5,7 @@ import pytest
 from sqlmodel import select
 
 from app.fpl.errors import JobError
-from app.fpl.models import Fixture, PlayerGameweekResult, RawPayload
+from app.fpl.models import Fixture, PlayerFixtureStat, PlayerGameweekResult, RawPayload
 from app.fpl.reference import apply_bootstrap
 from app.fpl.results import sync_results
 from app.fpl.schemas import Bootstrap
@@ -47,6 +47,7 @@ def test_results_stored_and_archived(db_session):
         assert row.total_points == el["stats"]["total_points"]
 
         assert row.explain == el["explain"]
+        assert row.live_stats == el["stats"]
 
     archive = {a.endpoint: a for a in db_session.exec(select(RawPayload)).all()}
     assert set(archive) == {"event/1/live", "fixtures"}
@@ -65,6 +66,80 @@ def test_results_stored_and_archived(db_session):
             f["team_h_score"],
             f["team_a_score"],
         )
+
+
+def _stored_fixture_stats(session) -> set[tuple]:
+    return {
+        (r.fixture_fpl_id, r.identifier, r.player_fpl_id, r.value, r.side)
+        for r in session.exec(select(PlayerFixtureStat)).all()
+    }
+
+
+def _payload_fixture_stats(fixtures: list[dict], gameweek: int) -> set[tuple]:
+    return {
+        (f["id"], stat["identifier"], entry["element"], entry["value"], side)
+        for f in fixtures
+        if f["event"] == gameweek
+        for stat in f["stats"]
+        for side in ("h", "a")
+        for entry in stat[side]
+    }
+
+
+def test_fixture_stats_stored_per_player_and_fixture(db_session):
+    _load_reference(db_session)
+    fixtures_payload = load("fixtures")
+    sync_results(db_session, _client(fixtures=fixtures_payload), 1, NOW)
+    db_session.commit()
+
+    expected = _payload_fixture_stats(fixtures_payload, 1)
+    assert expected
+    assert {identifier for _, identifier, *_ in expected} >= {"bps", "bonus", "goals_scored"}
+    assert _stored_fixture_stats(db_session) == expected
+
+
+def test_fixture_stat_of_an_unknown_player_skipped(db_session):
+    _load_reference(db_session)
+    fixtures_payload = load("fixtures")
+    known = {e["id"] for e in load("bootstrap-static")["elements"]}
+    unknown = max(known) + 1000
+    target = next(
+        stat for f in fixtures_payload if f["event"] == 1 for stat in f["stats"] if stat["h"]
+    )
+    target["h"].append({"element": unknown, "value": 1})
+
+    sync_results(db_session, _client(fixtures=fixtures_payload), 1, NOW)
+    db_session.commit()
+
+    stored = _stored_fixture_stats(db_session)
+    assert stored
+    assert not [row for row in stored if row[2] == unknown]
+    expected = {row for row in _payload_fixture_stats(fixtures_payload, 1) if row[2] != unknown}
+    assert stored == expected
+
+
+def test_resync_replaces_fixture_stats(db_session):
+    _load_reference(db_session)
+    sync_results(db_session, _client(), 1, NOW)
+    db_session.commit()
+
+    trimmed = load("fixtures")
+    removed = next(
+        (f, stat)
+        for f in trimmed
+        if f["event"] == 1
+        for stat in f["stats"]
+        if stat["identifier"] == "yellow_cards" and (stat["h"] or stat["a"])
+    )
+    removed[1]["h"] = []
+    removed[1]["a"] = []
+    sync_results(db_session, _client(fixtures=trimmed), 1, NOW)
+    db_session.commit()
+
+    assert _stored_fixture_stats(db_session) == _payload_fixture_stats(trimmed, 1)
+    assert not [
+        t for t in _stored_fixture_stats(db_session) if t[:2] == (removed[0]["id"], "yellow_cards")
+    ]
 
 
 def test_double_gameweek(db_session):

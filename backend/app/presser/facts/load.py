@@ -14,6 +14,7 @@ from app.fpl.models import (
     ManagerPick,
     ManagerTransfer,
     Player,
+    PlayerFixtureStat,
     PlayerGameweekResult,
     Team,
 )
@@ -65,11 +66,25 @@ class FixtureStats:
 
 
 @dataclass(frozen=True)
+class LiveLine:
+    expected_goals: Decimal
+    expected_assists: Decimal
+    expected_goals_conceded: Decimal
+
+
+@dataclass(frozen=True)
 class MatchResult:
     starts: int
     minutes: int
     points: int
     fixtures: tuple[FixtureStats, ...]
+    live: LiveLine | None = None
+
+
+@dataclass(frozen=True)
+class FixtureBonus:
+    bps: dict[int, int]
+    bonus: dict[int, int]
 
 
 @dataclass(frozen=True)
@@ -296,6 +311,43 @@ def load_player_positions(session: Session, season: str, player_ids: set[int]) -
     return dict(rows)
 
 
+LIVE_KEYS = ("expected_goals", "expected_assists", "expected_goals_conceded")
+
+
+def _live_line(live_stats: dict | None) -> LiveLine | None:
+    # a missing field degrades to "no stats" instead of failing the build
+    if live_stats is None or any(live_stats.get(key) is None for key in LIVE_KEYS):
+        return None
+    return LiveLine(*(Decimal(str(live_stats[key])) for key in LIVE_KEYS))
+
+
+def _fixture_stats(item: dict) -> FixtureStats:
+    # FPL's points_modification is a correction to the stat's points
+    return FixtureStats(
+        item["fixture"],
+        {
+            stat["identifier"]: StatLine(
+                stat["value"], stat["points"] + stat.get("points_modification", 0)
+            )
+            for stat in item["stats"]
+        },
+    )
+
+
+def _match_result(row: PlayerGameweekResult) -> MatchResult:
+    fixtures = tuple(_fixture_stats(item) for item in row.explain)
+    summed = sum(line.points for fixture in fixtures for line in fixture.stats.values())
+    # a breakdown that does not sum to the points is not told: the player has no stats
+    live = _live_line(row.live_stats) if summed == row.total_points else None
+    return MatchResult(
+        starts=row.starts,
+        minutes=row.minutes,
+        points=row.total_points,
+        fixtures=fixtures,
+        live=live,
+    )
+
+
 def load_match_results(
     session: Session, season: str, gameweek: int, player_ids: set[int]
 ) -> dict[int, MatchResult]:
@@ -308,24 +360,7 @@ def load_match_results(
             col(PlayerGameweekResult.player_fpl_id).in_(player_ids),
         )
     ).all()
-    return {
-        row.player_fpl_id: MatchResult(
-            starts=row.starts,
-            minutes=row.minutes,
-            points=row.total_points,
-            fixtures=tuple(
-                FixtureStats(
-                    item["fixture"],
-                    {
-                        stat["identifier"]: StatLine(stat["value"], stat["points"])
-                        for stat in item["stats"]
-                    },
-                )
-                for item in row.explain
-            ),
-        )
-        for row in rows
-    }
+    return {row.player_fpl_id: _match_result(row) for row in rows}
 
 
 def load_player_info(session: Session, season: str, ids: set[int]) -> dict[int, PlayerInfo]:
@@ -376,3 +411,40 @@ def load_team_names(session: Session, season: str, league_id: int) -> dict[int, 
         )
     ).all()
     return dict(rows)
+
+
+def load_fixture_bonus(
+    session: Session, season: str, fixture_ids: set[int]
+) -> dict[int, FixtureBonus]:
+    if not fixture_ids:
+        return {}
+    rows = session.exec(
+        select(
+            PlayerFixtureStat.fixture_fpl_id,
+            PlayerFixtureStat.player_fpl_id,
+            PlayerFixtureStat.identifier,
+            PlayerFixtureStat.value,
+        ).where(
+            PlayerFixtureStat.season == season,
+            col(PlayerFixtureStat.fixture_fpl_id).in_(fixture_ids),
+            col(PlayerFixtureStat.identifier).in_(("bps", "bonus")),
+        )
+    ).all()
+    result: dict[int, FixtureBonus] = {}
+    for fixture_id, player_id, identifier, value in rows:
+        entry = result.setdefault(fixture_id, FixtureBonus(bps={}, bonus={}))
+        (entry.bps if identifier == "bps" else entry.bonus)[player_id] = value
+    return result
+
+
+def load_club_fixture_counts(session: Session, season: str, gameweek: int) -> dict[int, int]:
+    rows = session.exec(
+        select(Fixture.team_h_fpl_id, Fixture.team_a_fpl_id).where(
+            Fixture.season == season, Fixture.gameweek_fpl_id == gameweek
+        )
+    ).all()
+    counts: dict[int, int] = {}
+    for home, away in rows:
+        counts[home] = counts.get(home, 0) + 1
+        counts[away] = counts.get(away, 0) + 1
+    return counts

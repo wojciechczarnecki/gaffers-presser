@@ -395,6 +395,290 @@ def test_inconsistent_v3_fact_is_reported(expected, mutate):
     assert expected in problems_after(mutate, recompute=False)
 
 
+CAPTAIN_PICK = {
+    "manager": "Bartas",
+    "player": "Alpha",
+    "base_points": 12,
+    "multiplier": 2,
+    "points": 24,
+    "triple_captain": False,
+    "vice_stepped_in": False,
+    "blank": False,
+}
+
+
+def add_pitch(**changes):
+    def mutate(value):
+        value.pitch = value.pitch.model_validate({"items": [PITCH_ITEM | changes]})
+
+    return mutate
+
+
+def add_captain(**changes):
+    def mutate(value):
+        value.captaincy = value.captaincy.model_validate({"picks": [CAPTAIN_PICK | changes]})
+
+    return mutate
+
+
+def breakdown_of(*entries):
+    return [{"identifier": i, "value": v, "points": p} for i, v, p in entries]
+
+
+@pytest.mark.parametrize(
+    ("expected", "mutate"),
+    [
+        (
+            "breakdown: does not sum to the player's points",
+            add_pitch(breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 9))),
+        ),
+        (
+            "breakdown: does not sum to the player's points",
+            add_captain(breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 9))),
+        ),
+        (
+            "xG: a flag does not match the thresholds",
+            add_pitch(
+                points=3,
+                breakdown=breakdown_of(("minutes", 90, 3)),
+                expected_goals="0.90",
+                big_miss=True,
+                goal_from_nothing=False,
+            ),
+        ),
+        (
+            "xG: a flag does not match the thresholds",
+            add_pitch(
+                points=7,
+                breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 5)),
+                expected_goals="0.15",
+                big_miss=False,
+                goal_from_nothing=True,
+            ),
+        ),
+        ("xG: a flag does not match the thresholds", add_pitch(big_miss=True)),
+        ("pitch: a hat-trick without 3 goals", add_pitch(kinds=["hat_trick"])),
+        (
+            "pitch: a hat-trick without 3 goals",
+            add_pitch(
+                kinds=["hat_trick"],
+                points=12,
+                breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 2, 10)),
+            ),
+        ),
+        ("pitch: a keeper wall without 2 save points", add_pitch(kinds=["keeper_wall"])),
+        (
+            "pitch: a keeper wall without 2 save points",
+            add_pitch(
+                kinds=["keeper_wall"],
+                points=3,
+                breakdown=breakdown_of(("minutes", 90, 2), ("saves", 5, 1)),
+            ),
+        ),
+        (
+            "xG: a flag does not match the thresholds",
+            add_captain(expected_goals="0.80", big_miss=True, goal_from_nothing=False),
+        ),
+    ],
+)
+def test_inconsistent_v4_fact_is_reported(expected, mutate):
+    assert expected in problems_after(mutate, recompute=False)
+
+
+def moment_entries(*entries):
+    return [
+        {"identifier": i, "value": v, "points": p, "swing": w, "decisive": d}
+        for i, v, p, w, d in entries
+    ]
+
+
+BREAKDOWN_MOMENT = {
+    "ahead_multiplier": 1,
+    "behind_multiplier": 0,
+    "breakdown": moment_entries(("minutes", 90, 2, 2, False), ("goals_scored", 1, 12, 12, True)),
+}
+
+
+def with_entry(index: int, **changes):
+    entries = [dict(entry) for entry in BREAKDOWN_MOMENT["breakdown"]]
+    entries[index] |= changes
+    return BREAKDOWN_MOMENT | {"breakdown": entries}
+
+
+RED_ENTRY_MOMENT = {
+    "margin": 2,
+    "ahead_multiplier": 0,
+    "behind_multiplier": 1,
+    "ahead_points": 0,
+    "behind_points": -2,
+    "swing": 2,
+}
+
+
+@pytest.mark.parametrize(
+    ("expected", "mutate"),
+    [
+        (
+            "breakdown: does not sum to the player's points",
+            add_moments(BREAKDOWN_MOMENT | {"ahead_points": 15, "swing": 15}),
+        ),
+        (
+            "breakdown: does not sum to the player's points",
+            add_moments(BREAKDOWN_MOMENT | {"behind_multiplier": 1}),
+        ),
+        (
+            "key moments: a breakdown swing does not match its points and multipliers",
+            add_moments(with_entry(1, swing=11)),
+        ),
+        (
+            "key moments: decisive does not match the swing and the margin",
+            add_moments(with_entry(0, decisive=True)),
+        ),
+        (
+            "key moments: decisive does not match the swing and the margin",
+            add_moments(with_entry(1, decisive=False)),
+        ),
+        (
+            "key moments: decisive does not match the swing and the margin",
+            add_moments(with_entry(1, decisive=False) | {"margin": 12}),
+        ),
+        (
+            "key moments: decisive does not match the swing and the margin",
+            add_moments(with_entry(0, decisive=True) | {"margin": 2}),
+        ),
+        (
+            "key moments: decisive does not match the swing and the margin",
+            add_moments(
+                RED_ENTRY_MOMENT
+                | {
+                    "breakdown": moment_entries(
+                        ("minutes", 40, 1, -1, False), ("red_cards", 1, -3, 3, True)
+                    )
+                }
+            ),
+        ),
+        (
+            "key moments: a swing is below its margin",
+            add_moments(with_entry(1, decisive=False) | {"margin": 15}),
+        ),
+        (
+            "key moments: breakdown or multipliers on a kind that has none",
+            add_moments(BREAKDOWN_MOMENT | {"kind": "red_card"}),
+        ),
+        (
+            "key moments: breakdown or multipliers on a kind that has none",
+            add_moments({"kind": "clean_sheet_lost", "ahead_multiplier": 1}),
+        ),
+    ],
+)
+def test_inconsistent_v4_moment_is_reported(expected, mutate):
+    assert expected in problems_after(mutate, recompute=False)
+
+
+def test_decisive_entry_at_a_swing_equal_to_the_margin_has_no_problems():
+    assert problems_after(add_moments(BREAKDOWN_MOMENT | {"margin": 12})) == []
+
+
+MISSED_MOMENT = {
+    "kind": "bonus_missed_by_one",
+    "margin": 1,
+    "ahead_multiplier": 0,
+    "behind_multiplier": 2,
+    "ahead_points": 0,
+    "behind_points": 2,
+    "swing": 2,
+    "missed_bonus": 1,
+}
+
+
+@pytest.mark.parametrize(
+    ("expected", "mutate"),
+    [
+        (
+            "key moments: a missed bonus swing is below its margin",
+            add_moments(MISSED_MOMENT | {"margin": 3}),
+        ),
+        (
+            "key moments: a swing does not match the points",
+            add_moments(MISSED_MOMENT | {"swing": 1}),
+        ),
+        (
+            "key moments: a swing does not match the points",
+            add_moments(MISSED_MOMENT | {"missed_bonus": 2}),
+        ),
+        (
+            "key moments: a swing does not match the points",
+            add_moments(MISSED_MOMENT | {"missed_bonus": None}),
+        ),
+        (
+            "key moments: missed_bonus on a kind that has none",
+            add_moments({"missed_bonus": 1}),
+        ),
+        (
+            "key moments: expected goals conceded outside a lost clean sheet",
+            add_moments({"expected_goals_conceded": "1.20"}),
+        ),
+    ],
+)
+def test_inconsistent_missed_bonus_is_reported(expected, mutate):
+    assert expected in problems_after(mutate, recompute=False)
+
+
+def test_lost_clean_sheet_with_xgc_is_consistent():
+    moment = {
+        "kind": "clean_sheet_lost",
+        "margin": 4,
+        "ahead_points": 0,
+        "behind_points": -4,
+        "swing": 4,
+        "expected_goals_conceded": "1.40",
+    }
+    assert problems_after(add_moments(moment)) == []
+
+
+def test_consistent_missed_bonus_has_no_problems():
+    assert problems_after(add_moments(MISSED_MOMENT)) == []
+
+
+def test_negative_swing_moment_with_a_decisive_stat_is_consistent():
+    moment = {
+        "margin": 1,
+        "ahead_multiplier": 0,
+        "behind_multiplier": 2,
+        "ahead_points": 0,
+        "behind_points": 2,
+        "swing": -2,
+        "breakdown": moment_entries(
+            ("minutes", 90, 2, -4, False), ("yellow_cards", 1, -1, 2, True)
+        ),
+    }
+    assert problems_after(add_moments(moment)) == []
+
+
+def test_consistent_v4_stats_have_no_problems():
+    full = breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 10))
+    assert (
+        problems_after(
+            lambda v: (
+                add_pitch(
+                    breakdown=full,
+                    expected_goals="0.10",
+                    expected_assists="0.00",
+                    big_miss=False,
+                    goal_from_nothing=True,
+                )(v),
+                add_captain(
+                    breakdown=full,
+                    expected_goals="0.10",
+                    big_miss=False,
+                    goal_from_nothing=True,
+                )(v),
+            )
+        )
+        == []
+    )
+
+
 def test_chips_and_pitch_sections_consistent_when_listed():
     assert (
         problems_after(

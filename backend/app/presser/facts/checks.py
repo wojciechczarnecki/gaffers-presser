@@ -1,7 +1,17 @@
+from decimal import Decimal
+
 from app.presser.facts import ranks
+from app.presser.facts.gameweek import BLANK_MAX_POINTS
 from app.presser.facts.moments import MAX_KEY_MOMENTS
 from app.presser.facts.pitch import MAX_PITCH_ITEMS
-from app.presser.facts.schema import FactSheet, empty_sections
+from app.presser.facts.schema import FactSheet, PlayerStats, empty_sections
+from app.presser.facts.stats import (
+    BIG_MISS_MIN_XG,
+    GOAL_FROM_NOTHING_BELOW_XG,
+    HAT_TRICK_MIN_GOALS,
+    KEEPER_WALL_MIN_SAVE_POINTS,
+    can_decide,
+)
 from app.presser.facts.table import RIVALRY_MIN_NEIGHBOUR_GAMEWEEKS
 
 
@@ -150,6 +160,44 @@ def _pair_exists(sheet: FactSheet, moment) -> bool:
     )
 
 
+def _missed_bonus_matches(moment) -> bool:
+    ahead, behind, bonus = moment.ahead_multiplier, moment.behind_multiplier, moment.missed_bonus
+    if ahead is None or behind is None or bonus is None or bonus <= 0:
+        return False
+    return (
+        moment.ahead_points == bonus * ahead
+        and moment.behind_points == bonus * behind
+        and moment.swing == moment.behind_points - moment.ahead_points
+        and moment.swing > 0
+    )
+
+
+def _check_moment_breakdown(moment) -> list[str]:
+    problems: list[str] = []
+    if moment.kind != "player" and moment.breakdown is not None:
+        problems.append("key moments: breakdown or multipliers on a kind that has none")
+    if moment.kind not in ("player", "bonus_missed_by_one") and (
+        moment.ahead_multiplier is not None or moment.behind_multiplier is not None
+    ):
+        problems.append("key moments: breakdown or multipliers on a kind that has none")
+    if moment.breakdown is None:
+        return problems
+    ahead, behind = moment.ahead_multiplier, moment.behind_multiplier
+    if ahead is None or behind is None:
+        return problems + ["breakdown: does not sum to the player's points"]
+    total = sum(entry.points for entry in moment.breakdown)
+    if moment.ahead_points != total * ahead or moment.behind_points != total * behind:
+        problems.append("breakdown: does not sum to the player's points")
+    for entry in moment.breakdown:
+        if entry.swing != entry.points * (ahead - behind):
+            problems.append(
+                "key moments: a breakdown swing does not match its points and multipliers"
+            )
+        if entry.decisive != (entry.swing >= moment.margin and can_decide(entry.identifier)):
+            problems.append("key moments: decisive does not match the swing and the margin")
+    return problems
+
+
 def _check_key_moments(sheet: FactSheet) -> list[str]:
     problems: list[str] = []
     if len(sheet.key_moments) > MAX_KEY_MOMENTS:
@@ -158,14 +206,50 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
     if len(winner_margins) > 1:
         problems.append("key moments: winner pairs on different margins")
     for moment in sheet.key_moments:
+        decided = any(entry.decisive for entry in moment.breakdown or [])
         if moment.margin <= 0:
             problems.append("key moments: a margin is not positive")
-        if moment.swing < moment.margin:
-            problems.append("key moments: a swing is below its margin")
-        if moment.swing != moment.ahead_points - moment.behind_points or moment.swing <= 0:
+        missed = moment.kind == "bonus_missed_by_one"
+        if moment.swing < moment.margin and not decided:
+            problems.append(
+                "key moments: a missed bonus swing is below its margin"
+                if missed
+                else "key moments: a swing is below its margin"
+            )
+        if missed:
+            if not _missed_bonus_matches(moment):
+                problems.append("key moments: a swing does not match the points")
+        elif moment.swing != moment.ahead_points - moment.behind_points or (
+            moment.swing <= 0 and not decided
+        ):
             problems.append("key moments: a swing does not match the points")
+        if moment.missed_bonus is not None and not missed:
+            problems.append("key moments: missed_bonus on a kind that has none")
+        if moment.expected_goals_conceded is not None and moment.kind != "clean_sheet_lost":
+            problems.append("key moments: expected goals conceded outside a lost clean sheet")
+        problems += _check_moment_breakdown(moment)
         if not _pair_exists(sheet, moment):
             problems.append("key moments: a pair is not a winner, a swap or a podium change")
+    return problems
+
+
+def _check_player_stats(points: int, facts: PlayerStats) -> list[str]:
+    problems: list[str] = []
+    if facts.breakdown is not None and sum(entry.points for entry in facts.breakdown) != points:
+        problems.append("breakdown: does not sum to the player's points")
+    goals = 0
+    if facts.breakdown is not None:
+        goals = sum(e.value for e in facts.breakdown if e.identifier == "goals_scored")
+    xg: Decimal | None = facts.expected_goals
+    if xg is None:
+        expected = (None, None)
+    else:
+        expected = (
+            points <= BLANK_MAX_POINTS and xg >= BIG_MISS_MIN_XG,
+            goals >= 1 and xg < GOAL_FROM_NOTHING_BELOW_XG,
+        )
+    if (facts.big_miss, facts.goal_from_nothing) != expected:
+        problems.append("xG: a flag does not match the thresholds")
     return problems
 
 
@@ -220,6 +304,20 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
     for pick in sheet.captaincy.picks:
         if pick.points != pick.base_points * pick.multiplier:
             problems.append("captaincy: points do not match base points and multiplier")
+        problems += _check_player_stats(pick.base_points, pick)
+    for item in sheet.pitch.items:
+        problems += _check_player_stats(item.points, item)
+        # the breakdown sums a double gameweek's fixtures, so these two rules cannot tell 2 + 1
+        # goals from a hat-trick in one fixture: the builder counts per fixture (matches.py)
+        entries = {entry.identifier: entry for entry in item.breakdown or []}
+        goals = entries.get("goals_scored")
+        saves = entries.get("saves")
+        if "hat_trick" in item.kinds and (goals is None or goals.value < HAT_TRICK_MIN_GOALS):
+            problems.append("pitch: a hat-trick without 3 goals")
+        if "keeper_wall" in item.kinds and (
+            saves is None or saves.points < KEEPER_WALL_MIN_SAVE_POINTS
+        ):
+            problems.append("pitch: a keeper wall without 2 save points")
 
     if sheet.empty_sections != empty_sections(sheet):
         problems.append("empty_sections does not match the sections")

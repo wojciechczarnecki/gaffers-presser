@@ -1,11 +1,14 @@
+from decimal import Decimal
+
 import pytest
 
+from app.fpl.models import Player
 from app.presser.facts import build_fact_sheet, check_fact_sheet
 from app.presser.facts.load import MemberRow
 from app.presser.facts.matches import FixtureFact
 from app.presser.facts.moments import build_key_moments
 from app.presser.facts.schema import Table
-from tests.presser.helpers import LEAGUE_ID, SEASON, World, stats
+from tests.presser.helpers import LEAGUE_ID, SEASON, World, live, stats
 
 
 def sheet(world: World, gameweek: int = 5):
@@ -22,9 +25,11 @@ def world(db):
     return world
 
 
-def player(world, player_id, name, points, position=3, club=1, explain=None, minutes=90):
+def player(
+    world, player_id, name, points, position=3, club=1, explain=None, minutes=90, live_stats=None
+):
     world.player(player_id, name, position=position, club=club)
-    world.result(player_id, 5, minutes, points, explain=explain)
+    world.result(player_id, 5, minutes, points, explain=explain, live=live_stats)
 
 
 def pick(world, entry_id, points, starters, captain=None):
@@ -322,3 +327,303 @@ def test_podium_moments_before_rivalry_moments(race):
         ("rivalry", "Bartek", "Anna", "Riser", 25),
     ]
     assert check_fact_sheet(result) == []
+
+
+def entries(moment):
+    return {e.identifier: e for e in moment.breakdown}
+
+
+def test_player_moment_carries_breakdown_and_multipliers(world):
+    explain = [stats(501, minutes=(90, 2), goals_scored=(2, 10), bonus=(2, 2))]
+    player(world, 1, "Haulman", 14, explain=explain, live_stats=live(goals=2))
+    pick(world, 10, 70, [1], captain=1)
+    pick(world, 11, 60, [1])
+    pick(world, 12, 40, [])
+    (moment,) = moments(world)
+    assert (moment.ahead_multiplier, moment.behind_multiplier) == (2, 1)
+    assert (moment.ahead_points, moment.behind_points, moment.swing) == (28, 14, 14)
+    assert sum(e.points for e in moment.breakdown) == 14
+    assert [(e.identifier, e.value, e.points, e.swing, e.decisive) for e in moment.breakdown] == [
+        ("goals_scored", 2, 10, 10, True),
+        ("bonus", 2, 2, 2, False),
+        ("minutes", 90, 2, 2, False),
+    ]
+
+
+@pytest.mark.parametrize(("margin", "decisive"), [(3, True), (4, False), (5, False)])
+def test_breakdown_swing_and_decisive_boundary(world, margin, decisive):
+    explain = [stats(501, minutes=(90, 2), bonus=(3, 3))]
+    player(world, 1, "Captain", 5, explain=explain, live_stats=live())
+    pick(world, 10, 60, [1], captain=1)
+    pick(world, 11, 60 - margin, [1])
+    pick(world, 12, 10, [])
+    (moment,) = moments(world)
+    assert (moment.margin, moment.swing) == (margin, 5)
+    assert entries(moment)["bonus"].swing == 3
+    assert entries(moment)["bonus"].decisive is decisive
+
+
+def test_trailing_captains_yellow_card_decides_at_margin_1(world):
+    explain = [stats(501, minutes=(90, 2), yellow_cards=(1, -1))]
+    player(world, 1, "Booked", 1, explain=explain, live_stats=live())
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1], captain=1)
+    pick(world, 12, 10, [])
+    (moment,) = moments(world)
+    assert (moment.pair, moment.ahead, moment.behind, moment.margin) == (
+        "winner",
+        "Anna",
+        "Bartek",
+        1,
+    )
+    assert (moment.kind, moment.players, moment.swing) == ("player", ["Booked"], -2)
+    assert (moment.ahead_multiplier, moment.behind_multiplier) == (0, 2)
+    assert entries(moment)["yellow_cards"].swing == 2
+    assert entries(moment)["yellow_cards"].decisive is True
+    assert entries(moment)["minutes"].swing == -4
+    assert entries(moment)["minutes"].decisive is False
+
+
+@pytest.mark.parametrize(
+    ("identifier", "points", "kind"),
+    [
+        ("red_cards", -3, "red_card"),
+        ("own_goals", -2, "own_goal"),
+        ("penalties_missed", -2, "penalty_missed"),
+    ],
+)
+def test_own_kind_entry_never_decisive(world, identifier, points, kind):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    explain = [stats(501, minutes=(40, 1), **{identifier: (1, points)})]
+    player(world, 1, "Sent", 1 + points, explain=explain, live_stats=live())
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    result = moments(world)
+    (player_moment,) = [m for m in result if m.kind == "player"]
+    assert entries(player_moment)[identifier].swing == -points
+    assert -points >= player_moment.margin
+    assert entries(player_moment)[identifier].decisive is False
+    assert [m.kind for m in result if m.kind == kind] == [kind]
+
+
+def test_minutes_entry_never_decisive(world):
+    # the ahead manager's starter: minutes swing 2 reaches the margin, the total swing 1 not
+    explain = [stats(501, minutes=(90, 2), yellow_cards=(1, -1))]
+    player(world, 1, "Starter", 1, explain=explain, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 58, [])
+    pick(world, 12, 10, [])
+    assert moments(world) == []
+
+
+def test_goals_conceded_entry_never_decisive(world):
+    # the trailing manager's defender: goals conceded swing 1 reaches the margin of 1
+    explain = [stats(501, minutes=(90, 2), goals_conceded=(2, -1))]
+    player(world, 1, "Leaky", 1, position=2, explain=explain, live_stats=live())
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    assert moments(world) == []
+
+
+def test_decisive_moment_ranks_by_its_decisive_swing(world):
+    booked = [stats(501, minutes=(90, 2), yellow_cards=(1, -1))]
+    zed = [stats(501, minutes=(90, 2), bonus=(1, 1))]
+    player(world, 1, "Apple", 1, explain=booked, live_stats=live())
+    player(world, 2, "Wee", 2, explain=[stats(501, minutes=(90, 2))], live_stats=live())
+    player(world, 3, "Zed", 3, explain=zed, live_stats=live())
+    pick(world, 10, 60, [2, 3])
+    pick(world, 11, 58, [1], captain=1)
+    pick(world, 12, 10, [])
+    assert [m.players[0] for m in moments(world)] == ["Zed", "Apple", "Wee"]
+
+
+def test_player_moment_without_live_stats_has_no_breakdown(world):
+    explain = [stats(501, minutes=(90, 2), yellow_cards=(1, -1))]
+    player(world, 1, "Booked", 1, explain=explain)
+    player(world, 2, "Haulman", 14)
+    pick(world, 10, 60, [2])
+    pick(world, 11, 59, [1], captain=1)
+    pick(world, 12, 10, [])
+    (moment,) = moments(world)
+    assert moment.players == ["Haulman"]
+    assert moment.breakdown is None
+    assert (moment.ahead_multiplier, moment.behind_multiplier) == (1, 0)
+
+
+def bonus_fixture(world, fixture_id, rows, near=None):
+    """rows: (player id, bps, bonus) of the bonus recipients; near: (player id, bps)."""
+    for player_id, bps, bonus in rows:
+        with world.session() as session:
+            known = session.get(Player, (SEASON, player_id)) is not None
+        if not known:
+            world.player(player_id, f"Filler{player_id}")
+        world.fixture_stat(fixture_id, player_id, "bps", bps)
+        world.fixture_stat(fixture_id, player_id, "bonus", bonus)
+    if near is not None:
+        world.fixture_stat(fixture_id, near[0], "bps", near[1])
+
+
+NEAR_EXPLAIN = [stats(501, minutes=(90, 2))]
+
+
+def near_miss(world, bps, bonuses=((20, 30, 3), (21, 28, 2), (22, 25, 1))):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    player(world, 1, "Near", 2, explain=NEAR_EXPLAIN, live_stats=live())
+    bonus_fixture(world, 501, bonuses, near=(1, bps))
+
+
+def missed(world):
+    return [m for m in moments(world) if m.kind == "bonus_missed_by_one"]
+
+
+def test_bonus_missed_by_one_listed(world):
+    near_miss(world, 24)
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    (moment,) = missed(world)
+    assert (moment.pair, moment.ahead, moment.behind, moment.margin) == (
+        "winner",
+        "Anna",
+        "Bartek",
+        1,
+    )
+    assert (moment.players, moment.club, moment.missed_bonus) == (["Near"], "Synthetic FC", 1)
+    assert (moment.ahead_points, moment.behind_points, moment.swing) == (0, 1, 1)
+    assert (moment.ahead_multiplier, moment.behind_multiplier) == (0, 1)
+    assert moment.breakdown is None
+
+
+def test_bonus_missed_by_two_not_listed(world):
+    near_miss(world, 23)
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    assert missed(world) == []
+
+
+def test_bonus_missed_by_leading_managers_player_not_listed(world):
+    near_miss(world, 24)
+    pick(world, 10, 60, [1])
+    pick(world, 11, 59, [])
+    pick(world, 12, 10, [])
+    assert missed(world) == []
+
+
+def test_bonus_missed_below_margin_not_listed(world):
+    near_miss(world, 24)
+    pick(world, 10, 60, [])
+    pick(world, 11, 58, [1])
+    pick(world, 12, 10, [])
+    assert missed(world) == []
+
+
+def test_bonus_missed_as_captain_reaches_the_margin(world):
+    near_miss(world, 24)
+    pick(world, 10, 60, [])
+    pick(world, 11, 58, [1], captain=1)
+    pick(world, 12, 10, [])
+    (moment,) = missed(world)
+    assert (moment.margin, moment.behind_points, moment.swing) == (2, 2, 2)
+
+
+def test_shared_lowest_bonus_place_gives_the_shared_bonus(world):
+    near_miss(world, 27, bonuses=((20, 30, 3), (21, 28, 2), (22, 28, 2)))
+    pick(world, 10, 60, [])
+    pick(world, 11, 58, [1])
+    pick(world, 12, 10, [])
+    (moment,) = missed(world)
+    assert (moment.missed_bonus, moment.swing) == (2, 2)
+
+
+def test_bonus_missed_by_a_player_both_managers_count_uses_the_difference(world):
+    near_miss(world, 24)
+    pick(world, 10, 60, [1])
+    pick(world, 11, 58, [1], captain=1)
+    pick(world, 12, 10, [])
+    assert missed(world) == []
+
+
+def test_bonus_in_the_other_fixture_of_a_double_gameweek(world):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    world.fixture(502, 5, 2, 1, 0, 0)
+    explain = [stats(501, minutes=(90, 2), bonus=(1, 1)), stats(502, minutes=(90, 2))]
+    player(world, 1, "Near", 5, explain=explain, live_stats=live())
+    bonus_fixture(world, 501, [(20, 30, 3), (21, 28, 2), (1, 25, 1)])
+    bonus_fixture(world, 502, [(22, 30, 3), (23, 28, 2), (24, 25, 1)], near=(1, 24))
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    (moment,) = missed(world)
+    assert (moment.players, moment.missed_bonus) == (["Near"], 1)
+
+
+def test_bonus_missed_by_one_in_both_fixtures_is_told_once(world):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    world.fixture(502, 5, 2, 1, 0, 0)
+    explain = [stats(501, minutes=(90, 2)), stats(502, minutes=(90, 2))]
+    player(world, 1, "Near", 4, explain=explain, live_stats=live())
+    bonus_fixture(world, 501, [(20, 30, 3), (21, 28, 2), (22, 25, 1)], near=(1, 24))
+    bonus_fixture(world, 502, [(23, 30, 3), (24, 28, 2), (25, 25, 1)], near=(1, 24))
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    (moment,) = missed(world)
+    assert (moment.players, moment.missed_bonus, moment.swing) == (["Near"], 1, 1)
+
+
+def test_fixture_without_bonus_rows_gives_no_near_miss(world):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    player(world, 1, "Near", 2, explain=NEAR_EXPLAIN, live_stats=live())
+    world.fixture_stat(501, 1, "bps", 24)
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    assert missed(world) == []
+
+
+def lost_sheet(world, keeper_live, defender_live, double=False):
+    world.fixture(501, 5, 2, 1, 0, 2)
+    if double:
+        world.fixture(502, 5, 1, 2, 1, 1)
+    lost = [stats(501, minutes=(90, 2))]
+    # the 90-minute keeper sorts after the defender by name: minutes, not the name, pick him
+    player(world, 1, "Zeta", 2, position=1, club=2, explain=lost, live_stats=keeper_live)
+    player(
+        world,
+        2,
+        "Left",
+        2,
+        position=2,
+        club=2,
+        explain=[stats(501, minutes=(70, 2))],
+        minutes=70,
+        live_stats=defender_live,
+    )
+    pick(world, 10, 60, [])
+    pick(world, 11, 57, [1, 2])
+    pick(world, 12, 40, [])
+    (moment,) = [m for m in moments(world) if m.kind == "clean_sheet_lost"]
+    return moment
+
+
+def test_lost_clean_sheet_carries_xgc_of_most_minutes(world):
+    moment = lost_sheet(world, live(xgc="1.40"), live(xgc="1.10"))
+    assert moment.expected_goals_conceded == Decimal("1.40")
+    assert (moment.ahead_multiplier, moment.breakdown) == (None, None)
+
+
+def test_lost_clean_sheet_xgc_null_in_double_gameweek(world):
+    moment = lost_sheet(world, live(xgc="1.40"), live(xgc="1.10"), double=True)
+    assert moment.expected_goals_conceded is None
+
+
+def test_lost_clean_sheet_xgc_null_without_stats(world):
+    assert lost_sheet(world, None, None).expected_goals_conceded is None
+
+
+def test_lost_clean_sheet_xgc_comes_from_a_player_with_stats(world):
+    moment = lost_sheet(world, None, live(xgc="1.10"))
+    assert moment.expected_goals_conceded == Decimal("1.10")

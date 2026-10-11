@@ -11,6 +11,7 @@ from app.presser.facts.load import (
     PlayerResult,
     SquadPick,
 )
+from app.presser.facts.stats import HAT_TRICK_MIN_GOALS, KEEPER_WALL_MIN_SAVE_POINTS
 
 CLEAN_SHEET_MIN_MINUTES = 60
 CLEAN_SHEET_POINTS = 4
@@ -66,6 +67,24 @@ def _clean_sheet_fact(
     return None
 
 
+def _stat_facts(
+    player_id: int, info: PlayerInfo | None, fixture: FixtureStats
+) -> list[FixtureFact]:
+    found: list[FixtureFact] = []
+    goals = fixture.stats.get("goals_scored")
+    if goals is not None and goals.value >= HAT_TRICK_MIN_GOALS:
+        found.append(
+            FixtureFact(player_id, fixture.fixture_id, "hat_trick", goals.value, goals.points)
+        )
+    saves = fixture.stats.get("saves")
+    is_keeper = info is not None and info.position == GOALKEEPER
+    if is_keeper and saves is not None and saves.points >= KEEPER_WALL_MIN_SAVE_POINTS:
+        found.append(
+            FixtureFact(player_id, fixture.fixture_id, "keeper_wall", saves.value, saves.points)
+        )
+    return found
+
+
 def fixture_facts(
     results: dict[int, MatchResult],
     players: dict[int, PlayerInfo],
@@ -82,6 +101,8 @@ def fixture_facts(
                     found.append(
                         FixtureFact(player_id, fixture.fixture_id, kind, line.value, line.points)
                     )
+            if result.live is not None:
+                found += _stat_facts(player_id, info, fixture)
             if info is None or info.position not in (GOALKEEPER, DEFENDER):
                 continue
             conceded = _conceded(info, fixtures.get(fixture.fixture_id))

@@ -26,9 +26,9 @@ WRITER_HEADERS = (
 )
 
 
-def test_writer_prompt_v5_rules():
+def test_writer_prompt_v6_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 5
+    assert prompt.version == 6
     positions = [prompt.text.index(header) for header in WRITER_HEADERS]
     assert positions == sorted(positions)
     assert prompt.text.index("⚽") < prompt.text.index("🪑")
@@ -58,14 +58,25 @@ def test_writer_prompt_v5_rules():
         'never "tys."',
         'never write "1000k"',
         "never cross a threshold",
+        "breakdown",
+        "decisive",
+        "bonus_missed_by_one",
+        "missed_bonus",
+        "hat_trick",
+        "keeper_wall",
+        "big_miss",
+        "goal_from_nothing",
+        "expected_goals_conceded",
+        "punchline",
+        "never a bare xG",
     ):
         assert needle in prompt.text, needle
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")
 
 
-def test_judge_prompt_v4_checks_match_facts():
+def test_judge_prompt_v5_checks_full_match_stats():
     prompt = load_prompt("presser_judge")
-    assert prompt.version == 4
+    assert prompt.version == 5
     for needle in (
         "pitch",
         "key moment",
@@ -84,6 +95,14 @@ def test_judge_prompt_v4_checks_match_facts():
         "1,2 mln",
         "o 15k miejsc",
         "tuż za top 10k",
+        "breakdown",
+        "decisive",
+        "missed a bonus by one BPS",
+        "hat-trick",
+        "keeper wall",
+        "big miss",
+        "goal from nothing",
+        "xG",
     ):
         assert needle in prompt.text, needle
 
@@ -136,6 +155,9 @@ def test_style_examples_eight_headers_no_shared_sentence():
         named = {re.match(r"\w+", HEADER_LABEL.sub("", sections[n]))[0] for n in (0, 1)}
         assert any(name in sections[3] for name in named), named
         assert "gw rank" in "\n".join(sections).casefold()
+        pitch = sections[3].casefold()
+        assert any(stat in pitch for stat in ("bonus", "żółt", "defcon", "bps")), pitch
+        assert any(punchline in pitch for punchline in ("xg", "pech", "z niczego")), pitch
         sentence_sets.append(set(_sentences(sections)))
         words = re.findall(r"\w+", HEADER_LABEL.sub("", "\n".join(sections)).casefold())
         word_runs.append({tuple(words[n : n + 5]) for n in range(len(words) - 4)})

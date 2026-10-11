@@ -3,7 +3,14 @@ from decimal import Decimal
 from app.presser.facts.gameweek import BLANK_MAX_POINTS
 from app.presser.facts.load import MatchResult, PlayerInfo, SquadPick
 from app.presser.facts.matches import FixtureFact
-from app.presser.facts.schema import Pitch, PitchEvent, PitchItem, PitchKind, PitchOwner
+from app.presser.facts.schema import (
+    Pitch,
+    PitchEvent,
+    PitchItem,
+    PitchKind,
+    PitchOwner,
+    PlayerStats,
+)
 
 HAUL_MIN_POINTS = 10
 GLOBAL_DIFFERENTIAL_BELOW = Decimal("10")
@@ -12,7 +19,8 @@ MAX_PITCH_ITEMS = 8
 
 EVENT_KINDS = ("red_card", "own_goal", "penalty_missed", "penalty_saved")
 SUB_KINDS = ("lucky_sub", "unlucky_sub")
-SCORE_KINDS = ("differential_haul", "template_haul", "template_blank")
+STAT_KINDS = ("hat_trick", "keeper_wall")
+SCORE_KINDS = ("differential_haul", "template_haul", "template_blank", *STAT_KINDS)
 
 
 def _is_template(in_squad: int, managers: int) -> bool:
@@ -42,6 +50,7 @@ def build_pitch(
     ownership: dict[int, Decimal] | None,
     moment_players: set[str],
     managers: int,
+    player_facts: dict[int, PlayerStats],
 ) -> Pitch:
     in_squad: dict[int, set[int]] = {}
     for entry_id, squad in squads.items():
@@ -76,6 +85,9 @@ def build_pitch(
             kinds.append("template_haul")
         if template and points <= BLANK_MAX_POINTS:
             kinds.append("template_blank")
+        if holders:
+            stat_kinds = {fact.kind for fact in facts_by_player.get(player_id, [])}
+            kinds += [kind for kind in STAT_KINDS if kind in stat_kinds]
         kinds += [event.kind for event in events]
         template_kind = "template_haul" in kinds or "template_blank" in kinds
         if not kinds or not (holders or template_kind):
@@ -96,6 +108,7 @@ def build_pitch(
                 global_differential=global_flag,
                 league_differential=league_flag,
                 events=events,
+                **dict(player_facts.get(player_id, PlayerStats())),
             )
         )
 

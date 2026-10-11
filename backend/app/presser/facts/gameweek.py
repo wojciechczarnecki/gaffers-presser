@@ -17,6 +17,7 @@ from app.presser.facts.schema import (
     CaptainPick,
     Hit,
     ManagerScore,
+    PlayerStats,
     Season,
     TransferMiss,
     TransferPair,
@@ -120,6 +121,7 @@ def captaincy(
     names: dict[int, str],
     player_names: dict[int, str],
     gameweek: int,
+    player_facts: dict[int, PlayerStats],
 ) -> Captaincy:
     picks = []
     for row in rows:
@@ -138,6 +140,7 @@ def captaincy(
                 triple_captain=row.active_chip == "3xc",
                 vice_stepped_in=credit.vice_stepped_in,
                 blank=credit.blank,
+                **dict(player_facts.get(credit.player_id, PlayerStats())),
             )
         )
     picks.sort(key=lambda pick: (-pick.points, pick.manager))

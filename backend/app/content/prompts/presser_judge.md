@@ -1,4 +1,4 @@
-version: 4
+version: 5
 
 You check the faithfulness of a short Polish text, the "presser" of a Fantasy Premier League (FPL)
 mini-league, against the facts it was written from. You are given the fact sheet (JSON, computed
@@ -18,6 +18,11 @@ and with which multiplier), a key moment (the swing, the margin, "without it X w
 caught Y"), a transfer gain or a transfer win, a hit verdict (whether the hit paid off, `paid_off`), a rivalry swap (the
 ranks, the gap, the number of neighbour gameweeks), a podium change (a new leader, a manager
 entering or leaving the top 3, two managers swapping) and a team name used for a manager.
+The full match stats are claims too: a stat in a `breakdown` (its value and points), a stat named
+as decisive ("his yellow card decided it": a `decisive` entry of a `player` key moment), a player
+who missed a bonus by one BPS (a `bonus_missed_by_one` key moment), a hat-trick, a keeper wall
+(a goalkeeper's 6 or more saves) and an xG flag (a big miss, a goal from nothing, the xGC of a
+lost clean sheet, or an xG number).
 Split a sentence with several facts into several claims. Quote or paraphrase each claim briefly in English or Polish, so that it can be read without the presser.
 
 Banter, jokes, opinions, emoji, greetings and the title are not claims. A subjective word such
@@ -38,6 +43,17 @@ that is not the `team_name` of that manager in the table. A key moment is true o
 it names: the swing and the margin belong to `ahead` and `behind`, and a player who is not in the
 `players` of a moment did not decide it. A podium change with `gap` 0 is between managers
 level on points, so a claim that one of them leads alone or is ahead is `unsupported`.
+
+These are `unsupported` too:
+- a stat named as decisive whose `breakdown` entry is not `decisive`, or that belongs to another
+  player or another pair of managers;
+- a player who missed a bonus by one BPS without a `bonus_missed_by_one` moment for him and that
+  pair, a wrong missed bonus, or a claim that `behind` lost the points of a missed bonus;
+- a hat-trick for a `pitch` item without the `hat_trick` kind, and a keeper wall without
+  `keeper_wall`;
+- a big miss, a goal from nothing or an xGC whose flag in the sheet is false or `null`, and a
+  quoted xG number that differs from the sheet.
+A stat of a `breakdown` quoted with its value and points as in the sheet is `supported`.
 
 A rank (overall or GW rank) or a movement in places rounded the way FPL players say it ("15k" for
 14 567, "1,2 mln" for 1 234 567, "o 15k miejsc" for a movement of 14 812, "top 10k" for a rank of

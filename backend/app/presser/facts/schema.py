@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,7 +28,29 @@ class ManagerScore(Strict):
     gameweek_rank: int | None = None
 
 
-class CaptainPick(Strict):
+class StatPoints(Strict):
+    identifier: str
+    # summed over the gameweek's fixtures
+    value: int
+    points: int
+
+
+class MomentStat(StatPoints):
+    # points * (ahead multiplier - behind multiplier)
+    swing: int
+    decisive: bool
+
+
+class PlayerStats(Strict):
+    # null: the gameweek has no match stats for the player; [] means no point-bearing stat
+    breakdown: list[StatPoints] | None = None
+    expected_goals: Decimal | None = None
+    expected_assists: Decimal | None = None
+    big_miss: bool | None = None
+    goal_from_nothing: bool | None = None
+
+
+class CaptainPick(PlayerStats):
     manager: str
     player: str
     base_points: int
@@ -124,6 +147,8 @@ PitchKind = Literal[
     "differential_haul",
     "template_haul",
     "template_blank",
+    "hat_trick",
+    "keeper_wall",
     "red_card",
     "own_goal",
     "penalty_missed",
@@ -149,7 +174,7 @@ class PitchEvent(Strict):
     points: int
 
 
-class PitchItem(Strict):
+class PitchItem(PlayerStats):
     player: str
     club: str
     points: int
@@ -173,14 +198,30 @@ class KeyMoment(Strict):
     behind: str
     margin: int
     kind: Literal[
-        "player", "clean_sheet_lost", "red_card", "own_goal", "penalty_missed", "penalty_saved"
+        "player",
+        "clean_sheet_lost",
+        "red_card",
+        "own_goal",
+        "penalty_missed",
+        "penalty_saved",
+        "bonus_missed_by_one",
     ]
     players: list[str]
     club: str | None = None
     ahead_points: int
     behind_points: int
-    # ahead_points - behind_points
+    # ahead_points - behind_points; for bonus_missed_by_one the points are the bonus each
+    # manager would have gained, and the swing is behind_points - ahead_points
     swing: int
+    # kinds player and bonus_missed_by_one
+    ahead_multiplier: int | None = None
+    behind_multiplier: int | None = None
+    # kind player only
+    breakdown: list[MomentStat] | None = None
+    # kind bonus_missed_by_one only
+    missed_bonus: int | None = None
+    # kind clean_sheet_lost only; null in a double gameweek or without stats
+    expected_goals_conceded: Decimal | None = None
 
 
 class TableRow(Strict):
@@ -275,7 +316,7 @@ class Overall(Strict):
 
 
 class FactSheet(Strict):
-    version: Literal[3] = 3
+    version: Literal[4] = 4
     league: str
     season: str
     gameweek: int

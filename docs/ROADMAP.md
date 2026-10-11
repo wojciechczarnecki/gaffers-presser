@@ -82,8 +82,11 @@ and each LLM step that produces data has an evaluation set with recorded results
 - [x] Match stories: "⚽ Z boiska" and "🃏 Chipy" sections, transfer wins and judged hits,
       key moments, rivalry swaps and podium changes, FPL team names, a 2500-character limit,
       evaluation set v3 (spec: [014](../specs/014-presser-match-stories/SPEC.md))
+- [x] Full FPL match stats: points breakdown, decisive stats, a bonus missed by one BPS,
+      hat-tricks and keeper walls, xG flags, evaluation set v4
+      (spec: [015](../specs/015-presser-full-match-stats/SPEC.md))
 - [ ] Presser model comparison with the owner's ratings: report, ADR and the new
-      `PRESSER_MODEL` default; decides the name-inflection problem (BACKLOG #32, after spec 014)
+      `PRESSER_MODEL` default; decides the name-inflection problem (BACKLOG #32, after spec 015)
 - [ ] Slang glossary and style examples (from X and Polish FPL podcasts) (spec: TBD)
 
 ## Stage 4 — Source credibility and Q&A

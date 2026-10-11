@@ -22,12 +22,12 @@ def test_the_committed_set_has_no_composition_problems():
     assert composition_problems(CASES) == []
 
 
-def test_split_is_fifteen_and_fifteen_with_real_and_synthetic_in_each():
-    for split in ("dev", "test"):
+def test_split_is_twenty_and_twenty_one_with_real_and_synthetic_in_each():
+    for split, size, synthetic in (("dev", 20, 15), ("test", 21, 16)):
         in_split = [case for case in CASES if case.split == split]
-        assert len(in_split) == 15
+        assert len(in_split) == size
         assert sum(case.source == "real" for case in in_split) == 5
-        assert sum(case.source == "synthetic" for case in in_split) == 10
+        assert sum(case.source == "synthetic" for case in in_split) == synthetic
 
 
 def test_every_sheet_validates():
@@ -65,8 +65,8 @@ def _without_rank_values(value):
     return value
 
 
-def test_the_set_has_30_cases_and_the_rank_cases():
-    assert len(CASES) == 30
+def test_the_set_has_41_cases_and_the_rank_cases():
+    assert len(CASES) == 41
     tags = {tag for case in CASES for tag in case.tags}
     assert {"enter_top_10k", "rise_in_top_10k", "drop_out_of_top_1m", "gw_rank_unknown"} <= tags
 
@@ -137,3 +137,57 @@ def test_match_story_cases_show_what_their_tag_says():
     assert "chips" in _synthetic("no_chips").empty_sections
     unknown = _synthetic("ownership_unknown").pitch.items
     assert unknown and all(item.global_differential is None for item in unknown)
+
+
+def _decisive(facts, identifier):
+    return [
+        (moment, entry)
+        for moment in facts.key_moments
+        for entry in moment.breakdown or []
+        if entry.identifier == identifier and entry.decisive
+    ]
+
+
+def test_full_stats_cases_show_what_their_tag_says():
+    winner_bonus = _decisive(_synthetic("captain_bonus_decides_winner"), "bonus")
+    assert any(m.pair == "winner" and m.kind == "player" for m, _ in winner_bonus)
+    yellow = _decisive(_synthetic("yellow_card_decides_pair"), "yellow_cards")
+    assert any(m.margin <= 2 for m, _ in yellow)
+    assert _decisive(_synthetic("defcon_decides_pair"), "defensive_contribution")
+    flipped = _synthetic("bonus_missed_flips_swap").key_moments
+    assert any(m.pair == "rivalry" and m.kind == "bonus_missed_by_one" for m in flipped)
+    assert any("hat_trick" in i.kinds for i in _synthetic("hat_trick").pitch.items)
+    walls = [
+        i for i in _synthetic("differential_keeper_wall").pitch.items if "keeper_wall" in i.kinds
+    ]
+    assert any(i.global_differential or i.league_differential for i in walls)
+    assert any(p.big_miss for p in _synthetic("captain_big_miss").captaincy.picks)
+    assert any(i.goal_from_nothing for i in _synthetic("goal_from_nothing").pitch.items)
+    lost = _synthetic("lost_clean_sheet_xgc").key_moments
+    assert any(m.kind == "clean_sheet_lost" and m.expected_goals_conceded is not None for m in lost)
+    facts = _synthetic("double_gameweek_bps")
+    missed = {m.players[0] for m in facts.key_moments if m.kind == "bonus_missed_by_one"}
+    with_bonus = {
+        holder.player
+        for holder in [*facts.captaincy.picks, *facts.pitch.items]
+        if any(e.identifier == "bonus" for e in holder.breakdown or [])
+    }
+    assert missed and missed <= with_bonus
+
+
+def test_no_match_stats_case_has_no_new_facts():
+    facts = _synthetic("no_match_stats")
+    holders = [*facts.captaincy.picks, *facts.pitch.items]
+    assert holders
+    for holder in holders:
+        assert (holder.breakdown, holder.expected_goals, holder.expected_assists) == (
+            None,
+            None,
+            None,
+        )
+        assert (holder.big_miss, holder.goal_from_nothing) == (None, None)
+    kinds = {kind for item in facts.pitch.items for kind in item.kinds}
+    assert not kinds & {"hat_trick", "keeper_wall"}
+    for moment in facts.key_moments:
+        assert moment.kind != "bonus_missed_by_one"
+        assert moment.breakdown is None and moment.expected_goals_conceded is None

@@ -224,6 +224,13 @@ below; agents never touch production.
       `manager_gameweek`. Existing rows stay empty until the next league sync of that gameweek;
       the first-deploy catch-up (step 6) syncs every finished gameweek and so fills them. It runs
       through the pre-deploy and downgrades cleanly.
+    - Migration `0013` adds the nullable JSONB column `live_stats` to `player_gameweek_result`
+      (every field of FPL's live `stats`) and the table `player_fixture_stat` (the per-fixture
+      stats, BPS and bonus included). It runs a backfill from the latest stored `raw_payload` of
+      each gameweek (`event/<n>/live` and `fixtures`), with no FPL request. A gameweek without a
+      payload stays without stats until its next results sync, and the fact sheet then leaves
+      out the breakdowns and the other new facts for it. It runs through the pre-deploy and
+      downgrades cleanly.
     - From a Railway shell (`railway ssh`), with `--league <id> --gameweek <n>`:
       `python -m app.presser facts` prints the fact sheet, `python -m app.presser preview`
       generates and prints without sending, `python -m app.presser send` sends by hand, also
