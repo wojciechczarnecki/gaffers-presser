@@ -699,13 +699,22 @@ the synthetic cases, step 12 rebuilds the real ones). The full
   someone played a chip in GW5, is at most 2500 characters, and its key moment and team
   names match what you know of the gameweek.
 
+## Implementation result
+
+End-to-end (automatic), performed 2026-10-11:
+
+1. Full `verify.command` green (1805 passed).
+2. Real data, GW1–5 of both leagues: every `check_fact_sheet` list is empty; no rivalry swaps at GW1–3 (the first appear at GW4); no podium changes at GW1; pitch items in every league-gameweek (3 to 8 items), 2 to 5 key moments.
+3. `python -m app.presser.evaluation --help` and `build-cases --help` name set v3.
+4. `tests/presser/evaluation/test_eval_set.py` passes on the committed v3 set (30 cases: 10 real rebuilt from GW1–5, 20 synthetic). GW6 is not finished, so it was not included.
+
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` and `docs/BACKLOG.md` updated
-- [ ] spec status: `implemented`
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green (1805 passed)
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` and `docs/BACKLOG.md` updated
+- [x] spec status: `implemented`
 
 ## Owner decisions
 

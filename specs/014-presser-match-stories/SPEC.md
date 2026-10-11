@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-10-10"
   - "spec-ready — 2026-10-10"
   - "plan-draft — 2026-10-10"
   - "plan-approved — 2026-10-10"
+  - "implemented — 2026-10-11"
 metrics:
   started_at: 2026-10-10T23:28
   plan_steps: 13
@@ -14,6 +15,10 @@ metrics:
   escalations_tooling: 0
   plan_review_blockers: 0
   plan_review_majors: 1
+  implement_steps: 13
+  implement_iterations: 12
+  deviations_minor: 4
+  deviations_major: 0
 ---
 
 # SPEC 014 — Presser match stories, chips section and table rivalries
