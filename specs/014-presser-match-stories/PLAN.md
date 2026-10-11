@@ -720,6 +720,8 @@ End-to-end (automatic), performed 2026-10-11:
 
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
+- 2026-10-11 — final-review — `gate` — Which final review findings are accepted for fixing? — F3 per the owner's rule: a defender keeps the clean sheet when he played at least 60 minutes and his club conceded no goal while he was on the pitch, a goal conceded after he went off (or before he came on) does not cost it, except after a red card; keep deducing it from the clean-sheet points and the club's result, and reword the writer prompt to "kept the clean sheet although his club conceded" instead of narrowing the fact to starters. Also verify that goalkeeper penalty saves are counted in the pitch facts (and in the key moments where they swing points), and add them with a test if they are missing. `accepted`: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10; `rejected`: F11
+
 ## Review log
 
 2026-10-10 — plan review (fresh context, under `/pipeline:ship`).
