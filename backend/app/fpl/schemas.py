@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Generic, TypeVar
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, TypeAdapter, ValidationError
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from app.fpl.errors import PayloadError
 
@@ -55,6 +55,17 @@ class Bootstrap(StrictModel):
     elements: list[Element]
 
 
+class FixtureStatEntry(StrictModel):
+    element: int
+    value: int
+
+
+class FixtureStat(StrictModel):
+    identifier: str
+    a: list[FixtureStatEntry]
+    h: list[FixtureStatEntry]
+
+
 class Fixture(StrictModel):
     id: int
     event: int | None
@@ -64,9 +75,12 @@ class Fixture(StrictModel):
     team_h_score: int | None
     team_a_score: int | None
     finished: bool
+    stats: list[FixtureStat] = Field(default_factory=list)
 
 
 class LiveStats(StrictModel):
+    model_config = ConfigDict(extra="allow")
+
     starts: int
     minutes: int
     total_points: int

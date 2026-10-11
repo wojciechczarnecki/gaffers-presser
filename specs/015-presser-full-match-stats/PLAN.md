@@ -332,7 +332,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
       The expected output is every GW1–5 row with `live_stats`, and fixture stat rows for
       GW1–5. If the database is unreachable, end with `RESULT: ESCALATE`, `KIND: tooling`.
 
-- [ ] 2. **The results job stores both (AC1, the AC9 storage).** Files: `backend/app/fpl/schemas.py`,
+- [x] 2. **The results job stores both (AC1, the AC9 storage).** `iterations: 0` Files: `backend/app/fpl/schemas.py`,
       `backend/app/fpl/results.py`, `backend/tests/fpl/test_results_sync.py`.
       - Tests first:
         - `test_results_stored_and_archived` also asserts `row.live_stats == el["stats"]`
