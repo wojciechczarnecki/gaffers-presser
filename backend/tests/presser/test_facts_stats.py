@@ -46,7 +46,7 @@ def match_result(*items, live_line=None):
     )
 
 
-LIVE_LINE = LiveLine(0, Decimal("0"), Decimal("0"), Decimal("0"))
+LIVE_LINE = LiveLine(Decimal("0"), Decimal("0"), Decimal("0"))
 
 
 def test_breakdown_sums_explain_over_a_double_gameweek(world):

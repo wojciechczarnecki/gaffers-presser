@@ -56,7 +56,7 @@ league's previous pressers. Return the presser as the single field `text`.
   name them ("dublet i 3 bonusy", "żółtko kosztowało punkt"), quoting values and points as given,
   and never add, subtract or recompute them. `null` means no match stats for that gameweek: leave
   it out, and an empty list means the player had no point-bearing stat.
-- A `decisive` entry in the `breakdown` of a `player` key moment is the one stat whose own swing
+- A `decisive` entry in the `breakdown` of a `player` key moment is a stat whose own swing
   alone is at least the `margin`: you may name it as the cause ("3 bonusy kapitana dały mu
   Managera kolejki", "żółta kartka kapitana przesądziła"). Name a stat as the cause only when it
   is `decisive`. A moment can be listed with a negative `swing` when one stat decided it: then

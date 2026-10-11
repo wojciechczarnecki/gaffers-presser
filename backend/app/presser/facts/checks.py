@@ -10,7 +10,7 @@ from app.presser.facts.stats import (
     GOAL_FROM_NOTHING_BELOW_XG,
     HAT_TRICK_MIN_GOALS,
     KEEPER_WALL_MIN_SAVE_POINTS,
-    OWN_KIND_STATS,
+    can_decide,
 )
 from app.presser.facts.table import RIVALRY_MIN_NEIGHBOUR_GAMEWEEKS
 
@@ -193,9 +193,7 @@ def _check_moment_breakdown(moment) -> list[str]:
             problems.append(
                 "key moments: a breakdown swing does not match its points and multipliers"
             )
-        if entry.decisive != (
-            entry.swing >= moment.margin and entry.identifier not in OWN_KIND_STATS
-        ):
+        if entry.decisive != (entry.swing >= moment.margin and can_decide(entry.identifier)):
             problems.append("key moments: decisive does not match the swing and the margin")
     return problems
 
@@ -309,6 +307,8 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
         problems += _check_player_stats(pick.base_points, pick)
     for item in sheet.pitch.items:
         problems += _check_player_stats(item.points, item)
+        # the breakdown sums a double gameweek's fixtures, so these two rules cannot tell 2 + 1
+        # goals from a hat-trick in one fixture: the builder counts per fixture (matches.py)
         entries = {entry.identifier: entry for entry in item.breakdown or []}
         goals = entries.get("goals_scored")
         saves = entries.get("saves")

@@ -22,6 +22,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 8
   final_review_nits: 5
+  findings_accepted: 13
+  findings_rejected: 0
 ---
 
 # SPEC 015 — Full FPL match stats in the presser
@@ -143,11 +145,15 @@ and "zabrakło 1 BPS do bonusu" cannot be said. The feature works when:
        stats is decisive, e.g. the trailing manager's captain's yellow card at a margin of 1.
      - A stat told by its own key-moment kind (red card, own goal, penalty) is not flagged
        again.
+     - Routine stats (minutes, goals conceded) are never decisive (amended by the owner at
+       the final review, F2).
   3. **Bonus missed by one BPS** (key-moment kind `bonus_missed_by_one`):
      - the player counted for the trailing manager of the pair;
      - his BPS in a fixture was exactly 1 below the lowest BPS that earned a bonus there;
      - he got no bonus in that fixture;
-     - the bonus of that lowest place × his multiplier is at least the margin.
+     - the bonus of that lowest place × the multiplier difference (his multiplier for the
+       trailing manager − his multiplier for the leading one) is at least the margin
+       (amended by the owner at the final review, F5).
      It names the player, the fixture's club, the missed bonus and the swing.
   4. **New pitch kinds.**
      - `hat_trick`: 3 or more goals in one fixture.
@@ -249,16 +255,21 @@ and "zabrakło 1 BPS do bonusu" cannot be said. The feature works when:
 - [ ] AC4: In a `player` key moment, each breakdown entry's swing is its points × (the ahead
   manager's multiplier − the behind manager's), and `decisive` is true exactly when that
   swing is at least the margin. A swing equal to the margin is decisive; one below is not.
+  Routine stats (minutes, goals conceded) are never decisive (amended by the owner at the
+  final review, F2).
 - [ ] AC5: A player whose whole swing is below the margin is a key moment when one of his
   stats is decisive. Test: margin 1, the trailing manager's captain has a yellow card (−1 ×
   2), the player's total swing is negative, and the moment is listed with the yellow card
   decisive. Red cards, own goals and penalties keep their own kinds and are not flagged again.
 - [ ] AC6: `bonus_missed_by_one` is listed when the trailing manager's counted player had a BPS
   exactly 1 below the fixture's lowest bonus-earning BPS, got no bonus there, and that bonus ×
-  his multiplier is at least the margin. Not listed:
+  the multiplier difference (his multiplier for the trailing manager − his multiplier for
+  the leading one: the real reduction of the gap) is at least the margin (amended by the
+  owner at the final review, F5). Not listed:
   - 2 BPS below;
   - a player of the leading manager;
-  - a missed bonus × multiplier below the margin.
+  - a missed bonus × multiplier difference below the margin, also when both managers count
+    the player.
   When the lowest bonus place is shared, the missed bonus is that shared bonus.
 - [ ] AC7: `hat_trick` needs 3 goals in one fixture (2 + 1 across a double gameweek is not
   one). `keeper_wall` needs a goalkeeper with at least 2 save points in one fixture. Both are
@@ -300,7 +311,7 @@ and "zabrakło 1 BPS do bonusu" cannot be said. The feature works when:
 |----------|-----------------------|-----------|
 | Store all live stats per player and gameweek and the per-fixture stats lists, with a migration that backfills from the latest stored payloads | parse `raw_payload` at fact-build time; backfill by re-fetching from FPL | facts come from tables (DECISIONS 2026-09-26, ADR 0002); `raw_payload` holds duplicate fetches; the payloads are already stored (migration `0010` precedent) |
 | One rule for "this decided it": a breakdown entry whose swing alone is at least the margin | separate key-moment kinds per stat (bonus, DefCon, yellow); a breakdown without a flag | the 014 arithmetic, checkable; one rule covers bonus, DefCon and yellow cards; the LLM must not compute causes (DECISIONS 2026-10-09) |
-| A bonus missed by one BPS is a key moment only when the missed bonus × multiplier is at least the margin | a pitch item or attribute; deferred to BACKLOG | rare but a strong story; as a standalone item it is noise (8 near-misses in five gameweeks) |
+| A bonus missed by one BPS is a key moment only when the missed bonus × the multiplier difference is at least the margin | a pitch item or attribute; deferred to BACKLOG | rare but a strong story; as a standalone item it is noise (8 near-misses in five gameweeks) |
 | New pitch kinds: hat-trick and keeper wall | defence collapse (a template club conceding 3+); Dream Team / player of the gameweek | the owner's choice; the collapse fired in 7 of 10 league-gameweeks at a third of the league |
 | xG as attributes with threshold flags (big miss ≥ 0.7 xG on a blank, goal from nothing < 0.15 xG); xGC on a lost clean sheet | xG pitch items; data only | a weak story alone for a friends' league, a good punchline on a captain's blank; a flag spares the writer from interpreting numbers |
 | Breakdown on pitch items, captain picks and `player` key moments | key moments only | "dublet i 3 bonusy" and "kapitan: 2 pkt za minuty i żółtka" need it; a few hundred tokens |

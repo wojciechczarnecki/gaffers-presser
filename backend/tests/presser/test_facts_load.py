@@ -91,7 +91,7 @@ def test_live_line_parsed_from_live_stats(world):
         1,
         5,
         90,
-        8,
+        2,
         explain=[stats(501, minutes=(90, 2))],
         live=live(goals=2, xg="0.74", xa="0.10", xgc="1.30", tackles=4),
     )
@@ -99,12 +99,52 @@ def test_live_line_parsed_from_live_stats(world):
     with world.session() as session:
         results = load.load_match_results(session, SEASON, 5, {1, 2})
     assert results[1].live == load.LiveLine(
-        goals_scored=2,
         expected_goals=Decimal("0.74"),
         expected_assists=Decimal("0.10"),
         expected_goals_conceded=Decimal("1.30"),
     )
     assert results[2].live is None
+
+
+def test_points_modification_counts_in_the_stat_points(world):
+    item = stats(501, minutes=(90, 2), bonus=(1, 1))
+    item["stats"][1]["points_modification"] = 2
+    world.result(1, 5, 90, 5, explain=[item], live=live(xg="0.40"))
+    with world.session() as session:
+        result = load.load_match_results(session, SEASON, 5, {1})[1]
+    assert result.fixtures[0].stats["bonus"] == load.StatLine(1, 3)
+    assert result.live is not None
+    assert sum(line.points for line in result.fixtures[0].stats.values()) == result.points
+
+
+def test_explain_not_summing_to_the_points_drops_the_stats(world):
+    world.result(1, 5, 90, 7, explain=[stats(501, minutes=(90, 2))], live=live(xg="0.40"))
+    with world.session() as session:
+        result = load.load_match_results(session, SEASON, 5, {1})[1]
+    assert result.points == 7
+    assert result.fixtures[0].stats["minutes"] == load.StatLine(90, 2)
+    assert result.live is None
+
+
+@pytest.mark.parametrize(
+    "missing", ["expected_goals", "expected_assists", "expected_goals_conceded"]
+)
+def test_live_stats_missing_a_field_degrade_to_no_stats(world, missing):
+    stored = live(goals=1, xg="0.40", xa="0.10", xgc="1.00")
+    del stored[missing]
+    world.result(1, 5, 90, 2, explain=[stats(501, minutes=(90, 2))], live=stored)
+    with world.session() as session:
+        result = load.load_match_results(session, SEASON, 5, {1})[1]
+    assert result.live is None
+
+
+def test_live_stats_without_goals_scored_still_load(world):
+    stored = live(xg="0.40", xa="0.10", xgc="1.00")
+    del stored["goals_scored"]
+    world.result(1, 5, 90, 2, explain=[stats(501, minutes=(90, 2))], live=stored)
+    with world.session() as session:
+        result = load.load_match_results(session, SEASON, 5, {1})[1]
+    assert result.live == load.LiveLine(Decimal("0.40"), Decimal("0.10"), Decimal("1.00"))
 
 
 def test_fixture_bonus_loaded_per_fixture(world):

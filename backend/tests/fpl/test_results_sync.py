@@ -98,6 +98,26 @@ def test_fixture_stats_stored_per_player_and_fixture(db_session):
     assert _stored_fixture_stats(db_session) == expected
 
 
+def test_fixture_stat_of_an_unknown_player_skipped(db_session):
+    _load_reference(db_session)
+    fixtures_payload = load("fixtures")
+    known = {e["id"] for e in load("bootstrap-static")["elements"]}
+    unknown = max(known) + 1000
+    target = next(
+        stat for f in fixtures_payload if f["event"] == 1 for stat in f["stats"] if stat["h"]
+    )
+    target["h"].append({"element": unknown, "value": 1})
+
+    sync_results(db_session, _client(fixtures=fixtures_payload), 1, NOW)
+    db_session.commit()
+
+    stored = _stored_fixture_stats(db_session)
+    assert stored
+    assert not [row for row in stored if row[2] == unknown]
+    expected = {row for row in _payload_fixture_stats(fixtures_payload, 1) if row[2] != unknown}
+    assert stored == expected
+
+
 def test_resync_replaces_fixture_stats(db_session):
     _load_reference(db_session)
     sync_results(db_session, _client(), 1, NOW)

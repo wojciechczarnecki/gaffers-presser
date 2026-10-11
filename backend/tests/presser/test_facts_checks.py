@@ -540,6 +540,14 @@ RED_ENTRY_MOMENT = {
         ),
         (
             "key moments: decisive does not match the swing and the margin",
+            add_moments(with_entry(1, decisive=False) | {"margin": 12}),
+        ),
+        (
+            "key moments: decisive does not match the swing and the margin",
+            add_moments(with_entry(0, decisive=True) | {"margin": 2}),
+        ),
+        (
+            "key moments: decisive does not match the swing and the margin",
             add_moments(
                 RED_ENTRY_MOMENT
                 | {
@@ -565,6 +573,10 @@ RED_ENTRY_MOMENT = {
 )
 def test_inconsistent_v4_moment_is_reported(expected, mutate):
     assert expected in problems_after(mutate, recompute=False)
+
+
+def test_decisive_entry_at_a_swing_equal_to_the_margin_has_no_problems():
+    assert problems_after(add_moments(BREAKDOWN_MOMENT | {"margin": 12})) == []
 
 
 MISSED_MOMENT = {

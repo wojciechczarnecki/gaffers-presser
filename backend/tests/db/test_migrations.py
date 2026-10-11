@@ -808,10 +808,11 @@ def test_match_stats_migration_backfills_from_the_latest_payload_and_downgrades(
                     )
             early = datetime(2026, 9, 1, tzinfo=UTC)
             late = datetime(2026, 9, 2, tzinfo=UTC)
-            payload(conn, "event/1/live", 1, early, live_body(10, "0.10"))
+            # the later fetch is inserted first: a lower id, so only fetched_at picks it
             payload(conn, "event/1/live", 1, late, live_body(12, "0.80"))
-            payload(conn, "fixtures", 1, early, fixtures_body(10))
+            payload(conn, "event/1/live", 1, early, live_body(10, "0.10"))
             payload(conn, "fixtures", 1, late, fixtures_body(12))
+            payload(conn, "fixtures", 1, early, fixtures_body(10))
 
         tables = set(SQLModel.metadata.tables.keys()) - {"player_fixture_stat"}
         excluded = DEFAULT_EXCLUDE | {"search_vector"} | MATCH_STATS_COLUMNS

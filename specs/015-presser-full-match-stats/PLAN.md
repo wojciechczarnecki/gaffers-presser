@@ -964,3 +964,21 @@ Rejected:
 
 Left out: 11 nit findings
 
+
+Fixed (apply mode, 2026-10-11; every accepted finding per the gate entry in `## Owner decisions`):
+
+- **F1** — `facts/load.py`: a stat's points include FPL's `points_modification`; a player whose `explain` points still do not sum to his total points loads with `live = None` (no breakdown, xG flags or new kinds) instead of failing `check_fact_sheet`. Tests: `test_facts_load.py::test_points_modification_counts_in_the_stat_points`, `::test_explain_not_summing_to_the_points_drops_the_stats`.
+- **F2** — `facts/stats.py`: `ROUTINE_STATS` (`minutes`, `goals_conceded`) and `can_decide`, used by `moment_breakdown` and `checks.py`; SPEC Scope 2 and AC4 amended; the DECISIONS decisive-stat row updated; the 8 synthetic v4 cases with a decisive `minutes` entry flipped to `false` (no moment dropped, order unchanged) and the 10 real cases rebuilt with `build-cases --gameweeks 1-5 --force` (GW6 not finished: `False 0`). Tests: `test_facts_moments.py::test_minutes_entry_never_decisive`, `::test_goals_conceded_entry_never_decisive`, a check case in `test_facts_checks.py`.
+- **F3** — `facts/load.py:_live_line` returns `None` when an xG field is missing; `LiveLine.goals_scored` removed. Tests: `test_facts_load.py::test_live_stats_missing_a_field_degrade_to_no_stats` (3 fields), `::test_live_stats_without_goals_scored_still_load`.
+- **F4** — `docs/DECISIONS.md`: the decisive-stat row amends the 2026-10-11 key-moment row; the thresholds row supersedes the version 3, writer 5, judge 4 and set v3 parts of the 2026-10-11 rows; the storage row records the F1/F3 degradation. Pinned in `test_docs.py::test_decisions_cover_full_match_stats`.
+- **F5** — code kept; SPEC Scope 3, AC6 and the decisions table amended to the multiplier difference; the DECISIONS BPS row names the owner decision.
+- **F6** — `test_migrations.py`: the later fetch is inserted first (lower `id`); dropping `fetched_at DESC` from the backfill now fails the test.
+- **F7** — `test_results_sync.py::test_fixture_stat_of_an_unknown_player_skipped`; removing the `known_players` filter now fails it.
+- **F8** — `test_facts_moments.py`: the 90-minute keeper of `lost_sheet` is named `Zeta` (sorts after `Left`); a minutes-blind `_conceded_xg` now fails the test.
+- **F9** — `checks.py`: a comment on the hat-trick and keeper-wall rules names the double-gameweek limit.
+- **F10** — writer prompt 6: "is a stat whose own swing…".
+- **F11** — `test_facts_checks.py`: a wrong flag at swing == margin and a routine `decisive` entry are reported, and `test_decisive_entry_at_a_swing_equal_to_the_margin_has_no_problems`; `>=` → `>` in `checks.py` now fails two tests.
+- **F12** — `test_facts_moments.py::test_own_kind_entry_never_decisive` parametrised over red card, own goal and missed penalty; dropping either from `OWN_KIND_STATS` fails it.
+- **F13** — `test_facts_moments.py::test_bonus_missed_by_one_in_both_fixtures_is_told_once`.
+
+Verification after the fixes: `verify.command` green (ruff check and format, 1917 passed).

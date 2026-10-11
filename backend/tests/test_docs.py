@@ -126,6 +126,11 @@ def test_decisions_cover_full_match_stats():
         "0.15",
         "ICT",
         "version 4",
+        "points_modification",
+        "routine stats (minutes, goals conceded)",
+        "this amends the 2026-10-11 key-moment row",
+        "this supersedes the fact sheet version 3, writer prompt version 5, judge prompt version 4"
+        " and set v3 parts of the 2026-10-11 rows",
     )
     for needle in needles:
         assert needle in text, needle

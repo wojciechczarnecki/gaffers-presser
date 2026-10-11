@@ -67,7 +67,6 @@ class FixtureStats:
 
 @dataclass(frozen=True)
 class LiveLine:
-    goals_scored: int
     expected_goals: Decimal
     expected_assists: Decimal
     expected_goals_conceded: Decimal
@@ -312,14 +311,40 @@ def load_player_positions(session: Session, season: str, player_ids: set[int]) -
     return dict(rows)
 
 
+LIVE_KEYS = ("expected_goals", "expected_assists", "expected_goals_conceded")
+
+
 def _live_line(live_stats: dict | None) -> LiveLine | None:
-    if live_stats is None:
+    # a missing field degrades to "no stats" instead of failing the build
+    if live_stats is None or any(live_stats.get(key) is None for key in LIVE_KEYS):
         return None
-    return LiveLine(
-        goals_scored=int(live_stats["goals_scored"]),
-        expected_goals=Decimal(str(live_stats["expected_goals"])),
-        expected_assists=Decimal(str(live_stats["expected_assists"])),
-        expected_goals_conceded=Decimal(str(live_stats["expected_goals_conceded"])),
+    return LiveLine(*(Decimal(str(live_stats[key])) for key in LIVE_KEYS))
+
+
+def _fixture_stats(item: dict) -> FixtureStats:
+    # FPL's points_modification is a correction to the stat's points
+    return FixtureStats(
+        item["fixture"],
+        {
+            stat["identifier"]: StatLine(
+                stat["value"], stat["points"] + stat.get("points_modification", 0)
+            )
+            for stat in item["stats"]
+        },
+    )
+
+
+def _match_result(row: PlayerGameweekResult) -> MatchResult:
+    fixtures = tuple(_fixture_stats(item) for item in row.explain)
+    summed = sum(line.points for fixture in fixtures for line in fixture.stats.values())
+    # a breakdown that does not sum to the points is not told: the player has no stats
+    live = _live_line(row.live_stats) if summed == row.total_points else None
+    return MatchResult(
+        starts=row.starts,
+        minutes=row.minutes,
+        points=row.total_points,
+        fixtures=fixtures,
+        live=live,
     )
 
 
@@ -335,25 +360,7 @@ def load_match_results(
             col(PlayerGameweekResult.player_fpl_id).in_(player_ids),
         )
     ).all()
-    return {
-        row.player_fpl_id: MatchResult(
-            starts=row.starts,
-            minutes=row.minutes,
-            points=row.total_points,
-            fixtures=tuple(
-                FixtureStats(
-                    item["fixture"],
-                    {
-                        stat["identifier"]: StatLine(stat["value"], stat["points"])
-                        for stat in item["stats"]
-                    },
-                )
-                for item in row.explain
-            ),
-            live=_live_line(row.live_stats),
-        )
-        for row in rows
-    }
+    return {row.player_fpl_id: _match_result(row) for row in rows}
 
 
 def load_player_info(session: Session, season: str, ids: set[int]) -> dict[int, PlayerInfo]:

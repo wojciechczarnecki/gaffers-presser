@@ -164,7 +164,7 @@ def test_contributions_captain_vice_bench_boost_and_autosub():
 
 
 def with_live(result: MatchResult) -> MatchResult:
-    line = LiveLine(0, 0, 0, 0)
+    line = LiveLine(0, 0, 0)
     return MatchResult(result.starts, result.minutes, result.points, result.fixtures, line)
 
 

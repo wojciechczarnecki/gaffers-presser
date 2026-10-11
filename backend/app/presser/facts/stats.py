@@ -10,6 +10,12 @@ GOAL_FROM_NOTHING_BELOW_XG = Decimal("0.15")
 HAT_TRICK_MIN_GOALS = 3
 KEEPER_WALL_MIN_SAVE_POINTS = 2
 OWN_KIND_STATS = ("red_cards", "own_goals", "penalties_missed", "penalties_saved")
+# routine points every starter gets or loses: never what decided a moment
+ROUTINE_STATS = ("minutes", "goals_conceded")
+
+
+def can_decide(identifier: str) -> bool:
+    return identifier not in OWN_KIND_STATS and identifier not in ROUTINE_STATS
 
 
 def breakdown(result: MatchResult) -> list[StatPoints] | None:
@@ -55,7 +61,7 @@ def moment_breakdown(
             MomentStat(
                 **dict(entry),
                 swing=swing,
-                decisive=swing >= margin and entry.identifier not in OWN_KIND_STATS,
+                decisive=swing >= margin and can_decide(entry.identifier),
             )
         )
     return result

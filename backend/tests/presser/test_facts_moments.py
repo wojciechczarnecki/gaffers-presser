@@ -384,18 +384,47 @@ def test_trailing_captains_yellow_card_decides_at_margin_1(world):
     assert entries(moment)["minutes"].decisive is False
 
 
-def test_red_card_entry_never_decisive(world):
+@pytest.mark.parametrize(
+    ("identifier", "points", "kind"),
+    [
+        ("red_cards", -3, "red_card"),
+        ("own_goals", -2, "own_goal"),
+        ("penalties_missed", -2, "penalty_missed"),
+    ],
+)
+def test_own_kind_entry_never_decisive(world, identifier, points, kind):
     world.fixture(501, 5, 1, 2, 0, 0)
-    explain = [stats(501, minutes=(40, 1), red_cards=(1, -3))]
-    player(world, 1, "Sent", -2, explain=explain, live_stats=live())
+    explain = [stats(501, minutes=(40, 1), **{identifier: (1, points)})]
+    player(world, 1, "Sent", 1 + points, explain=explain, live_stats=live())
     pick(world, 10, 60, [])
-    pick(world, 11, 58, [1])
+    pick(world, 11, 59, [1])
     pick(world, 12, 10, [])
     result = moments(world)
     (player_moment,) = [m for m in result if m.kind == "player"]
-    assert entries(player_moment)["red_cards"].swing == 3
-    assert entries(player_moment)["red_cards"].decisive is False
-    assert [m.kind for m in result if m.kind == "red_card"] == ["red_card"]
+    assert entries(player_moment)[identifier].swing == -points
+    assert -points >= player_moment.margin
+    assert entries(player_moment)[identifier].decisive is False
+    assert [m.kind for m in result if m.kind == kind] == [kind]
+
+
+def test_minutes_entry_never_decisive(world):
+    # the ahead manager's starter: minutes swing 2 reaches the margin, the total swing 1 not
+    explain = [stats(501, minutes=(90, 2), yellow_cards=(1, -1))]
+    player(world, 1, "Starter", 1, explain=explain, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 58, [])
+    pick(world, 12, 10, [])
+    assert moments(world) == []
+
+
+def test_goals_conceded_entry_never_decisive(world):
+    # the trailing manager's defender: goals conceded swing 1 reaches the margin of 1
+    explain = [stats(501, minutes=(90, 2), goals_conceded=(2, -1))]
+    player(world, 1, "Leaky", 1, position=2, explain=explain, live_stats=live())
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    assert moments(world) == []
 
 
 def test_decisive_moment_ranks_by_its_decisive_swing(world):
@@ -531,6 +560,20 @@ def test_bonus_in_the_other_fixture_of_a_double_gameweek(world):
     assert (moment.players, moment.missed_bonus) == (["Near"], 1)
 
 
+def test_bonus_missed_by_one_in_both_fixtures_is_told_once(world):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    world.fixture(502, 5, 2, 1, 0, 0)
+    explain = [stats(501, minutes=(90, 2)), stats(502, minutes=(90, 2))]
+    player(world, 1, "Near", 4, explain=explain, live_stats=live())
+    bonus_fixture(world, 501, [(20, 30, 3), (21, 28, 2), (22, 25, 1)], near=(1, 24))
+    bonus_fixture(world, 502, [(23, 30, 3), (24, 28, 2), (25, 25, 1)], near=(1, 24))
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    (moment,) = missed(world)
+    assert (moment.players, moment.missed_bonus, moment.swing) == (["Near"], 1, 1)
+
+
 def test_fixture_without_bonus_rows_gives_no_near_miss(world):
     world.fixture(501, 5, 1, 2, 0, 0)
     player(world, 1, "Near", 2, explain=NEAR_EXPLAIN, live_stats=live())
@@ -546,7 +589,8 @@ def lost_sheet(world, keeper_live, defender_live, double=False):
     if double:
         world.fixture(502, 5, 1, 2, 1, 1)
     lost = [stats(501, minutes=(90, 2))]
-    player(world, 1, "Keeper", 2, position=1, club=2, explain=lost, live_stats=keeper_live)
+    # the 90-minute keeper sorts after the defender by name: minutes, not the name, pick him
+    player(world, 1, "Zeta", 2, position=1, club=2, explain=lost, live_stats=keeper_live)
     player(
         world,
         2,
