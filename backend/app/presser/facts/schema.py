@@ -51,6 +51,7 @@ class PlayerStats(Strict):
 
 
 class CaptainPick(PlayerStats):
+    # the breakdown is in captain points: each stat's points * multiplier, summing to points
     manager: str
     player: str
     base_points: int
@@ -316,7 +317,7 @@ class Overall(Strict):
 
 
 class FactSheet(Strict):
-    version: Literal[4] = 4
+    version: Literal[5] = 5
     league: str
     season: str
     gameweek: int

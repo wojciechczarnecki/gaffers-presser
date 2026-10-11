@@ -361,7 +361,7 @@ def test_average_is_net_and_rounded_half_up(world):
     assert sheet(world).average_net_points == 55  # (61 + 48) / 2 = 54.5
 
 
-def test_sheet_v4_sections_in_order(world):
+def test_sheet_v5_sections_in_order(world):
     world.gw(10, 5, 60)
     world.gw(11, 5, 50)
     assert SECTIONS == (
@@ -374,7 +374,7 @@ def test_sheet_v4_sections_in_order(world):
         "table",
         "overall",
     )
-    assert sheet(world).version == 4
+    assert sheet(world).version == 5
 
 
 def test_chips_section_empty_without_chips(world):

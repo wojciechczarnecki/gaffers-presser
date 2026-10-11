@@ -437,6 +437,10 @@ def breakdown_of(*entries):
             add_captain(breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 9))),
         ),
         (
+            "breakdown: does not sum to the player's points",
+            add_captain(breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 10))),
+        ),
+        (
             "xG: a flag does not match the thresholds",
             add_pitch(
                 points=3,
@@ -668,7 +672,7 @@ def test_consistent_v4_stats_have_no_problems():
                     goal_from_nothing=True,
                 )(v),
                 add_captain(
-                    breakdown=full,
+                    breakdown=breakdown_of(("minutes", 90, 4), ("goals_scored", 1, 20)),
                     expected_goals="0.10",
                     big_miss=False,
                     goal_from_nothing=True,

@@ -108,10 +108,33 @@ def test_pitch_item_and_captain_carry_the_breakdown(world):
     result = sheet(world)
     (captain,) = result.captaincy.picks
     assert (captain.player, captain.vice_stepped_in, captain.base_points) == ("Vice", True, 12)
-    assert sum(entry.points for entry in captain.breakdown) == captain.base_points
+    assert sum(entry.points for entry in captain.breakdown) == captain.points == 24
     (item,) = result.pitch.items
     assert item.player == "Vice"
     assert sum(entry.points for entry in item.breakdown) == item.points
+
+
+@pytest.mark.parametrize(("chip", "multiplier"), [(None, 2), ("3xc", 3)])
+def test_captain_breakdown_is_in_captain_points(world, chip, multiplier):
+    player(
+        world,
+        1,
+        "Carded",
+        1,
+        [stats(501, minutes=(90, 2), yellow_cards=(1, -1))],
+        live(xg="0.10"),
+    )
+    world.gw(10, 5, 60, chip=chip)
+    world.squad(10, 5, [1], captain=1)
+    pick(world, 11, 50, [])
+    result = sheet(world)
+    (captain,) = result.captaincy.picks
+    assert captain.points == multiplier
+    assert [(e.identifier, e.value, e.points) for e in captain.breakdown] == [
+        ("minutes", 90, 2 * multiplier),
+        ("yellow_cards", 1, -multiplier),
+    ]
+    assert check_fact_sheet(result) == []
 
 
 def captains(world, specs):
@@ -189,7 +212,7 @@ def test_data_only_stats_absent_from_the_schema():
     assert not DATA_ONLY & names
 
 
-def test_gameweek_without_match_stats_builds_a_v4_sheet(world):
+def test_gameweek_without_match_stats_builds_a_v5_sheet(world):
     world.fixture(501, 5, 1, 2, 0, 0)
     player(world, 1, "Haulman", 14, [])
     player(world, 2, "Sent", -2, [stats(501, minutes=(40, 1), red_cards=(1, -3))])
@@ -203,7 +226,7 @@ def test_gameweek_without_match_stats_builds_a_v4_sheet(world):
     pick(world, 11, 55, [2, 3, 4])
     pick(world, 12, 40, [])
     result = sheet(world)
-    assert result.version == 4
+    assert result.version == 5
     kinds = {i.player: i.kinds for i in result.pitch.items}
     assert kinds == {
         "Haulman": ["differential_haul"],

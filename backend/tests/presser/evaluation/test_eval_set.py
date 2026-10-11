@@ -22,8 +22,8 @@ def test_the_committed_set_has_no_composition_problems():
     assert composition_problems(CASES) == []
 
 
-def test_split_is_twenty_and_twenty_one_with_real_and_synthetic_in_each():
-    for split, size, synthetic in (("dev", 20, 15), ("test", 21, 16)):
+def test_split_is_twenty_one_and_twenty_two_with_real_and_synthetic_in_each():
+    for split, size, synthetic in (("dev", 21, 16), ("test", 22, 17)):
         in_split = [case for case in CASES if case.split == split]
         assert len(in_split) == size
         assert sum(case.source == "real" for case in in_split) == 5
@@ -65,8 +65,8 @@ def _without_rank_values(value):
     return value
 
 
-def test_the_set_has_41_cases_and_the_rank_cases():
-    assert len(CASES) == 41
+def test_the_set_has_43_cases_and_the_rank_cases():
+    assert len(CASES) == 43
     tags = {tag for case in CASES for tag in case.tags}
     assert {"enter_top_10k", "rise_in_top_10k", "drop_out_of_top_1m", "gw_rank_unknown"} <= tags
 
@@ -82,6 +82,19 @@ def test_rank_cases_show_what_their_tag_says():
     )
     dropped = by_tag["drop_out_of_top_1m"].facts.overall.rows
     assert any(1_000_000 in row.left for row in dropped)
+    (just_outside,) = [
+        row
+        for row in by_tag["drop_just_outside_1m"].facts.overall.rows
+        if row.notable and 1_000_000 in row.left and row.overall_rank < 1_050_000
+    ]
+    assert just_outside.overall_rank > 1_000_000
+    flop_case = by_tag["first_flop_after_other"]
+    (flop,) = flop_case.facts.flops
+    (season_row,) = [r for r in flop_case.facts.season_facts.rows if r.manager == flop.manager]
+    assert (flop.nth_of_season, season_row.flop_streak) == (1, 1)
+    last = flop_case.previous[-1]
+    assert last.gameweek == flop_case.facts.gameweek - 1
+    assert "Wtopa kolejki:* " in last.text and flop.manager not in last.text.split("Wtopa")[1]
     unknown = by_tag["gw_rank_unknown"].facts
     assert all(score.gameweek_rank is None for score in unknown.winners + unknown.flops)
     assert unknown.season_facts.best_gameweek == [] and "overall" in unknown.empty_sections

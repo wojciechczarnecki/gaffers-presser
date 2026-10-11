@@ -19,6 +19,7 @@ from app.presser.facts.schema import (
     ManagerScore,
     PlayerStats,
     Season,
+    StatPoints,
     TransferMiss,
     TransferPair,
     TransferWin,
@@ -114,6 +115,16 @@ def multiplier_for(chip: str | None) -> int:
     return 3 if chip == "3xc" else 2
 
 
+def captain_stats(stats: PlayerStats, multiplier: int) -> PlayerStats:
+    if stats.breakdown is None:
+        return stats
+    scaled = [
+        StatPoints(identifier=entry.identifier, value=entry.value, points=entry.points * multiplier)
+        for entry in stats.breakdown
+    ]
+    return stats.model_copy(update={"breakdown": scaled})
+
+
 def captaincy(
     rows: list[MemberRow],
     refs: dict[tuple[int, int], CaptainRef],
@@ -130,6 +141,7 @@ def captaincy(
         if credit is None:
             continue
         multiplier = multiplier_for(row.active_chip)
+        stats = player_facts.get(credit.player_id, PlayerStats())
         picks.append(
             CaptainPick(
                 manager=names[row.entry_id],
@@ -140,7 +152,7 @@ def captaincy(
                 triple_captain=row.active_chip == "3xc",
                 vice_stepped_in=credit.vice_stepped_in,
                 blank=credit.blank,
-                **dict(player_facts.get(credit.player_id, PlayerStats())),
+                **dict(captain_stats(stats, multiplier)),
             )
         )
     picks.sort(key=lambda pick: (-pick.points, pick.manager))

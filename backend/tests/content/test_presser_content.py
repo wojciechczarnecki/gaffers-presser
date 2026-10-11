@@ -26,9 +26,9 @@ WRITER_HEADERS = (
 )
 
 
-def test_writer_prompt_v6_rules():
+def test_writer_prompt_v7_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 6
+    assert prompt.version == 7
     positions = [prompt.text.index(header) for header in WRITER_HEADERS]
     assert positions == sorted(positions)
     assert prompt.text.index("⚽") < prompt.text.index("🪑")
@@ -55,7 +55,10 @@ def test_writer_prompt_v6_rules():
         "średnia ligowa",
         "from 10 000 is never quoted exactly",
         "fewer than 1 000 places is quoted exactly",
-        'never "tys."',
+        'never "tys." or "mln"',
+        '"1,6M"',
+        "or land on it",
+        "nieznacznie wypadł poza top 1M",
         'never write "1000k"',
         "never cross a threshold",
         "breakdown",
@@ -69,14 +72,19 @@ def test_writer_prompt_v6_rules():
         "expected_goals_conceded",
         "punchline",
         "never a bare xG",
+        "already in captain\n  points",
+        "`nth_of_season`, `gameweek_wins_to_date` and `gameweek_flops_to_date`",
+        "`captain_blank_streak` of 2 or more",
+        "neither a\n  count nor a streak",
     ):
         assert needle in prompt.text, needle
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")
+    assert "mln" not in prompt.text.replace('"mln"', "")
 
 
-def test_judge_prompt_v5_checks_full_match_stats():
+def test_judge_prompt_v6_checks_counts_streaks_and_rounding():
     prompt = load_prompt("presser_judge")
-    assert prompt.version == 5
+    assert prompt.version == 6
     for needle in (
         "pitch",
         "key moment",
@@ -92,7 +100,7 @@ def test_judge_prompt_v5_checks_full_match_stats():
         "rank",
         "threshold",
         "rounded",
-        "1,2 mln",
+        "1,2M",
         "o 15k miejsc",
         "tuż za top 10k",
         "breakdown",
@@ -103,8 +111,24 @@ def test_judge_prompt_v5_checks_full_match_stats():
         "big miss",
         "goal from nothing",
         "xG",
+        "captain points",
+        "drugi raz z\nrzędu",
+        "`captain_blank_streak` is 2 or more",
+        "onto a threshold or across it",
+        "nieznacznie wypadł poza top 1M",
+        '",0"',
+        "quoted exactly",
     ):
         assert needle in prompt.text, needle
+    assert "mln" not in prompt.text
+
+
+def test_glossary_prefers_roznica_and_keeps_differential_allowed():
+    terms = tomllib.loads((CONTENT / "presser_glossary.toml").read_text(encoding="utf-8"))["term"]
+    (entry,) = [term for term in terms if "różnica" in term["term"]]
+    assert "hipsterski wybór" in entry["term"]
+    assert "najpopularniejsze" in entry["meaning"] and "sporadycznie" in entry["meaning"]
+    assert "differential" in entry["meaning"] and "dyferencjał" in entry["meaning"]
 
 
 def test_glossary_has_69_complete_terms():
@@ -175,5 +199,6 @@ def test_style_examples_round_ranks_like_the_prompt():
     exact = [int(n.replace(" ", "")) for n in re.findall(r"\b\d{1,3}(?: \d{3})+\b|\d{4,}", whole)]
     assert exact
     assert all(n < 10_000 for n in exact), exact
-    assert not re.search(r",0 ?(k|mln)\b|\b1000k\b", whole)
+    assert "mln" not in whole
+    assert not re.search(r",0 ?(k|M)\b|\b1000k\b", whole)
     assert not re.search(r"średni\w*(?! lig)", whole)

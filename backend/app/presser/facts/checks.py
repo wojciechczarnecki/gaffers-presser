@@ -233,9 +233,13 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
     return problems
 
 
-def _check_player_stats(points: int, facts: PlayerStats) -> list[str]:
+def _check_player_stats(points: int, facts: PlayerStats, multiplier: int = 1) -> list[str]:
+    # points are the player's own; a captain's breakdown is multiplied (CaptainPick)
     problems: list[str] = []
-    if facts.breakdown is not None and sum(entry.points for entry in facts.breakdown) != points:
+    if (
+        facts.breakdown is not None
+        and sum(entry.points for entry in facts.breakdown) != points * multiplier
+    ):
         problems.append("breakdown: does not sum to the player's points")
     goals = 0
     if facts.breakdown is not None:
@@ -304,7 +308,7 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
     for pick in sheet.captaincy.picks:
         if pick.points != pick.base_points * pick.multiplier:
             problems.append("captaincy: points do not match base points and multiplier")
-        problems += _check_player_stats(pick.base_points, pick)
+        problems += _check_player_stats(pick.base_points, pick, pick.multiplier)
     for item in sheet.pitch.items:
         problems += _check_player_stats(item.points, item)
         # the breakdown sums a double gameweek's fixtures, so these two rules cannot tell 2 + 1

@@ -6,17 +6,17 @@ sections in order, ties a key moment to a result in its "Z boiska" paragraph, na
 sparingly, jokes only about FPL decisions and uses no vulgar words. They show tone and form only:
 the writer never copies a phrase or a joke from them.
 
-## Example 1 — a differential haul and its bonus points decide the gameweek
+## Example 1 — a „różnica” haul (a differential) and its bonus points decide the gameweek
 
 🎙️ *Presser GW9 — Liga Kawiarniana*
 
 🏆 *Manager kolejki:* Kowal wygrywa z 62 punktami netto i GW rankiem 38k. O wszystkim zdecydował jeden zawodnik, o którym niżej, bo bez niego wygrałaby Lena.
 
-🤦 *Wtopa kolejki:* Marek, 31 punktów, a w całej grze GW rank 6,4 mln. Hit za -4 na dwóch zawodników, którzy razem dali 3 punkty. Tak się nie odrabia strat.
+🤦 *Wtopa kolejki:* Marek, 31 punktów, a w całej grze GW rank 6,4M. Hit za -4 na dwóch zawodników, którzy razem dali 3 punkty. Tak się nie odrabia strat.
 
 ©️ *Kapitanowie:* Czterech z sześciu postawiło na Salaha i zgarnęło po 12. Lena dała opaskę Palmerowi: 15 punktów, najlepiej w lidze. Markowi Isak odpłacił 2 punktami.
 
-⚽ *Z boiska:* Przewaga Kowala nad Leną to 3 punkty i dokładnie tyle dały mu bonusy Cunhy, którego miał jako jedyny w lidze. Sam Cunha zebrał 17 punktów, a w całej grze ma go poniżej 10% managerów. Haaland, który stał w składach niemal całej ligi, dał po 2 punkty, choć jego xG sięgało 0,9, więc to był pech, a nie forma.
+⚽ *Z boiska:* Przewaga Kowala nad Leną to 3 punkty i dokładnie tyle dały mu bonusy Cunhy, którego miał jako jedyny w lidze. Ta różnica zebrała 17 punktów, a w całej grze Cunhę ma poniżej 10% managerów. Haaland, który stał w składach niemal całej ligi, dał po 2 punkty, choć jego xG sięgało 0,9, więc to był pech, a nie forma.
 
 🪑 *Ławka i transfery:* Lena wymieniła Gordona (2) na Foldena (9) i dopisała sobie 7 punktów. Jacek zostawił na ławce 13 punktów, a jedyny autosub dorzucił mu 1.
 
@@ -24,7 +24,7 @@ the writer never copies a phrase or a joke from them.
 
 📊 *Tabela:* Kowal awansuje na drugie miejsce, a lider, ekipa „Kawowy Odlot”, ma nad nim już tylko 5 punktów. Marek spada o dwie pozycje.
 
-🌍 *Overall:* Kowal wskoczył do top 100k: był 140k, jest 88k. Marek wypadł z top 1M i ma 2,3 mln.
+🌍 *Overall:* Kowal wskoczył do top 100k: był 140k, jest 88k. Marek wypadł z top 1M i ma 2,3M.
 
 ## Example 2 — a lost clean sheet and a yellow card cost a podium place
 
@@ -32,7 +32,7 @@ the writer never copies a phrase or a joke from them.
 
 🏆 *Manager kolejki:* Ola, 74 punkty netto, GW rank 21k. Bez hita i bez chipa, po prostu solidny tydzień w każdej formacji.
 
-🤦 *Wtopa kolejki:* Piotrek, 29 punktów i GW rank 6,9 mln. Opaska na zawodniku, który dał 2, a do tego obrona, która w tej kolejce pękła. Przez to wypadł z podium.
+🤦 *Wtopa kolejki:* Piotrek, 29 punktów i GW rank 6,9M. Opaska na zawodniku, który dał 2, a do tego obrona, która w tej kolejce pękła. Przez to wypadł z podium.
 
 ©️ *Kapitanowie:* Salah zebrał 26 u tych, którzy mu zaufali, a Isak dał 4 trzem managerom. Rekord opaski ma Ania: 36 punktów od jednego zawodnika.
 
@@ -44,7 +44,7 @@ the writer never copies a phrase or a joke from them.
 
 📊 *Tabela:* Piotrek schodzi z trzeciego miejsca na piąte, a na podium wskakują „Biurowe Orły”. Między pierwszym a trzecim jest tylko 9 punktów.
 
-🌍 *Overall:* Ola wchodzi do top 10k: jest 9 412., a tydzień temu była 16k. Piotrek spadł z 1,4 mln na 3,1 mln.
+🌍 *Overall:* Ola wchodzi do top 10k: jest 9 412., a tydzień temu była 16k. Piotrek spadł z 1,4M na 3,1M.
 
 ## Example 3 — a rivalry swap decided by a DefCon
 
@@ -52,7 +52,7 @@ the writer never copies a phrase or a joke from them.
 
 🏆 *Manager kolejki:* Zbychu, 81 punktów netto i GW rank 9 118. Jest co świętować, ale najciekawsza rzecz tej kolejki dzieje się dwa miejsca niżej.
 
-🤦 *Wtopa kolejki:* Mati zaliczył 41 punktów i GW rank 5,6 mln. Wszystko, co mogło nie wypalić, nie wypaliło.
+🤦 *Wtopa kolejki:* Mati zaliczył 41 punktów i GW rank 5,6M. Wszystko, co mogło nie wypalić, nie wypaliło.
 
 ©️ *Kapitanowie:* Kuba wybrał Isaka i zebrał 4, reszta stawki wzięła po 16. Odwaga tym razem się nie opłaciła.
 
