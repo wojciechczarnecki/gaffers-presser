@@ -653,7 +653,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
         assertions run green in this step.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation/test_cases.py tests/presser/evaluation/test_building.py tests/presser/evaluation/test_cli.py`
 
-- [ ] 13. **Set v4: the real cases rebuilt (AC15, the real part).** Files:
+- [x] 13. **Set v4: the real cases rebuilt (AC15, the real part).** `iterations: 0` Files:
       `backend/evals/presser/v4/cases.jsonl`, plus `REAL_CASES` in `cases.py` only if GW6
       joins.
       - With `DB=postgresql+psycopg://presser:presser@localhost:5432/presser`, from
