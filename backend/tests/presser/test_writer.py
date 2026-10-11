@@ -46,7 +46,7 @@ def facts() -> FactSheet:
                     "nth_of_season": 1,
                 }
             ],
-            "empty_sections": ["captaincy", "bench_transfers_chips", "table"],
+            "empty_sections": ["captaincy", "bench_transfers", "table"],
         }
     )
 
@@ -58,7 +58,7 @@ def caller(*responses):
 
 def test_prompt_version_label():
     assert PROMPT_VERSION == f"presser_writer@{WRITER_PROMPT.version}"
-    assert PROMPT_VERSION == "presser_writer@4"
+    assert PROMPT_VERSION == "presser_writer@5"
 
 
 def test_input_holds_facts_glossary_examples_previous():

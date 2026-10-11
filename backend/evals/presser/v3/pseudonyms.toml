@@ -16,3 +16,14 @@ leagues = [
   "Kółko Różańcowe FPL",
   "Stowarzyszenie Wolnych Transferów",
 ]
+
+teams = [
+  "Drużyna Pierścienia", "Kosiarze Murawy", "Złote Rączki FC", "Pogromcy Wildcardów",
+  "Benchwarmersi United", "Tiki-Taka z Bazaru", "Fabryka Hitów", "Wolne Elektrony",
+  "Grad Bramek", "Cichy Kapitan", "Różowe Okulary", "Autobus Zaparkowany",
+  "Pan Różnica", "Szalony Szatniarz", "Klub Czwartej Kolejki", "Rezerwowi Marzyciele",
+  "Dziurawa Obrona", "Piąty Obrońca", "Czyste Konto Inc.", "Ostatnia Minuta",
+  "Zielone Strzałki", "Niebieskie Migdały", "Trzy Punkty w Kieszeni", "Siódme Niebo",
+  "Stara Gwardia", "Młode Wilki", "Tajny Skład", "Kwaśne Jabłka",
+  "Bramkarz na Gali", "Jedenastu Gniewnych", "Strzał z Dystansu", "Spalony na Starcie",
+]

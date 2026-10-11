@@ -163,7 +163,7 @@ def test_nicknames_used_everywhere(world):
     result = sheet(world, nicknames={10: "Bartas"})
     text = result.model_dump_json()
     assert "Bartas" in text
-    for forbidden in ("Anna", "Alfa", "Realni", "Synthetic XI"):
+    for forbidden in ("Anna", "Alfa"):
         assert forbidden not in text
     assert "Bartek" in text
     assert check_fact_sheet(result) == []
@@ -184,3 +184,140 @@ def test_season_wins_and_flops_by_net_points_when_a_hit_changes_the_order(world)
     assert (rows["Bartek"].gameweek_wins_to_date, rows["Bartek"].win_streak) == (1, 0)
     assert (rows["Cezary"].gameweek_flops_to_date, rows["Cezary"].flop_streak) == (3, 3)
     assert (rows["Bartek"].gameweek_flops_to_date, rows["Anna"].gameweek_flops_to_date) == (0, 0)
+
+
+def test_rows_carry_team_name(world):
+    play(world, 5, {10: 30, 11: 70, 12: 20})
+    rows = {r.manager: r.team_name for r in sheet(world).table.rows}
+    assert rows == {"Anna": "Realni FC 10", "Bartek": "Realni FC 11", "Cezary": "Realni FC 12"}
+
+
+def test_team_names_argument_overrides_the_stored_ones(world):
+    play(world, 5, {10: 30, 11: 70, 12: 20})
+    with world.session() as session:
+        result = build_fact_sheet(
+            session, SEASON, LEAGUE_ID, 5, {}, {10: "Pseudo A", 11: "Pseudo B", 12: "Pseudo C"}
+        )
+    assert {r.manager: r.team_name for r in result.table.rows}["Bartek"] == "Pseudo B"
+
+
+@pytest.fixture
+def rivals(db):
+    world = World(db, gameweeks=6, finished=6)
+    for fpl_id, name in [(1, "Alpha"), (2, "Bravo")]:
+        world.player(fpl_id, name)
+    for entry_id, name in [
+        (10, "Anna Alfa"),
+        (11, "Bartek Beta"),
+        (12, "Cezary Ceta"),
+        (13, "Dawid Delta"),
+        (14, "Ewa Epsilon"),
+    ]:
+        world.manager(entry_id, name)
+    return world
+
+
+def neighbours(world, gameweeks, extra=None):
+    """Anna just ahead of Bartek, Cezary far ahead, Dawid far behind, for the given gameweeks."""
+    for number in gameweeks:
+        play(world, number, {10: 60, 11: 58, 12: 90, 13: 10, 14: 1})
+    if extra:
+        extra()
+
+
+def swaps_of(world, gameweek):
+    return sheet(world, gameweek).table.rivalry_swaps
+
+
+def test_rivalry_swap_after_three_neighbour_gameweeks(rivals):
+    neighbours(rivals, [1, 2, 3])
+    play(rivals, 4, {10: 40, 11: 60, 12: 90, 13: 10, 14: 1})
+    (swap,) = swaps_of(rivals, 4)
+    assert (swap.ahead, swap.behind) == ("Bartek", "Anna")
+    assert (swap.ahead_previous_rank, swap.ahead_rank) == (3, 2)
+    assert (swap.behind_previous_rank, swap.behind_rank) == (2, 3)
+    assert (swap.gap, swap.neighbour_gameweeks) == (14, 3)
+
+
+def test_rivalry_streak_counts_a_longer_run(rivals):
+    neighbours(rivals, [1, 2, 3, 4])
+    play(rivals, 5, {10: 40, 11: 60, 12: 90, 13: 10, 14: 1})
+    (swap,) = swaps_of(rivals, 5)
+    assert swap.neighbour_gameweeks == 4
+
+
+def test_two_neighbour_gameweeks_no_swap(rivals):
+    play(rivals, 1, {10: 60, 11: 58, 12: 90, 13: 10, 14: 59})
+    for number in (2, 3):
+        play(rivals, number, {10: 60, 11: 58, 12: 90, 13: 10, 14: 0})
+    play(rivals, 4, {10: 40, 11: 60, 12: 90, 13: 10, 14: 0})
+    assert swaps_of(rivals, 4) == []
+
+
+def test_no_swap_before_gw4(rivals):
+    neighbours(rivals, [1, 2])
+    play(rivals, 3, {10: 40, 11: 70, 12: 90, 13: 10, 14: 1})
+    assert swaps_of(rivals, 3) == []
+
+
+def test_tie_now_is_not_a_swap(rivals):
+    neighbours(rivals, [1, 2, 3])
+    play(rivals, 4, {10: 40, 11: 46, 12: 90, 13: 10, 14: 1})
+    assert swaps_of(rivals, 4) == []
+
+
+def podium(world, gameweek):
+    return [
+        (c.kind, c.manager, c.previous_rank, c.rank, c.other, c.gap)
+        for c in sheet(world, gameweek).table.podium_changes
+    ]
+
+
+def test_podium_new_leader_entered_left_swap(rivals):
+    play(rivals, 1, {10: 90, 11: 100, 12: 80, 13: 70, 14: 10})
+    play(rivals, 2, {10: 0, 11: 0, 12: 0, 13: 50, 14: 0})
+    assert podium(rivals, 2) == [
+        ("new_leader", "Dawid", 4, 1, "Bartek", 20),
+        ("entered", "Dawid", 4, 1, "Cezary", 40),
+        ("left", "Cezary", 3, 4, None, None),
+    ]
+
+
+def test_two_entered_paired_with_the_two_who_left(rivals):
+    play(rivals, 1, {10: 90, 11: 100, 12: 80, 13: 70, 14: 10})
+    play(rivals, 2, {10: 0, 11: 0, 12: 0, 13: 50, 14: 100})
+    assert podium(rivals, 2) == [
+        ("new_leader", "Dawid", 4, 1, "Bartek", 20),
+        ("entered", "Dawid", 4, 1, "Anna", 30),
+        ("entered", "Ewa", 5, 2, "Cezary", 30),
+        ("left", "Anna", 2, 4, None, None),
+        ("left", "Cezary", 3, 5, None, None),
+    ]
+
+
+def test_podium_swap_carries_the_manager_now_behind(rivals):
+    play(rivals, 1, {10: 90, 11: 100, 12: 80, 13: 70, 14: 10})
+    play(rivals, 2, {10: 20, 11: 0, 12: 25, 13: 0, 14: 0})
+    assert podium(rivals, 2) == [
+        ("new_leader", "Anna", 2, 1, "Bartek", 10),
+        ("swap", "Cezary", 3, 2, "Bartek", 5),
+    ]
+
+
+def test_podium_ties_ranked_as_in_table(rivals):
+    play(rivals, 1, {10: 90, 11: 100, 12: 80, 13: 70, 14: 10})
+    play(rivals, 2, {10: 10, 11: 0, 12: 0, 13: 0, 14: 0})
+    assert podium(rivals, 2) == [("new_leader", "Anna", 2, 1, "Bartek", 0)]
+    rows = sheet(rivals, 2).table.rows
+    assert [(r.manager, r.rank) for r in rows[:2]] == [("Anna", 1), ("Bartek", 1)]
+
+
+def test_no_podium_changes_at_gw1(rivals):
+    play(rivals, 1, {10: 90, 11: 100, 12: 80, 13: 70, 14: 10})
+    assert podium(rivals, 1) == []
+
+
+def test_no_podium_change_when_nothing_moves(rivals):
+    play(rivals, 1, {10: 90, 11: 100, 12: 80, 13: 70, 14: 10})
+    play(rivals, 2, {10: 90, 11: 100, 12: 80, 13: 70, 14: 10})
+    assert podium(rivals, 2) == []

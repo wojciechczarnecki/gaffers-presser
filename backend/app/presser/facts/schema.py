@@ -2,9 +2,16 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.presser.facts import ranks
-
-SECTIONS = ("winners", "flops", "captaincy", "bench_transfers_chips", "table", "overall")
+SECTIONS = (
+    "winners",
+    "flops",
+    "captaincy",
+    "pitch",
+    "bench_transfers",
+    "chips",
+    "table",
+    "overall",
+)
 
 
 class Strict(BaseModel):
@@ -42,10 +49,21 @@ class BenchItem(Strict):
     points_on_bench: int
 
 
+class TransferPair(Strict):
+    player_in: str
+    player_in_points: int
+    player_out: str
+    player_out_points: int
+
+
 class Hit(Strict):
     manager: str
     transfers: int
     cost: int
+    # the sum over the manager's transfers of (points in - points out)
+    transfer_gain: int
+    paid_off: bool
+    pairs: list[TransferPair] = Field(default_factory=list)
 
 
 class TransferMiss(Strict):
@@ -55,6 +73,10 @@ class TransferMiss(Strict):
     player_out: str
     player_out_points: int
     difference: int
+
+
+class TransferWin(TransferMiss):
+    pass
 
 
 class ChipPlay(Strict):
@@ -85,18 +107,86 @@ class AutoSub(Strict):
     player_in_points: int
 
 
-class BenchTransfersChips(Strict):
+class BenchTransfers(Strict):
     bench: list[BenchItem] = Field(default_factory=list)
     hits: list[Hit] = Field(default_factory=list)
     transfer_misses: list[TransferMiss] = Field(default_factory=list)
-    chips: list[ChipPlay] = Field(default_factory=list)
-    chip_squad_changes: list[ChipSquadChange] = Field(default_factory=list)
+    transfer_wins: list[TransferWin] = Field(default_factory=list)
     auto_subs: list[AutoSub] = Field(default_factory=list)
+
+
+class Chips(Strict):
+    plays: list[ChipPlay] = Field(default_factory=list)
+    squad_changes: list[ChipSquadChange] = Field(default_factory=list)
+
+
+PitchKind = Literal[
+    "differential_haul",
+    "template_haul",
+    "template_blank",
+    "red_card",
+    "own_goal",
+    "penalty_missed",
+    "penalty_saved",
+    "lucky_sub",
+    "unlucky_sub",
+]
+
+
+class PitchOwner(Strict):
+    manager: str
+    # 1, 2 (captain) or 3 (Triple Captain)
+    multiplier: int
+
+
+class PitchEvent(Strict):
+    kind: Literal[
+        "red_card", "own_goal", "penalty_missed", "penalty_saved", "lucky_sub", "unlucky_sub"
+    ]
+    count: int
+    # the stat's points for a card, own goal or missed penalty (negative) or a saved penalty
+    # (positive); the clean-sheet points kept (lucky sub) or missed (unlucky sub)
+    points: int
+
+
+class PitchItem(Strict):
+    player: str
+    club: str
+    points: int
+    kinds: list[PitchKind]
+    owners: list[PitchOwner] = Field(default_factory=list)
+    benched: list[str] = Field(default_factory=list)
+    without: list[str] = Field(default_factory=list)
+    # null: the overall ownership at the deadline is unknown
+    global_differential: bool | None = None
+    league_differential: bool = False
+    events: list[PitchEvent] = Field(default_factory=list)
+
+
+class Pitch(Strict):
+    items: list[PitchItem] = Field(default_factory=list)
+
+
+class KeyMoment(Strict):
+    pair: Literal["winner", "podium", "rivalry"]
+    ahead: str
+    behind: str
+    margin: int
+    kind: Literal[
+        "player", "clean_sheet_lost", "red_card", "own_goal", "penalty_missed", "penalty_saved"
+    ]
+    players: list[str]
+    club: str | None = None
+    ahead_points: int
+    behind_points: int
+    # ahead_points - behind_points
+    swing: int
 
 
 class TableRow(Strict):
     rank: int
     manager: str
+    team_name: str
     total_points: int
     movement: int | None
 
@@ -107,11 +197,34 @@ class TopThree(Strict):
     behind_leader: int
 
 
+class RivalrySwap(Strict):
+    # `ahead` overtook `behind` this gameweek
+    ahead: str
+    behind: str
+    ahead_previous_rank: int
+    ahead_rank: int
+    behind_previous_rank: int
+    behind_rank: int
+    gap: int
+    neighbour_gameweeks: int
+
+
+class PodiumChange(Strict):
+    kind: Literal["new_leader", "entered", "left", "swap"]
+    manager: str
+    previous_rank: int | None
+    rank: int
+    other: str | None = None
+    gap: int | None = None
+
+
 class Table(Strict):
     rows: list[TableRow] = Field(default_factory=list)
     top3: list[TopThree] = Field(default_factory=list)
     climbers: list[str] = Field(default_factory=list)
     fallers: list[str] = Field(default_factory=list)
+    rivalry_swaps: list[RivalrySwap] = Field(default_factory=list)
+    podium_changes: list[PodiumChange] = Field(default_factory=list)
 
 
 class SeasonRow(Strict):
@@ -162,7 +275,7 @@ class Overall(Strict):
 
 
 class FactSheet(Strict):
-    version: Literal[2] = 2
+    version: Literal[3] = 3
     league: str
     season: str
     gameweek: int
@@ -171,7 +284,10 @@ class FactSheet(Strict):
     winners: list[ManagerScore]
     flops: list[ManagerScore]
     captaincy: Captaincy = Field(default_factory=Captaincy)
-    bench_transfers_chips: BenchTransfersChips = Field(default_factory=BenchTransfersChips)
+    pitch: Pitch = Field(default_factory=Pitch)
+    key_moments: list[KeyMoment] = Field(default_factory=list)
+    bench_transfers: BenchTransfers = Field(default_factory=BenchTransfers)
+    chips: Chips = Field(default_factory=Chips)
     table: Table = Field(default_factory=Table)
     overall: Overall = Field(default_factory=Overall)
     season_facts: Season = Field(default_factory=Season)
@@ -179,146 +295,21 @@ class FactSheet(Strict):
 
 
 def empty_sections(sheet: FactSheet) -> list[str]:
-    extras = sheet.bench_transfers_chips
+    extras = sheet.bench_transfers
     empty = {
         "winners": not sheet.winners,
         "flops": not sheet.flops,
         "captaincy": not sheet.captaincy.picks,
-        "bench_transfers_chips": not (
+        "pitch": not (sheet.pitch.items or sheet.key_moments),
+        "bench_transfers": not (
             extras.bench
             or extras.hits
             or extras.transfer_misses
-            or extras.chips
-            or extras.chip_squad_changes
+            or extras.transfer_wins
             or extras.auto_subs
         ),
+        "chips": not (sheet.chips.plays or sheet.chips.squad_changes),
         "table": not sheet.table.rows,
         "overall": not any(row.notable for row in sheet.overall.rows),
     }
     return [section for section in SECTIONS if empty[section]]
-
-
-def _managers_named(sheet: FactSheet) -> set[str]:
-    names = {score.manager for score in sheet.winners + sheet.flops}
-    names |= {pick.manager for pick in sheet.captaincy.picks}
-    names |= set(sheet.captaincy.best) | set(sheet.captaincy.worst)
-    extras = sheet.bench_transfers_chips
-    for group in (
-        extras.bench,
-        extras.hits,
-        extras.transfer_misses,
-        extras.chips,
-        extras.chip_squad_changes,
-        extras.auto_subs,
-    ):
-        names |= {item.manager for item in group}
-    names |= {row.manager for row in sheet.season_facts.rows}
-    names |= set(sheet.table.climbers) | set(sheet.table.fallers)
-    names |= {row.manager for row in sheet.overall.rows}
-    names |= set(sheet.overall.biggest_climbers) | set(sheet.overall.biggest_fallers)
-    names |= {item.manager for item in sheet.season_facts.personal_bests}
-    names |= {item.manager for item in sheet.season_facts.personal_worsts}
-    names |= {record.manager for record in sheet.season_facts.best_gameweek}
-    names |= {record.manager for record in sheet.season_facts.worst_gameweek}
-    return names
-
-
-def _check_ranks(sheet: FactSheet) -> list[str]:
-    problems: list[str] = []
-    season = sheet.season_facts
-    scores = sheet.winners + sheet.flops
-    known = [score.gameweek_rank for score in scores if score.gameweek_rank is not None]
-    positive = known + [r.gameweek_rank for r in season.best_gameweek + season.worst_gameweek]
-    positive += [p.gameweek_rank for p in season.personal_bests + season.personal_worsts]
-    for row in sheet.overall.rows:
-        positive.append(row.overall_rank)
-        if row.previous_overall_rank is not None:
-            positive.append(row.previous_overall_rank)
-    if any(rank <= 0 for rank in positive):
-        problems.append("a rank is not positive")
-
-    first = sheet.gameweek == 1
-    moves = []
-    for row in sheet.overall.rows:
-        now, before = row.overall_rank, row.previous_overall_rank
-        if now <= 0 or (before is not None and before <= 0):
-            continue
-        if row.movement != (None if before is None else before - now):
-            problems.append("overall: a movement does not match the ranks")
-        if row.entered != ranks.thresholds_entered(now, before, first):
-            problems.append("overall: entered thresholds do not match the ranks")
-        if row.left != ranks.thresholds_left(now, before):
-            problems.append("overall: left thresholds do not match the ranks")
-        if row.notable != ranks.is_notable(now, before, first):
-            problems.append("overall: notable does not match the ranks")
-        if row.notable and before is not None:
-            moves.append((row.manager, now, before))
-    if sheet.overall.biggest_climbers != ranks.leaders(moves, rising=True):
-        problems.append("overall: biggest climbers do not match the rows")
-    if sheet.overall.biggest_fallers != ranks.leaders(moves, rising=False):
-        problems.append("overall: biggest fallers do not match the rows")
-
-    best = {record.gameweek_rank for record in season.best_gameweek}
-    worst = {record.gameweek_rank for record in season.worst_gameweek}
-    if len(best) > 1 or len(worst) > 1:
-        problems.append("records: tied records on different ranks")
-    if best and worst and min(best) > max(worst):
-        problems.append("records: the best rank is worse than the worst")
-    if any(r.gameweek > sheet.gameweek for r in season.best_gameweek + season.worst_gameweek):
-        problems.append("records: a record is from a later gameweek")
-    if known and not (best and worst):
-        problems.append("records: a known gameweek rank without season records")
-    if best and worst and any(not min(best) <= rank <= max(worst) for rank in known):
-        problems.append("records: a gameweek rank lies outside the season records")
-    for item in season.personal_bests + season.personal_worsts:
-        if item.ranked_gameweeks < ranks.MIN_RANKED_GAMEWEEKS:
-            problems.append("personal ranks: too few ranked gameweeks")
-    if best and any(item.gameweek_rank < min(best) for item in season.personal_bests):
-        problems.append("personal ranks: a personal best beats the league best")
-    if worst and any(item.gameweek_rank > max(worst) for item in season.personal_worsts):
-        problems.append("personal ranks: a personal worst is below the league worst")
-    return problems
-
-
-def check_fact_sheet(sheet: FactSheet) -> list[str]:
-    problems: list[str] = _check_ranks(sheet)
-    for label, scores in (("winners", sheet.winners), ("flops", sheet.flops)):
-        if len({score.net_points for score in scores}) > 1:
-            problems.append(f"{label}: managers on different net points")
-    if sheet.winners and sheet.flops and sheet.winners[0].net_points < sheet.flops[0].net_points:
-        problems.append("winners score below the flops")
-
-    rows = sheet.table.rows
-    if rows:
-        totals = [row.total_points for row in rows]
-        if totals != sorted(totals, reverse=True):
-            problems.append("table: rows are not ordered by total points")
-        for row in rows:
-            expected = 1 + sum(total > row.total_points for total in totals)
-            if row.rank != expected:
-                problems.append("table: a rank does not match the points")
-                break
-        leader = rows[0].total_points
-        for place, top in enumerate(sheet.table.top3):
-            if place >= len(rows) or top.manager != rows[place].manager:
-                problems.append("table: top3 does not match the table")
-            elif top.behind_leader != leader - rows[place].total_points:
-                problems.append("table: behind_leader does not match the table")
-        if len(sheet.table.top3) != min(3, len(rows)):
-            problems.append("table: top3 has the wrong length")
-        in_table = {row.manager for row in rows}
-        if len(in_table) != len(rows):
-            problems.append("table: a manager appears twice")
-        if sheet.managers != len(rows):
-            problems.append("managers does not match the table")
-        outside = _managers_named(sheet) - in_table
-        if outside:
-            problems.append("a section names a manager who is not in the table")
-
-    for pick in sheet.captaincy.picks:
-        if pick.points != pick.base_points * pick.multiplier:
-            problems.append("captaincy: points do not match base points and multiplier")
-
-    if sheet.empty_sections != empty_sections(sheet):
-        problems.append("empty_sections does not match the sections")
-    return problems

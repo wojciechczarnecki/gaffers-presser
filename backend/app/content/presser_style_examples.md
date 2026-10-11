@@ -1,54 +1,67 @@
-# Presser style examples (spec 013)
+# Presser style examples (spec 014)
 
-Written for the project as style references for the presser writer. The managers, leagues and
-numbers are made up. Each example is under 1500 characters, follows the six sections in order,
-uses slang sparingly, jokes only about FPL decisions and uses no vulgar words. They show tone and
-form only: the writer never copies a phrase or a joke from them.
+Written for the project as style references for the presser writer. The managers, leagues, FPL
+team names and numbers are made up. Each example is under 2500 characters, follows the eight
+sections in order, ties a key moment to a result in its "Z boiska" paragraph, uses slang
+sparingly, jokes only about FPL decisions and uses no vulgar words. They show tone and form only:
+the writer never copies a phrase or a joke from them.
 
-## Example 1 — a small league, a modest score with a strong GW rank
+## Example 1 — a differential haul decides the gameweek
 
 🎙️ *Presser GW9 — Liga Kawiarniana*
 
-🏆 *Manager kolejki:* Kowal wygrywa kolejkę z 58 punktami netto. W zwykły tydzień to byłby wynik na środek stawki, ale GW rank 41k mówi co innego: w całej grze niewielu zrobiło więcej. Słaby tydzień dla wszystkich, więc skromna zdobycz wystarczyła na szczyt.
+🏆 *Manager kolejki:* Kowal wygrywa z 62 punktami netto i GW rankiem 38k. O wszystkim zdecydował jeden zawodnik, o którym niżej, bo bez niego wygrałaby Lena.
 
-🤦 *Wtopa kolejki:* Lena, 39 punktów i GW rank 5,2 mln. Dwa transfery za -8, a obaj kupieni zawodnicy usiedli na ławce. Wyszło pechowo, ale też trochę uparcie.
+🤦 *Wtopa kolejki:* Marek, 31 punktów, a w całej grze GW rank 6,4 mln. Hit za -4 na dwóch zawodników, którzy razem dali 3 punkty. Tak się nie odrabia strat.
 
-©️ *Kapitanowie:* Czterech z sześciu dało opaskę Salahowi i wzięło po 12. Marek postawił na Palmera i dostał 18, najlepiej w lidze. Lenie Isak dał 4.
+©️ *Kapitanowie:* Czterech z sześciu postawiło na Salaha i zgarnęło po 12. Lena dała opaskę Palmerowi: 15 punktów, najlepiej w lidze. Markowi Isak odpłacił 2 punktami.
 
-🪑 *Ławka, transfery, chipy:* Nikt nie zagrał chipa. Jacek zostawił na ławce 13 punktów, a jedyny autosub dorzucił mu 2.
+⚽ *Z boiska:* Cunha z 17 punktami to różnica dnia. Kowal miał go jako jedyny w lidze, a w całej grze ma go poniżej 10% managerów. Przewaga nad Leną to 10 punktów, więc ten jeden zawodnik wystarczył, żeby ją przeskoczyć. Za to Haaland, który stał w składach niemal całej ligi, dał po 2 punkty.
 
-📊 *Tabela:* Kowal skacze na drugie miejsce i traci do prowadzącego Marka 7 punktów. Jacek schodzi o dwa miejsca. Lena trzyma ostatnią lokatę, 26 punktów za resztą.
+🪑 *Ławka i transfery:* Lena wymieniła Gordona (2) na Foldena (9) i dopisała sobie 7 punktów. Jacek zostawił na ławce 13 punktów, a jedyny autosub dorzucił mu 1.
 
-🌍 *Overall:* Marek wchodzi do top 100k, bo poprawił się ze 140k na 96k. Lena wypadła z top 1M: była 900k, jest 2,3 mln. Reszta ligi stoi w miejscu.
+🃏 *Chipy:* Ania odpaliła Triple Captain na Haalandzie i dołożyła do wyniku tylko 2 punkty. Bench Boost Jacka dał 9 z ławki, więc ten chip się spłacił.
 
-## Example 2 — a big league, a tie, a manager enters the top 10k
+📊 *Tabela:* Kowal awansuje na drugie miejsce, a lider, ekipa „Kawowy Odlot”, ma nad nim już tylko 5 punktów. Marek spada o dwie pozycje.
+
+🌍 *Overall:* Kowal wskoczył do top 100k: był 140k, jest 88k. Marek wypadł z top 1M i ma 2,3 mln.
+
+## Example 2 — a club's defence loses the clean sheet and a podium place
 
 🎙️ *Presser GW12 — Liga Biurowa*
 
-🏆 *Managerowie kolejki:* Remis: Ola i Grzesiek mają po 77 netto. Ola dojechała tam bez hita, Grzesiek zapłacił 4 punkty i mimo to się zrównał. Ich GW rank to odpowiednio 8 214. i 9 087., czyli oboje w ścisłej czołówce całej gry.
+🏆 *Manager kolejki:* Ola, 74 punkty netto, GW rank 21k. Bez hita i bez chipa, po prostu solidny tydzień w każdej formacji.
 
-🤦 *Wtopa kolejki:* Piotrek, 28 punktów, GW rank 6,9 mln. Opaska na zawodniku, który dał 2, i 14 punktów na ławce. Ktoś tu pomylił kolejność.
+🤦 *Wtopa kolejki:* Piotrek, 29 punktów i GW rank 6,9 mln. Opaska na zawodniku, który dał 2, a do tego obrona, która w tej kolejce pękła. Przez to wypadł z podium.
 
-©️ *Kapitanowie:* Salah zebrał 26 u tych, którzy mu zaufali, a Isak dał 4 trzem managerom. Rekord opaski ma Ania: potrójna opaska na Salahu i 39 punktów od jednego zawodnika.
+©️ *Kapitanowie:* Salah zebrał 26 u tych, którzy mu zaufali, a Isak dał 4 trzem managerom. Rekord opaski ma Ania: 36 punktów od jednego zawodnika.
 
-🪑 *Ławka, transfery, chipy:* Marek zamienił Saka (15) na Gordona (2) i sam sobie narobił kłopotu. Wildcard Kuby wyszedł lepiej, bo nowy skład zrobił o 6 punktów więcej niż stary.
+⚽ *Z boiska:* Obrona Arsenalu straciła czyste konto w meczu zakończonym 1:1 i zabrała Piotrkowi 12 punktów: bramkarz i dwóch obrońców, wszyscy u niego, nikt u Oli. Bez tej straty Piotrek zostałby na podium, bo do Ani zabrakło mu tylko 9. U Ani czyste konto się utrzymało, bo jej obrońca zszedł z boiska przed straconym golem, więc miała szczęście w nieszczęściu.
 
-📊 *Tabela:* Ania wraca na pierwsze miejsce. Grzesiek awansuje o sześć pozycji, najwięcej w lidze. Między pierwszym a trzecim jest tylko 9 punktów.
+🪑 *Ławka i transfery:* Marek zamienił Saka (15) na Gordona (2) i sam sobie narobił kłopotu. Kuba zapłacił za hit 8 punktów i dostał z transferów 11 więcej, więc wyszedł na plus.
 
-🌍 *Overall:* Grzesiek wchodzi do top 10k: jest 9 412., a tydzień temu był 16k. Ola też mocno zyskała, z 30k na 14k, ale do progu jeszcze trochę brakuje. Piotrek spadł z 1,4 mln na 3,1 mln.
+🃏 *Chipy:* Wildcard Kuby wyszedł lepiej niż stary skład o 6 punktów. Free Hit Marka dał 3 mniej niż poprzednia jedenastka więc ten chip nie wypalił.
 
-## Example 3 — the first gameweek of the season
+📊 *Tabela:* Piotrek schodzi z trzeciego miejsca na piąte, a na podium wskakują „Biurowe Orły”. Między pierwszym a trzecim jest tylko 9 punktów.
 
-🎙️ *Presser GW1 — Liga Zakładowa*
+🌍 *Overall:* Ola wchodzi do top 10k: jest 9 412., a tydzień temu była 16k. Piotrek spadł z 1,4 mln na 3,1 mln.
 
-🏆 *Manager kolejki:* Zbychu otwiera sezon 79 punktami, GW rank 120k. To dobry start, choć bez fajerwerków. Serii jeszcze nie ma, więc na razie jest tylko jedno zwycięstwo.
+## Example 3 — a rivalry swap after weeks as neighbours
 
-🤦 *Wtopa kolejki:* Mati zaczyna od 46 punktów i GW rank 6 mln. Jest co poprawiać.
+🎙️ *Presser GW15 — Liga Zakładowa*
 
-©️ *Kapitanowie:* Salah u większości, po 16. Kuba wybrał Isaka i zebrał 4. Na otwarcie odwaga nie wystarczyła.
+🏆 *Manager kolejki:* Zbychu, 81 punktów netto i GW rank 9 118. Jest co świętować, ale najciekawsza rzecz tej kolejki dzieje się dwa miejsca niżej.
 
-🪑 *Ławka, transfery, chipy:* Bez transferów i bez chipów. Bartas zostawił na ławce 11 punktów, a rezerwowy bramkarz obronił karnego. Szkoda, że z ławki.
+🤦 *Wtopa kolejki:* Mati zaliczył 41 punktów i GW rank 5,6 mln. Wszystko, co mogło nie wypalić, nie wypaliło.
 
-📊 *Tabela:* Pierwsza tabela sezonu: Zbychu, Kowal, Bartas. Za wcześnie na plany, ale na stres już nie.
+©️ *Kapitanowie:* Kuba wybrał Isaka i zebrał 4, reszta stawki wzięła po 16. Odwaga tym razem się nie opłaciła.
 
-🌍 *Overall:* Na starcie Zbychu jest w top 100k, a Kowal w top 1M. Wszystkie progi to na razie wejścia, spadków nie ma.
+⚽ *Z boiska:* Zbychu zawdzięcza wygraną Watkinsowi: 13 punktów, a poza Zbychem miał go tylko Kowal, więc różnicę zrobił jeden gol. Mati dostał jeszcze czerwoną kartkę swojego pomocnika, czyli -3 do wyniku.
+
+🪑 *Ławka i transfery:* Bartas zrobił dwa transfery za -4 i zyskał na nich 9 punktów, więc hit się spłacił. Kowal zostawił na ławce 11 punktów, a rezerwowy dał mu 5 jako autosub.
+
+🃏 *Chipy:* Bartas zagrał Triple Captain na Salahu i dołożył 16 punktów, czyli najlepszy chip tego tygodnia.
+
+📊 *Tabela:* Przez pięć kolejek Bartas i Kowal szli łeb w łeb, a teraz Bartas po raz pierwszy wyprzedził rywala, o 6 punktów. Zbychu prowadzi, a „Młyn Zakładowy” trzyma trzecią lokatę.
+
+🌍 *Overall:* Zbychu wszedł do top 100k, bo poprawił się ze 120k na 74k. Reszta ligi stoi w miejscu.

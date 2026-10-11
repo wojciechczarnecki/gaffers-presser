@@ -77,10 +77,22 @@ def test_decisions_cover_alert_slots():
     assert "2026-10-02" in row and "supersedes" in row.lower()
 
 
-def test_backlog_32_after_spec_013_with_inflection():
+def test_backlog_32_after_spec_014():
     (row,) = [row for row in _rows() if row.startswith("| 32 |")]
-    assert "spec 013 is merged" in row
-    assert "inflection" in row
+    for needle in ("spec 014 is merged", "writer prompt version 5", "set v3", "inflection"):
+        assert needle in row, needle
+
+
+def test_backlog_has_match_events_source_item():
+    (row,) = [row for row in _rows() if row.startswith("| 34 | P3 |")]
+    for needle in ("match-events", "VAR", "the owner misses timeline stories in the presser"):
+        assert needle in row, needle
+
+
+def test_decisions_cover_match_stories():
+    text = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")
+    for needle in ("Z boiska", "Chipy", "2500", "key moment", "team_name", "version 3"):
+        assert needle in text, needle
 
 
 def test_decisions_cover_gameweek_rank_and_overall():

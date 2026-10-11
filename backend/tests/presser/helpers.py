@@ -1,8 +1,11 @@
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 from sqlmodel import Session
 
 from app.fpl.models import (
+    DeadlineSnapshotPlayer,
+    Fixture,
     Gameweek,
     League,
     LeagueMembership,
@@ -61,12 +64,60 @@ class World:
             session.add(League(season=self.season, fpl_id=league_id, name=name))
             session.commit()
 
+    def club(self, fpl_id: int, name: str) -> None:
+        with Session(self.engine) as session:
+            session.add(
+                Team(season=self.season, fpl_id=fpl_id, name=name, short_name=name[:3].upper())
+            )
+            session.commit()
+
+    def fixture(
+        self,
+        fpl_id: int,
+        gameweek: int,
+        home: int,
+        away: int,
+        home_score: int | None,
+        away_score: int | None,
+    ) -> None:
+        with Session(self.engine) as session:
+            session.add(
+                Fixture(
+                    season=self.season,
+                    fpl_id=fpl_id,
+                    gameweek_fpl_id=gameweek,
+                    team_h_fpl_id=home,
+                    team_a_fpl_id=away,
+                    team_h_score=home_score,
+                    team_a_score=away_score,
+                    finished=home_score is not None,
+                )
+            )
+            session.commit()
+
+    def snapshot(self, gameweek: int, player_id: int, percent: str) -> None:
+        with Session(self.engine) as session:
+            session.add(
+                DeadlineSnapshotPlayer(
+                    season=self.season,
+                    gameweek_fpl_id=gameweek,
+                    player_fpl_id=player_id,
+                    status="a",
+                    news="",
+                    selected_by_percent=Decimal(percent),
+                    now_cost=50,
+                    captured_at=START + timedelta(days=7 * gameweek),
+                )
+            )
+            session.commit()
+
     def player(
         self,
         fpl_id: int,
         name: str,
         results: dict[int, tuple[int, int]] | None = None,
         position: int = 3,
+        club: int = 1,
     ):
         with Session(self.engine) as session:
             session.add(
@@ -76,7 +127,7 @@ class World:
                     web_name=name,
                     first_name=name,
                     second_name=name,
-                    team_fpl_id=1,
+                    team_fpl_id=club,
                     position=position,
                 )
             )
@@ -84,17 +135,25 @@ class World:
         for gameweek, (minutes, points) in (results or {}).items():
             self.result(fpl_id, gameweek, minutes, points)
 
-    def result(self, player_id: int, gameweek: int, minutes: int, points: int) -> None:
+    def result(
+        self,
+        player_id: int,
+        gameweek: int,
+        minutes: int,
+        points: int,
+        starts: int | None = None,
+        explain: list | None = None,
+    ) -> None:
         with Session(self.engine) as session:
             session.add(
                 PlayerGameweekResult(
                     season=self.season,
                     player_fpl_id=player_id,
                     gameweek_fpl_id=gameweek,
-                    starts=1 if minutes else 0,
+                    starts=(1 if minutes else 0) if starts is None else starts,
                     minutes=minutes,
                     total_points=points,
-                    explain=[],
+                    explain=explain or [],
                 )
             )
             session.commit()
@@ -251,3 +310,14 @@ class World:
 
     def session(self) -> Session:
         return Session(self.engine)
+
+
+def stats(fixture_id: int, **identifiers: tuple[int, int]) -> dict:
+    """One `explain` item: identifier=(value, points) per stat."""
+    return {
+        "fixture": fixture_id,
+        "stats": [
+            {"identifier": name, "points": points, "value": value, "points_modification": 0}
+            for name, (value, points) in identifiers.items()
+        ],
+    }

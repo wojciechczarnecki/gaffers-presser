@@ -1,8 +1,11 @@
 from dataclasses import dataclass
+from decimal import Decimal
 
 from sqlmodel import Session, col, select
 
 from app.fpl.models import (
+    DeadlineSnapshotPlayer,
+    Fixture,
     League,
     LeagueMembership,
     Manager,
@@ -12,6 +15,7 @@ from app.fpl.models import (
     ManagerTransfer,
     Player,
     PlayerGameweekResult,
+    Team,
 )
 
 BENCH_POSITIONS = (12, 13, 14, 15)
@@ -41,6 +45,46 @@ class CaptainRef:
 class PlayerResult:
     minutes: int
     points: int
+
+
+@dataclass(frozen=True)
+class StatLine:
+    value: int
+    points: int
+
+
+@dataclass(frozen=True)
+class FixtureStats:
+    fixture_id: int
+    stats: dict[str, StatLine]
+
+    @property
+    def minutes(self) -> int:
+        line = self.stats.get("minutes")
+        return line.value if line is not None else 0
+
+
+@dataclass(frozen=True)
+class MatchResult:
+    starts: int
+    minutes: int
+    points: int
+    fixtures: tuple[FixtureStats, ...]
+
+
+@dataclass(frozen=True)
+class PlayerInfo:
+    name: str
+    position: int
+    club_id: int
+
+
+@dataclass(frozen=True)
+class FixtureScore:
+    home_id: int
+    away_id: int
+    home_score: int | None
+    away_score: int | None
 
 
 @dataclass(frozen=True)
@@ -247,6 +291,88 @@ def load_player_positions(session: Session, season: str, player_ids: set[int]) -
     rows = session.exec(
         select(Player.fpl_id, Player.position).where(
             Player.season == season, col(Player.fpl_id).in_(player_ids)
+        )
+    ).all()
+    return dict(rows)
+
+
+def load_match_results(
+    session: Session, season: str, gameweek: int, player_ids: set[int]
+) -> dict[int, MatchResult]:
+    if not player_ids:
+        return {}
+    rows = session.exec(
+        select(PlayerGameweekResult).where(
+            PlayerGameweekResult.season == season,
+            PlayerGameweekResult.gameweek_fpl_id == gameweek,
+            col(PlayerGameweekResult.player_fpl_id).in_(player_ids),
+        )
+    ).all()
+    return {
+        row.player_fpl_id: MatchResult(
+            starts=row.starts,
+            minutes=row.minutes,
+            points=row.total_points,
+            fixtures=tuple(
+                FixtureStats(
+                    item["fixture"],
+                    {
+                        stat["identifier"]: StatLine(stat["value"], stat["points"])
+                        for stat in item["stats"]
+                    },
+                )
+                for item in row.explain
+            ),
+        )
+        for row in rows
+    }
+
+
+def load_player_info(session: Session, season: str, ids: set[int]) -> dict[int, PlayerInfo]:
+    if not ids:
+        return {}
+    rows = session.exec(
+        select(Player.fpl_id, Player.web_name, Player.position, Player.team_fpl_id).where(
+            Player.season == season, col(Player.fpl_id).in_(ids)
+        )
+    ).all()
+    return {fpl_id: PlayerInfo(name, position, club) for fpl_id, name, position, club in rows}
+
+
+def load_club_names(session: Session, season: str) -> dict[int, str]:
+    return dict(session.exec(select(Team.fpl_id, Team.name).where(Team.season == season)).all())
+
+
+def load_fixtures(session: Session, season: str, fixture_ids: set[int]) -> dict[int, FixtureScore]:
+    if not fixture_ids:
+        return {}
+    rows = session.exec(
+        select(Fixture).where(Fixture.season == season, col(Fixture.fpl_id).in_(fixture_ids))
+    ).all()
+    return {
+        row.fpl_id: FixtureScore(
+            row.team_h_fpl_id, row.team_a_fpl_id, row.team_h_score, row.team_a_score
+        )
+        for row in rows
+    }
+
+
+def load_ownership(session: Session, season: str, gameweek: int) -> dict[int, Decimal] | None:
+    rows = session.exec(
+        select(
+            DeadlineSnapshotPlayer.player_fpl_id, DeadlineSnapshotPlayer.selected_by_percent
+        ).where(
+            DeadlineSnapshotPlayer.season == season,
+            DeadlineSnapshotPlayer.gameweek_fpl_id == gameweek,
+        )
+    ).all()
+    return dict(rows) if rows else None
+
+
+def load_team_names(session: Session, season: str, league_id: int) -> dict[int, str]:
+    rows = session.exec(
+        select(Manager.entry_id, Manager.team_name).where(
+            Manager.season == season, col(Manager.entry_id).in_(_member_ids(season, league_id))
         )
     ).all()
     return dict(rows)

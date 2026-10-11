@@ -22,12 +22,12 @@ def test_the_committed_set_has_no_composition_problems():
     assert composition_problems(CASES) == []
 
 
-def test_split_is_ten_and_ten_with_real_and_synthetic_in_each():
+def test_split_is_fifteen_and_fifteen_with_real_and_synthetic_in_each():
     for split in ("dev", "test"):
         in_split = [case for case in CASES if case.split == split]
-        assert len(in_split) == 10
+        assert len(in_split) == 15
         assert sum(case.source == "real" for case in in_split) == 5
-        assert sum(case.source == "synthetic" for case in in_split) == 5
+        assert sum(case.source == "synthetic" for case in in_split) == 10
 
 
 def test_every_sheet_validates():
@@ -39,6 +39,7 @@ def test_every_name_comes_from_the_pseudonym_pool():
     for case in CASES:
         assert case.facts.league in PSEUDONYMS.leagues, case.id
         assert manager_names(case.facts) <= pool, case.id
+        assert {row.team_name for row in case.facts.table.rows} <= set(PSEUDONYMS.teams), case.id
 
 
 def test_edge_cases_cover_every_tag():
@@ -64,8 +65,8 @@ def _without_rank_values(value):
     return value
 
 
-def test_the_set_has_20_cases_and_the_rank_cases():
-    assert len(CASES) == 20
+def test_the_set_has_30_cases_and_the_rank_cases():
+    assert len(CASES) == 30
     tags = {tag for case in CASES for tag in case.tags}
     assert {"enter_top_10k", "rise_in_top_10k", "drop_out_of_top_1m", "gw_rank_unknown"} <= tags
 
@@ -112,3 +113,27 @@ def test_synthetic_cases_after_the_first_gameweek_have_a_previous_presser():
     for case in CASES:
         if case.source == "synthetic" and case.facts.gameweek > 1:
             assert case.previous, case.id
+
+
+def _synthetic(tag):
+    return next(case.facts for case in CASES if case.source == "synthetic" and tag in case.tags)
+
+
+def test_match_story_cases_show_what_their_tag_says():
+    facts = _synthetic("differential_decides_winner")
+    assert any(
+        m.pair == "winner" and m.kind == "player" and m.swing >= m.margin for m in facts.key_moments
+    )
+    facts = _synthetic("lost_clean_sheet_moment")
+    assert any(m.kind == "clean_sheet_lost" and len(m.players) >= 2 for m in facts.key_moments)
+    assert any("template_blank" in i.kinds for i in _synthetic("template_blank").pitch.items)
+    kinds = {k for i in _synthetic("red_card_own_goal").pitch.items for k in i.kinds}
+    assert {"red_card", "own_goal"} <= kinds
+    assert any("lucky_sub" in i.kinds for i in _synthetic("lucky_sub").pitch.items)
+    hits = _synthetic("hits_judged").bench_transfers.hits
+    assert any(h.paid_off for h in hits) and any(not h.paid_off for h in hits)
+    assert any(s.neighbour_gameweeks >= 3 for s in _synthetic("rivalry_swap").table.rivalry_swaps)
+    assert any(c.kind == "new_leader" for c in _synthetic("podium_new_leader").table.podium_changes)
+    assert "chips" in _synthetic("no_chips").empty_sections
+    unknown = _synthetic("ownership_unknown").pitch.items
+    assert unknown and all(item.global_differential is None for item in unknown)

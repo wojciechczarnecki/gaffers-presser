@@ -20,7 +20,7 @@ from app.presser.writer import PresserDraft, build_writer
 from tests.corroboration.fakes import FakeLangfuseClient
 from tests.delivery.fakes import FixedClock
 from tests.extraction.fakes import FakeChatModel
-from tests.presser.helpers import LEAGUE_ID, SEASON, World
+from tests.presser.helpers import LEAGUE_ID, SEASON, World, stats
 
 MODEL = "openai/gpt-6-luna"
 MARKER = "FAKE-PRESSER-MARKER"
@@ -78,7 +78,7 @@ def test_generated_presser_stored_with_usage(db, world):
     assert row.idempotency_key == presser_key(SEASON, 5, LEAGUE_ID)
     assert row.facts["gameweek"] == 5
     assert row.facts["winners"][0]["manager"] == "Bartek"
-    assert row.prompt_version == "presser_writer@4"
+    assert row.prompt_version == "presser_writer@5"
 
 
 def test_previous_pressers_latest_two_sent_before_gameweek(db, world):
@@ -180,3 +180,28 @@ def test_failed_preview_is_kept_apart_from_worker_failures(db, world):
         generate_presser(db, rt, SEASON, LEAGUE_ID, 5, preview=True)
     (row,) = rows(db)
     assert (row.status, row.error_class) == ("preview_failed", "ValueError")
+
+
+def test_logs_carry_no_names_with_match_facts(db, caplog):
+    world = World(db)
+    world.club(2, "Klub Testowy")
+    world.fixture(501, 5, 2, 1, 0, 1)
+    world.player(5, "Zawodnik Testowy", club=2)
+    world.result(5, 5, 40, -1, explain=[stats(501, minutes=(40, 1), red_cards=(1, -3))])
+    for entry_id, name in [(10, "Anna Alfa"), (11, "Bartek Beta")]:
+        world.manager(entry_id, name)
+        for gameweek in range(1, 6):
+            world.gw(entry_id, gameweek, 50 + entry_id)
+        world.squad(entry_id, 5, [5])
+    rt, _ = runtime(PresserDraft(text="Tekst"))
+    with caplog.at_level(logging.DEBUG):
+        generate_presser(db, rt, SEASON, LEAGUE_ID, 5)
+    with Session(db) as session:
+        facts = session.exec(select(Presser.facts)).one()
+    assert facts["pitch"]["items"][0]["player"] == "Zawodnik Testowy"
+    failing, _ = runtime(ValueError("a"), ValueError("b"), ValueError("c"))
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(PresserFailed):
+            generate_presser(db, failing, SEASON, LEAGUE_ID, 5, preview=True)
+    for forbidden in ("Anna", "Bartek", "Synthetic XI", "Klub Testowy", "Zawodnik Testowy"):
+        assert forbidden not in caplog.text

@@ -30,12 +30,32 @@ def sheet(gameweek: int = 5, league: str = "League One") -> FactSheet:
             ],
             "table": {
                 "rows": [
-                    {"rank": 1, "manager": "Bartas", "total_points": 120, "movement": None},
-                    {"rank": 2, "manager": "Kuba", "total_points": 100, "movement": None},
+                    {
+                        "rank": 1,
+                        "manager": "Bartas",
+                        "team_name": "Drużyna Bartasa",
+                        "total_points": 120,
+                        "movement": None,
+                    },
+                    {
+                        "rank": 2,
+                        "manager": "Kuba",
+                        "team_name": "Drużyna Kuby",
+                        "total_points": 100,
+                        "movement": None,
+                    },
                 ],
                 "top3": [
-                    {"manager": "Bartas", "total_points": 120, "behind_leader": 0},
-                    {"manager": "Kuba", "total_points": 100, "behind_leader": 20},
+                    {
+                        "manager": "Bartas",
+                        "total_points": 120,
+                        "behind_leader": 0,
+                    },
+                    {
+                        "manager": "Kuba",
+                        "total_points": 100,
+                        "behind_leader": 20,
+                    },
                 ],
             },
             "season_facts": {

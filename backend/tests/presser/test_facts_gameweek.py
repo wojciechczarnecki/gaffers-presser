@@ -1,6 +1,7 @@
 import pytest
 
 from app.presser.facts import NoFactsError, build_fact_sheet
+from app.presser.facts.schema import SECTIONS, BenchTransfers
 from tests.presser.helpers import LEAGUE_ID, SEASON, World
 
 
@@ -119,7 +120,7 @@ def test_transfer_misses_ordered_by_difference(world):
     world.transfer(10, 5, 1, 2)
     world.transfer(11, 5, 3, 4)
     world.transfer(12, 5, 4, 3)
-    misses = sheet(world).bench_transfers_chips.transfer_misses
+    misses = sheet(world).bench_transfers.transfer_misses
     assert [
         (
             m.manager,
@@ -137,7 +138,7 @@ def test_hits_with_cost(world):
     world.gw(10, 5, 60, cost=8)
     world.gw(11, 5, 50, cost=4)
     world.gw(12, 5, 40)
-    hits = sheet(world).bench_transfers_chips.hits
+    hits = sheet(world).bench_transfers.hits
     assert [(h.manager, h.transfers, h.cost) for h in hits] == [("Anna", 2, 8), ("Bartek", 1, 4)]
 
 
@@ -154,7 +155,7 @@ def test_chip_effects_are_whole_points(world):
     world.gw(13, 5, 30, chip="wildcard")
     world.gw(14, 5, 20, chip="manager")
     result = sheet(world)
-    chips = {c.manager: (c.chip, c.effect) for c in result.bench_transfers_chips.chips}
+    chips = {c.manager: (c.chip, c.effect) for c in result.chips.plays}
     # no squad before the Free Hit or Wildcard is known, so their effect is unknown
     assert chips == {
         "Anna": ("bboost", 12),
@@ -163,8 +164,8 @@ def test_chip_effects_are_whole_points(world):
         "Dariusz": ("wildcard", None),
         "Eryk": ("manager", None),
     }
-    assert all(isinstance(c.effect, int) for c in result.bench_transfers_chips.chips[:2])
-    assert [c.manager for c in result.bench_transfers_chips.chips] == [
+    assert all(isinstance(c.effect, int) for c in result.chips.plays[:2])
+    assert [c.manager for c in result.chips.plays] == [
         "Anna",
         "Bartek",
         "Cezary",
@@ -199,7 +200,7 @@ def test_free_hit_effect_is_points_against_the_squad_before_it(squad_world):
     # the defender 102 did not play: the forward 113 would break the three-defender minimum, so
     # the defender 114 comes on; the vice 103 is doubled
     # 101 + 103..111 = 2 + 6 + 8 * 2 = 24, 114 = 4, vice +6 -> 34
-    (chip,) = sheet(world).bench_transfers_chips.chips
+    (chip,) = sheet(world).chips.plays
     assert (chip.manager, chip.chip, chip.effect) == ("Anna", "freehit", 70 - 34)
 
 
@@ -217,7 +218,7 @@ def test_bench_goalkeeper_replaces_only_the_goalkeeper(squad_world):
     world.gw(11, 5, 50)
     # the forward 113 is first on the bench but cannot replace the goalkeeper; 112 does:
     # 10 starters * 1 + 112 = 3 + captain 103 +1 -> 14 (with the forward it would be 15)
-    (chip,) = sheet(world).bench_transfers_chips.chips
+    (chip,) = sheet(world).chips.plays
     assert chip.effect == 40 - 14
 
 
@@ -232,7 +233,7 @@ def test_squad_before_a_free_hit_skips_an_earlier_free_hit_week(squad_world):
     world.gw(10, 5, 30, chip="wildcard")
     world.squad(10, 5, [117], captain=117)
     world.gw(11, 5, 50)
-    (chip,) = sheet(world).bench_transfers_chips.chips
+    (chip,) = sheet(world).chips.plays
     assert chip.effect == 30 - 10  # the GW3 squad: 105 with the armband
 
 
@@ -250,9 +251,9 @@ def test_free_hit_week_lists_squad_changes_instead_of_one_for_one_misses(squad_w
     world.transfer(10, 5, 116, 107)
     world.gw(11, 5, 50)
     world.transfer(11, 5, 117, 106)
-    extras = sheet(world).bench_transfers_chips
-    assert [m.manager for m in extras.transfer_misses] == ["Bartek"]
-    (change,) = extras.chip_squad_changes
+    result = sheet(world)
+    assert [m.manager for m in result.bench_transfers.transfer_misses] == ["Bartek"]
+    (change,) = result.chips.squad_changes
     assert (change.manager, change.chip, change.replaced) == ("Anna", "freehit", 2)
     assert [(p.player, p.points, p.points_counted) for p in change.players_out] == [
         ("P106", 14, True),
@@ -276,7 +277,7 @@ def test_squad_change_says_whose_points_counted(squad_world):
     world.squad(10, 5, [105, 116], [117], captain=105)
     world.auto_sub(10, 5, 116, 117)
     world.gw(11, 5, 50)
-    (change,) = sheet(world).bench_transfers_chips.chip_squad_changes
+    (change,) = sheet(world).chips.squad_changes
     assert [(p.player, p.points_counted) for p in change.players_out] == [("P106", False)]
     assert [(p.player, p.points_counted) for p in change.players_in] == [
         ("P117", True),
@@ -291,7 +292,7 @@ def test_squad_change_lists_at_most_five_each_and_counts_every_swap(squad_world)
     world.gw(10, 5, 40, chip="wildcard")
     world.squad(10, 5, [101, *range(114, 120)], captain=101)
     world.gw(11, 5, 50)
-    (change,) = sheet(world).bench_transfers_chips.chip_squad_changes
+    (change,) = sheet(world).chips.squad_changes
     assert change.replaced == 6
     assert len(change.players_out) == 5
     assert len(change.players_in) == 5
@@ -315,7 +316,7 @@ def test_bench_excludes_bench_boost(world):
     world.gw(10, 5, 60, bench=9, chip="bboost")
     world.gw(11, 5, 50, bench=3)
     world.gw(12, 5, 40, bench=6)
-    bench = sheet(world).bench_transfers_chips.bench
+    bench = sheet(world).bench_transfers.bench
     assert [(b.manager, b.points_on_bench) for b in bench] == [("Cezary", 6), ("Bartek", 3)]
 
 
@@ -327,7 +328,7 @@ def test_auto_subs_listed(world):
     world.gw(12, 5, 40)
     world.auto_sub(10, 5, 1, 3)
     world.auto_sub(11, 5, 2, 4)
-    subs = sheet(world).bench_transfers_chips.auto_subs
+    subs = sheet(world).bench_transfers.auto_subs
     assert [(s.manager, s.player_out, s.player_in, s.player_in_points) for s in subs] == [
         ("Bartek", "Bravo", "Delta", 9),
         ("Anna", "Alpha", "Charlie", 6),
@@ -338,10 +339,10 @@ def test_empty_section_marked(world):
     world.gw(10, 5, 60)
     world.gw(11, 5, 50)
     result = sheet(world)
-    assert "bench_transfers_chips" in result.empty_sections
+    assert "bench_transfers" in result.empty_sections
     assert "captaincy" in result.empty_sections
     world.gw(12, 5, 40, bench=4)
-    assert "bench_transfers_chips" not in sheet(world).empty_sections
+    assert "bench_transfers" not in sheet(world).empty_sections
 
 
 def test_flops_by_net_points_when_a_hit_changes_the_order(world):
@@ -358,3 +359,39 @@ def test_average_is_net_and_rounded_half_up(world):
     world.gw(10, 5, 61)
     world.gw(11, 5, 52, cost=4)
     assert sheet(world).average_net_points == 55  # (61 + 48) / 2 = 54.5
+
+
+def test_sheet_v3_sections_in_order(world):
+    world.gw(10, 5, 60)
+    world.gw(11, 5, 50)
+    assert SECTIONS == (
+        "winners",
+        "flops",
+        "captaincy",
+        "pitch",
+        "bench_transfers",
+        "chips",
+        "table",
+        "overall",
+    )
+    assert sheet(world).version == 3
+
+
+def test_chips_section_empty_without_chips(world):
+    world.gw(10, 5, 60)
+    world.gw(11, 5, 50)
+    assert "chips" in sheet(world).empty_sections
+    world.gw(12, 5, 40, chip="bboost", bench_picks=(1,))
+    result = sheet(world)
+    assert "chips" not in result.empty_sections
+    assert [(c.manager, c.chip) for c in result.chips.plays] == [("Cezary", "bboost")]
+
+
+def test_bench_transfers_holds_no_chip_facts():
+    assert set(BenchTransfers.model_fields) == {
+        "bench",
+        "hits",
+        "transfer_misses",
+        "transfer_wins",
+        "auto_subs",
+    }

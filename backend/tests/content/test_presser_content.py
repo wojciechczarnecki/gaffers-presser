@@ -11,19 +11,46 @@ def test_writer_prompt_loads_with_a_version():
     prompt = load_prompt("presser_writer")
     assert prompt.version >= 1
     assert "autosub" in prompt.text
-    assert "1500" in prompt.text
+    assert "2500" in prompt.text
 
 
-def test_writer_prompt_v4_rules():
+WRITER_HEADERS = (
+    "🏆 *Manager kolejki:*",
+    "🤦 *Wtopa kolejki:*",
+    "©️ *Kapitanowie:*",
+    "⚽ *Z boiska:*",
+    "🪑 *Ławka i transfery:*",
+    "🃏 *Chipy:*",
+    "📊 *Tabela:*",
+    "🌍 *Overall:*",
+)
+
+
+def test_writer_prompt_v5_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 4
+    assert prompt.version == 5
+    positions = [prompt.text.index(header) for header in WRITER_HEADERS]
+    assert positions == sorted(positions)
+    assert prompt.text.index("⚽") < prompt.text.index("🪑")
+    assert "1500" not in prompt.text
     for needle in (
+        "2500",
+        "empty_sections",
+        "transfer_wins",
+        "paid_off",
+        "key_moments",
+        "swing",
+        "neighbour_gameweeks",
+        "podium_changes",
+        "level on points",
+        "penalty_saved",
+        "kept the clean sheet although his club conceded",
+        "team_name",
         "only where it sounds natural",
         "never copy",
         "gameweek_rank",
         "not a source of phrases",
         "🌍",
-        "1500",
         "autosub",
         "średnia ligowa",
         "from 10 000 is never quoted exactly",
@@ -36,10 +63,28 @@ def test_writer_prompt_v4_rules():
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")
 
 
-def test_judge_prompt_checks_ranks():
+def test_judge_prompt_v4_checks_match_facts():
     prompt = load_prompt("presser_judge")
-    assert prompt.version == 3
-    for needle in ("rank", "threshold", "rounded", "1,2 mln", "o 15k miejsc", "tuż za top 10k"):
+    assert prompt.version == 4
+    for needle in (
+        "pitch",
+        "key moment",
+        "swing",
+        "margin",
+        "transfer gain",
+        "paid off",
+        "rivalry",
+        "neighbour",
+        "podium",
+        "level on points",
+        "team name",
+        "rank",
+        "threshold",
+        "rounded",
+        "1,2 mln",
+        "o 15k miejsc",
+        "tuż za top 10k",
+    ):
         assert needle in prompt.text, needle
 
 
@@ -58,7 +103,7 @@ FLAGGED_PHRASES = (
     "transfer tygodnia w złą stronę",
     "punktów netto, ",
 )
-HEADER_MARKS = ("🏆", "🤦", "\u00a9\ufe0f", "🪑", "📊", "🌍")
+HEADER_MARKS = ("🏆", "🤦", "\u00a9\ufe0f", "⚽", "🪑", "🃏", "📊", "🌍")
 HEADER_LABEL = re.compile(r"^\S+ \*[^*]+:\*\s*")
 
 
@@ -76,7 +121,7 @@ def _sentences(paragraphs: list[str]) -> list[str]:
     return found
 
 
-def test_style_examples_six_headers_no_shared_sentence():
+def test_style_examples_eight_headers_no_shared_sentence():
     examples = _examples()
     assert len(examples) == 3
     sentence_sets = []
@@ -84,10 +129,12 @@ def test_style_examples_six_headers_no_shared_sentence():
     for paragraphs in examples:
         title, *sections = paragraphs
         assert title.startswith("🎙️")
-        assert len(sections) == 6
+        assert len(sections) == 8
         starts = [p[0 : len(mark)] for p, mark in zip(sections, HEADER_MARKS, strict=True)]
         assert starts == list(HEADER_MARKS)
-        assert sum(len(p) for p in paragraphs) + 2 * len(paragraphs) < 1500
+        assert sum(len(p) for p in paragraphs) + 2 * len(paragraphs) < 2500
+        named = {re.match(r"\w+", HEADER_LABEL.sub("", sections[n]))[0] for n in (0, 1)}
+        assert any(name in sections[3] for name in named), named
         assert "gw rank" in "\n".join(sections).casefold()
         sentence_sets.append(set(_sentences(sections)))
         words = re.findall(r"\w+", HEADER_LABEL.sub("", "\n".join(sections)).casefold())
