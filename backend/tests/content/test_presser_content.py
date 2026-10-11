@@ -99,7 +99,7 @@ FLAGGED_PHRASES = (
     "transfer tygodnia w złą stronę",
     "punktów netto, ",
 )
-HEADER_MARKS = ("🏆", "🤦", "\u00a9\ufe0f", "🪑", "📊", "🌍")
+HEADER_MARKS = ("🏆", "🤦", "\u00a9\ufe0f", "⚽", "🪑", "🃏", "📊", "🌍")
 HEADER_LABEL = re.compile(r"^\S+ \*[^*]+:\*\s*")
 
 
@@ -117,7 +117,7 @@ def _sentences(paragraphs: list[str]) -> list[str]:
     return found
 
 
-def test_style_examples_six_headers_no_shared_sentence():
+def test_style_examples_eight_headers_no_shared_sentence():
     examples = _examples()
     assert len(examples) == 3
     sentence_sets = []
@@ -125,10 +125,12 @@ def test_style_examples_six_headers_no_shared_sentence():
     for paragraphs in examples:
         title, *sections = paragraphs
         assert title.startswith("🎙️")
-        assert len(sections) == 6
+        assert len(sections) == 8
         starts = [p[0 : len(mark)] for p, mark in zip(sections, HEADER_MARKS, strict=True)]
         assert starts == list(HEADER_MARKS)
-        assert sum(len(p) for p in paragraphs) + 2 * len(paragraphs) < 1500
+        assert sum(len(p) for p in paragraphs) + 2 * len(paragraphs) < 2500
+        named = {re.match(r"\w+", HEADER_LABEL.sub("", sections[n]))[0] for n in (0, 1)}
+        assert any(name in sections[3] for name in named), named
         assert "gw rank" in "\n".join(sections).casefold()
         sentence_sets.append(set(_sentences(sections)))
         words = re.findall(r"\w+", HEADER_LABEL.sub("", "\n".join(sections)).casefold())

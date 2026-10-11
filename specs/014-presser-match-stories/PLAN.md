@@ -514,7 +514,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
           manager's `team_name`, are `unsupported`.
       Automatic verification: `cd backend && uv run pytest -q tests/content/test_presser_content.py tests/presser/evaluation/test_runner.py`
 
-- [ ] 10. **Style examples rewritten (AC16).** Files: `app/content/presser_style_examples.md`,
+- [x] 10. **Style examples rewritten (AC16).** Files: `app/content/presser_style_examples.md`, `iterations: 1`
       `tests/content/test_presser_content.py`.
       - Test first. `test_style_examples_eight_headers_no_shared_sentence` replaces the six-header
         test:
