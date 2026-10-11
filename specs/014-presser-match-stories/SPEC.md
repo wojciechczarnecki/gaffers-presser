@@ -19,6 +19,9 @@ metrics:
   implement_iterations: 12
   deviations_minor: 4
   deviations_major: 0
+  final_review_blockers: 0
+  final_review_worth_fixing: 6
+  final_review_nits: 5
 ---
 
 # SPEC 014 — Presser match stories, chips section and table rivalries

@@ -785,3 +785,53 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 ## Final review
 
 _(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
+
+2026-10-11 — final review (report mode, three independent perspectives as parallel subagents:
+compliance, quality, tests with 36 mutations). `ruff check`, `ruff format --check` and
+`tests/presser` + `tests/content` are green. No blockers, no new dependency, no migration,
+nothing outside the scope.
+
+AC → evidence:
+
+| AC | Evidence | Status |
+|----|----------|--------|
+| AC1 | `test_facts_gameweek.py::test_sheet_v3_sections_in_order`, `::test_chips_section_empty_without_chips`, `::test_bench_transfers_holds_no_chip_facts` | delivered |
+| AC2 | `test_facts_transfers.py::test_transfer_win_boundary_6_listed_5_not`, `::test_no_transfer_wins_in_free_hit_or_wildcard_week`, `::test_transfer_wins_ranked_by_difference` | delivered |
+| AC3 | `test_facts_transfers.py::test_hit_gain_sums_all_transfers`, `::test_hit_paid_off_only_above_cost`, `::test_gain_equal_to_the_cost_is_not_paid_off` | delivered |
+| AC4 | `test_facts_pitch.py::test_differential_haul_boundary_10_and_9`, `::test_global_flag_boundary_9_9_and_10_0`, `::test_global_flag_null_without_snapshot`, `::test_league_flag_two_managers` | delivered |
+| AC5 | `test_facts_pitch.py::test_template_boundary_6_of_12_and_5_of_12`, `::test_template_item_lists_with_benched_and_without` | delivered |
+| AC6 | `test_facts_matches.py::test_red_card_own_goal_penalty_missed_with_points`, `::test_double_gameweek_events_per_fixture` | delivered |
+| AC7 | `test_facts_matches.py::test_lucky_sub`, `::test_unlucky_sub`, `::test_lost_clean_sheet`, `::test_unlucky_sub_unknown_in_double_gameweek_with_one_start` | delivered (F3) |
+| AC8 | `test_facts_pitch.py::test_item_names_club_points_owners_multiplier`, `::test_player_counted_for_nobody_not_listed`, `::test_cap_and_ranking`, `::test_cap_of_eight_items`, `::test_lucky_sub_ranks_last`; `test_facts_moments.py::test_key_moment_player_ranked_first_on_pitch` | delivered |
+| AC9 | `test_facts_moments.py::test_winner_pair_differential_haul`, `::test_swing_equal_margin_listed_below_not`, `::test_moments_for_rivalry_swap_and_winner_pair_order`, `::test_moments_for_podium_change` | partially (F1, F2) |
+| AC10 | `test_facts_moments.py::test_captain_multiplier_in_swing`, `::test_lost_clean_sheet_groups_club_defenders_and_goalkeeper`, `::test_cap_five_and_order` | partially: podium-before-rivalry order and the clean-sheet multiplier untested (F5) |
+| AC11 | `test_facts_table.py::test_rivalry_swap_after_three_neighbour_gameweeks`, `::test_rivalry_streak_counts_a_longer_run`, `::test_two_neighbour_gameweeks_no_swap`, `::test_no_swap_before_gw4`, `::test_tie_now_is_not_a_swap` | delivered |
+| AC12 | `test_facts_table.py::test_podium_new_leader_entered_left_swap`, `::test_podium_swap_carries_the_manager_now_behind`, `::test_podium_ties_ranked_as_in_table`, `::test_no_podium_changes_at_gw1` | delivered (F2) |
+| AC13 | `test_facts_checks.py::test_inconsistent_v3_fact_is_reported` (23 cases) | partially: four rules have no negative case (F4) |
+| AC14 | `test_presser_content.py::test_writer_prompt_v5_rules`; `test_writer.py::test_prompt_version_label`; `test_service.py` (`presser_writer@5`) | delivered |
+| AC15 | `test_presser_content.py::test_judge_prompt_v4_checks_match_facts`; `evaluation/test_runner.py::test_recorded_swing_and_streak_verdicts_counted` | delivered |
+| AC16 | `test_presser_content.py::test_style_examples_eight_headers_no_shared_sentence`; owner approval pending | delivered (F7) |
+| AC17 | `evaluation/test_eval_set.py` (30 cases, 15/15, tag contents, pools); `evaluation/test_building.py::test_build_pseudonymises_team_names`, `::test_real_team_name_left_raises` | delivered |
+| AC18 | `test_facts_table.py::test_rows_carry_team_name`, `::test_team_names_argument_overrides_the_stored_ones`; `test_service.py::test_logs_carry_no_names_with_match_facts` | delivered |
+| AC19 | `tests/test_docs.py::test_backlog_32_after_spec_014`, `::test_backlog_has_match_events_source_item`, `::test_decisions_cover_match_stories`; ROADMAP item ticked | delivered |
+
+Findings:
+
+- **F1** `worth-fixing` — `backend/app/presser/facts/moments.py:37-43` — the pairs are deduplicated by (ahead, behind) with the winner pair kept, so a podium or rivalry story between the same two managers loses its own, smaller margin: B 57 / A 50 after GW1, A 80 net / B 70 net in GW2 → A is the winner (margin 10) and the new leader (gap 3); a 6-point differential of A is dropped and the `new_leader` change gets no key moment (AC9 "for each podium change") — compute the moments of every pair and deduplicate the moments (e.g. by ahead, behind, kind, players, first source kept), or deduplicate pairs by (ahead, behind, margin).
+- **F2** `worth-fixing` — `backend/app/presser/facts/table.py:146-160` with `moments.py:123` — a tie broken only by the display name gives a podium change with `gap` 0: B 60 / A 50 after GW1, both 100 after GW2 → `new_leader` A over B (both rank 1), and with margin 0 every event with swing ≥ 1 becomes a podium key moment, filling the 5 slots ahead of rivalry moments; writer prompt v5 says nothing about `gap` 0, so the presser calls a co-leader "nowy lider" — give no key-moment pair to a podium change with `gap` 0 and tell the writer that `gap` 0 means level on points (or report no `new_leader` / `swap` between managers level on points).
+- **F3** `worth-fixing` — `backend/app/presser/facts/matches.py:56` — `lucky_sub` is flagged for any clean-sheet holder whose club conceded, including a defender who came on after the goal (`starts` 0, 60 minutes, `clean_sheets` stat, conceded 1), while the writer prompt (`presser_writer.md:40`) and SPEC Context define it as "went off before the goal" → the presser states a false story that the judge marks supported — require `_started(result, fixture)` for `lucky_sub`, or reword the prompt to "kept the clean sheet although his club conceded".
+- **F4** `worth-fixing` — `backend/app/presser/facts/checks.py:114,128,142-148` — AC13 asks for one test per rule, and four rules survive mutation: a rivalry moment with no matching swap (`_pair_exists` rivalry branch → `True`), a rivalry or podium moment whose `margin` differs from the `gap`, a swap with `gap <= 0`, and an `entered` / `swap` change whose manager is outside the top 3 → no test fails — add those negative cases to `test_inconsistent_v3_fact_is_reported`.
+- **F5** `worth-fixing` — `backend/tests/presser/test_facts_moments.py` — swapping the podium and rivalry entries of `PAIR_ORDER`, dropping the multiplier from the clean-sheet swing (`moments.py:105-106`), and turning `swing > 0` into `>= 0` (`moments.py:123`) all stay green → AC10's order and multiplier rule are not proven — add a sheet with a podium moment and a rivalry moment (assert podium first), a captained defender in a lost clean sheet (swing 8), and a gap-0 pair with a shared player (no moment).
+- **F6** `worth-fixing` — `backend/app/presser/facts/schema.py:298` — dropping `or sheet.key_moments` from the `pitch` emptiness rule stays green, because the builder and the check call the same function and no test asserts `pitch` in or out of `empty_sections` → a sheet with only a lost-clean-sheet moment could lose its "⚽ Z boiska" section unnoticed — in `test_lost_clean_sheet_groups_club_defenders_and_goalkeeper` assert `pitch.items == []` and `"pitch" not in empty_sections`, and assert `"pitch"` in `empty_sections` for a gameweek with neither.
+- **F7** `nit` — `backend/app/content/presser_style_examples.md:29-47,61` — example 2 has no FPL team name standing in for a manager, example 3 uses the team name beside the name, not instead of it (plan step 10); example 2's swing equals its margin yet says "Piotrek zostałby na podium" (equal swing makes them level), and its flop line calls a 12-point gap "o włos" — fix with the owner's text approval.
+- **F8** `nit` — `backend/app/presser/facts/table.py:152` — when two managers leave the top 3, every `entered` change pairs with `left[0]`, so the second manager who left gets no key-moment pair, contrary to the Approach claim that each `left` is covered by its `entered` — pair the i-th entered with the i-th left.
+- **F9** `nit` — `backend/app/presser/facts/checks.py:139-141` — a winner-pair moment's margin is never checked: a hand-written case with `margin: 1` instead of 10 passes — require `margin > 0` and one margin per (ahead, behind), or record the limit.
+- **F10** `nit` — `backend/app/presser/facts/moments.py:117` — `fixture_facts` emits card, own-goal and penalty events before it checks for a missing `Player` row, and `_pair_moments` indexes `players[player_id]` → `KeyError` for a squad player without a `Player` row (pitch skips such players) — use `players.get` and skip.
+- **F11** `nit` — `backend/app/presser/evaluation/building.py:109-110` — the team-pool leak check is never reached by a test: `test_real_team_name_left_raises` returns a real team name, which trips the older real-name check first, and removing the pool check stays green — add a case returning a made-up name outside `teams`.
+
+Rejected:
+
+- Intermittent failures of `test_gain_equal_to_the_cost_is_not_paid_off` and `test_podium_new_leader_entered_left_swap` seen by two perspectives: they coincided with the tests perspective's temporary mutations of the shared working tree; 19 further runs on the clean tree were green.
+
+Left out: 21 nit findings
+
