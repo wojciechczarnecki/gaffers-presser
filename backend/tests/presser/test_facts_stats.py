@@ -195,6 +195,10 @@ def test_gameweek_without_match_stats_builds_a_v4_sheet(world):
     player(world, 2, "Sent", -2, [stats(501, minutes=(40, 1), red_cards=(1, -3))])
     player(world, 3, "Scorer", 17, [stats(501, minutes=(90, 2), goals_scored=(3, 15))])
     player(world, 4, "Wall", 4, [stats(501, minutes=(90, 2), saves=(6, 2))], position=1)
+    for fixture_player, bps, bonus in [(1, 30, 3), (2, 28, 2), (3, 26, 1)]:
+        world.fixture_stat(501, fixture_player, "bps", bps)
+        world.fixture_stat(501, fixture_player, "bonus", bonus)
+    world.fixture_stat(501, 4, "bps", 25)
     pick(world, 10, 60, [1], captain=1)
     pick(world, 11, 55, [2, 3, 4])
     pick(world, 12, 40, [])
@@ -308,3 +312,17 @@ def test_new_kinds_rank_with_hauls(world):
     pick(world, 11, 40, [])
     pick(world, 12, 10, [])
     assert [i.player for i in sheet(world).pitch.items] == ["Sent", "Hat", "Haul", "Wall"]
+
+
+def test_bonus_near_miss_without_live_stats_is_not_a_moment(world):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    player(world, 1, "Near", 2, [stats(501, minutes=(90, 2))])
+    for filler, bps, bonus in [(20, 30, 3), (21, 28, 2), (22, 25, 1)]:
+        world.player(filler, f"Filler{filler}")
+        world.fixture_stat(501, filler, "bps", bps)
+        world.fixture_stat(501, filler, "bonus", bonus)
+    world.fixture_stat(501, 1, "bps", 24)
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    assert [m.kind for m in sheet(world).key_moments] == []

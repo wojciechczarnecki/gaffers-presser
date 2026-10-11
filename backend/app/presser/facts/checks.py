@@ -160,6 +160,18 @@ def _pair_exists(sheet: FactSheet, moment) -> bool:
     )
 
 
+def _missed_bonus_matches(moment) -> bool:
+    ahead, behind, bonus = moment.ahead_multiplier, moment.behind_multiplier, moment.missed_bonus
+    if ahead is None or behind is None or bonus is None or bonus <= 0:
+        return False
+    return (
+        moment.ahead_points == bonus * ahead
+        and moment.behind_points == bonus * behind
+        and moment.swing == moment.behind_points - moment.ahead_points
+        and moment.swing > 0
+    )
+
+
 def _check_moment_breakdown(moment) -> list[str]:
     problems: list[str] = []
     if moment.kind != "player" and moment.breakdown is not None:
@@ -199,12 +211,22 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
         decided = any(entry.decisive for entry in moment.breakdown or [])
         if moment.margin <= 0:
             problems.append("key moments: a margin is not positive")
+        missed = moment.kind == "bonus_missed_by_one"
         if moment.swing < moment.margin and not decided:
-            problems.append("key moments: a swing is below its margin")
-        if moment.swing != moment.ahead_points - moment.behind_points or (
+            problems.append(
+                "key moments: a missed bonus swing is below its margin"
+                if missed
+                else "key moments: a swing is below its margin"
+            )
+        if missed:
+            if not _missed_bonus_matches(moment):
+                problems.append("key moments: a swing does not match the points")
+        elif moment.swing != moment.ahead_points - moment.behind_points or (
             moment.swing <= 0 and not decided
         ):
             problems.append("key moments: a swing does not match the points")
+        if moment.missed_bonus is not None and not missed:
+            problems.append("key moments: missed_bonus on a kind that has none")
         problems += _check_moment_breakdown(moment)
         if not _pair_exists(sheet, moment):
             problems.append("key moments: a pair is not a winner, a swap or a podium change")

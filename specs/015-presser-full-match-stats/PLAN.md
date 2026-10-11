@@ -476,7 +476,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
         `player_facts` for the breakdown.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_moments.py tests/presser/test_facts_pitch.py tests/presser/test_facts_checks.py tests/presser/test_facts_stats.py`
 
-- [ ] 7. **Bonus missed by one BPS (AC6, AC10, the AC11 rule).** Files: `backend/app/presser/facts/stats.py`
+- [x] 7. **Bonus missed by one BPS (AC6, AC10, the AC11 rule).** `iterations: 1` Files: `backend/app/presser/facts/stats.py`
       (`bonus_near_misses(bonus_by_fixture) -> list[NearMiss(player_id, fixture_id,
       missed_bonus)]`), `backend/app/presser/facts/moments.py`, `backend/app/presser/facts/build.py`
       (`load_fixture_bonus` over the gameweek's fixture IDs), `backend/app/presser/facts/schema.py`

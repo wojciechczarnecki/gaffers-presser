@@ -4,7 +4,7 @@ from app.presser.facts.gameweek import net_points
 from app.presser.facts.load import MatchResult, MemberRow, PlayerInfo
 from app.presser.facts.matches import CLEAN_SHEET_POINTS, FixtureFact
 from app.presser.facts.schema import KeyMoment, PlayerStats, Table
-from app.presser.facts.stats import moment_breakdown
+from app.presser.facts.stats import NearMiss, moment_breakdown
 
 MAX_KEY_MOMENTS = 5
 EVENT_KINDS = ("red_card", "own_goal", "penalty_missed", "penalty_saved")
@@ -58,6 +58,7 @@ def _pair_moments(
     club_names: dict[int, str],
     facts: list[FixtureFact],
     player_facts: dict[int, PlayerStats],
+    near_misses: list[NearMiss],
 ) -> list[KeyMoment]:
     ahead, behind = contributions.get(pair.ahead, {}), contributions.get(pair.behind, {})
     held = set(ahead) | set(behind)
@@ -140,6 +141,34 @@ def _pair_moments(
                 points * behind.get(player_id, 0),
             )
         )
+    for miss in near_misses:
+        result = match_results.get(miss.player_id)
+        info = players.get(miss.player_id)
+        if miss.player_id not in held or info is None or result is None or result.live is None:
+            continue
+        ahead_multiplier, behind_multiplier = (
+            ahead.get(miss.player_id, 0),
+            behind.get(miss.player_id, 0),
+        )
+        ahead_points = miss.missed_bonus * ahead_multiplier
+        behind_points = miss.missed_bonus * behind_multiplier
+        found.append(
+            KeyMoment(
+                pair=pair.source,
+                ahead=names[pair.ahead],
+                behind=names[pair.behind],
+                margin=pair.margin,
+                kind="bonus_missed_by_one",
+                players=[info.name],
+                club=club(miss.player_id),
+                ahead_points=ahead_points,
+                behind_points=behind_points,
+                swing=behind_points - ahead_points,
+                ahead_multiplier=ahead_multiplier,
+                behind_multiplier=behind_multiplier,
+                missed_bonus=miss.missed_bonus,
+            )
+        )
     return [m for m in found if m.swing >= pair.margin or _decisive_swing(m) is not None]
 
 
@@ -153,12 +182,22 @@ def build_key_moments(
     club_names: dict[int, str],
     facts: list[FixtureFact],
     player_facts: dict[int, PlayerStats] | None = None,
+    near_misses: list[NearMiss] | None = None,
 ) -> list[KeyMoment]:
     player_facts = player_facts or {}
+    near_misses = near_misses or []
     moments: list[KeyMoment] = []
     for pair in _pairs(rows, names, table):
         moments += _pair_moments(
-            pair, names, contributions, match_results, players, club_names, facts, player_facts
+            pair,
+            names,
+            contributions,
+            match_results,
+            players,
+            club_names,
+            facts,
+            player_facts,
+            near_misses,
         )
     moments.sort(key=lambda m: (PAIR_ORDER[m.pair], -_strength(m), m.ahead, m.behind, m.players))
     # the same event between the same two managers is told once, under its first pair

@@ -1,5 +1,6 @@
 import pytest
 
+from app.fpl.models import Player
 from app.presser.facts import build_fact_sheet, check_fact_sheet
 from app.presser.facts.load import MemberRow
 from app.presser.facts.matches import FixtureFact
@@ -418,3 +419,121 @@ def test_player_moment_without_live_stats_has_no_breakdown(world):
     assert moment.players == ["Haulman"]
     assert moment.breakdown is None
     assert (moment.ahead_multiplier, moment.behind_multiplier) == (1, 0)
+
+
+def bonus_fixture(world, fixture_id, rows, near=None):
+    """rows: (player id, bps, bonus) of the bonus recipients; near: (player id, bps)."""
+    for player_id, bps, bonus in rows:
+        with world.session() as session:
+            known = session.get(Player, (SEASON, player_id)) is not None
+        if not known:
+            world.player(player_id, f"Filler{player_id}")
+        world.fixture_stat(fixture_id, player_id, "bps", bps)
+        world.fixture_stat(fixture_id, player_id, "bonus", bonus)
+    if near is not None:
+        world.fixture_stat(fixture_id, near[0], "bps", near[1])
+
+
+NEAR_EXPLAIN = [stats(501, minutes=(90, 2))]
+
+
+def near_miss(world, bps, bonuses=((20, 30, 3), (21, 28, 2), (22, 25, 1))):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    player(world, 1, "Near", 2, explain=NEAR_EXPLAIN, live_stats=live())
+    bonus_fixture(world, 501, bonuses, near=(1, bps))
+
+
+def missed(world):
+    return [m for m in moments(world) if m.kind == "bonus_missed_by_one"]
+
+
+def test_bonus_missed_by_one_listed(world):
+    near_miss(world, 24)
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    (moment,) = missed(world)
+    assert (moment.pair, moment.ahead, moment.behind, moment.margin) == (
+        "winner",
+        "Anna",
+        "Bartek",
+        1,
+    )
+    assert (moment.players, moment.club, moment.missed_bonus) == (["Near"], "Synthetic FC", 1)
+    assert (moment.ahead_points, moment.behind_points, moment.swing) == (0, 1, 1)
+    assert (moment.ahead_multiplier, moment.behind_multiplier) == (0, 1)
+    assert moment.breakdown is None
+
+
+def test_bonus_missed_by_two_not_listed(world):
+    near_miss(world, 23)
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    assert missed(world) == []
+
+
+def test_bonus_missed_by_leading_managers_player_not_listed(world):
+    near_miss(world, 24)
+    pick(world, 10, 60, [1])
+    pick(world, 11, 59, [])
+    pick(world, 12, 10, [])
+    assert missed(world) == []
+
+
+def test_bonus_missed_below_margin_not_listed(world):
+    near_miss(world, 24)
+    pick(world, 10, 60, [])
+    pick(world, 11, 58, [1])
+    pick(world, 12, 10, [])
+    assert missed(world) == []
+
+
+def test_bonus_missed_as_captain_reaches_the_margin(world):
+    near_miss(world, 24)
+    pick(world, 10, 60, [])
+    pick(world, 11, 58, [1], captain=1)
+    pick(world, 12, 10, [])
+    (moment,) = missed(world)
+    assert (moment.margin, moment.behind_points, moment.swing) == (2, 2, 2)
+
+
+def test_shared_lowest_bonus_place_gives_the_shared_bonus(world):
+    near_miss(world, 27, bonuses=((20, 30, 3), (21, 28, 2), (22, 28, 2)))
+    pick(world, 10, 60, [])
+    pick(world, 11, 58, [1])
+    pick(world, 12, 10, [])
+    (moment,) = missed(world)
+    assert (moment.missed_bonus, moment.swing) == (2, 2)
+
+
+def test_bonus_missed_by_a_player_both_managers_count_uses_the_difference(world):
+    near_miss(world, 24)
+    pick(world, 10, 60, [1])
+    pick(world, 11, 58, [1], captain=1)
+    pick(world, 12, 10, [])
+    assert missed(world) == []
+
+
+def test_bonus_in_the_other_fixture_of_a_double_gameweek(world):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    world.fixture(502, 5, 2, 1, 0, 0)
+    explain = [stats(501, minutes=(90, 2), bonus=(1, 1)), stats(502, minutes=(90, 2))]
+    player(world, 1, "Near", 5, explain=explain, live_stats=live())
+    bonus_fixture(world, 501, [(20, 30, 3), (21, 28, 2), (1, 25, 1)])
+    bonus_fixture(world, 502, [(22, 30, 3), (23, 28, 2), (24, 25, 1)], near=(1, 24))
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    (moment,) = missed(world)
+    assert (moment.players, moment.missed_bonus) == (["Near"], 1)
+
+
+def test_fixture_without_bonus_rows_gives_no_near_miss(world):
+    world.fixture(501, 5, 1, 2, 0, 0)
+    player(world, 1, "Near", 2, explain=NEAR_EXPLAIN, live_stats=live())
+    world.fixture_stat(501, 1, "bps", 24)
+    pick(world, 10, 60, [])
+    pick(world, 11, 59, [1])
+    pick(world, 12, 10, [])
+    assert missed(world) == []

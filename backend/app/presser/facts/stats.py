@@ -1,7 +1,8 @@
+from dataclasses import dataclass
 from decimal import Decimal
 
 from app.presser.facts.gameweek import BLANK_MAX_POINTS
-from app.presser.facts.load import MatchResult
+from app.presser.facts.load import FixtureBonus, MatchResult
 from app.presser.facts.schema import MomentStat, PlayerStats, StatPoints
 
 BIG_MISS_MIN_XG = Decimal("0.70")
@@ -58,3 +59,30 @@ def moment_breakdown(
             )
         )
     return result
+
+
+@dataclass(frozen=True)
+class NearMiss:
+    player_id: int
+    fixture_id: int
+    missed_bonus: int
+
+
+def bonus_near_misses(bonus_by_fixture: dict[int, FixtureBonus]) -> list[NearMiss]:
+    found: list[NearMiss] = []
+    for fixture_id in sorted(bonus_by_fixture):
+        entry = bonus_by_fixture[fixture_id]
+        recipients = {player: value for player, value in entry.bonus.items() if value > 0}
+        scored = [entry.bps[player] for player in recipients if player in entry.bps]
+        if not scored:
+            continue
+        lowest = min(scored)
+        placed = min(
+            value for player, value in recipients.items() if entry.bps.get(player) == lowest
+        )
+        found += [
+            NearMiss(player, fixture_id, placed)
+            for player, bps in sorted(entry.bps.items())
+            if bps == lowest - 1 and player not in recipients
+        ]
+    return found

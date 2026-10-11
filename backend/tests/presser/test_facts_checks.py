@@ -567,6 +567,51 @@ def test_inconsistent_v4_moment_is_reported(expected, mutate):
     assert expected in problems_after(mutate, recompute=False)
 
 
+MISSED_MOMENT = {
+    "kind": "bonus_missed_by_one",
+    "margin": 1,
+    "ahead_multiplier": 0,
+    "behind_multiplier": 2,
+    "ahead_points": 0,
+    "behind_points": 2,
+    "swing": 2,
+    "missed_bonus": 1,
+}
+
+
+@pytest.mark.parametrize(
+    ("expected", "mutate"),
+    [
+        (
+            "key moments: a missed bonus swing is below its margin",
+            add_moments(MISSED_MOMENT | {"margin": 3}),
+        ),
+        (
+            "key moments: a swing does not match the points",
+            add_moments(MISSED_MOMENT | {"swing": 1}),
+        ),
+        (
+            "key moments: a swing does not match the points",
+            add_moments(MISSED_MOMENT | {"missed_bonus": 2}),
+        ),
+        (
+            "key moments: a swing does not match the points",
+            add_moments(MISSED_MOMENT | {"missed_bonus": None}),
+        ),
+        (
+            "key moments: missed_bonus on a kind that has none",
+            add_moments({"missed_bonus": 1}),
+        ),
+    ],
+)
+def test_inconsistent_missed_bonus_is_reported(expected, mutate):
+    assert expected in problems_after(mutate, recompute=False)
+
+
+def test_consistent_missed_bonus_has_no_problems():
+    assert problems_after(add_moments(MISSED_MOMENT)) == []
+
+
 def test_negative_swing_moment_with_a_decisive_stat_is_consistent():
     moment = {
         "margin": 1,
