@@ -215,9 +215,12 @@ class FactSheet: version: Literal[4] = 4
   `result.live` is not `None`:
   - `hat_trick` when the fixture's `goals_scored` value is at least 3;
   - `keeper_wall` when `position == 1` and the fixture's `saves` points are at least 2.
-  `pitch.py` adds them as kinds. They join `SCORE_KINDS`, ranking with the hauls (group 3),
-  and the existing "needs an owner unless template" rule lists them only for a counted
-  player. 2 + 1 goals across a double gameweek is no hat-trick.
+  `pitch.py` adds them as kinds. They join `SCORE_KINDS`, ranking with the hauls (group 3).
+  `pitch.py` appends either kind only when `holders` is not empty (the player counted for at
+  least one manager). The existing "needs an owner unless template" rule is not enough: a
+  template player benched by everyone is still listed for `template_haul`, and must not
+  carry `hat_trick` or `keeper_wall` (AC7). 2 + 1 goals across a double gameweek is no
+  hat-trick.
 - Decisive stat. In a `player` moment, each breakdown entry gets
   `swing = points × (ahead_multiplier − behind_multiplier)`, where a manager who does not
   count the player has multiplier 0. `decisive = swing >= margin and identifier not in
@@ -275,7 +278,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
 | AC3 | 4, 6 | `tests/presser/test_facts_stats.py::test_breakdown_sums_explain_over_a_double_gameweek`, `::test_pitch_item_and_captain_carry_the_breakdown`; `tests/presser/test_facts_moments.py::test_player_moment_carries_breakdown_and_multipliers` |
 | AC4 | 6 | `tests/presser/test_facts_moments.py::test_breakdown_swing_and_decisive_boundary` |
 | AC5 | 6 | `tests/presser/test_facts_moments.py::test_trailing_captains_yellow_card_decides_at_margin_1`, `::test_red_card_entry_never_decisive` |
-| AC6 | 7 | `tests/presser/test_facts_moments.py::test_bonus_missed_by_one_listed`, `::test_bonus_missed_by_two_not_listed`, `::test_bonus_missed_by_leading_managers_player_not_listed`, `::test_bonus_missed_below_margin_not_listed`, `::test_shared_lowest_bonus_place_gives_the_shared_bonus` |
+| AC6 | 7 | `tests/presser/test_facts_moments.py::test_bonus_missed_by_one_listed`, `::test_bonus_missed_by_two_not_listed`, `::test_bonus_missed_by_leading_managers_player_not_listed`, `::test_bonus_missed_below_margin_not_listed`, `::test_shared_lowest_bonus_place_gives_the_shared_bonus`, `::test_bonus_missed_by_a_player_both_managers_count_uses_the_difference` |
 | AC7 | 5 | `tests/presser/test_facts_stats.py::test_hat_trick_needs_three_goals_in_one_fixture`, `::test_keeper_wall_needs_two_save_points_in_one_fixture`, `::test_hat_trick_of_an_uncounted_player_not_listed`, `::test_new_kinds_carry_differential_flags` |
 | AC8 | 4, 8 | `tests/presser/test_facts_stats.py::test_big_miss_boundary_070_and_069`, `::test_goal_from_nothing_boundary_014_and_015`, `::test_xg_flags_false_without_condition_and_null_without_stats`; `tests/presser/test_facts_moments.py::test_lost_clean_sheet_carries_xgc_of_most_minutes`, `::test_lost_clean_sheet_xgc_null_in_double_gameweek` |
 | AC9 | 2, 4 | `tests/fpl/test_results_sync.py::test_results_stored_and_archived` (stored); `tests/presser/test_facts_stats.py::test_data_only_stats_absent_from_the_schema` |
@@ -422,6 +425,8 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
         - `test_keeper_wall_needs_two_save_points_in_one_fixture`: a goalkeeper with saves
           (6, 2) is a wall and (5, 1) is not, and a defender never is;
         - `test_hat_trick_of_an_uncounted_player_not_listed`: benched or in nobody's squad;
+          plus a template player (in the squads of half the league) benched by every
+          manager, whose item is still listed for `template_haul` but without `hat_trick`;
         - `test_new_kinds_carry_differential_flags`: the global and league flags are set as
           for a haul;
         - `test_new_kinds_rank_with_hauls`: a hat-trick ranks by points among the hauls,
@@ -487,6 +492,10 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
           as the trailing manager's captain, giving swing 2, is listed;
         - `test_shared_lowest_bonus_place_gives_the_shared_bonus`: BPS 30/28/28 with bonus
           3/2/2, and a near miss at 27 gives `missed_bonus` 2;
+        - `test_bonus_missed_by_a_player_both_managers_count_uses_the_difference`: the
+          trailing manager's captain (×2) is also counted ×1 by the leader, the missed bonus
+          is 1 and the margin 2. The swing is 1, so no moment is listed (the bonus would have
+          reached the leader too; the 2026-10-11 key-moment rule "swing ≥ margin" binds);
         - `test_bonus_in_the_other_fixture_of_a_double_gameweek`: a bonus in fixture 1 and
           a near miss in fixture 2 is listed;
         - `test_gameweek_without_match_stats_builds_a_v4_sheet` gets near-miss rows, with
@@ -498,7 +507,10 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
           each multiplier;
         - "key moments: missed_bonus on a kind that has none".
       - Code as in Approach (`bonus_missed_by_one`). The `_check_key_moments` swing rule
-        branches on the kind.
+        branches on the kind. The `KeyMoment.swing` comment in `schema.py` (today
+        "ahead_points - behind_points") says that for `bonus_missed_by_one` the points are
+        the bonus each manager would have gained, and the swing is `behind_points -
+        ahead_points`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_moments.py tests/presser/test_facts_stats.py tests/presser/test_facts_checks.py`
 
 - [ ] 8. **xGC on a lost clean sheet (AC8 xGC, a check rule).** Files:
@@ -538,8 +550,10 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
         - A `decisive` entry of a `player` key moment may be named as the cause ("3 bonusy
           kapitana dały mu Managera kolejki"). A moment can be listed with a negative total
           `swing` when one stat decided it: then name the stat, not the player's total.
-        - `bonus_missed_by_one`: `behind` missed `missed_bonus` by one BPS, and `swing` is
-          what it would have moved.
+        - `bonus_missed_by_one`: `behind`'s player missed `missed_bonus` by one BPS;
+          `ahead_points` and `behind_points` are what each manager would have gained, and
+          `swing` is how much closer it would have brought `behind`. Never say `behind`
+          lost those points.
         - `hat_trick` (3+ goals in one match: never call goals across two matches a
           hat-trick) and `keeper_wall` (6+ saves in one match).
         - xG flags as a punchline only: a captain's blank with `big_miss` is bad luck
@@ -796,7 +810,67 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+2026-10-11, plan review (pipeline:plan-review).
+
+Findings:
+
+- `major` — Approach and step 5 relied on the existing "needs an owner unless template" rule
+  in `pitch.py` to list `hat_trick` and `keeper_wall` only for a counted player. That rule
+  lets a template player benched by every manager through for `template_haul`, so he would
+  carry `hat_trick` against AC7 ("listed only when the player counted for a league
+  manager"). Changed: the Approach states that `pitch.py` appends either kind only when
+  `holders` is not empty, and `test_hat_trick_of_an_uncounted_player_not_listed` gets the
+  benched template player case.
+- `minor` — `bonus_missed_by_one` uses `swing = behind_points − ahead_points`, the reverse
+  of the `KeyMoment.swing` comment ("ahead_points - behind_points"), and its points are
+  what each manager would have gained, not points scored. Changed: step 7 updates the schema
+  comment, and the step 9 writer rule explains both fields and forbids saying `behind` lost
+  those points.
+- `minor` — The plan reads AC6's "bonus × his multiplier" as the multiplier difference
+  between the two managers, which differs from the literal SPEC only when both managers
+  count the player. The difference is the reading the binding 2026-10-11 key-moment rule
+  (swing ≥ margin) requires, so it is kept, but no test pinned it. Changed: step 7 adds
+  `test_bonus_missed_by_a_player_both_managers_count_uses_the_difference`, and the AC
+  matrix lists it.
+
+Checked and found correct:
+
+- Coverage: AC1–AC17 each have steps and a named proving test; the matrix matches the steps.
+  Every SPEC Scope 9 check rule maps to a step (4: breakdown sum, xG; 5: hat-trick, keeper
+  wall; 6: entry swing, decisive; 7: missed-bonus swing; 8: xGC kind).
+- Decisive-stat arithmetic against `moments.py`: `swing = ahead_points − behind_points =
+  points × (ahead − behind multiplier)`; the AC5 test (runner-up's captain, minutes 2,
+  yellow −1, margin 1) gives a total swing of −2 and a yellow entry swing of 2, as planned.
+  The two `_check_key_moments` rules that assume `swing ≥ margin > 0` get the exemption.
+- Storage: `player_gameweek_result` and the new table share the `(season, player)` FK
+  pattern; the recorded `fixtures` payload has 110 stats lists for GW1 fixtures, every
+  element is in the recorded bootstrap, and the live `stats` keys match the SPEC.
+  `StrictModel` uses `extra="ignore"`, so `extra="allow"` on `LiveStats` plus `model_dump()`
+  keeps every field. `apply_fixtures` runs before the fixture-stat insert.
+- Migration tests: every older test derives its tables from `PRE_0010_TABLES` or the
+  metadata and its exclusions from `BEFORE_OWNERSHIP` or the listed `excluded` sets, so the
+  step 1 changes cover all of them.
+- Decimal handling: `Strict` is `extra="forbid"` only (no strict mode), the service stores
+  `model_dump(mode="json")`, and cases load with `model_validate_json`, so xG strings
+  round-trip.
+- Evaluation set counts: v3 has 10 real (5/5) and 20 synthetic (10/10) cases; plus 11 new
+  (5/6) gives 41 cases, 20 dev and 21 test, inside the new limits. `build-cases` has
+  `--gameweeks` and `--force`; the interim 31-case file is read by no test in step 12.
+- The GW6 gate escalation follows the spec 014 precedent (the spec 013 privacy waiver
+  covered spec 013 only); the owner decides, so it does not contradict the SPEC's "plus GW6".
+- The E2E count query uses existing APIs (`build_fact_sheet` signature, `current_season`,
+  `make_engine`, `check_fact_sheet` export); the check messages are fixed strings, so it
+  prints no names.
+- Compliance: Polish only in `app/content/` and `evals/` (`test_no_polish_literals.py`
+  scans `app/presser` only), tests first in every step, fake LLM, DECISIONS rows recorded.
+  No conflict with the 2026-10-09/11 presser decisions.
+- Owner summary: no new dependency; the migration is flagged and accepted in SPEC → Owner
+  decisions. Manual items both have `Pass when:`, and neither can be automated (owner's
+  credentials, real names, taste).
+- Language: the plan is in English.
+
+The plan is ready: the one major gap is fixed in place, every AC has a proving test, and the
+only migration is accepted by the owner up front with no new dependency.
 
 ## Deviations
 
