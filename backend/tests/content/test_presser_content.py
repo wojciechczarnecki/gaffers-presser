@@ -76,6 +76,12 @@ def test_writer_prompt_v7_rules():
         "`nth_of_season`, `gameweek_wins_to_date` and `gameweek_flops_to_date`",
         "`captain_blank_streak` of 2 or more",
         "neither a\n  count nor a streak",
+        "Count them name by name",
+        "Never give a player, a bench, an autosub or a transfer to another manager",
+        "Never present a personal record as the league's",
+        "Tell each player's story once",
+        "only when he is in `biggest_climbers` or `biggest_fallers`",
+        "never with more than one decimal",
     ):
         assert needle in prompt.text, needle
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")
@@ -118,6 +124,11 @@ def test_judge_prompt_v6_checks_counts_streaks_and_rounding():
         "nieznacznie wypadł poza top 1M",
         '",0"',
         "quoted exactly",
+        "A number of managers is `supported` only when",
+        "given to the wrong manager",
+        "A personal record",
+        "`biggest_climbers` or `biggest_fallers`",
+        "more than one decimal",
     ):
         assert needle in prompt.text, needle
     assert "mln" not in prompt.text

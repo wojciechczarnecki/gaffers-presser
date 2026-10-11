@@ -58,6 +58,15 @@ captain's `breakdown` is already in captain points (each stat's points times the
 so a captain's stat quoted with the points of the uncaptained player (for example "żółtko
 kosztowało kapitana jedno oczko" where the sheet says -2) is `unsupported`.
 
+A number of managers is `supported` only when it equals the names in the sheet's list it
+describes (for example "dziesięciu kapitanom" when 8 `picks` have that captain is
+`unsupported`). A player, a bench, an autosub or a transfer given to the wrong manager (not in
+the `owners`, `benched`, `without`, `auto_subs`, `transfer_wins`, `transfer_misses` or `hits`
+entry that names him) is `unsupported`. A personal record (`personal_bests`,
+`personal_worsts`) presented as the league's record ("najgorszy wynik sezonu w lidze" when
+`worst_gameweek` names another manager) is `unsupported`, and so is "największy skok" or
+"największy spadek" for a manager who is not in `biggest_climbers` or `biggest_fallers`.
+
 A count in the season ("drugi raz", "trzecia wygrana", "znowu") is `supported` only when
 `nth_of_season`, `gameweek_wins_to_date` or `gameweek_flops_to_date` gives it. "Z rzędu",
 "kolejny raz", a series or any streak is `supported` only when `win_streak`, `flop_streak` or
@@ -75,6 +84,7 @@ changes the magnitude, or a threshold the rank has not reached or has not crosse
   1M" or "ma 1,0M" for 1 010 000 (it is "tuż za top 1M" or "nieznacznie wypadł poza top 1M"),
   or "10k" for 10 400;
 - a whole number written with ",0" ("6,0M", "15,0k");
+- more than one decimal ("1,989M") or a wrong nearest figure ("862k" for 862 642);
 - a rank from 10 000 quoted exactly ("12 345."), since such a rank is always rounded. A rank placed against a threshold it is just outside
 ("tuż za top 10k" for 10 030, "tuż za top 1M" for 1 030 000) or just inside ("w top 1M, tuż pod
 kreską" for 999 700) is `supported`. A lower rank is better, and a positive `movement` in the

@@ -95,14 +95,19 @@ league's previous pressers. Return the presser as the single field `text`.
 - The `overall` section is about the overall rank in FPL. Report the `notable` rows only, the
   biggest climbers and fallers first, with the thresholds in `entered` and `left` (the top 1M,
   100k or 10k) and the `movement` in places, rounded by the rules below. A lower rank is better,
-  and a positive movement is a climb.
+  and a positive movement is a climb. Call a manager the biggest climber or faller ("największy
+  skok", "największy spadek") only when he is in `biggest_climbers` or `biggest_fallers`. They are
+  chosen by the ratio of the ranks, not by places, so never set their move against another
+  manager's larger move in places.
 - Round ranks and movements the way FPL players say them. This rounding is required and is not
   arithmetic. Never invent a rank, a threshold or a movement.
   - A rank (overall or GW rank) from 10 000 is never quoted exactly: round it to thousands with
     "k" ("15k", "234k") and from 1 000 000 to millions with "M" and one decimal ("1,5M"). A rank
     below 10 000 may be quoted exactly ("8 412.") or rounded ("7,8k").
   - A movement of fewer than 1 000 places is quoted exactly ("o 640 miejsc"). From 1 000 places
-    it is rounded the same way ("o 15k miejsc", "o 2,4M miejsc").
+    it is rounded the same way ("o 15k miejsc", "o 2,4M miejsc"). Round to the nearest
+    thousand or tenth of a million, never with more than one decimal ("863k" for 862 642, "2M"
+    for 1 989 280, not "1,989M").
   - Always "k" for thousands and "M" for millions, never "tys." or "mln" ("top 1M", "1,6M").
     A whole number of thousands or millions gets no ",0" ("6M", not "6,0M"), and never write "1000k":
     it is "1M".
@@ -123,6 +128,19 @@ league's previous pressers. Return the presser as the single field `text`.
   `average_net_points`. It is the league's average, not FPL's average of the gameweek, so always
   call it "średnia ligowa" or "średnia ligi", never a bare "średnia". The manager of the
   gameweek is the one with the most net points.
+- A number of managers ("pięciu kapitanów", "czterem managerom") is counted from the names in
+  the list it describes: the `picks` with that player and multiplier, a player's `owners`, the
+  chip `plays` of that chip. Count them name by name; when you are not sure, name the managers
+  or say "kilku" instead of a number.
+- Who did what comes from the list that names the manager: `owners`, `benched` and `without` for
+  a player, `auto_subs`, `transfer_wins`, `transfer_misses` and `hits` for the bench and
+  transfers. Never give a player, a bench, an autosub or a transfer to another manager.
+- `best_gameweek` and `worst_gameweek` are the league's records of the season ("najgorszy wynik
+  w lidze w tym sezonie"); `personal_bests` and `personal_worsts` are a manager's own ("jego
+  najgorszy GW rank w sezonie"). Never present a personal record as the league's.
+- Tell each player's story once: a player or an event belongs to one section, and the winner or
+  flop line may only name the decisive one in one sentence. Never repeat a player's points or
+  the same fact in a second section.
 - Every count and streak in the fact sheet already includes this gameweek. `nth_of_season` on a
   winner or a flop says which win or flop of the season this one is (1 = the first). Never add
   this gameweek to a count yourself, and a streak of 1 is not a streak.
