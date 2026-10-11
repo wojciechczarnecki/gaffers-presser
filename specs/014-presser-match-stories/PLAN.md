@@ -371,7 +371,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
           multiplier), built on `_actual_counted` and `credit_captain`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_matches.py`
 
-- [ ] 5. **Pitch section (AC4, AC5, AC8, AC13 pitch rules).** Files: new `facts/pitch.py`,
+- [x] 5. **Pitch section (AC4, AC5, AC8, AC13 pitch rules).** Files: new `facts/pitch.py`, `iterations: 4`
       `facts/build.py` (load every member's squad, match results, player info, clubs,
       fixtures, ownership; call `build_pitch`), `facts/checks.py`, new
       `tests/presser/test_facts_pitch.py`, `tests/presser/test_facts_checks.py`.

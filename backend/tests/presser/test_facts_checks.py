@@ -213,6 +213,20 @@ def add_hit(**changes):
     ("expected", "mutate"),
     [
         ("empty_sections does not match the sections", add_chip),
+        (
+            "a section names a manager who is not in the table",
+            lambda v: v.pitch.items.append(
+                v.pitch.model_validate(
+                    {"items": [PITCH_ITEM | {"owners": [{"manager": "Obcy", "multiplier": 1}]}]}
+                ).items[0]
+            ),
+        ),
+        (
+            "pitch: more than 8 items",
+            lambda v: v.pitch.items.extend(
+                v.pitch.model_validate({"items": [PITCH_ITEM] * 9}).items
+            ),
+        ),
         ("hits: a transfer gain does not match its transfers", add_hit(transfer_gain=6)),
         ("hits: paid_off does not match the gain and the cost", add_hit(paid_off=False)),
         ("hits: paid_off does not match the gain and the cost", add_hit(cost=5)),

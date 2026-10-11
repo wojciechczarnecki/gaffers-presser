@@ -5,12 +5,18 @@ from app.presser.facts.checks import check_fact_sheet
 from app.presser.facts.chips import build_chips
 from app.presser.facts.errors import FactSheetError, NoFactsError
 from app.presser.facts.load import (
+    CaptainRef,
     load_auto_subs,
     load_bench_picks,
     load_captain_refs,
+    load_club_names,
+    load_fixtures,
     load_league_name,
     load_manager_names,
+    load_match_results,
     load_member_rows,
+    load_ownership,
+    load_player_info,
     load_player_names,
     load_player_positions,
     load_results,
@@ -18,7 +24,9 @@ from app.presser.facts.load import (
     load_team_names,
     load_transfers,
 )
+from app.presser.facts.matches import contributions, fixture_facts
 from app.presser.facts.overall import build_overall
+from app.presser.facts.pitch import build_pitch
 from app.presser.facts.schema import FactSheet, empty_sections
 from app.presser.facts.season import build_season
 from app.presser.facts.table import build_table
@@ -55,7 +63,7 @@ def build_fact_sheet(
     squads = load_squads(
         session,
         season,
-        {(entry_id, gameweek) for entry_id in squad_chip_entries}
+        {(row.entry_id, gameweek) for row in rows}
         | {(entry_id, number) for entry_id, number in before_chip.items() if number is not None},
     )
     previous_squads = {
@@ -73,6 +81,34 @@ def build_fact_sheet(
     results = load_results(session, season, gameweeks, player_ids)
     player_names = load_player_names(session, season, player_ids)
     positions = load_player_positions(session, season, squad_players)
+    match_results = load_match_results(session, season, gameweek, squad_players)
+    player_info = load_player_info(session, season, squad_players)
+    fixtures = load_fixtures(
+        session,
+        season,
+        {item.fixture_id for result in match_results.values() for item in result.fixtures},
+    )
+    facts = fixture_facts(match_results, player_info, fixtures)
+    gameweek_squads = {
+        row.entry_id: squads[(row.entry_id, gameweek)]
+        for row in rows
+        if (row.entry_id, gameweek) in squads
+    }
+    subs_by_entry: dict[int, list] = {}
+    for sub in auto_subs:
+        subs_by_entry.setdefault(sub.entry_id, []).append(sub)
+    chips_by_entry = {row.entry_id: row.active_chip for row in rows}
+    manager_contributions = {
+        entry_id: contributions(
+            squad,
+            subs_by_entry.get(entry_id, []),
+            refs.get((entry_id, gameweek), CaptainRef(None, None)),
+            chips_by_entry[entry_id],
+            results,
+            gameweek,
+        )
+        for entry_id, squad in gameweek_squads.items()
+    }
 
     season_facts = build_season(all_rows, refs, results, names, gameweek)
     winners, flops = gw_rules.winners_and_flops(rows, names, season_facts)
@@ -102,6 +138,18 @@ def build_fact_sheet(
             squads,
             positions,
         ),
+    )
+    sheet.pitch = build_pitch(
+        names,
+        gameweek_squads,
+        manager_contributions,
+        match_results,
+        player_info,
+        load_club_names(session, season),
+        facts,
+        load_ownership(session, season, gameweek),
+        set(),
+        len(rows),
     )
     previous = [row for row in all_rows if row.gameweek == gameweek - 1]
     team_names = team_names or load_team_names(session, season, league_id)

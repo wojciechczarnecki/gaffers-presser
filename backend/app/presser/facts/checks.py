@@ -1,4 +1,5 @@
 from app.presser.facts import ranks
+from app.presser.facts.pitch import MAX_PITCH_ITEMS
 from app.presser.facts.schema import FactSheet, empty_sections
 
 
@@ -137,6 +138,9 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
             problems.append("hits: a transfer gain does not match its transfers")
         if hit.paid_off != (hit.transfer_gain > hit.cost):
             problems.append("hits: paid_off does not match the gain and the cost")
+
+    if len(sheet.pitch.items) > MAX_PITCH_ITEMS:
+        problems.append("pitch: more than 8 items")
 
     for pick in sheet.captaincy.picks:
         if pick.points != pick.base_points * pick.multiplier:
