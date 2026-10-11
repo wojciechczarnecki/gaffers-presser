@@ -20,7 +20,7 @@ from app.presser.writer import PresserDraft, build_writer
 from tests.corroboration.fakes import FakeLangfuseClient
 from tests.delivery.fakes import FixedClock
 from tests.extraction.fakes import FakeChatModel
-from tests.presser.helpers import LEAGUE_ID, SEASON, World, stats
+from tests.presser.helpers import LEAGUE_ID, SEASON, World, live, stats
 
 MODEL = "openai/gpt-6-luna"
 MARKER = "FAKE-PRESSER-MARKER"
@@ -78,7 +78,7 @@ def test_generated_presser_stored_with_usage(db, world):
     assert row.idempotency_key == presser_key(SEASON, 5, LEAGUE_ID)
     assert row.facts["gameweek"] == 5
     assert row.facts["winners"][0]["manager"] == "Bartek"
-    assert row.prompt_version == "presser_writer@5"
+    assert row.prompt_version == "presser_writer@6"
 
 
 def test_previous_pressers_latest_two_sent_before_gameweek(db, world):
@@ -204,4 +204,52 @@ def test_logs_carry_no_names_with_match_facts(db, caplog):
         with pytest.raises(PresserFailed):
             generate_presser(db, failing, SEASON, LEAGUE_ID, 5, preview=True)
     for forbidden in ("Anna", "Bartek", "Synthetic XI", "Klub Testowy", "Zawodnik Testowy"):
+        assert forbidden not in caplog.text
+
+
+def test_logs_carry_no_names_with_full_match_stats(db, caplog):
+    world = World(db)
+    world.club(2, "Klub Testowy")
+    world.fixture(501, 5, 2, 1, 0, 3)
+    world.player(5, "Zawodnik Testowy", club=1)
+    world.player(6, "Rywal Testowy", club=1)
+    world.result(
+        5,
+        5,
+        90,
+        17,
+        explain=[stats(501, minutes=(90, 2), goals_scored=(3, 15))],
+        live=live(goals=3, xg="1.20"),
+    )
+    world.result(6, 5, 90, 2, explain=[stats(501, minutes=(90, 2))], live=live())
+    world.fixture_stat(501, 5, "bps", 40)
+    world.fixture_stat(501, 5, "bonus", 3)
+    world.fixture_stat(501, 6, "bps", 39)
+    for entry_id, name in [(10, "Anna Alfa"), (11, "Bartek Beta")]:
+        world.manager(entry_id, name)
+        for gameweek in range(1, 6):
+            world.gw(entry_id, gameweek, 50 + entry_id)
+        world.squad(entry_id, 5, [6] if entry_id == 10 else [5])
+    rt, _ = runtime(PresserDraft(text="Tekst"))
+    with caplog.at_level(logging.DEBUG):
+        generate_presser(db, rt, SEASON, LEAGUE_ID, 5)
+    with Session(db) as session:
+        facts = session.exec(select(Presser.facts)).one()
+    item = next(i for i in facts["pitch"]["items"] if i["player"] == "Zawodnik Testowy")
+    assert "hat_trick" in item["kinds"]
+    assert item["breakdown"][0]["identifier"] == "goals_scored"
+    assert "bonus_missed_by_one" in {m["kind"] for m in facts["key_moments"]}
+    failing, _ = runtime(ValueError("a"), ValueError("b"), ValueError("c"))
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(PresserFailed):
+            generate_presser(db, failing, SEASON, LEAGUE_ID, 5, preview=True)
+    for forbidden in (
+        "Anna",
+        "Bartek",
+        "Synthetic XI",
+        "Klub Testowy",
+        "Synthetic FC",
+        "Zawodnik Testowy",
+        "Rywal Testowy",
+    ):
         assert forbidden not in caplog.text

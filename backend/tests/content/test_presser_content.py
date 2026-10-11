@@ -26,9 +26,9 @@ WRITER_HEADERS = (
 )
 
 
-def test_writer_prompt_v5_rules():
+def test_writer_prompt_v6_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 5
+    assert prompt.version == 6
     positions = [prompt.text.index(header) for header in WRITER_HEADERS]
     assert positions == sorted(positions)
     assert prompt.text.index("⚽") < prompt.text.index("🪑")
@@ -58,6 +58,17 @@ def test_writer_prompt_v5_rules():
         'never "tys."',
         'never write "1000k"',
         "never cross a threshold",
+        "breakdown",
+        "decisive",
+        "bonus_missed_by_one",
+        "missed_bonus",
+        "hat_trick",
+        "keeper_wall",
+        "big_miss",
+        "goal_from_nothing",
+        "expected_goals_conceded",
+        "punchline",
+        "never a bare xG",
     ):
         assert needle in prompt.text, needle
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")

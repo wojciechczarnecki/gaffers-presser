@@ -528,7 +528,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
       - Code as in Approach (lost clean sheet xGC).
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_moments.py tests/presser/test_facts_checks.py`
 
-- [ ] 9. **Writer prompt version 6 and log privacy (AC12, AC16).** Files:
+- [x] 9. **Writer prompt version 6 and log privacy (AC12, AC16).** `iterations: 1` Files:
       `backend/app/content/prompts/presser_writer.md`, `backend/tests/content/test_presser_content.py`,
       `backend/tests/presser/test_writer.py`, `backend/tests/presser/test_service.py`.
       - Tests first:
