@@ -74,9 +74,9 @@ def test_writer_prompt_v6_rules():
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")
 
 
-def test_judge_prompt_v4_checks_match_facts():
+def test_judge_prompt_v5_checks_full_match_stats():
     prompt = load_prompt("presser_judge")
-    assert prompt.version == 4
+    assert prompt.version == 5
     for needle in (
         "pitch",
         "key moment",
@@ -95,6 +95,14 @@ def test_judge_prompt_v4_checks_match_facts():
         "1,2 mln",
         "o 15k miejsc",
         "tuż za top 10k",
+        "breakdown",
+        "decisive",
+        "missed a bonus by one BPS",
+        "hat-trick",
+        "keeper wall",
+        "big miss",
+        "goal from nothing",
+        "xG",
     ):
         assert needle in prompt.text, needle
 

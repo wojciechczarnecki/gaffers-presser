@@ -242,3 +242,72 @@ def test_recorded_swing_and_streak_verdicts_counted():
     assert record["faithfulness"] == 0.0
     sent = fake.received_messages[0][1].content
     assert '"swing": 14' in sent and '"neighbour_gameweeks": 3' in sent
+
+
+def test_recorded_decisive_stat_and_bps_verdicts_counted():
+    facts = sheet().model_copy(deep=True)
+    facts.key_moments = [
+        KeyMoment(
+            pair="winner",
+            ahead="Bartas",
+            behind="Kuba",
+            margin=1,
+            kind="player",
+            players=["Booked"],
+            club="Klub Testowy",
+            ahead_points=0,
+            behind_points=2,
+            swing=-2,
+            ahead_multiplier=0,
+            behind_multiplier=2,
+            breakdown=[
+                {
+                    "identifier": "minutes",
+                    "value": 90,
+                    "points": 2,
+                    "swing": -4,
+                    "decisive": False,
+                },
+                {
+                    "identifier": "yellow_cards",
+                    "value": 1,
+                    "points": -1,
+                    "swing": 2,
+                    "decisive": True,
+                },
+            ],
+        ),
+        KeyMoment(
+            pair="winner",
+            ahead="Bartas",
+            behind="Kuba",
+            margin=1,
+            kind="bonus_missed_by_one",
+            players=["Near"],
+            club="Klub Testowy",
+            ahead_points=0,
+            behind_points=1,
+            swing=1,
+            ahead_multiplier=0,
+            behind_multiplier=1,
+            missed_bonus=1,
+        ),
+    ]
+    facts.empty_sections = empty_sections(facts)
+    item = PresserCase(id="decisive", split="dev", source="real", tags=[], facts=facts, previous=[])
+    writer, _ = writer_for(
+        PresserDraft(text="Bonus Booked przesądził o wszystkim, a Hat-trickowi zabrakło 1 BPS")
+    )
+    recorded = JudgeVerdict(
+        claims=[
+            JudgedClaim(claim="Booked's bonus decided it", label="unsupported"),
+            JudgedClaim(claim="a third player missed a bonus by one BPS", label="unsupported"),
+        ]
+    )
+    judge, fake = judge_for(recorded)
+    result = run([item], writer, judge)
+    (record,) = result["pressers"]
+    assert [c["label"] for c in record["claims"]] == ["unsupported", "unsupported"]
+    assert record["faithfulness"] == 0.0
+    sent = fake.received_messages[0][1].content
+    assert '"decisive": true' in sent and "bonus_missed_by_one" in sent

@@ -563,7 +563,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
         - Every v5 rule stays.
       Automatic verification: `cd backend && uv run pytest -q tests/content/test_presser_content.py tests/presser/test_writer.py tests/presser/test_service.py`
 
-- [ ] 10. **Judge prompt version 5 (AC13).** Files: `backend/app/content/prompts/presser_judge.md`,
+- [x] 10. **Judge prompt version 5 (AC13).** `iterations: 0` Files: `backend/app/content/prompts/presser_judge.md`,
       `backend/tests/content/test_presser_content.py`, `backend/tests/presser/evaluation/test_runner.py`.
       - Tests first:
         - `test_judge_prompt_v5_checks_full_match_stats` replaces the v4 test. It asserts
