@@ -608,7 +608,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
         - the header note says "spec 015".
       Automatic verification: `cd backend && uv run pytest -q tests/content/test_presser_content.py`
 
-- [ ] 12. **Evaluation set v4: layout and synthetic cases (AC15, the synthetic part).** Files:
+- [x] 12. **Evaluation set v4: layout and synthetic cases (AC15, the synthetic part).** `iterations: 0` Files:
       `git mv backend/evals/presser/v3 backend/evals/presser/v4`,
       `backend/app/presser/evaluation/cases.py`, `backend/app/presser/evaluation/cli.py` (help
       texts "set v4"), `backend/evals/presser/v4/cases.jsonl`,
