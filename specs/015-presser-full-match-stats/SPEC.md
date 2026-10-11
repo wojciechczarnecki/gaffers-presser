@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-11"
   - "spec-ready — 2026-10-11"
   - "plan-draft — 2026-10-11"
   - "plan-approved — 2026-10-11"
   - "implemented — 2026-10-11"
+  - "done — 2026-10-11"
 metrics:
   started_at: 2026-10-11T18:52
   plan_steps: 14
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 5
   findings_accepted: 13
   findings_rejected: 0
+  cost_plan_cents: 286
+  cost_plan_review_cents: 170
+  cost_implement_cents: 665
+  cost_final_review_cents: 1038
+  finished_at: 2026-10-11T20:27
 ---
 
 # SPEC 015 — Full FPL match stats in the presser
