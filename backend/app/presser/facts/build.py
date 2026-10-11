@@ -25,6 +25,7 @@ from app.presser.facts.load import (
     load_transfers,
 )
 from app.presser.facts.matches import contributions, fixture_facts
+from app.presser.facts.moments import build_key_moments
 from app.presser.facts.overall import build_overall
 from app.presser.facts.pitch import build_pitch
 from app.presser.facts.schema import FactSheet, empty_sections
@@ -139,23 +140,34 @@ def build_fact_sheet(
             positions,
         ),
     )
-    sheet.pitch = build_pitch(
-        names,
-        gameweek_squads,
-        manager_contributions,
-        match_results,
-        player_info,
-        load_club_names(session, season),
-        facts,
-        load_ownership(session, season, gameweek),
-        set(),
-        len(rows),
-    )
     previous = [row for row in all_rows if row.gameweek == gameweek - 1]
     team_names = team_names or load_team_names(session, season, league_id)
     sheet.table = build_table(rows, previous, names, team_names)
     sheet.table.rivalry_swaps = rivalry_swaps(all_rows, names, gameweek)
     sheet.table.podium_changes = podium_changes(all_rows, names, gameweek)
+    club_names = load_club_names(session, season)
+    sheet.key_moments = build_key_moments(
+        rows,
+        names,
+        sheet.table,
+        manager_contributions,
+        match_results,
+        player_info,
+        club_names,
+        facts,
+    )
+    sheet.pitch = build_pitch(
+        {row.entry_id: names[row.entry_id] for row in rows},
+        gameweek_squads,
+        manager_contributions,
+        match_results,
+        player_info,
+        club_names,
+        facts,
+        load_ownership(session, season, gameweek),
+        {player for moment in sheet.key_moments for player in moment.players},
+        len(rows),
+    )
     sheet.overall = build_overall(rows, previous, names, gameweek)
     sheet.season_facts = season_facts
     sheet.empty_sections = empty_sections(sheet)

@@ -1,4 +1,5 @@
 from app.presser.facts import ranks
+from app.presser.facts.moments import MAX_KEY_MOMENTS
 from app.presser.facts.pitch import MAX_PITCH_ITEMS
 from app.presser.facts.schema import FactSheet, empty_sections
 from app.presser.facts.table import RIVALRY_MIN_NEIGHBOUR_GAMEWEEKS
@@ -134,6 +135,35 @@ def _check_table_stories(sheet: FactSheet) -> list[str]:
     return problems
 
 
+def _pair_exists(sheet: FactSheet, moment) -> bool:
+    if moment.pair == "winner":
+        winners = {score.manager for score in sheet.winners}
+        return moment.ahead in winners and moment.behind not in winners
+    if moment.pair == "rivalry":
+        return any(
+            (swap.ahead, swap.behind, swap.gap) == (moment.ahead, moment.behind, moment.margin)
+            for swap in sheet.table.rivalry_swaps
+        )
+    return any(
+        (change.manager, change.other, change.gap) == (moment.ahead, moment.behind, moment.margin)
+        for change in sheet.table.podium_changes
+    )
+
+
+def _check_key_moments(sheet: FactSheet) -> list[str]:
+    problems: list[str] = []
+    if len(sheet.key_moments) > MAX_KEY_MOMENTS:
+        problems.append("key moments: more than 5")
+    for moment in sheet.key_moments:
+        if moment.swing < moment.margin:
+            problems.append("key moments: a swing is below its margin")
+        if moment.swing != moment.ahead_points - moment.behind_points or moment.swing <= 0:
+            problems.append("key moments: a swing does not match the points")
+        if not _pair_exists(sheet, moment):
+            problems.append("key moments: a pair is not a winner, a swap or a podium change")
+    return problems
+
+
 def check_fact_sheet(sheet: FactSheet) -> list[str]:
     problems: list[str] = _check_ranks(sheet)
     for label, scores in (("winners", sheet.winners), ("flops", sheet.flops)):
@@ -177,6 +207,7 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
             problems.append("hits: paid_off does not match the gain and the cost")
 
     problems += _check_table_stories(sheet)
+    problems += _check_key_moments(sheet)
 
     if len(sheet.pitch.items) > MAX_PITCH_ITEMS:
         problems.append("pitch: more than 8 items")

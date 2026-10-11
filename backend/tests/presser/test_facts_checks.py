@@ -1,7 +1,7 @@
 import pytest
 
 from app.presser.facts import check_fact_sheet
-from app.presser.facts.schema import FactSheet, empty_sections
+from app.presser.facts.schema import FactSheet, KeyMoment, empty_sections
 from tests.presser.evaluation.factories import sheet as base_sheet
 
 
@@ -240,6 +240,27 @@ def add_podium(**changes):
     return mutate
 
 
+MOMENT = {
+    "pair": "winner",
+    "ahead": "Bartas",
+    "behind": "Kuba",
+    "margin": 10,
+    "kind": "player",
+    "players": ["Alpha"],
+    "club": "Klub Testowy",
+    "ahead_points": 14,
+    "behind_points": 0,
+    "swing": 14,
+}
+
+
+def add_moments(*moments):
+    def mutate(value):
+        value.key_moments = [KeyMoment.model_validate(MOMENT | m) for m in moments]
+
+    return mutate
+
+
 def add_hit(**changes):
     def mutate(value):
         value.bench_transfers = value.bench_transfers.model_validate({"hits": [HIT | changes]})
@@ -284,6 +305,21 @@ def add_hit(**changes):
             "table: a podium change does not match the top 3",
             lambda v: (add_podium()(v), setattr(v, "gameweek", 1)),
         ),
+        ("key moments: a swing is below its margin", add_moments({"margin": 15})),
+        ("key moments: a swing does not match the points", add_moments({"swing": 13})),
+        (
+            "key moments: a swing does not match the points",
+            add_moments({"ahead_points": 0, "behind_points": 14, "swing": -14, "margin": -20}),
+        ),
+        (
+            "key moments: a pair is not a winner, a swap or a podium change",
+            add_moments({"pair": "podium"}),
+        ),
+        (
+            "key moments: a pair is not a winner, a swap or a podium change",
+            add_moments({"ahead": "Kuba", "behind": "Bartas"}),
+        ),
+        ("key moments: more than 5", add_moments(*[{}] * 6)),
         ("hits: a transfer gain does not match its transfers", add_hit(transfer_gain=6)),
         ("hits: paid_off does not match the gain and the cost", add_hit(paid_off=False)),
         ("hits: paid_off does not match the gain and the cost", add_hit(cost=5)),
@@ -297,7 +333,14 @@ def test_inconsistent_v3_fact_is_reported(expected, mutate):
 def test_chips_and_pitch_sections_consistent_when_listed():
     assert (
         problems_after(
-            lambda v: (add_chip(v), add_pitch_item(v), add_hit()(v), add_swap()(v), add_podium()(v))
+            lambda v: (
+                add_chip(v),
+                add_pitch_item(v),
+                add_hit()(v),
+                add_swap()(v),
+                add_podium()(v),
+                add_moments({})(v),
+            )
         )
         == []
     )

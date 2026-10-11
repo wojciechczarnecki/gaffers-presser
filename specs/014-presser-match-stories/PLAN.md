@@ -415,7 +415,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
         `podium_changes(all_rows, names, gameweek)` as in Approach, filled into `Table`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_table.py tests/presser/test_facts_checks.py`
 
-- [ ] 7. **Key moments (AC9, AC10, AC8 ranking rule 1, AC13 moment rules).** Files: new
+- [x] 7. **Key moments (AC9, AC10, AC8 ranking rule 1, AC13 moment rules).** Files: new `iterations: 2`
       `facts/moments.py`, `facts/build.py` (moments after the table; pitch ranked with the
       moment players), `facts/checks.py`, new `tests/presser/test_facts_moments.py`,
       `tests/presser/test_facts_checks.py`.
