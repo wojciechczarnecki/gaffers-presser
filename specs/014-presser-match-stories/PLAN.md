@@ -585,7 +585,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
         this step. The composition test needs the real cases.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation/test_cases.py tests/presser/evaluation/test_building.py tests/presser/evaluation/test_cli.py`
 
-- [ ] 12. **Set v3: real cases rebuilt (AC17 real part).** Files:
+- [x] 12. **Set v3: real cases rebuilt (AC17 real part).** Files: `iterations: 1`
       `backend/evals/presser/v3/cases.jsonl`, and `cases.py` `REAL_CASES` only if GW6 joins.
       - With `DB=postgresql://presser:presser@localhost:5432/presser`, from `backend/`:
         - Check GW6, printing booleans and counts only:
@@ -770,6 +770,7 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 
 - `minor` — Step 2: the team-name pseudonymisation of step 11 (`Pseudonyms.teams`, `team_names` in `build_real_cases`, the leak check, a `teams` pool in the committed `pseudonyms.toml`) was pulled forward, because team names in the sheet otherwise broke `test_building.py` in step 2.
 - `minor` — Step 2: `test_nicknames_used_everywhere` no longer forbids `Realni` / `Synthetic XI` in the sheet JSON, since team names are deliberately part of fact sheet version 3 (SPEC Decisions).
+- `minor` — Steps 12 and the end-to-end commands: the database URL needs the driver prefix (`postgresql+psycopg://…`), because the plain `postgresql://` form imports `psycopg2`, which is not installed.
 - `minor` — Step 2: `_managers_named` in `checks.py` is public (`managers_named`) and `evaluation/building._manager_names` reuses it; `gameweek._points` / `_actual_counted` became public (`player_points`, `actual_counted`) for `chips.py`.
 
 ## Final review
