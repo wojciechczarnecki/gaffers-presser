@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-10"
   - "spec-ready — 2026-10-10"
   - "plan-draft — 2026-10-10"
   - "plan-approved — 2026-10-10"
   - "implemented — 2026-10-11"
+  - "done — 2026-10-11"
 metrics:
   started_at: 2026-10-10T23:28
   plan_steps: 13
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 5
   findings_accepted: 10
   findings_rejected: 1
+  cost_plan_cents: 276
+  cost_plan_review_cents: 127
+  cost_implement_cents: 760
+  cost_final_review_cents: 1182
+  finished_at: 2026-10-11T15:34
 ---
 
 # SPEC 014 — Presser match stories, chips section and table rivalries
