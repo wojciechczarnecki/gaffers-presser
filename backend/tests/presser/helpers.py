@@ -15,6 +15,7 @@ from app.fpl.models import (
     ManagerPick,
     ManagerTransfer,
     Player,
+    PlayerFixtureStat,
     PlayerGameweekResult,
     Season,
     Team,
@@ -143,6 +144,7 @@ class World:
         points: int,
         starts: int | None = None,
         explain: list | None = None,
+        live: dict | None = None,
     ) -> None:
         with Session(self.engine) as session:
             session.add(
@@ -154,6 +156,23 @@ class World:
                     minutes=minutes,
                     total_points=points,
                     explain=explain or [],
+                    live_stats=live,
+                )
+            )
+            session.commit()
+
+    def fixture_stat(
+        self, fixture_id: int, player_id: int, identifier: str, value: int, side: str = "h"
+    ) -> None:
+        with Session(self.engine) as session:
+            session.add(
+                PlayerFixtureStat(
+                    season=self.season,
+                    fixture_fpl_id=fixture_id,
+                    player_fpl_id=player_id,
+                    identifier=identifier,
+                    side=side,
+                    value=value,
                 )
             )
             session.commit()
@@ -320,4 +339,14 @@ def stats(fixture_id: int, **identifiers: tuple[int, int]) -> dict:
             {"identifier": name, "points": points, "value": value, "points_modification": 0}
             for name, (value, points) in identifiers.items()
         ],
+    }
+
+
+def live(goals: int = 0, xg: str = "0.00", xa: str = "0.00", xgc: str = "0.00", **extra) -> dict:
+    return {
+        "goals_scored": goals,
+        "expected_goals": xg,
+        "expected_assists": xa,
+        "expected_goals_conceded": xgc,
+        **extra,
     }

@@ -349,7 +349,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
       - Code as in Approach (Results job).
       Automatic verification: `cd backend && uv run pytest -q tests/fpl`
 
-- [ ] 3. **Loaders and test-world helpers.** Files: `backend/app/presser/facts/load.py`,
+- [x] 3. **Loaders and test-world helpers.** `iterations: 0` Files: `backend/app/presser/facts/load.py`,
       `backend/tests/presser/helpers.py`, `backend/tests/presser/test_facts_load.py`.
       - Tests first:
         - `test_live_line_parsed_from_live_stats`: the xG strings become `Decimal`, and

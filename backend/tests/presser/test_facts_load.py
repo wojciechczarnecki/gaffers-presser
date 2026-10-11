@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from app.presser.facts import load
-from tests.presser.helpers import LEAGUE_ID, SEASON, World, stats
+from tests.presser.helpers import LEAGUE_ID, SEASON, World, live, stats
 
 
 @pytest.fixture
@@ -84,3 +84,51 @@ def test_team_names_per_member(world):
     with world.session() as session:
         names = load.load_team_names(session, SEASON, LEAGUE_ID)
     assert names == {10: "Drużyna Anny", 11: "Drużyna Bartka"}
+
+
+def test_live_line_parsed_from_live_stats(world):
+    world.result(
+        1,
+        5,
+        90,
+        8,
+        explain=[stats(501, minutes=(90, 2))],
+        live=live(goals=2, xg="0.74", xa="0.10", xgc="1.30", tackles=4),
+    )
+    world.result(2, 5, 90, 2, explain=[stats(501, minutes=(90, 2))])
+    with world.session() as session:
+        results = load.load_match_results(session, SEASON, 5, {1, 2})
+    assert results[1].live == load.LiveLine(
+        goals_scored=2,
+        expected_goals=Decimal("0.74"),
+        expected_assists=Decimal("0.10"),
+        expected_goals_conceded=Decimal("1.30"),
+    )
+    assert results[2].live is None
+
+
+def test_fixture_bonus_loaded_per_fixture(world):
+    for fixture_id in (501, 502, 503):
+        world.fixture(fixture_id, 5, 1, 2, 1, 0)
+    world.fixture_stat(501, 1, "bps", 30)
+    world.fixture_stat(501, 2, "bps", 25, "a")
+    world.fixture_stat(501, 1, "bonus", 3)
+    world.fixture_stat(501, 2, "yellow_cards", 1, "a")
+    world.fixture_stat(502, 2, "bps", 11, "a")
+    with world.session() as session:
+        bonus = load.load_fixture_bonus(session, SEASON, {501, 502, 503})
+    assert bonus == {
+        501: load.FixtureBonus(bps={1: 30, 2: 25}, bonus={1: 3}),
+        502: load.FixtureBonus(bps={2: 11}, bonus={}),
+    }
+
+
+def test_club_fixture_counts_count_home_and_away(world):
+    world.club(3, "Klub Trzeci")
+    world.fixture(501, 5, 1, 2, 2, 1)
+    world.fixture(502, 5, 2, 1, 0, 0)
+    world.fixture(503, 5, 3, 1, 1, 1)
+    world.fixture(504, 4, 3, 2, 1, 1)
+    with world.session() as session:
+        counts = load.load_club_fixture_counts(session, SEASON, 5)
+    assert counts == {1: 3, 2: 2, 3: 1}

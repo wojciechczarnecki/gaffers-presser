@@ -14,6 +14,7 @@ from app.fpl.models import (
     ManagerPick,
     ManagerTransfer,
     Player,
+    PlayerFixtureStat,
     PlayerGameweekResult,
     Team,
 )
@@ -65,11 +66,26 @@ class FixtureStats:
 
 
 @dataclass(frozen=True)
+class LiveLine:
+    goals_scored: int
+    expected_goals: Decimal
+    expected_assists: Decimal
+    expected_goals_conceded: Decimal
+
+
+@dataclass(frozen=True)
 class MatchResult:
     starts: int
     minutes: int
     points: int
     fixtures: tuple[FixtureStats, ...]
+    live: LiveLine | None = None
+
+
+@dataclass(frozen=True)
+class FixtureBonus:
+    bps: dict[int, int]
+    bonus: dict[int, int]
 
 
 @dataclass(frozen=True)
@@ -296,6 +312,17 @@ def load_player_positions(session: Session, season: str, player_ids: set[int]) -
     return dict(rows)
 
 
+def _live_line(live_stats: dict | None) -> LiveLine | None:
+    if live_stats is None:
+        return None
+    return LiveLine(
+        goals_scored=int(live_stats["goals_scored"]),
+        expected_goals=Decimal(str(live_stats["expected_goals"])),
+        expected_assists=Decimal(str(live_stats["expected_assists"])),
+        expected_goals_conceded=Decimal(str(live_stats["expected_goals_conceded"])),
+    )
+
+
 def load_match_results(
     session: Session, season: str, gameweek: int, player_ids: set[int]
 ) -> dict[int, MatchResult]:
@@ -323,6 +350,7 @@ def load_match_results(
                 )
                 for item in row.explain
             ),
+            live=_live_line(row.live_stats),
         )
         for row in rows
     }
@@ -376,3 +404,40 @@ def load_team_names(session: Session, season: str, league_id: int) -> dict[int, 
         )
     ).all()
     return dict(rows)
+
+
+def load_fixture_bonus(
+    session: Session, season: str, fixture_ids: set[int]
+) -> dict[int, FixtureBonus]:
+    if not fixture_ids:
+        return {}
+    rows = session.exec(
+        select(
+            PlayerFixtureStat.fixture_fpl_id,
+            PlayerFixtureStat.player_fpl_id,
+            PlayerFixtureStat.identifier,
+            PlayerFixtureStat.value,
+        ).where(
+            PlayerFixtureStat.season == season,
+            col(PlayerFixtureStat.fixture_fpl_id).in_(fixture_ids),
+            col(PlayerFixtureStat.identifier).in_(("bps", "bonus")),
+        )
+    ).all()
+    result: dict[int, FixtureBonus] = {}
+    for fixture_id, player_id, identifier, value in rows:
+        entry = result.setdefault(fixture_id, FixtureBonus(bps={}, bonus={}))
+        (entry.bps if identifier == "bps" else entry.bonus)[player_id] = value
+    return result
+
+
+def load_club_fixture_counts(session: Session, season: str, gameweek: int) -> dict[int, int]:
+    rows = session.exec(
+        select(Fixture.team_h_fpl_id, Fixture.team_a_fpl_id).where(
+            Fixture.season == season, Fixture.gameweek_fpl_id == gameweek
+        )
+    ).all()
+    counts: dict[int, int] = {}
+    for home, away in rows:
+        counts[home] = counts.get(home, 0) + 1
+        counts[away] = counts.get(away, 0) + 1
+    return counts
