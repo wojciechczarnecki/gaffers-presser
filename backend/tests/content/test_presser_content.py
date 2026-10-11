@@ -155,6 +155,9 @@ def test_style_examples_eight_headers_no_shared_sentence():
         named = {re.match(r"\w+", HEADER_LABEL.sub("", sections[n]))[0] for n in (0, 1)}
         assert any(name in sections[3] for name in named), named
         assert "gw rank" in "\n".join(sections).casefold()
+        pitch = sections[3].casefold()
+        assert any(stat in pitch for stat in ("bonus", "żółt", "defcon", "bps")), pitch
+        assert any(punchline in pitch for punchline in ("xg", "pech", "z niczego")), pitch
         sentence_sets.append(set(_sentences(sections)))
         words = re.findall(r"\w+", HEADER_LABEL.sub("", "\n".join(sections)).casefold())
         word_runs.append({tuple(words[n : n + 5]) for n in range(len(words) - 4)})

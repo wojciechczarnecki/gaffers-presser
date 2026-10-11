@@ -592,7 +592,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
           - a quoted xG number that differs from the sheet.
       Automatic verification: `cd backend && uv run pytest -q tests/content/test_presser_content.py tests/presser/evaluation/test_runner.py`
 
-- [ ] 11. **Style examples rewritten (AC14).** Files: `backend/app/content/presser_style_examples.md`,
+- [x] 11. **Style examples rewritten (AC14).** `iterations: 1` Files: `backend/app/content/presser_style_examples.md`,
       `backend/tests/content/test_presser_content.py`.
       - Test first: `test_style_examples_eight_headers_no_shared_sentence` keeps every
         current assertion, and adds that each example's `⚽` paragraph:
