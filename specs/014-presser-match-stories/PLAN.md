@@ -328,7 +328,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
         and stays consistent.
       Automatic verification: `cd backend && uv run pytest -q tests/presser tests/content --ignore=tests/presser/evaluation/test_eval_set.py`
 
-- [ ] 3. **Transfer wins and hits judged (AC2, AC3, AC13 hit rules).** Files:
+- [x] 3. **Transfer wins and hits judged (AC2, AC3, AC13 hit rules).** Files: `iterations: 0`
       `facts/gameweek.py`, `facts/schema.py` (`TransferWin`, `TransferPair`, `Hit` fields),
       `facts/checks.py`, new `tests/presser/test_facts_transfers.py`,
       `tests/presser/test_facts_checks.py`.

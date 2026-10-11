@@ -392,5 +392,6 @@ def test_bench_transfers_holds_no_chip_facts():
         "bench",
         "hits",
         "transfer_misses",
+        "transfer_wins",
         "auto_subs",
     }

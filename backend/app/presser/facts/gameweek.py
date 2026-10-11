@@ -19,9 +19,12 @@ from app.presser.facts.schema import (
     ManagerScore,
     Season,
     TransferMiss,
+    TransferPair,
+    TransferWin,
 )
 
 BLANK_MAX_POINTS = 2
+TRANSFER_WIN_MIN = 6
 SQUAD_CHIPS = ("freehit", "wildcard")
 STARTING_POSITIONS = 11
 GOALKEEPER = 1
@@ -258,15 +261,9 @@ def build_bench_transfers(
         ),
         key=lambda item: (-item.points_on_bench, item.manager),
     )
-    hits = sorted(
-        (
-            Hit(manager=names[row.entry_id], transfers=row.transfers, cost=row.transfers_cost)
-            for row in rows
-            if row.transfers_cost > 0
-        ),
-        key=lambda hit: (-hit.cost, hit.manager),
-    )
+    pairs_by_entry: dict[int, list[TransferPair]] = {}
     misses = []
+    wins = []
     for transfer in transfers:
         # A Free Hit or Wildcard rebuilds the squad: one-for-one pairs say nothing there.
         if transfer.entry_id not in by_entry or by_entry[transfer.entry_id].active_chip in (
@@ -275,18 +272,44 @@ def build_bench_transfers(
             continue
         points_in = player_points(results, transfer.player_in, gameweek)
         points_out = player_points(results, transfer.player_out, gameweek)
-        if points_in < points_out:
-            misses.append(
-                TransferMiss(
-                    manager=names[transfer.entry_id],
-                    player_in=player(transfer.player_in),
-                    player_in_points=points_in,
-                    player_out=player(transfer.player_out),
-                    player_out_points=points_out,
-                    difference=points_out - points_in,
-                )
+        pairs_by_entry.setdefault(transfer.entry_id, []).append(
+            TransferPair(
+                player_in=player(transfer.player_in),
+                player_in_points=points_in,
+                player_out=player(transfer.player_out),
+                player_out_points=points_out,
             )
+        )
+        fields = dict(
+            manager=names[transfer.entry_id],
+            player_in=player(transfer.player_in),
+            player_in_points=points_in,
+            player_out=player(transfer.player_out),
+            player_out_points=points_out,
+        )
+        if points_in < points_out:
+            misses.append(TransferMiss(**fields, difference=points_out - points_in))
+        elif points_in - points_out >= TRANSFER_WIN_MIN:
+            wins.append(TransferWin(**fields, difference=points_in - points_out))
     misses.sort(key=lambda miss: (-miss.difference, miss.manager, miss.player_in))
+    wins.sort(key=lambda win: (-win.difference, win.manager, win.player_in))
+    hits = []
+    for row in rows:
+        if row.transfers_cost <= 0:
+            continue
+        pairs = sorted(pairs_by_entry.get(row.entry_id, []), key=lambda pair: pair.player_in)
+        gain = sum(pair.player_in_points - pair.player_out_points for pair in pairs)
+        hits.append(
+            Hit(
+                manager=names[row.entry_id],
+                transfers=row.transfers,
+                cost=row.transfers_cost,
+                transfer_gain=gain,
+                paid_off=gain > row.transfers_cost,
+                pairs=pairs,
+            )
+        )
+    hits.sort(key=lambda hit: (-hit.cost, hit.manager))
     subs = sorted(
         (
             AutoSub(
@@ -300,4 +323,6 @@ def build_bench_transfers(
         ),
         key=lambda sub: (-sub.player_in_points, sub.manager, sub.player_out),
     )
-    return BenchTransfers(bench=bench, hits=hits, transfer_misses=misses, auto_subs=subs)
+    return BenchTransfers(
+        bench=bench, hits=hits, transfer_misses=misses, transfer_wins=wins, auto_subs=subs
+    )

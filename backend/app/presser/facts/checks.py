@@ -11,6 +11,7 @@ def managers_named(sheet: FactSheet) -> set[str]:
         extras.bench,
         extras.hits,
         extras.transfer_misses,
+        extras.transfer_wins,
         extras.auto_subs,
         sheet.chips.plays,
         sheet.chips.squad_changes,
@@ -129,6 +130,13 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
         outside = managers_named(sheet) - in_table
         if outside:
             problems.append("a section names a manager who is not in the table")
+
+    for hit in sheet.bench_transfers.hits:
+        gain = sum(pair.player_in_points - pair.player_out_points for pair in hit.pairs)
+        if hit.transfer_gain != gain:
+            problems.append("hits: a transfer gain does not match its transfers")
+        if hit.paid_off != (hit.transfer_gain > hit.cost):
+            problems.append("hits: paid_off does not match the gain and the cost")
 
     for pick in sheet.captaincy.picks:
         if pick.points != pick.base_points * pick.multiplier:

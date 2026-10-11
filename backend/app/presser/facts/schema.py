@@ -49,10 +49,21 @@ class BenchItem(Strict):
     points_on_bench: int
 
 
+class TransferPair(Strict):
+    player_in: str
+    player_in_points: int
+    player_out: str
+    player_out_points: int
+
+
 class Hit(Strict):
     manager: str
     transfers: int
     cost: int
+    # the sum over the manager's transfers of (points in - points out)
+    transfer_gain: int
+    paid_off: bool
+    pairs: list[TransferPair] = Field(default_factory=list)
 
 
 class TransferMiss(Strict):
@@ -62,6 +73,10 @@ class TransferMiss(Strict):
     player_out: str
     player_out_points: int
     difference: int
+
+
+class TransferWin(TransferMiss):
+    pass
 
 
 class ChipPlay(Strict):
@@ -96,6 +111,7 @@ class BenchTransfers(Strict):
     bench: list[BenchItem] = Field(default_factory=list)
     hits: list[Hit] = Field(default_factory=list)
     transfer_misses: list[TransferMiss] = Field(default_factory=list)
+    transfer_wins: list[TransferWin] = Field(default_factory=list)
     auto_subs: list[AutoSub] = Field(default_factory=list)
 
 
@@ -281,7 +297,11 @@ def empty_sections(sheet: FactSheet) -> list[str]:
         "captaincy": not sheet.captaincy.picks,
         "pitch": not (sheet.pitch.items or sheet.key_moments),
         "bench_transfers": not (
-            extras.bench or extras.hits or extras.transfer_misses or extras.auto_subs
+            extras.bench
+            or extras.hits
+            or extras.transfer_misses
+            or extras.transfer_wins
+            or extras.auto_subs
         ),
         "chips": not (sheet.chips.plays or sheet.chips.squad_changes),
         "table": not sheet.table.rows,

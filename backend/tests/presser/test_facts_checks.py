@@ -190,10 +190,32 @@ def add_pitch_item(value):
     value.pitch = value.pitch.model_validate({"items": [PITCH_ITEM]})
 
 
+HIT = {
+    "manager": "Bartas",
+    "transfers": 1,
+    "cost": 4,
+    "transfer_gain": 5,
+    "paid_off": True,
+    "pairs": [
+        {"player_in": "Alpha", "player_in_points": 8, "player_out": "Bravo", "player_out_points": 3}
+    ],
+}
+
+
+def add_hit(**changes):
+    def mutate(value):
+        value.bench_transfers = value.bench_transfers.model_validate({"hits": [HIT | changes]})
+
+    return mutate
+
+
 @pytest.mark.parametrize(
     ("expected", "mutate"),
     [
         ("empty_sections does not match the sections", add_chip),
+        ("hits: a transfer gain does not match its transfers", add_hit(transfer_gain=6)),
+        ("hits: paid_off does not match the gain and the cost", add_hit(paid_off=False)),
+        ("hits: paid_off does not match the gain and the cost", add_hit(cost=5)),
         ("empty_sections does not match the sections", add_pitch_item),
     ],
 )
@@ -202,4 +224,4 @@ def test_inconsistent_v3_fact_is_reported(expected, mutate):
 
 
 def test_chips_and_pitch_sections_consistent_when_listed():
-    assert problems_after(lambda v: (add_chip(v), add_pitch_item(v))) == []
+    assert problems_after(lambda v: (add_chip(v), add_pitch_item(v), add_hit()(v))) == []
