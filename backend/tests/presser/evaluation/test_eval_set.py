@@ -94,7 +94,8 @@ def test_rank_cases_show_what_their_tag_says():
     assert (flop.nth_of_season, season_row.flop_streak) == (1, 1)
     last = flop_case.previous[-1]
     assert last.gameweek == flop_case.facts.gameweek - 1
-    assert "Wtopa kolejki:* " in last.text and flop.manager not in last.text.split("Wtopa")[1]
+    (flop_line,) = [line for line in last.text.splitlines() if "Wtopa kolejki:*" in line]
+    assert flop.manager not in flop_line
     unknown = by_tag["gw_rank_unknown"].facts
     assert all(score.gameweek_rank is None for score in unknown.winners + unknown.flops)
     assert unknown.season_facts.best_gameweek == [] and "overall" in unknown.empty_sections

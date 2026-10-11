@@ -81,9 +81,9 @@ def test_backlog_32_after_spec_015():
     (row,) = [row for row in _rows() if row.startswith("| 32 |")]
     needles = (
         "spec 015 is merged",
-        "writer prompt version 6",
-        "judge prompt version 5",
-        "set v4",
+        "writer prompt version 7",
+        "judge prompt version 6",
+        "set v5",
         "inflection",
     )
     for needle in needles:

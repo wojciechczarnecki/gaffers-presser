@@ -19,7 +19,6 @@ from app.presser.facts.schema import (
     ManagerScore,
     PlayerStats,
     Season,
-    StatPoints,
     TransferMiss,
     TransferPair,
     TransferWin,
@@ -119,8 +118,7 @@ def captain_stats(stats: PlayerStats, multiplier: int) -> PlayerStats:
     if stats.breakdown is None:
         return stats
     scaled = [
-        StatPoints(identifier=entry.identifier, value=entry.value, points=entry.points * multiplier)
-        for entry in stats.breakdown
+        entry.model_copy(update={"points": entry.points * multiplier}) for entry in stats.breakdown
     ]
     return stats.model_copy(update={"breakdown": scaled})
 

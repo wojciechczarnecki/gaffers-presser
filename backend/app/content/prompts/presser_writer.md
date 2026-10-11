@@ -56,7 +56,8 @@ league's previous pressers. Return the presser as the single field `text`.
   name them ("dublet i 3 bonusy", "żółtko kosztowało punkt"), quoting values and points as given,
   and never add, subtract or recompute them. A captain's `breakdown` is already in captain
   points, each stat's points times the `multiplier` (a captain's yellow card is -2, or -3 on a
-  Triple Captain: "żółtko kapitana kosztowało 2 oczka"), and it sums to the pick's `points`. `null` means no match stats for that gameweek: leave
+  Triple Captain: "żółtko kapitana kosztowało 2 oczka"), and it sums to the pick's `points`. A `player` key moment's `breakdown` keeps
+  the player's own `points`, and the multipliers of the pair are in its `swing`. `null` means no match stats for that gameweek: leave
   it out, and an empty list means the player had no point-bearing stat.
 - A `decisive` entry in the `breakdown` of a `player` key moment is a stat whose own swing
   alone is at least the `margin`: you may name it as the cause ("3 bonusy kapitana dały mu
@@ -139,14 +140,15 @@ league's previous pressers. Return the presser as the single field `text`.
   w lidze w tym sezonie"); `personal_bests` and `personal_worsts` are a manager's own ("jego
   najgorszy GW rank w sezonie"). Never present a personal record as the league's.
 - Tell each player's story once: a player or an event belongs to one section, and the winner or
-  flop line may only name the decisive one in one sentence. Never repeat a player's points or
-  the same fact in a second section.
+  flop line may only name the decisive one in one sentence. A captain's points always belong in
+  the captains section; when the same player is also a match story, tell what happened on the
+  pitch there without repeating those points. Never repeat a player's points or the same fact in
+  a second section.
 - Every count and streak in the fact sheet already includes this gameweek. `nth_of_season` on a
   winner or a flop says which win or flop of the season this one is (1 = the first). Never add
   this gameweek to a count yourself, and a streak of 1 is not a streak.
-- A count in the season ("drugi raz", "trzecia wygrana", "znowu") comes only from
-  `nth_of_season`, `gameweek_wins_to_date` and `gameweek_flops_to_date`. "Z rzędu", "kolejny
-  raz", "seria" or any streak comes only from `win_streak`, `flop_streak` and
+- A count in the season ("drugi raz", "trzecia wygrana", "znowu", "kolejny raz") comes only from
+  `nth_of_season`, `gameweek_wins_to_date` and `gameweek_flops_to_date`. "Z rzędu", "seria" or any streak comes only from `win_streak`, `flop_streak` and
   `captain_blank_streak` of 2 or more (and, for a rivalry swap, `neighbour_gameweeks`). The
   records (`best_gameweek`, `worst_gameweek`, `personal_bests`, `personal_worsts`) are neither a
   count nor a streak, and neither is a previous presser: a flop with `nth_of_season` 1 is his

@@ -67,9 +67,9 @@ entry that names him) is `unsupported`. A personal record (`personal_bests`,
 `worst_gameweek` names another manager) is `unsupported`, and so is "największy skok" or
 "największy spadek" for a manager who is not in `biggest_climbers` or `biggest_fallers`.
 
-A count in the season ("drugi raz", "trzecia wygrana", "znowu") is `supported` only when
-`nth_of_season`, `gameweek_wins_to_date` or `gameweek_flops_to_date` gives it. "Z rzędu",
-"kolejny raz", a series or any streak is `supported` only when `win_streak`, `flop_streak` or
+A count in the season ("drugi raz", "trzecia wygrana", "znowu", "kolejny raz") is `supported` only when
+`nth_of_season`, `gameweek_wins_to_date` or `gameweek_flops_to_date` gives it. "Z rzędu", a
+series or any streak is `supported` only when `win_streak`, `flop_streak` or
 `captain_blank_streak` is 2 or more (or, for a rivalry swap, `neighbour_gameweeks` gives it). A
 record (`best_gameweek`, `worst_gameweek`, `personal_bests`, `personal_worsts`) and a previous
 presser about another manager are neither a count nor a streak: "najgorszy wynik drugi raz z
@@ -80,13 +80,15 @@ A rank (overall or GW rank) or a movement in places rounded the way FPL players 
 10 000 or better) is `supported`: rounding to a natural figure is not an error. A rounded rank that
 changes the magnitude, or a threshold the rank has not reached or has not crossed (for example
 "top 10k" for 12 000), is `unsupported`. These rounding errors are `unsupported` too:
-- a rank or a movement rounded onto a threshold or across it, for example "wypadł z top 1M i ma
-  1M" or "ma 1,0M" for 1 010 000 (it is "tuż za top 1M" or "nieznacznie wypadł poza top 1M"),
-  or "10k" for 10 400;
+- a rank rounded onto a threshold or across it, for example "wypadł z top 1M i ma 1M" or "ma
+  1,0M" for 1 010 000 (it is "tuż za top 1M" or "nieznacznie wypadł poza top 1M"), or "10k" for
+  a rank of 10 400 (a movement in places has no threshold: "o 10k miejsc" for 10 400 places is
+  `supported`);
 - a whole number written with ",0" ("6,0M", "15,0k");
 - more than one decimal ("1,989M") or a wrong nearest figure ("862k" for 862 642);
-- a rank from 10 000 quoted exactly ("12 345."), since such a rank is always rounded. A rank placed against a threshold it is just outside
-("tuż za top 10k" for 10 030, "tuż za top 1M" for 1 030 000) or just inside ("w top 1M, tuż pod
+- a rank from 10 000 quoted exactly ("12 345."), since such a rank is always rounded.
+
+A rank placed against a threshold it is just outside ("tuż za top 10k" for 10 030, "tuż za top 1M" for 1 030 000) or just inside ("w top 1M, tuż pod
 kreską" for 999 700) is `supported`. A lower rank is better, and a positive `movement` in the
 overall section is a climb.
 

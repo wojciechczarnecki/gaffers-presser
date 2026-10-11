@@ -233,12 +233,13 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
     return problems
 
 
-def _check_player_stats(points: int, facts: PlayerStats, multiplier: int = 1) -> list[str]:
-    # points are the player's own; a captain's breakdown is multiplied (CaptainPick)
+def _check_player_stats(points: int, facts: PlayerStats, breakdown_total: int) -> list[str]:
+    # points are the player's own; breakdown_total is what the breakdown sums to (a captain's
+    # breakdown is in captain points, CaptainPick)
     problems: list[str] = []
     if (
         facts.breakdown is not None
-        and sum(entry.points for entry in facts.breakdown) != points * multiplier
+        and sum(entry.points for entry in facts.breakdown) != breakdown_total
     ):
         problems.append("breakdown: does not sum to the player's points")
     goals = 0
@@ -308,9 +309,9 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
     for pick in sheet.captaincy.picks:
         if pick.points != pick.base_points * pick.multiplier:
             problems.append("captaincy: points do not match base points and multiplier")
-        problems += _check_player_stats(pick.base_points, pick, pick.multiplier)
+        problems += _check_player_stats(pick.base_points, pick, pick.points)
     for item in sheet.pitch.items:
-        problems += _check_player_stats(item.points, item)
+        problems += _check_player_stats(item.points, item, item.points)
         # the breakdown sums a double gameweek's fixtures, so these two rules cannot tell 2 + 1
         # goals from a hat-trick in one fixture: the builder counts per fixture (matches.py)
         entries = {entry.identifier: entry for entry in item.breakdown or []}

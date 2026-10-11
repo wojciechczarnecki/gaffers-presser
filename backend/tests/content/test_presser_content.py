@@ -82,6 +82,8 @@ def test_writer_prompt_v7_rules():
         "Tell each player's story once",
         "only when he is in `biggest_climbers` or `biggest_fallers`",
         "never with more than one decimal",
+        "A captain's points always belong in",
+        "the player's own `points`, and the multipliers of the pair are in its `swing`",
     ):
         assert needle in prompt.text, needle
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")
@@ -129,6 +131,8 @@ def test_judge_prompt_v6_checks_counts_streaks_and_rounding():
         "A personal record",
         "`biggest_climbers` or `biggest_fallers`",
         "more than one decimal",
+        "a movement in places has no threshold",
+        '"kolejny raz") is',
     ):
         assert needle in prompt.text, needle
     assert "mln" not in prompt.text
