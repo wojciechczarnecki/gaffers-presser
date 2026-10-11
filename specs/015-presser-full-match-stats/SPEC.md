@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-10-11"
   - "spec-ready — 2026-10-11"
   - "plan-draft — 2026-10-11"
   - "plan-approved — 2026-10-11"
+  - "implemented — 2026-10-11"
 metrics:
   started_at: 2026-10-11T18:52
   plan_steps: 14
@@ -14,6 +15,10 @@ metrics:
   plan_changes: 3
   plan_review_blockers: 0
   plan_review_majors: 1
+  implement_steps: 14
+  implement_iterations: 7
+  deviations_minor: 6
+  deviations_major: 0
 ---
 
 # SPEC 015 — Full FPL match stats in the presser

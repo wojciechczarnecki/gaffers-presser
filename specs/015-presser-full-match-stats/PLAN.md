@@ -782,6 +782,26 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
    against the local development database, then the step 1 count query again. The counts
    must be the same as after step 1, which shows that the backfill re-runs cleanly.
 
+Result (2026-10-11, implement):
+
+1. `verify.command` is green: ruff check and format, 1902 tests passed.
+2. Real data, GW1–5 of both local leagues (10 sheets): every version is 4 and every check list
+   is `[]`. The breakdown is set on every pitch item and captain pick (pitch 7/7, 8/8, 3/3, 8/8,
+   8/8 in league 0 and 8/8, 8/8, 5/5, 7/7, 8/8 in league 1; captains 5/5 and 22/22). Decisive
+   stats per sheet: 9, 0, 4, 6, 2 and 12, 15, 9, 2, 0 (at least one in eight of ten sheets).
+   `bonus_missed_by_one` moments: 0 in all ten sheets. Hat-tricks and keeper walls: 5 sheets with
+   one each. Big-miss flags on pitch items: 2, 0, 1, 0, 0 and 2, 0, 0, 0, 1.
+3. `python -m app.presser.evaluation --help` and `build-cases --help` name set v4.
+4. `pytest -q tests/presser/evaluation/test_eval_set.py` passes on the committed v4 set
+   (74 evaluation tests green).
+5. `alembic downgrade -1` and `upgrade head` on the local database: the counts after step 1 and
+   after the re-run are the same: live stats on 610, 626, 654, 659 and 667 rows for GW1–5 (all
+   rows), and 714, 712, 680, 711 and 685 fixture stat rows for GW1–5.
+
+Step 13: GW6 was not finished (`False`, 0 managers with a team), so the real cases are GW1–5,
+10 real and 31 synthetic cases, no missing history. All 10 real cases have a breakdown, 8 have a
+decisive stat and none has a missed-bonus moment.
+
 ### Manual (performed by the owner)
 
 - Read the three rewritten style examples in `backend/app/content/presser_style_examples.md`.
@@ -798,11 +818,11 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md` and `docs/DEPLOYMENT.md` updated
-- [ ] spec status: `implemented`
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md` and `docs/DEPLOYMENT.md` updated
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -874,7 +894,24 @@ only migration is accepted by the owner up front with no new dependency.
 
 ## Deviations
 
-_(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+- `minor` — `build_key_moments` takes `player_facts`, `near_misses` and `club_fixture_counts` as
+  optional arguments (default empty) instead of required ones, because an existing test calls it
+  positionally and the plan does not change that test.
+- `minor` — `_replace_fixture_stats` in the results job skips stat entries of players missing from
+  the `player` table (the migration backfill skips them the same way), so a stray FPL element
+  cannot fail the whole sync on the foreign key.
+- `minor` — `matches.py` got a small `_stat_facts` helper for the hat-trick and keeper-wall facts,
+  and the four thresholds live in `facts/stats.py` as the plan says (`matches.py` imports them).
+- `minor` — the new `MomentStat`, `PlayerStats` and `StatPoints` models and every new schema field
+  were added in step 4 together, including the `bonus_missed_by_one` kind and the multiplier
+  fields that steps 6 and 7 fill, to keep the schema in one change.
+- `minor` — the 11 new synthetic cases are built from converted v3 synthetic cases (their
+  captain picks, pitch items, key moments and, for the rivalry case, one table total and the swap
+  gap adjusted), not from scratch; `syn-no-match-stats` is the v3 lost-clean-sheet case without
+  any new stats.
+- `minor` — several new tests added beyond the plan's list (breakdown order, the consistent v4
+  stats and moments, a fixture without bonus rows, an xGC from a player with stats), and the
+  `test_service` log test also asserts a `bonus_missed_by_one` moment in the stored facts.
 
 ## Final review
 
