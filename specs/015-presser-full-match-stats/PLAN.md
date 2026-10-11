@@ -681,7 +681,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
         real names. `v4/history.jsonl` stays as it is.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation`
 
-- [ ] 14. **Documents (AC17).** Files: `docs/BACKLOG.md`, `docs/DECISIONS.md`, `docs/DEPLOYMENT.md`,
+- [x] 14. **Documents (AC17).** `iterations: 0` Files: `docs/BACKLOG.md`, `docs/DECISIONS.md`, `docs/DEPLOYMENT.md`,
       `docs/ROADMAP.md`, `backend/tests/test_docs.py`.
       - Tests first, in `test_docs.py`:
         - `test_backlog_32_after_spec_014` becomes `test_backlog_32_after_spec_015`: the row

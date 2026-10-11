@@ -77,9 +77,16 @@ def test_decisions_cover_alert_slots():
     assert "2026-10-02" in row and "supersedes" in row.lower()
 
 
-def test_backlog_32_after_spec_014():
+def test_backlog_32_after_spec_015():
     (row,) = [row for row in _rows() if row.startswith("| 32 |")]
-    for needle in ("spec 014 is merged", "writer prompt version 5", "set v3", "inflection"):
+    needles = (
+        "spec 015 is merged",
+        "writer prompt version 6",
+        "judge prompt version 5",
+        "set v4",
+        "inflection",
+    )
+    for needle in needles:
         assert needle in row, needle
 
 
@@ -104,3 +111,27 @@ def test_decisions_cover_gameweek_rank_and_overall():
 def test_deployment_lists_migration_0012():
     text = (ROOT / "docs" / "DEPLOYMENT.md").read_text(encoding="utf-8")
     assert "0012" in text and "gameweek_rank" in text
+
+
+def test_decisions_cover_full_match_stats():
+    text = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")
+    needles = (
+        "live_stats",
+        "player_fixture_stat",
+        "decisive",
+        "bonus_missed_by_one",
+        "hat_trick",
+        "keeper_wall",
+        "0.70",
+        "0.15",
+        "ICT",
+        "version 4",
+    )
+    for needle in needles:
+        assert needle in text, needle
+
+
+def test_deployment_lists_migration_0013():
+    text = (ROOT / "docs" / "DEPLOYMENT.md").read_text(encoding="utf-8")
+    for needle in ("0013", "live_stats", "player_fixture_stat", "backfill"):
+        assert needle in text, needle
