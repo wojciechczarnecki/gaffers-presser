@@ -828,6 +828,7 @@ decisive stat and none has a missed-bonus moment.
 
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
+- 2026-10-11 — final-review — `gate` — Which final review findings are accepted? (F2 ruling: routine stats such as `minutes` are never `decisive`; amend AC4 in the SPEC. F5 ruling: the near-miss swing counts the real reduction of the gap, i.e. the multiplier difference when both managers count the player; keep the code and amend AC6 in the SPEC.) — `accepted`: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13; `rejected`: none
 ## Review log
 
 2026-10-11, plan review (pipeline:plan-review).
