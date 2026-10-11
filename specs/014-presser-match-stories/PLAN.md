@@ -609,7 +609,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
       - `v3/history.jsonl` stays as it is.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/evaluation`
 
-- [ ] 13. **Documents (AC19).** Files: `docs/BACKLOG.md`, `docs/DECISIONS.md`,
+- [x] 13. **Documents (AC19).** Files: `docs/BACKLOG.md`, `docs/DECISIONS.md`, `iterations: 0`
       `docs/ROADMAP.md`, `backend/tests/test_docs.py`.
       - Tests first, in `test_docs.py`:
         - `test_backlog_32_after_spec_013_with_inflection` becomes
