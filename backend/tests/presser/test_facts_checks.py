@@ -202,6 +202,44 @@ HIT = {
 }
 
 
+SWAP = {
+    "ahead": "Bartas",
+    "behind": "Kuba",
+    "ahead_previous_rank": 2,
+    "ahead_rank": 1,
+    "behind_previous_rank": 1,
+    "behind_rank": 2,
+    "gap": 20,
+    "neighbour_gameweeks": 3,
+}
+PODIUM = {
+    "kind": "new_leader",
+    "manager": "Bartas",
+    "previous_rank": 2,
+    "rank": 1,
+    "other": "Kuba",
+    "gap": 20,
+}
+
+
+def add_swap(**changes):
+    def mutate(value):
+        value.table = value.table.model_validate(
+            value.table.model_dump() | {"rivalry_swaps": [SWAP | changes]}
+        )
+
+    return mutate
+
+
+def add_podium(**changes):
+    def mutate(value):
+        value.table = value.table.model_validate(
+            value.table.model_dump() | {"podium_changes": [PODIUM | changes]}
+        )
+
+    return mutate
+
+
 def add_hit(**changes):
     def mutate(value):
         value.bench_transfers = value.bench_transfers.model_validate({"hits": [HIT | changes]})
@@ -227,6 +265,25 @@ def add_hit(**changes):
                 v.pitch.model_validate({"items": [PITCH_ITEM] * 9}).items
             ),
         ),
+        ("table: a rivalry swap does not match the table", add_swap(ahead_rank=2)),
+        ("table: a rivalry swap does not match the table", add_swap(behind_rank=1)),
+        ("table: a rivalry swap does not match the table", add_swap(gap=19)),
+        ("table: a rivalry swap does not match the table", add_swap(neighbour_gameweeks=2)),
+        (
+            "table: a rivalry swap does not match the table",
+            lambda v: (add_swap()(v), setattr(v, "gameweek", 3)),
+        ),
+        ("table: a podium change does not match the top 3", add_podium(rank=2)),
+        ("table: a podium change does not match the top 3", add_podium(gap=19)),
+        ("table: a podium change does not match the top 3", add_podium(kind="left")),
+        (
+            "table: a podium change does not match the top 3",
+            add_podium(kind="new_leader", manager="Kuba", other="Bartas", rank=2, gap=-20),
+        ),
+        (
+            "table: a podium change does not match the top 3",
+            lambda v: (add_podium()(v), setattr(v, "gameweek", 1)),
+        ),
         ("hits: a transfer gain does not match its transfers", add_hit(transfer_gain=6)),
         ("hits: paid_off does not match the gain and the cost", add_hit(paid_off=False)),
         ("hits: paid_off does not match the gain and the cost", add_hit(cost=5)),
@@ -238,4 +295,9 @@ def test_inconsistent_v3_fact_is_reported(expected, mutate):
 
 
 def test_chips_and_pitch_sections_consistent_when_listed():
-    assert problems_after(lambda v: (add_chip(v), add_pitch_item(v), add_hit()(v))) == []
+    assert (
+        problems_after(
+            lambda v: (add_chip(v), add_pitch_item(v), add_hit()(v), add_swap()(v), add_podium()(v))
+        )
+        == []
+    )

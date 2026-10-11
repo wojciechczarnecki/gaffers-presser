@@ -1,6 +1,7 @@
 from app.presser.facts import ranks
 from app.presser.facts.pitch import MAX_PITCH_ITEMS
 from app.presser.facts.schema import FactSheet, empty_sections
+from app.presser.facts.table import RIVALRY_MIN_NEIGHBOUR_GAMEWEEKS
 
 
 def managers_named(sheet: FactSheet) -> set[str]:
@@ -97,6 +98,42 @@ def _check_ranks(sheet: FactSheet) -> list[str]:
     return problems
 
 
+def _check_table_stories(sheet: FactSheet) -> list[str]:
+    problems: list[str] = []
+    rows = {row.manager: row for row in sheet.table.rows}
+    top3 = [top.manager for top in sheet.table.top3]
+    for swap in sheet.table.rivalry_swaps:
+        ahead, behind = rows.get(swap.ahead), rows.get(swap.behind)
+        if (
+            ahead is None
+            or behind is None
+            or swap.ahead_rank != ahead.rank
+            or swap.behind_rank != behind.rank
+            or swap.gap != ahead.total_points - behind.total_points
+            or swap.gap <= 0
+            or swap.neighbour_gameweeks < RIVALRY_MIN_NEIGHBOUR_GAMEWEEKS
+            or sheet.gameweek <= RIVALRY_MIN_NEIGHBOUR_GAMEWEEKS
+        ):
+            problems.append("table: a rivalry swap does not match the table")
+    for change in sheet.table.podium_changes:
+        row = rows.get(change.manager)
+        other = rows.get(change.other) if change.other is not None else None
+        wrong = sheet.gameweek == 1 or row is None or change.rank != row.rank
+        if change.kind == "new_leader":
+            wrong = wrong or not top3 or change.manager != top3[0]
+        elif change.kind == "left":
+            wrong = wrong or change.manager in top3
+        else:
+            wrong = wrong or change.manager not in top3
+        if row is not None and other is not None:
+            wrong = wrong or change.gap != row.total_points - other.total_points
+        elif change.gap is not None:
+            wrong = True
+        if wrong:
+            problems.append("table: a podium change does not match the top 3")
+    return problems
+
+
 def check_fact_sheet(sheet: FactSheet) -> list[str]:
     problems: list[str] = _check_ranks(sheet)
     for label, scores in (("winners", sheet.winners), ("flops", sheet.flops)):
@@ -138,6 +175,8 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
             problems.append("hits: a transfer gain does not match its transfers")
         if hit.paid_off != (hit.transfer_gain > hit.cost):
             problems.append("hits: paid_off does not match the gain and the cost")
+
+    problems += _check_table_stories(sheet)
 
     if len(sheet.pitch.items) > MAX_PITCH_ITEMS:
         problems.append("pitch: more than 8 items")

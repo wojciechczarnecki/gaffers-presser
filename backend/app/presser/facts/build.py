@@ -29,7 +29,7 @@ from app.presser.facts.overall import build_overall
 from app.presser.facts.pitch import build_pitch
 from app.presser.facts.schema import FactSheet, empty_sections
 from app.presser.facts.season import build_season
-from app.presser.facts.table import build_table
+from app.presser.facts.table import build_table, podium_changes, rivalry_swaps
 from app.presser.names import display_names
 
 
@@ -154,6 +154,8 @@ def build_fact_sheet(
     previous = [row for row in all_rows if row.gameweek == gameweek - 1]
     team_names = team_names or load_team_names(session, season, league_id)
     sheet.table = build_table(rows, previous, names, team_names)
+    sheet.table.rivalry_swaps = rivalry_swaps(all_rows, names, gameweek)
+    sheet.table.podium_changes = podium_changes(all_rows, names, gameweek)
     sheet.overall = build_overall(rows, previous, names, gameweek)
     sheet.season_facts = season_facts
     sheet.empty_sections = empty_sections(sheet)

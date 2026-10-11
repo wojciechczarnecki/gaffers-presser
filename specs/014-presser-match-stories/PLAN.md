@@ -393,7 +393,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
         Approach. This step passes an empty set; step 7 wires the real one.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_pitch.py tests/presser/test_facts_checks.py tests/presser/test_facts_gameweek.py`
 
-- [ ] 6. **Rivalry swaps and podium changes (AC11, AC12, AC13 table rules).** Files:
+- [x] 6. **Rivalry swaps and podium changes (AC11, AC12, AC13 table rules).** Files: `iterations: 1`
       `facts/table.py`, `facts/build.py` (pass `all_rows` and `names`), `facts/checks.py`,
       `tests/presser/test_facts_table.py`, `tests/presser/test_facts_checks.py`.
       - Tests first:
