@@ -11,19 +11,43 @@ def test_writer_prompt_loads_with_a_version():
     prompt = load_prompt("presser_writer")
     assert prompt.version >= 1
     assert "autosub" in prompt.text
-    assert "1500" in prompt.text
+    assert "2500" in prompt.text
 
 
-def test_writer_prompt_v4_rules():
+WRITER_HEADERS = (
+    "🏆 *Manager kolejki:*",
+    "🤦 *Wtopa kolejki:*",
+    "©️ *Kapitanowie:*",
+    "⚽ *Z boiska:*",
+    "🪑 *Ławka i transfery:*",
+    "🃏 *Chipy:*",
+    "📊 *Tabela:*",
+    "🌍 *Overall:*",
+)
+
+
+def test_writer_prompt_v5_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 4
+    assert prompt.version == 5
+    positions = [prompt.text.index(header) for header in WRITER_HEADERS]
+    assert positions == sorted(positions)
+    assert prompt.text.index("⚽") < prompt.text.index("🪑")
+    assert "1500" not in prompt.text
     for needle in (
+        "2500",
+        "empty_sections",
+        "transfer_wins",
+        "paid_off",
+        "key_moments",
+        "swing",
+        "neighbour_gameweeks",
+        "podium_changes",
+        "team_name",
         "only where it sounds natural",
         "never copy",
         "gameweek_rank",
         "not a source of phrases",
         "🌍",
-        "1500",
         "autosub",
         "średnia ligowa",
         "from 10 000 is never quoted exactly",

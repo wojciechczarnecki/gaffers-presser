@@ -12,7 +12,7 @@ from app.presser.evaluation.judge import JudgeInput, PresserJudge
 from app.presser.writer import PROMPT_VERSION as WRITER_PROMPT_VERSION
 from app.presser.writer import Writer, WriterInput
 
-LENGTH_LIMIT = 1500
+LENGTH_LIMIT = 2500
 
 
 class EvaluationError(Exception):
@@ -154,7 +154,7 @@ def format_totals(data: dict[str, Any]) -> str:
             f"model: {data['model']}  judge: {data['judge_model']}  split: {data['split']}",
             f"pressers: {totals['pressers']}  errored: {totals['errored']}",
             f"faithfulness: {fmt(totals['faithfulness'])}",
-            f"within 1500 characters: {fmt(totals['within_limit_share'])}",
+            f"within 2500 characters: {fmt(totals['within_limit_share'])}",
             f"avg cost: {fmt(totals['avg_cost_usd'], '${:.6f}')}"
             f"  avg latency: {fmt(totals['avg_latency_seconds'], '{:.1f}s')}",
             f"judge cost: {fmt(totals['judge_cost_usd'], '${:.6f}')}",

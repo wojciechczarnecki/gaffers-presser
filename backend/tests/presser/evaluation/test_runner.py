@@ -81,7 +81,7 @@ def test_no_claims_leaves_the_presser_unjudged():
     assert result["totals"]["faithfulness"] is None
 
 
-@pytest.mark.parametrize(("length", "within"), [(1500, True), (1501, False)])
+@pytest.mark.parametrize(("length", "within"), [(2500, True), (2501, False)])
 def test_length_flag_at_the_limit(length, within):
     writer, _ = writer_for(PresserDraft(text="x" * length))
     judge, _ = judge_for(claims("supported"))

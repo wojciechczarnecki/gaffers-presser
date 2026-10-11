@@ -440,7 +440,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
       - Code: `key_moments(...) -> list[KeyMoment]` as in Approach.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_moments.py tests/presser/test_facts_pitch.py tests/presser/test_facts_checks.py`
 
-- [ ] 8. **Writer prompt version 5, the 2500 limit, log privacy (AC14, AC18 logs).** Files:
+- [x] 8. **Writer prompt version 5, the 2500 limit, log privacy (AC14, AC18 logs).** Files: `iterations: 1`
       `app/content/prompts/presser_writer.md`, `app/presser/evaluation/runner.py`
       (`LENGTH_LIMIT = 2500`, the label "within 2500 characters"),
       `tests/content/test_presser_content.py`, `tests/presser/test_writer.py`,
