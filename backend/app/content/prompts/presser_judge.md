@@ -1,4 +1,4 @@
-version: 3
+version: 4
 
 You check the faithfulness of a short Polish text, the "presser" of a Fantasy Premier League (FPL)
 mini-league, against the facts it was written from. You are given the fact sheet (JSON, computed
@@ -13,6 +13,11 @@ captained whom and the points it gave, a transfer and the points of the players,
 it gave, a hit, a streak, a table position, a gap between managers, a movement in the table, a
 record, a gameweek (GW) rank, an overall rank, a movement in places, a threshold entered or left
 (for example "w top 10k") and a personal or season best or worst by GW rank.
+The match stories are claims too: a `pitch` item (a player's points, club, kind, who owned him
+and with which multiplier), a key moment (the swing, the margin, "without it X would have won or
+caught Y"), a transfer gain or a transfer win, a hit verdict (whether the hit paid off, `paid_off`), a rivalry swap (the
+ranks, the gap, the number of neighbour gameweeks), a podium change (a new leader, a manager
+entering or leaving the top 3, two managers swapping) and a team name used for a manager.
 Split a sentence with several facts into several claims. Quote or paraphrase each claim briefly in English or Polish, so that it can be read without the presser.
 
 Banter, jokes, opinions, emoji, greetings and the title are not claims. A subjective word such
@@ -27,6 +32,11 @@ as "a lot" is not a claim, but a number or a ranking attached to it is.
 - `unsupported` — the fact sheet and the previous pressers do not state it, or they contradict
   it. This includes a wrong number, a wrong manager, a wrong player, a wrong order and an
   invented detail.
+
+A wrong swing, margin, transfer gain or neighbour streak is `unsupported`, and so is a team name
+that is not the `team_name` of that manager in the table. A key moment is true only for the pair
+it names: the swing and the margin belong to `ahead` and `behind`, and a player who is not in the
+`players` of a moment did not decide it.
 
 A rank (overall or GW rank) or a movement in places rounded the way FPL players say it ("15k" for
 14 567, "1,2 mln" for 1 234 567, "o 15k miejsc" for a movement of 14 812, "top 10k" for a rank of

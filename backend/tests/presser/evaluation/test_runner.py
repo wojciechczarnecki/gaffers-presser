@@ -18,7 +18,7 @@ from app.presser.evaluation.runner import (
     default_result_path,
     run_evaluation,
 )
-from app.presser.facts.schema import empty_sections
+from app.presser.facts.schema import KeyMoment, empty_sections
 from app.presser.writer import PresserDraft, PreviousPresser, Writer, build_writer
 from tests.delivery.fakes import FixedClock
 from tests.extraction.fakes import FakeChatModel
@@ -189,3 +189,56 @@ def test_recorded_rank_verdict_counted():
     assert [c["label"] for c in record["claims"]] == ["supported", "unsupported"]
     assert record["faithfulness"] == 0.5
     assert '"overall_rank": 1234567' in fake.received_messages[0][1].content
+
+
+def test_recorded_swing_and_streak_verdicts_counted():
+    facts = sheet().model_copy(deep=True)
+    facts.table = facts.table.model_validate(
+        facts.table.model_dump()
+        | {
+            "rivalry_swaps": [
+                {
+                    "ahead": "Kuba",
+                    "behind": "Bartas",
+                    "ahead_previous_rank": 2,
+                    "ahead_rank": 1,
+                    "behind_previous_rank": 1,
+                    "behind_rank": 2,
+                    "gap": 3,
+                    "neighbour_gameweeks": 3,
+                }
+            ]
+        }
+    )
+    facts.key_moments = [
+        KeyMoment(
+            pair="winner",
+            ahead="Bartas",
+            behind="Kuba",
+            margin=10,
+            kind="player",
+            players=["Haulman"],
+            club="Klub Testowy",
+            ahead_points=14,
+            behind_points=0,
+            swing=14,
+        )
+    ]
+    facts.empty_sections = empty_sections(facts)
+    item = PresserCase(id="swing", split="dev", source="real", tags=[], facts=facts, previous=[])
+    writer, _ = writer_for(
+        PresserDraft(text="Haulman dał Bartasowi 12 pkt różnicy, sąsiedzi od 5 kolejek")
+    )
+    recorded = JudgeVerdict(
+        claims=[
+            JudgedClaim(claim="Haulman's swing was 12", label="unsupported"),
+            JudgedClaim(claim="neighbours for 5 gameweeks", label="unsupported"),
+        ]
+    )
+    judge, fake = judge_for(recorded)
+    result = run([item], writer, judge)
+    (record,) = result["pressers"]
+    assert [c["label"] for c in record["claims"]] == ["unsupported", "unsupported"]
+    assert record["faithfulness"] == 0.0
+    sent = fake.received_messages[0][1].content
+    assert '"swing": 14' in sent and '"neighbour_gameweeks": 3' in sent

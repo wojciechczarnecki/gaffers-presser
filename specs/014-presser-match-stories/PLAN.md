@@ -493,7 +493,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
           autosub, net points, the counts that include this gameweek.
       Automatic verification: `cd backend && uv run pytest -q tests/content/test_presser_content.py tests/presser/test_writer.py tests/presser/test_service.py tests/presser/evaluation/test_runner.py`
 
-- [ ] 9. **Judge prompt version 4 (AC15).** Files: `app/content/prompts/presser_judge.md`,
+- [x] 9. **Judge prompt version 4 (AC15).** Files: `app/content/prompts/presser_judge.md`, `iterations: 1`
       `tests/content/test_presser_content.py`, `tests/presser/evaluation/test_runner.py`.
       - Tests first:
         - `test_judge_prompt_v4_checks_match_facts`: version 4, and the needles `pitch`,

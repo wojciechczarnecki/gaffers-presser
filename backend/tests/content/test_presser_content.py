@@ -60,10 +60,27 @@ def test_writer_prompt_v5_rules():
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")
 
 
-def test_judge_prompt_checks_ranks():
+def test_judge_prompt_v4_checks_match_facts():
     prompt = load_prompt("presser_judge")
-    assert prompt.version == 3
-    for needle in ("rank", "threshold", "rounded", "1,2 mln", "o 15k miejsc", "tuż za top 10k"):
+    assert prompt.version == 4
+    for needle in (
+        "pitch",
+        "key moment",
+        "swing",
+        "margin",
+        "transfer gain",
+        "paid off",
+        "rivalry",
+        "neighbour",
+        "podium",
+        "team name",
+        "rank",
+        "threshold",
+        "rounded",
+        "1,2 mln",
+        "o 15k miejsc",
+        "tuż za top 10k",
+    ):
         assert needle in prompt.text, needle
 
 
