@@ -227,6 +227,8 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
             problems.append("key moments: a swing does not match the points")
         if moment.missed_bonus is not None and not missed:
             problems.append("key moments: missed_bonus on a kind that has none")
+        if moment.expected_goals_conceded is not None and moment.kind != "clean_sheet_lost":
+            problems.append("key moments: expected goals conceded outside a lost clean sheet")
         problems += _check_moment_breakdown(moment)
         if not _pair_exists(sheet, moment):
             problems.append("key moments: a pair is not a winner, a swap or a podium change")

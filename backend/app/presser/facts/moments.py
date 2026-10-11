@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 
 from app.presser.facts.gameweek import net_points
 from app.presser.facts.load import MatchResult, MemberRow, PlayerInfo
@@ -49,6 +50,23 @@ def _strength(moment: KeyMoment) -> int:
     return moment.swing if decisive is None else max(moment.swing, decisive)
 
 
+def _conceded_xg(
+    group: list[int],
+    fixture_id: int,
+    match_results: dict[int, MatchResult],
+    players: dict[int, PlayerInfo],
+) -> Decimal | None:
+    def minutes(player_id: int) -> int:
+        fixtures = match_results[player_id].fixtures
+        return next((f.minutes for f in fixtures if f.fixture_id == fixture_id), 0)
+
+    candidates = [p for p in group if p in match_results and match_results[p].live is not None]
+    if not candidates:
+        return None
+    best = min(candidates, key=lambda p: (-minutes(p), players[p].name))
+    return match_results[best].live.expected_goals_conceded
+
+
 def _pair_moments(
     pair: Pair,
     names: dict[int, str],
@@ -59,6 +77,7 @@ def _pair_moments(
     facts: list[FixtureFact],
     player_facts: dict[int, PlayerStats],
     near_misses: list[NearMiss],
+    club_fixture_counts: dict[int, int],
 ) -> list[KeyMoment]:
     ahead, behind = contributions.get(pair.ahead, {}), contributions.get(pair.behind, {})
     held = set(ahead) | set(behind)
@@ -119,13 +138,22 @@ def _pair_moments(
         elif fact.kind in EVENT_KINDS:
             key = (fact.player_id, fact.kind)
             events[key] = events.get(key, 0) + fact.points
-    for (club_id, _), group in sorted(lost.items()):
+    for (club_id, fixture_id), group in sorted(lost.items()):
         ahead_points = -CLEAN_SHEET_POINTS * sum(ahead.get(p, 0) for p in group)
         behind_points = -CLEAN_SHEET_POINTS * sum(behind.get(p, 0) for p in group)
         differing = sorted(players[p].name for p in group if ahead.get(p, 0) != behind.get(p, 0))
         found.append(
             moment(
-                "clean_sheet_lost", differing, club_names.get(club_id), ahead_points, behind_points
+                "clean_sheet_lost",
+                differing,
+                club_names.get(club_id),
+                ahead_points,
+                behind_points,
+                expected_goals_conceded=(
+                    None
+                    if club_fixture_counts.get(club_id, 1) > 1
+                    else _conceded_xg(group, fixture_id, match_results, players)
+                ),
             )
         )
     for (player_id, kind), points in sorted(events.items()):
@@ -183,9 +211,11 @@ def build_key_moments(
     facts: list[FixtureFact],
     player_facts: dict[int, PlayerStats] | None = None,
     near_misses: list[NearMiss] | None = None,
+    club_fixture_counts: dict[int, int] | None = None,
 ) -> list[KeyMoment]:
     player_facts = player_facts or {}
     near_misses = near_misses or []
+    club_fixture_counts = club_fixture_counts or {}
     moments: list[KeyMoment] = []
     for pair in _pairs(rows, names, table):
         moments += _pair_moments(
@@ -198,6 +228,7 @@ def build_key_moments(
             facts,
             player_facts,
             near_misses,
+            club_fixture_counts,
         )
     moments.sort(key=lambda m: (PAIR_ORDER[m.pair], -_strength(m), m.ahead, m.behind, m.players))
     # the same event between the same two managers is told once, under its first pair

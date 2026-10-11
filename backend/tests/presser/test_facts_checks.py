@@ -602,10 +602,26 @@ MISSED_MOMENT = {
             "key moments: missed_bonus on a kind that has none",
             add_moments({"missed_bonus": 1}),
         ),
+        (
+            "key moments: expected goals conceded outside a lost clean sheet",
+            add_moments({"expected_goals_conceded": "1.20"}),
+        ),
     ],
 )
 def test_inconsistent_missed_bonus_is_reported(expected, mutate):
     assert expected in problems_after(mutate, recompute=False)
+
+
+def test_lost_clean_sheet_with_xgc_is_consistent():
+    moment = {
+        "kind": "clean_sheet_lost",
+        "margin": 4,
+        "ahead_points": 0,
+        "behind_points": -4,
+        "swing": 4,
+        "expected_goals_conceded": "1.40",
+    }
+    assert problems_after(add_moments(moment)) == []
 
 
 def test_consistent_missed_bonus_has_no_problems():

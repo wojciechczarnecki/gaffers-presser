@@ -513,7 +513,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
         ahead_points`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_moments.py tests/presser/test_facts_stats.py tests/presser/test_facts_checks.py`
 
-- [ ] 8. **xGC on a lost clean sheet (AC8 xGC, a check rule).** Files:
+- [x] 8. **xGC on a lost clean sheet (AC8 xGC, a check rule).** `iterations: 1` Files:
       `backend/app/presser/facts/moments.py`, `backend/app/presser/facts/build.py`
       (`load_club_fixture_counts`), `backend/app/presser/facts/checks.py`,
       `backend/tests/presser/test_facts_moments.py`, `backend/tests/presser/test_facts_checks.py`.

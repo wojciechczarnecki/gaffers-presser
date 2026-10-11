@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 from app.fpl.models import Player
@@ -537,3 +539,47 @@ def test_fixture_without_bonus_rows_gives_no_near_miss(world):
     pick(world, 11, 59, [1])
     pick(world, 12, 10, [])
     assert missed(world) == []
+
+
+def lost_sheet(world, keeper_live, defender_live, double=False):
+    world.fixture(501, 5, 2, 1, 0, 2)
+    if double:
+        world.fixture(502, 5, 1, 2, 1, 1)
+    lost = [stats(501, minutes=(90, 2))]
+    player(world, 1, "Keeper", 2, position=1, club=2, explain=lost, live_stats=keeper_live)
+    player(
+        world,
+        2,
+        "Left",
+        2,
+        position=2,
+        club=2,
+        explain=[stats(501, minutes=(70, 2))],
+        minutes=70,
+        live_stats=defender_live,
+    )
+    pick(world, 10, 60, [])
+    pick(world, 11, 57, [1, 2])
+    pick(world, 12, 40, [])
+    (moment,) = [m for m in moments(world) if m.kind == "clean_sheet_lost"]
+    return moment
+
+
+def test_lost_clean_sheet_carries_xgc_of_most_minutes(world):
+    moment = lost_sheet(world, live(xgc="1.40"), live(xgc="1.10"))
+    assert moment.expected_goals_conceded == Decimal("1.40")
+    assert (moment.ahead_multiplier, moment.breakdown) == (None, None)
+
+
+def test_lost_clean_sheet_xgc_null_in_double_gameweek(world):
+    moment = lost_sheet(world, live(xgc="1.40"), live(xgc="1.10"), double=True)
+    assert moment.expected_goals_conceded is None
+
+
+def test_lost_clean_sheet_xgc_null_without_stats(world):
+    assert lost_sheet(world, None, None).expected_goals_conceded is None
+
+
+def test_lost_clean_sheet_xgc_comes_from_a_player_with_stats(world):
+    moment = lost_sheet(world, None, live(xgc="1.10"))
+    assert moment.expected_goals_conceded == Decimal("1.10")

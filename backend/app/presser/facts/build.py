@@ -9,6 +9,7 @@ from app.presser.facts.load import (
     load_auto_subs,
     load_bench_picks,
     load_captain_refs,
+    load_club_fixture_counts,
     load_club_names,
     load_fixture_bonus,
     load_fixtures,
@@ -162,6 +163,7 @@ def build_fact_sheet(
         facts,
         player_facts,
         near_misses,
+        load_club_fixture_counts(session, season, gameweek),
     )
     sheet.pitch = build_pitch(
         {row.entry_id: names[row.entry_id] for row in rows},
