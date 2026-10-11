@@ -348,7 +348,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
         `transfer_gain = Σ(in − out)` and `paid_off = gain > cost`.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_transfers.py tests/presser/test_facts_checks.py tests/presser/test_facts_gameweek.py`
 
-- [ ] 4. **Per-fixture match facts and contributions (AC6, AC7).** Files: new
+- [x] 4. **Per-fixture match facts and contributions (AC6, AC7).** Files: new `iterations: 0`
       `facts/matches.py`, new `tests/presser/test_facts_matches.py`.
       - Tests first. The pure functions take `MatchResult`, `PlayerInfo` and `FixtureScore`
         values built in the test, so no database is needed:
