@@ -915,4 +915,51 @@ only migration is accepted by the owner up front with no new dependency.
 
 ## Final review
 
-_(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
+2026-10-11, final review (pipeline:final-review, report mode). Three independent perspectives
+ran as separate subagents: compliance, quality and tests. Full `verify.command` is green
+(ruff check and format, 1902 passed). Of 14 mutations of key code, 11 failed a test.
+
+AC → evidence:
+
+| AC | Evidence | Test |
+|----|----------|------|
+| AC1 | `fpl/results.py:sync_results` (`live_stats`), `_replace_fixture_stats`; `fpl/schemas.py:LiveStats` (`extra="allow"`), `FixtureStat`; `models/snapshots.py:PlayerFixtureStat` | `test_results_sync.py::test_results_stored_and_archived`, `::test_fixture_stats_stored_per_player_and_fixture`, `::test_resync_replaces_fixture_stats` |
+| AC2 | `migrations/versions/0013_match_stats.py` upgrade/downgrade | `test_migrations.py::test_match_stats_migration_backfills_from_the_latest_payload_and_downgrades` (see F6), `::test_models_match_migration` |
+| AC3 | `facts/stats.py:breakdown`, `player_stat_facts`; `gameweek.py:captaincy`; `pitch.py:build_pitch`; `moments.py:_pair_moments`; `schema.py` version 4 | `test_facts_stats.py::test_breakdown_sums_explain_over_a_double_gameweek`, `::test_pitch_item_and_captain_carry_the_breakdown`; `test_facts_moments.py::test_player_moment_carries_breakdown_and_multipliers` |
+| AC4 | `facts/stats.py:moment_breakdown` | `test_facts_moments.py::test_breakdown_swing_and_decisive_boundary` |
+| AC5 | `moments.py:_pair_moments` filter; `stats.py:OWN_KIND_STATS` | `test_facts_moments.py::test_trailing_captains_yellow_card_decides_at_margin_1`, `::test_red_card_entry_never_decisive` |
+| AC6 | `stats.py:bonus_near_misses`; `moments.py:_pair_moments` near-miss loop (multiplier-difference reading, see F5) | `test_facts_moments.py::test_bonus_missed_by_one_listed`, `::…_by_two_not_listed`, `::…_by_leading_managers_player_not_listed`, `::…_below_margin_not_listed`, `::test_shared_lowest_bonus_place_gives_the_shared_bonus`, `::test_bonus_missed_by_a_player_both_managers_count_uses_the_difference` |
+| AC7 | `matches.py:_stat_facts` (per fixture, live-gated); `pitch.py:build_pitch` (`if holders`) | `test_facts_stats.py::test_hat_trick_needs_three_goals_in_one_fixture`, `::test_keeper_wall_needs_two_save_points_in_one_fixture`, `::test_hat_trick_of_an_uncounted_player_not_listed`, `::test_new_kinds_carry_differential_flags`, `::test_new_kinds_rank_with_hauls` |
+| AC8 | `stats.py:player_stat_facts`; `moments.py:_conceded_xg`; `load.py:load_club_fixture_counts` | `test_facts_stats.py::test_big_miss_boundary_070_and_069`, `::test_goal_from_nothing_boundary_014_and_015`, `::test_xg_flags_false_without_condition_and_null_without_stats`; `test_facts_moments.py::test_lost_clean_sheet_*` (see F8) |
+| AC9 | whole `stats` object in `live_stats`; no data-only field in the schema | `test_results_sync.py::test_results_stored_and_archived`; `test_facts_stats.py::test_data_only_stats_absent_from_the_schema` |
+| AC10 | live-gating in `stats.py`, `matches.py`, `moments.py` (see F3) | `test_facts_stats.py::test_gameweek_without_match_stats_builds_a_v4_sheet`, `::test_bonus_near_miss_without_live_stats_is_not_a_moment` |
+| AC11 | `checks.py:_check_player_stats`, `_check_moment_breakdown`, `_missed_bonus_matches`, pitch and xGC rules | `test_facts_checks.py::test_inconsistent_v4_fact_is_reported`, `::test_inconsistent_v4_moment_is_reported`, `::test_inconsistent_missed_bonus_is_reported` |
+| AC12 | `content/prompts/presser_writer.md` version 6 | `test_presser_content.py::test_writer_prompt_v6_rules`; `test_writer.py::test_prompt_version_label`; `test_service.py` (`presser_writer@6`) |
+| AC13 | `content/prompts/presser_judge.md` version 5 | `test_presser_content.py::test_judge_prompt_v5_checks_full_match_stats`; `test_runner.py::test_recorded_decisive_stat_and_bps_verdicts_counted` |
+| AC14 | `content/presser_style_examples.md` (1391, 1516, 1374 characters) | `test_presser_content.py::test_style_examples_eight_headers_no_shared_sentence`; the owner's approval is pending (manual) |
+| AC15 | `evals/presser/v4/cases.jsonl` (41: 10 real, 31 synthetic; 20 dev / 21 test) | `tests/presser/evaluation/test_eval_set.py`, `test_cases.py` |
+| AC16 | no new logging of names | `test_service.py::test_logs_carry_no_names_with_full_match_stats` |
+| AC17 | `docs/BACKLOG.md` #32, `docs/DEPLOYMENT.md` 0013, `docs/DECISIONS.md` five rows (see F4) | `test_docs.py::test_backlog_32_after_spec_015`, `::test_decisions_cover_full_match_stats`, `::test_deployment_lists_migration_0013` |
+
+Findings:
+
+- **F1** `worth-fixing` — `backend/app/presser/facts/load.py:347`, `stats.py:18-28`, `build.py:184` — FPL's per-stat `points_modification` in `explain` is dropped. A manual points correction on any counted player makes the breakdown no longer sum to `total_points`, so `check_fact_sheet` fails and `build_fact_sheet` raises `FactSheetError`, which blocks the whole league's presser. — Add `points_modification` to `StatLine.points`, or set `breakdown` to `None` when the sum differs from `total_points`; add a test.
+- **F2** `worth-fixing` — `backend/app/presser/facts/stats.py:58` — `minutes` (and other routine entries such as `goals_conceded`) get `decisive` at the usual margins of 1–2. In set v4 `minutes` is decisive 25 times, against 10 for `bonus` and 1 for `yellow_cards`. The writer may then name "his appearance points decided it", judge v5 accepts it, and such moments use up the cap of 5. This follows AC4 literally, so a change amends the SPEC rule. — Leave `minutes` out of `decisive` (a non-decisive set next to `OWN_KIND_STATS`), update the DECISIONS row and the AC4 test.
+- **F3** `worth-fixing` — `backend/app/presser/facts/load.py:315-323` — `_live_line` indexes `live_stats` with `[]`. A stored object missing `goals_scored`, `expected_goals`, `expected_assists` or `expected_goals_conceded` (for example a field FPL renames or drops) raises `KeyError` from the build, instead of the "no stats" degradation that Scope 8 / AC10 promise. `LiveLine.goals_scored` is also never read. — Return `None` when a key is missing, drop `goals_scored`, and add a test.
+- **F4** `worth-fixing` — `docs/DECISIONS.md:88`, `:90` — The rule at `DECISIONS.md:6` says a change to a row on `main` is a new row that names the one it supersedes. The decisive-stat row changes the 2026-10-11 key-moment rule (a `player` moment can now be listed below the margin), and the thresholds row replaces fact sheet v3 / writer 5 / judge 4 / set v3. Neither names what it supersedes. — Add "amends the 2026-10-11 key-moment row" and "supersedes the version 3, writer 5, judge 4 and set v3 parts of the 2026-10-11 rows", and pin both in `test_docs.py`.
+- **F5** `worth-fixing` — `SPEC.md` AC6 vs `backend/app/presser/facts/moments.py:172-199` — AC6 says "bonus × his multiplier ≥ margin". The code uses the multiplier difference: a trailing captain (×2) also held ×1 by the leader, with a missed bonus of 1 at margin 2, is not listed. The plan review chose this reading because the key-moment rule (swing ≥ margin) binds, but it is neither in `## Deviations` nor confirmed by the owner. — Owner confirms; then record an owner-decision entry and amend the AC6 wording.
+- **F6** `worth-fixing` — `backend/tests/db/test_migrations.py:809-814` — The early fetch is always inserted before the late one, so `ORDER BY …, id DESC` alone picks the same row. Dropping `fetched_at DESC` from the backfill kept the test green (mutation survived). — Insert the late payload first (lower `id`), or add a fetch with an earlier `fetched_at` and a higher `id`.
+- **F7** `worth-fixing` — `backend/tests/fpl/test_results_sync.py:89-122` — The deviation that skips fixture stat entries of players missing from `player` (`results.py`, `if entry.element in known_players`) has no test. Without the filter, a stray FPL element fails the whole sync on the FK; removing it kept the tests green. — A sync test with an unknown element, asserting the sync succeeds and stores no row for it.
+- **F8** `worth-fixing` — `backend/tests/presser/test_facts_moments.py:544-570` — In the xGC "most minutes" test, the 90-minute keeper also wins the name tie-break ("Keeper" < "Left"). Code that ignores minutes and sorts only by name stays green (mutation survived). — Give the 90-minute player a name that sorts last.
+- **F9** `nit` — `backend/app/presser/facts/checks.py:311-320` — The hat-trick and keeper-wall checks read the gameweek-summed breakdown, so a wrongly added `hat_trick` for 2 + 1 goals across a double gameweek passes `check_fact_sheet`. The builder is correct (per fixture). — Document the limit in a comment, or carry per-fixture values on the item.
+- **F10** `nit` — `backend/app/content/prompts/presser_writer.md:59` — "is the one stat whose own swing…" suggests a single decisive entry, but several can be decisive in one moment. — "is a stat whose own swing…".
+- **F11** `nit` — `backend/tests/presser/test_facts_checks.py:539-566` — The check tests never pin swing == margin (base margin 10, swings 2 and 12). Changing `>=` to `>` in `checks.py` was caught only by the committed eval set data. — Add a case at swing == margin with `decisive=False`.
+- **F12** `nit` — `backend/tests/presser/test_facts_moments.py:387` — The "not flagged again" rule of AC5 is tested only for `red_cards`. Dropping `own_goals` or `penalties_missed` from `OWN_KIND_STATS` would go unnoticed. — Parametrise over red card, own goal and missed penalty.
+- **F13** `nit` — `backend/tests/presser/test_facts_moments.py` (no test) — Nothing tests the plan's claim that a player missing a bonus by one in both fixtures of a double gameweek is told once through the dedup. — Add a test with near misses in both fixtures, asserting one moment.
+
+Rejected:
+
+- "AC14 needs the owner's approval of the style examples": this is the manual Gate 2 item, not a defect. The examples were checked for consistency (decisive swings match their margins, all under 2500 characters).
+
+Left out: 11 nit findings
+
