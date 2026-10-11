@@ -20,7 +20,10 @@ def _movements(current: list[MemberRow], previous: list[MemberRow]) -> dict[int,
 
 
 def build_table(
-    current: list[MemberRow], previous: list[MemberRow], names: dict[int, str]
+    current: list[MemberRow],
+    previous: list[MemberRow],
+    names: dict[int, str],
+    team_names: dict[int, str],
 ) -> Table:
     ordered = sorted(current, key=lambda row: (-row.total_points, names[row.entry_id]))
     ranks = competition_ranks({row.entry_id: row.total_points for row in ordered})
@@ -29,6 +32,7 @@ def build_table(
         TableRow(
             rank=ranks[row.entry_id],
             manager=names[row.entry_id],
+            team_name=team_names[row.entry_id],
             total_points=row.total_points,
             movement=movements.get(row.entry_id),
         )

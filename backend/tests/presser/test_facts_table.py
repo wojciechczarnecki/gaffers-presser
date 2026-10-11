@@ -163,7 +163,7 @@ def test_nicknames_used_everywhere(world):
     result = sheet(world, nicknames={10: "Bartas"})
     text = result.model_dump_json()
     assert "Bartas" in text
-    for forbidden in ("Anna", "Alfa", "Realni", "Synthetic XI"):
+    for forbidden in ("Anna", "Alfa"):
         assert forbidden not in text
     assert "Bartek" in text
     assert check_fact_sheet(result) == []
@@ -184,3 +184,18 @@ def test_season_wins_and_flops_by_net_points_when_a_hit_changes_the_order(world)
     assert (rows["Bartek"].gameweek_wins_to_date, rows["Bartek"].win_streak) == (1, 0)
     assert (rows["Cezary"].gameweek_flops_to_date, rows["Cezary"].flop_streak) == (3, 3)
     assert (rows["Bartek"].gameweek_flops_to_date, rows["Anna"].gameweek_flops_to_date) == (0, 0)
+
+
+def test_rows_carry_team_name(world):
+    play(world, 5, {10: 30, 11: 70, 12: 20})
+    rows = {r.manager: r.team_name for r in sheet(world).table.rows}
+    assert rows == {"Anna": "Realni FC 10", "Bartek": "Realni FC 11", "Cezary": "Realni FC 12"}
+
+
+def test_team_names_argument_overrides_the_stored_ones(world):
+    play(world, 5, {10: 30, 11: 70, 12: 20})
+    with world.session() as session:
+        result = build_fact_sheet(
+            session, SEASON, LEAGUE_ID, 5, {}, {10: "Pseudo A", 11: "Pseudo B", 12: "Pseudo C"}
+        )
+    assert {r.manager: r.team_name for r in result.table.rows}["Bartek"] == "Pseudo B"

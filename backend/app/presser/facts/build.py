@@ -1,6 +1,8 @@
 from sqlmodel import Session
 
 from app.presser.facts import gameweek as gw_rules
+from app.presser.facts.checks import check_fact_sheet
+from app.presser.facts.chips import build_chips
 from app.presser.facts.errors import FactSheetError, NoFactsError
 from app.presser.facts.load import (
     load_auto_subs,
@@ -13,17 +15,23 @@ from app.presser.facts.load import (
     load_player_positions,
     load_results,
     load_squads,
+    load_team_names,
     load_transfers,
 )
 from app.presser.facts.overall import build_overall
-from app.presser.facts.schema import FactSheet, check_fact_sheet, empty_sections
+from app.presser.facts.schema import FactSheet, empty_sections
 from app.presser.facts.season import build_season
 from app.presser.facts.table import build_table
 from app.presser.names import display_names
 
 
 def build_fact_sheet(
-    session: Session, season: str, league_id: int, gameweek: int, nicknames: dict[int, str]
+    session: Session,
+    season: str,
+    league_id: int,
+    gameweek: int,
+    nicknames: dict[int, str],
+    team_names: dict[int, str] | None = None,
 ) -> FactSheet:
     league_name = load_league_name(session, season, league_id)
     if league_name is None:
@@ -78,10 +86,12 @@ def build_fact_sheet(
         winners=winners,
         flops=flops,
         captaincy=gw_rules.captaincy(rows, refs, results, names, player_names, gameweek),
-        bench_transfers_chips=gw_rules.bench_transfers_chips(
+        bench_transfers=gw_rules.build_bench_transfers(
+            rows, bench_picks, transfers, auto_subs, results, names, player_names, gameweek
+        ),
+        chips=build_chips(
             rows,
             bench_picks,
-            transfers,
             auto_subs,
             refs,
             results,
@@ -94,7 +104,8 @@ def build_fact_sheet(
         ),
     )
     previous = [row for row in all_rows if row.gameweek == gameweek - 1]
-    sheet.table = build_table(rows, previous, names)
+    team_names = team_names or load_team_names(session, season, league_id)
+    sheet.table = build_table(rows, previous, names, team_names)
     sheet.overall = build_overall(rows, previous, names, gameweek)
     sheet.season_facts = season_facts
     sheet.empty_sections = empty_sections(sheet)

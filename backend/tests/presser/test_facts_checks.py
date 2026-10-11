@@ -54,10 +54,11 @@ def ranked_sheet(gameweek: int = 5) -> FactSheet:
     return value
 
 
-def problems_after(mutate) -> list[str]:
+def problems_after(mutate, recompute: bool = True) -> list[str]:
     value = ranked_sheet()
     mutate(value)
-    value.empty_sections = empty_sections(value)
+    if recompute:
+        value.empty_sections = empty_sections(value)
     return check_fact_sheet(value)
 
 
@@ -167,3 +168,38 @@ def test_first_gameweek_sheet_with_entered_thresholds_is_consistent():
 )
 def test_inconsistent_rank_fact_is_reported(expected, mutate):
     assert expected in problems_after(mutate)
+
+
+CHIP_PLAY = {"manager": "Bartas", "chip": "bboost", "effect": 8}
+PITCH_ITEM = {
+    "player": "Alpha",
+    "club": "Klub Testowy",
+    "points": 12,
+    "kinds": ["differential_haul"],
+    "owners": [{"manager": "Bartas", "multiplier": 1}],
+    "global_differential": True,
+    "league_differential": True,
+}
+
+
+def add_chip(value):
+    value.chips = value.chips.model_validate({"plays": [CHIP_PLAY]})
+
+
+def add_pitch_item(value):
+    value.pitch = value.pitch.model_validate({"items": [PITCH_ITEM]})
+
+
+@pytest.mark.parametrize(
+    ("expected", "mutate"),
+    [
+        ("empty_sections does not match the sections", add_chip),
+        ("empty_sections does not match the sections", add_pitch_item),
+    ],
+)
+def test_inconsistent_v3_fact_is_reported(expected, mutate):
+    assert expected in problems_after(mutate, recompute=False)
+
+
+def test_chips_and_pitch_sections_consistent_when_listed():
+    assert problems_after(lambda v: (add_chip(v), add_pitch_item(v))) == []

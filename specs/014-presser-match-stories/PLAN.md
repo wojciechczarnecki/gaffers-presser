@@ -291,7 +291,7 @@ the synthetic cases, step 12 rebuilds the real ones). The full
           `explain` item.
       Automatic verification: `cd backend && uv run pytest -q tests/presser/test_facts_load.py tests/presser/test_facts_gameweek.py tests/presser/test_facts_table.py`
 
-- [ ] 2. **Schema v3 skeleton: sections split, team names, checks module (AC1, AC18 rows).**
+- [x] 2. **Schema v3 skeleton: sections split, team names, checks module (AC1, AC18 rows).** `iterations: 1`
       Files: `facts/schema.py`, new `facts/checks.py`, `facts/__init__.py`, `facts/build.py`,
       `facts/gameweek.py`, new `facts/chips.py`, `facts/table.py`,
       `evaluation/building.py` (`_manager_names` only), `tests/presser/evaluation/factories.py`,
@@ -767,6 +767,10 @@ implementation.
 ## Deviations
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+
+- `minor` — Step 2: the team-name pseudonymisation of step 11 (`Pseudonyms.teams`, `team_names` in `build_real_cases`, the leak check, a `teams` pool in the committed `pseudonyms.toml`) was pulled forward, because team names in the sheet otherwise broke `test_building.py` in step 2.
+- `minor` — Step 2: `test_nicknames_used_everywhere` no longer forbids `Realni` / `Synthetic XI` in the sheet JSON, since team names are deliberately part of fact sheet version 3 (SPEC Decisions).
+- `minor` — Step 2: `_managers_named` in `checks.py` is public (`managers_named`) and `evaluation/building._manager_names` reuses it; `gameweek._points` / `_actual_counted` became public (`player_points`, `actual_counted`) for `chips.py`.
 
 ## Final review
 

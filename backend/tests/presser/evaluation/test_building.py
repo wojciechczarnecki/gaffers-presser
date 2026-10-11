@@ -13,7 +13,8 @@ from tests.presser.helpers import SEASON, World
 
 POOL = tuple(f"Pseudo{n}" for n in range(30))
 LEAGUES = ("Liga Pierwsza", "Liga Druga")
-PSEUDONYMS = Pseudonyms(POOL, LEAGUES)
+TEAMS = tuple(f"Drużyna Testowa {n}" for n in range(30))
+PSEUDONYMS = Pseudonyms(POOL, LEAGUES, TEAMS)
 LEAGUE_1, LEAGUE_2 = 987654001, 987654002
 ENTRIES = {LEAGUE_1: [880000011, 880000012, 880000013], LEAGUE_2: [880000021, 880000022]}
 
@@ -61,6 +62,7 @@ def test_build_pseudonymises(db, world):
         assert facts.league in LEAGUES
         assert {score.manager for score in facts.winners + facts.flops} <= pool
         assert {row.manager for row in facts.table.rows} <= pool
+        assert {row.team_name for row in facts.table.rows} <= set(TEAMS)
         assert {pick.manager for pick in facts.captaincy.picks} <= pool
         assert str(LEAGUE_1) not in case.id and str(LEAGUE_2) not in case.id
         assert "88000" not in json.dumps(case.model_dump(mode="json")) + case.id
@@ -120,7 +122,7 @@ def test_team_name_with_player_word_is_not_a_leak(db, world):
 
 def test_small_pool_is_an_error(db, world):
     with pytest.raises(PseudonymisationError):
-        build_real_cases(db, SEASON, [1], Pseudonyms(POOL[:2], LEAGUES), [], seed=1)
+        build_real_cases(db, SEASON, [1], Pseudonyms(POOL[:2], LEAGUES, TEAMS), [], seed=1)
 
 
 def test_word_shared_with_a_pseudonym_is_not_a_leak(db, world):

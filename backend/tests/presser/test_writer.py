@@ -46,7 +46,7 @@ def facts() -> FactSheet:
                     "nth_of_season": 1,
                 }
             ],
-            "empty_sections": ["captaincy", "bench_transfers_chips", "table"],
+            "empty_sections": ["captaincy", "bench_transfers", "table"],
         }
     )
 
