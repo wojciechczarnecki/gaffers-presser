@@ -43,6 +43,22 @@ class PlayerGameweekResult(SQLModel, table=True):
     minutes: int
     total_points: int
     explain: list = Field(sa_column=Column(JSONB, nullable=False))
+    live_stats: dict | None = Field(default=None, sa_column=Column(JSONB, nullable=True))
+
+
+class PlayerFixtureStat(SQLModel, table=True):
+    __tablename__ = "player_fixture_stat"
+    __table_args__ = (
+        ForeignKeyConstraint(["season", "fixture_fpl_id"], ["fixture.season", "fixture.fpl_id"]),
+        ForeignKeyConstraint(["season", "player_fpl_id"], ["player.season", "player.fpl_id"]),
+    )
+
+    season: str = Field(foreign_key="season.label", primary_key=True)
+    fixture_fpl_id: int = Field(primary_key=True)
+    player_fpl_id: int = Field(primary_key=True)
+    identifier: str = Field(primary_key=True)
+    side: str
+    value: int
 
 
 class RawPayload(SQLModel, table=True):

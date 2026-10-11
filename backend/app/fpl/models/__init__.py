@@ -21,6 +21,7 @@ from app.fpl.models.reference import (
 )
 from app.fpl.models.snapshots import (
     DeadlineSnapshotPlayer,
+    PlayerFixtureStat,
     PlayerGameweekResult,
     RawPayload,
 )
@@ -43,5 +44,6 @@ __all__ = [
     "ManagerChip",
     "DeadlineSnapshotPlayer",
     "PlayerGameweekResult",
+    "PlayerFixtureStat",
     "RawPayload",
 ]

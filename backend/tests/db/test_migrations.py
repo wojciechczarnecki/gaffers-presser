@@ -36,11 +36,27 @@ from tests.fpl.payloads import load
 NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OFF_LIST_COLUMNS = {"embedded", "quoted_x_id"}
 BEFORE_GAMEWEEK_RANK = {"gameweek_rank"}
+MATCH_STATS_COLUMNS = {"live_stats"}
 BEFORE_OWNERSHIP = (
-    DEFAULT_EXCLUDE | {"selected_by_percent"} | OFF_LIST_COLUMNS | BEFORE_GAMEWEEK_RANK
+    DEFAULT_EXCLUDE
+    | {"selected_by_percent"}
+    | OFF_LIST_COLUMNS
+    | BEFORE_GAMEWEEK_RANK
+    | MATCH_STATS_COLUMNS
+)
+BEFORE_MATCH_STATS = (
+    DEFAULT_EXCLUDE
+    | {"search_vector"}
+    | OFF_LIST_COLUMNS
+    | BEFORE_GAMEWEEK_RANK
+    | MATCH_STATS_COLUMNS
 )
 ALERT_TABLES = {"alert", "alert_post"}
-PRE_0010_TABLES = set(SQLModel.metadata.tables.keys()) - {"list_membership", "presser"}
+PRE_0010_TABLES = set(SQLModel.metadata.tables.keys()) - {
+    "list_membership",
+    "presser",
+    "player_fixture_stat",
+}
 
 
 def _apply_bootstrap_at_revision(session: Session) -> None:
@@ -516,7 +532,13 @@ def test_alert_log_migration_adds_only_new_tables():
             )
 
         other_tables = PRE_0010_TABLES - ALERT_TABLES
-        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS | BEFORE_GAMEWEEK_RANK
+        excluded = (
+            DEFAULT_EXCLUDE
+            | {"search_vector"}
+            | OFF_LIST_COLUMNS
+            | BEFORE_GAMEWEEK_RANK
+            | MATCH_STATS_COLUMNS
+        )
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
 
@@ -564,7 +586,13 @@ def test_quote_migration_backfills_and_downgrades():
             insert(conn, 3, {"quotedTweet": {"id": "not-a-number"}})
 
         other_tables = PRE_0010_TABLES - {"tweet"}
-        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS | BEFORE_GAMEWEEK_RANK
+        excluded = (
+            DEFAULT_EXCLUDE
+            | {"search_vector"}
+            | OFF_LIST_COLUMNS
+            | BEFORE_GAMEWEEK_RANK
+            | MATCH_STATS_COLUMNS
+        )
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
 
@@ -599,7 +627,13 @@ def test_presser_migration_adds_only_new_table():
             _apply_bootstrap_at_revision(session)
 
         other_tables = PRE_0010_TABLES | {"list_membership"}
-        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS | BEFORE_GAMEWEEK_RANK
+        excluded = (
+            DEFAULT_EXCLUDE
+            | {"search_vector"}
+            | OFF_LIST_COLUMNS
+            | BEFORE_GAMEWEEK_RANK
+            | MATCH_STATS_COLUMNS
+        )
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
 
@@ -650,8 +684,14 @@ def test_gameweek_rank_migration_adds_empty_column_and_downgrades():
                     },
                 )
 
-        tables = set(SQLModel.metadata.tables.keys()) - {"presser"}
-        excluded = DEFAULT_EXCLUDE | {"search_vector"} | OFF_LIST_COLUMNS | BEFORE_GAMEWEEK_RANK
+        tables = set(SQLModel.metadata.tables.keys()) - {"presser", "player_fixture_stat"}
+        excluded = (
+            DEFAULT_EXCLUDE
+            | {"search_vector"}
+            | OFF_LIST_COLUMNS
+            | BEFORE_GAMEWEEK_RANK
+            | MATCH_STATS_COLUMNS
+        )
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=tables)
 
@@ -674,5 +714,146 @@ def test_gameweek_rank_migration_adds_empty_column_and_downgrades():
         with engine.connect() as conn:
             columns = {c["name"] for c in inspect(conn).get_columns("manager_gameweek")}
         assert "gameweek_rank" not in columns
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=tables) == before
+
+
+def test_match_stats_migration_backfills_from_the_latest_payload_and_downgrades():
+    season_label = [""]
+    players = [0, 0]
+    fixture_ids = (9001, 9002, 9003)
+
+    def payload(conn, endpoint: str, gameweek: int, fetched_at: datetime, body) -> None:
+        conn.execute(
+            sa_text(
+                "INSERT INTO raw_payload (season, endpoint, gameweek_fpl_id, fetched_at, payload)"
+                " VALUES (:s, :e, :gw, :at, CAST(:p AS jsonb))"
+            ),
+            {
+                "s": season_label[0],
+                "e": endpoint,
+                "gw": gameweek,
+                "at": fetched_at,
+                "p": json.dumps(body),
+            },
+        )
+
+    def live_body(bps: int, xg: str) -> dict:
+        return {
+            "elements": [
+                {"id": players[0], "stats": {"bps": bps, "expected_goals": xg}, "explain": []},
+                {"id": players[1], "stats": {"bps": 5, "expected_goals": "0.00"}, "explain": []},
+                {"id": 999999, "stats": {"bps": 1}, "explain": []},
+            ]
+        }
+
+    def fixtures_body(bps: int) -> list:
+        stats = [
+            {
+                "identifier": "bps",
+                "h": [{"element": players[0], "value": bps}],
+                "a": [{"element": players[1], "value": 7}, {"element": 999999, "value": 3}],
+            },
+            {"identifier": "yellow_cards", "h": [], "a": [{"element": players[1], "value": 1}]},
+        ]
+        return [
+            {"id": fixture_ids[0], "event": 1, "stats": stats},
+            {"id": fixture_ids[1], "event": 1, "stats": []},
+            {"id": fixture_ids[2], "event": 2, "stats": stats},
+        ]
+
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
+        url = container.get_connection_url()
+        run_alembic(url, "upgrade", "0012")
+        engine = make_engine(url)
+        with Session(engine) as session:
+            _apply_bootstrap_at_revision(session)
+            session.commit()
+        with engine.begin() as conn:
+            season = conn.execute(sa_text("SELECT label FROM season")).scalar_one()
+            season_label[0] = season
+            teams = (
+                conn.execute(
+                    sa_text("SELECT fpl_id FROM team WHERE season = :s ORDER BY fpl_id LIMIT 2"),
+                    {"s": season},
+                )
+                .scalars()
+                .all()
+            )
+            players[:] = (
+                conn.execute(
+                    sa_text("SELECT fpl_id FROM player WHERE season = :s ORDER BY fpl_id LIMIT 2"),
+                    {"s": season},
+                )
+                .scalars()
+                .all()
+            )
+            for fixture_id, gameweek in zip(fixture_ids, (1, 1, 2), strict=True):
+                conn.execute(
+                    sa_text(
+                        "INSERT INTO fixture (season, fpl_id, gameweek_fpl_id, team_h_fpl_id,"
+                        " team_a_fpl_id, finished) VALUES (:s, :f, :gw, :h, :a, true)"
+                    ),
+                    {"s": season, "f": fixture_id, "gw": gameweek, "h": teams[0], "a": teams[1]},
+                )
+            for player in players:
+                for gameweek in (1, 2):
+                    conn.execute(
+                        sa_text(
+                            "INSERT INTO player_gameweek_result (season, player_fpl_id,"
+                            " gameweek_fpl_id, starts, minutes, total_points, explain)"
+                            " VALUES (:s, :p, :gw, 1, 90, 2, '[]')"
+                        ),
+                        {"s": season, "p": player, "gw": gameweek},
+                    )
+            early = datetime(2026, 9, 1, tzinfo=UTC)
+            late = datetime(2026, 9, 2, tzinfo=UTC)
+            payload(conn, "event/1/live", 1, early, live_body(10, "0.10"))
+            payload(conn, "event/1/live", 1, late, live_body(12, "0.80"))
+            payload(conn, "fixtures", 1, early, fixtures_body(10))
+            payload(conn, "fixtures", 1, late, fixtures_body(12))
+
+        tables = set(SQLModel.metadata.tables.keys()) - {"player_fixture_stat"}
+        excluded = DEFAULT_EXCLUDE | {"search_vector"} | MATCH_STATS_COLUMNS
+        with Session(engine) as session:
+            before = table_contents(session, exclude=excluded, tables=tables)
+
+        run_alembic(url, "upgrade", "0013")
+        with engine.connect() as conn:
+            lives = {
+                (row[0], row[1]): row[2]
+                for row in conn.execute(
+                    sa_text(
+                        "SELECT gameweek_fpl_id, player_fpl_id, live_stats"
+                        " FROM player_gameweek_result"
+                    )
+                )
+            }
+            rows = conn.execute(
+                sa_text(
+                    "SELECT fixture_fpl_id, player_fpl_id, identifier, side, value"
+                    " FROM player_fixture_stat"
+                )
+            ).all()
+        assert lives[(1, players[0])] == {"bps": 12, "expected_goals": "0.80"}
+        assert lives[(1, players[1])] == {"bps": 5, "expected_goals": "0.00"}
+        assert lives[(2, players[0])] is None
+        assert lives[(2, players[1])] is None
+        assert sorted(rows) == sorted(
+            [
+                (fixture_ids[0], players[0], "bps", "h", 12),
+                (fixture_ids[0], players[1], "bps", "a", 7),
+                (fixture_ids[0], players[1], "yellow_cards", "a", 1),
+            ]
+        )
+        with Session(engine) as session:
+            assert table_contents(session, exclude=excluded, tables=tables) == before
+
+        run_alembic(url, "downgrade", "-1")
+        with engine.connect() as conn:
+            inspector = inspect(conn)
+            columns = {c["name"] for c in inspector.get_columns("player_gameweek_result")}
+            assert "player_fixture_stat" not in inspector.get_table_names()
+        assert "live_stats" not in columns
         with Session(engine) as session:
             assert table_contents(session, exclude=excluded, tables=tables) == before

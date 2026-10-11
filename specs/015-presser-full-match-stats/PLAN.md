@@ -293,7 +293,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
 
 ## Steps
 
-- [ ] 1. **Storage and migration `0013` with its backfill (AC2, the AC1 storage).**
+- [x] 1. **Storage and migration `0013` with its backfill (AC2, the AC1 storage).** `iterations: 0`
       Files: `backend/app/fpl/models/snapshots.py`, `backend/app/fpl/models/__init__.py`
       (export `PlayerFixtureStat`), new `backend/migrations/versions/0013_match_stats.py`
       (revision `0013`, down `0012`), `backend/tests/db/test_migrations.py`.
