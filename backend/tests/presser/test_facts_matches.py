@@ -3,6 +3,7 @@ from app.presser.facts.load import (
     CaptainRef,
     FixtureScore,
     FixtureStats,
+    LiveLine,
     MatchResult,
     PlayerInfo,
     PlayerResult,
@@ -160,3 +161,21 @@ def test_contributions_captain_vice_bench_boost_and_autosub():
     assert set(boosted) == set(range(1, 16))
     subbed = contributions(squad(), [AutoSubRow(7, 7, 13)], ref, None, results({7}), 5)
     assert 7 not in subbed and subbed[13] == 1
+
+
+def with_live(result: MatchResult) -> MatchResult:
+    line = LiveLine(0, 0, 0, 0)
+    return MatchResult(result.starts, result.minutes, result.points, result.fixtures, line)
+
+
+def test_hat_trick_and_keeper_wall_need_live_stats():
+    scorer = match(fx(501, minutes=(90, 2), goals_scored=(3, 15)))
+    keeper = match(fx(501, minutes=(90, 2), saves=(6, 2)))
+    assert facts(scorer, info(MIDFIELDER), HOME_1_0) == []
+    assert facts(keeper, info(GOALKEEPER), HOME_1_0) == []
+    assert facts(with_live(scorer), info(MIDFIELDER), HOME_1_0) == [
+        FixtureFact(1, 501, "hat_trick", 3, 15)
+    ]
+    assert facts(with_live(keeper), info(GOALKEEPER), HOME_1_0) == [
+        FixtureFact(1, 501, "keeper_wall", 6, 2)
+    ]

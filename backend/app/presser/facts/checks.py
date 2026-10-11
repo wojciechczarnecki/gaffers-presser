@@ -5,7 +5,12 @@ from app.presser.facts.gameweek import BLANK_MAX_POINTS
 from app.presser.facts.moments import MAX_KEY_MOMENTS
 from app.presser.facts.pitch import MAX_PITCH_ITEMS
 from app.presser.facts.schema import FactSheet, PlayerStats, empty_sections
-from app.presser.facts.stats import BIG_MISS_MIN_XG, GOAL_FROM_NOTHING_BELOW_XG
+from app.presser.facts.stats import (
+    BIG_MISS_MIN_XG,
+    GOAL_FROM_NOTHING_BELOW_XG,
+    HAT_TRICK_MIN_GOALS,
+    KEEPER_WALL_MIN_SAVE_POINTS,
+)
 from app.presser.facts.table import RIVALRY_MIN_NEIGHBOUR_GAMEWEEKS
 
 
@@ -247,6 +252,15 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
         problems += _check_player_stats(pick.base_points, pick)
     for item in sheet.pitch.items:
         problems += _check_player_stats(item.points, item)
+        entries = {entry.identifier: entry for entry in item.breakdown or []}
+        goals = entries.get("goals_scored")
+        saves = entries.get("saves")
+        if "hat_trick" in item.kinds and (goals is None or goals.value < HAT_TRICK_MIN_GOALS):
+            problems.append("pitch: a hat-trick without 3 goals")
+        if "keeper_wall" in item.kinds and (
+            saves is None or saves.points < KEEPER_WALL_MIN_SAVE_POINTS
+        ):
+            problems.append("pitch: a keeper wall without 2 save points")
 
     if sheet.empty_sections != empty_sections(sheet):
         problems.append("empty_sections does not match the sections")

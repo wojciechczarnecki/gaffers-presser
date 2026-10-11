@@ -414,7 +414,7 @@ and step 13 rebuilds the real ones. The full `verify.command` runs at the end.
         - the two check rules.
       Automatic verification: `cd backend && uv run pytest -q tests/presser tests/content --ignore=tests/presser/evaluation/test_eval_set.py`
 
-- [ ] 5. **Hat-trick and keeper wall (AC7, AC10, the AC11 rule).** Files:
+- [x] 5. **Hat-trick and keeper wall (AC7, AC10, the AC11 rule).** `iterations: 1` Files:
       `backend/app/presser/facts/matches.py`, `backend/app/presser/facts/pitch.py`,
       `backend/app/presser/facts/schema.py` (`PitchKind`), `backend/app/presser/facts/checks.py`,
       `backend/tests/presser/test_facts_stats.py`, `backend/tests/presser/test_facts_matches.py`,

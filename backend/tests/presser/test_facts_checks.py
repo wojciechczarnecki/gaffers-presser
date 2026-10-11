@@ -457,6 +457,24 @@ def breakdown_of(*entries):
             ),
         ),
         ("xG: a flag does not match the thresholds", add_pitch(big_miss=True)),
+        ("pitch: a hat-trick without 3 goals", add_pitch(kinds=["hat_trick"])),
+        (
+            "pitch: a hat-trick without 3 goals",
+            add_pitch(
+                kinds=["hat_trick"],
+                points=12,
+                breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 2, 10)),
+            ),
+        ),
+        ("pitch: a keeper wall without 2 save points", add_pitch(kinds=["keeper_wall"])),
+        (
+            "pitch: a keeper wall without 2 save points",
+            add_pitch(
+                kinds=["keeper_wall"],
+                points=3,
+                breakdown=breakdown_of(("minutes", 90, 2), ("saves", 5, 1)),
+            ),
+        ),
         (
             "xG: a flag does not match the thresholds",
             add_captain(expected_goals="0.80", big_miss=True, goal_from_nothing=False),
