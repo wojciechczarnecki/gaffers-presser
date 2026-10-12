@@ -26,9 +26,9 @@ WRITER_HEADERS = (
 )
 
 
-def test_writer_prompt_v6_rules():
+def test_writer_prompt_v12_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 6
+    assert prompt.version == 12
     positions = [prompt.text.index(header) for header in WRITER_HEADERS]
     assert positions == sorted(positions)
     assert prompt.text.index("⚽") < prompt.text.index("🪑")
@@ -46,6 +46,7 @@ def test_writer_prompt_v6_rules():
         "penalty_saved",
         "kept the clean sheet although his club conceded",
         "team_name",
+        "once or twice in the presser",
         "only where it sounds natural",
         "never copy",
         "gameweek_rank",
@@ -55,7 +56,10 @@ def test_writer_prompt_v6_rules():
         "średnia ligowa",
         "from 10 000 is never quoted exactly",
         "fewer than 1 000 places is quoted exactly",
-        'never "tys."',
+        'never "tys." or "mln"',
+        '"1,6M"',
+        "or land on it",
+        "nieznacznie wypadł poza top 1M",
         'never write "1000k"',
         "never cross a threshold",
         "breakdown",
@@ -69,14 +73,43 @@ def test_writer_prompt_v6_rules():
         "expected_goals_conceded",
         "punchline",
         "never a bare xG",
+        "already in captain\n  points",
+        "`nth_of_season`, `gameweek_wins_to_date` and `gameweek_flops_to_date`",
+        "`captain_blank_streak`\n  of 2 or more",
+        "neither a count nor a streak",
+        "counted name by name",
+        "`captaincy.groups`",
+        "`chips.counts`",
+        "never from the rank alone",
+        "is in the top 1M, not the top\n  100k",
+        "Decline the name in Polish",
+        "`clean_sheet_kept`",
+        "`against_xgc` true",
+        "goals, assists, DefCon, saves, a yellow card, bonus",
+        "never the bonus when\n  another stat decided",
+        "never the moment's",
+        "never say his club lost the clean sheet",
+        "empty lists never mean\n  nobody made a transfer",
+        "`🎙️ *Presser GW<gameweek> — <league>*`",
+        "`league_best` or `league_worst`",
+        "`nth_of_season` 1 and `streak` 1 is simply his first flop",
+        "Judge a chip by its `effect`",
+        "Never give a player, a bench, an autosub or a transfer to another manager",
+        "Never present a personal record as the league's",
+        "Tell each player's story once",
+        "only when he is in `biggest_climbers` or `biggest_fallers`",
+        "never with more than one decimal",
+        "A captain's points always belong in",
+        "the multipliers of the\n  pair are in its `swing`",
     ):
         assert needle in prompt.text, needle
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")
+    assert "mln" not in prompt.text.replace('"mln"', "")
 
 
-def test_judge_prompt_v5_checks_full_match_stats():
+def test_judge_prompt_v9_checks_counts_streaks_and_rounding():
     prompt = load_prompt("presser_judge")
-    assert prompt.version == 5
+    assert prompt.version == 9
     for needle in (
         "pitch",
         "key moment",
@@ -92,7 +125,7 @@ def test_judge_prompt_v5_checks_full_match_stats():
         "rank",
         "threshold",
         "rounded",
-        "1,2 mln",
+        "1,2M",
         "o 15k miejsc",
         "tuż za top 10k",
         "breakdown",
@@ -103,8 +136,42 @@ def test_judge_prompt_v5_checks_full_match_stats():
         "big miss",
         "goal from nothing",
         "xG",
+        "captain points",
+        "drugi raz z\nrzędu",
+        "`captain_blank_streak` is 2 or more",
+        "onto a threshold or across it",
+        "nieznacznie wypadł poza top 1M",
+        '",0"',
+        "quoted exactly",
+        "A number of managers is `supported` only when",
+        "given to the wrong manager",
+        "A personal record",
+        "`biggest_climbers` or `biggest_fallers`",
+        "more than one decimal",
+        "a movement in places has no threshold",
+        '"kolejny raz") is',
+        "`captaincy.groups`",
+        "`chips.counts`",
+        "only when that threshold is in his `entered` or `left`",
+        '"1,0M+"',
+        "sam gol dał swing 14",
+        "`against_xgc` is false or `null`",
+        "`unlucky_sub`",
+        "only notable transfers",
+        "A comparison that is\nfalse",
+        "A chip told\nagainst its `effect`",
+        "a winner's or a flop's `streak`",
     ):
         assert needle in prompt.text, needle
+    assert "mln" not in prompt.text
+
+
+def test_glossary_prefers_roznica_and_keeps_differential_allowed():
+    terms = tomllib.loads((CONTENT / "presser_glossary.toml").read_text(encoding="utf-8"))["term"]
+    (entry,) = [term for term in terms if "różnica" in term["term"]]
+    assert "hipsterski wybór" in entry["term"]
+    assert "najpopularniejsze" in entry["meaning"] and "sporadycznie" in entry["meaning"]
+    assert "differential" in entry["meaning"] and "dyferencjał" in entry["meaning"]
 
 
 def test_glossary_has_69_complete_terms():
@@ -156,7 +223,7 @@ def test_style_examples_eight_headers_no_shared_sentence():
         assert any(name in sections[3] for name in named), named
         assert "gw rank" in "\n".join(sections).casefold()
         pitch = sections[3].casefold()
-        assert any(stat in pitch for stat in ("bonus", "żółt", "defcon", "bps")), pitch
+        assert any(stat in pitch for stat in ("gol", "bonus", "żółt", "defcon", "bps")), pitch
         assert any(punchline in pitch for punchline in ("xg", "pech", "z niczego")), pitch
         sentence_sets.append(set(_sentences(sections)))
         words = re.findall(r"\w+", HEADER_LABEL.sub("", "\n".join(sections)).casefold())
@@ -175,5 +242,6 @@ def test_style_examples_round_ranks_like_the_prompt():
     exact = [int(n.replace(" ", "")) for n in re.findall(r"\b\d{1,3}(?: \d{3})+\b|\d{4,}", whole)]
     assert exact
     assert all(n < 10_000 for n in exact), exact
-    assert not re.search(r",0 ?(k|mln)\b|\b1000k\b", whole)
+    assert "mln" not in whole
+    assert not re.search(r",0 ?(k|M)\b|\b1000k\b", whole)
     assert not re.search(r"średni\w*(?! lig)", whole)

@@ -1,7 +1,19 @@
 import pytest
 
 from app.presser.facts import NoFactsError, build_fact_sheet
-from app.presser.facts.schema import SECTIONS, BenchTransfers
+from app.presser.facts.chips import chip_counts
+from app.presser.facts.gameweek import captain_groups, score_season_line
+from app.presser.facts.schema import (
+    SECTIONS,
+    BenchTransfers,
+    CaptainPick,
+    ChipPlay,
+    ManagerScore,
+    PersonalRank,
+    Record,
+    Season,
+    SeasonRow,
+)
 from tests.presser.helpers import LEAGUE_ID, SEASON, World
 
 
@@ -361,7 +373,7 @@ def test_average_is_net_and_rounded_half_up(world):
     assert sheet(world).average_net_points == 55  # (61 + 48) / 2 = 54.5
 
 
-def test_sheet_v4_sections_in_order(world):
+def test_sheet_v6_sections_in_order(world):
     world.gw(10, 5, 60)
     world.gw(11, 5, 50)
     assert SECTIONS == (
@@ -374,7 +386,7 @@ def test_sheet_v4_sections_in_order(world):
         "table",
         "overall",
     )
-    assert sheet(world).version == 4
+    assert sheet(world).version == 6
 
 
 def test_chips_section_empty_without_chips(world):
@@ -395,3 +407,85 @@ def test_bench_transfers_holds_no_chip_facts():
         "transfer_wins",
         "auto_subs",
     }
+
+
+def _captain(manager: str, player: str, multiplier: int, base: int) -> CaptainPick:
+    return CaptainPick(
+        manager=manager,
+        player=player,
+        base_points=base,
+        multiplier=multiplier,
+        points=base * multiplier,
+        triple_captain=multiplier == 3,
+        vice_stepped_in=False,
+        blank=base <= 2,
+    )
+
+
+def test_captain_groups_count_managers_per_player_and_multiplier():
+    picks = [
+        _captain("Ala", "Haaland", 2, 13),
+        _captain("Bob", "Haaland", 3, 13),
+        _captain("Cyd", "Haaland", 2, 13),
+        _captain("Dan", "Salah", 2, 2),
+    ]
+    assert [(g.player, g.multiplier, g.points, g.managers) for g in captain_groups(picks)] == [
+        ("Haaland", 2, 26, 2),
+        ("Haaland", 3, 39, 1),
+        ("Salah", 2, 4, 1),
+    ]
+
+
+def test_chip_counts_count_managers_per_chip():
+    plays = [
+        ChipPlay(manager="Ala", chip="3xc", effect=9),
+        ChipPlay(manager="Bob", chip="3xc", effect=9),
+        ChipPlay(manager="Cyd", chip="freehit", effect=-7),
+    ]
+    assert [(c.chip, c.managers) for c in chip_counts(plays)] == [("3xc", 2), ("freehit", 1)]
+
+
+def _season_row(manager: str, win_streak: int = 0, flop_streak: int = 0) -> SeasonRow:
+    return SeasonRow(
+        manager=manager,
+        gameweek_wins_to_date=win_streak,
+        gameweek_flops_to_date=flop_streak,
+        win_streak=win_streak,
+        flop_streak=flop_streak,
+        captain_blank_streak=0,
+    )
+
+
+def _score(manager: str, rank: int | None) -> ManagerScore:
+    return ManagerScore(
+        manager=manager, transfers_cost=0, net_points=40, nth_of_season=1, gameweek_rank=rank
+    )
+
+
+SEASON_FACTS = Season(
+    rows=[_season_row("Ala", win_streak=2), _season_row("Bob", flop_streak=1)],
+    best_gameweek=[Record(manager="Ala", gameweek=5, gameweek_rank=20_000, net_points=90)],
+    worst_gameweek=[Record(manager="Cyd", gameweek=3, gameweek_rank=9_900_000, net_points=30)],
+    personal_worsts=[PersonalRank(manager="Bob", gameweek_rank=9_300_000, ranked_gameweeks=5)],
+)
+
+
+def test_winner_line_carries_his_streak_and_the_league_record():
+    assert score_season_line(_score("Ala", 20_000), SEASON_FACTS, 5, True) == (2, "league_best")
+
+
+def test_flop_line_carries_only_his_own_worst_when_the_league_worst_is_another():
+    line = score_season_line(_score("Bob", 9_300_000), SEASON_FACTS, 5, False)
+    assert line == (1, "personal_worst")
+
+
+def test_record_from_an_earlier_gameweek_is_not_this_line():
+    assert score_season_line(_score("Ala", 20_000), SEASON_FACTS, 6, True) == (2, None)
+    assert score_season_line(_score("Ala", None), SEASON_FACTS, 5, True) == (2, None)
+
+
+def test_captain_groups_order_ties_by_multiplier_not_by_pick_order():
+    picks = [_captain("Ala", "Salah", 3, 0), _captain("Bob", "Salah", 2, 0)]
+    picks += [_captain("Cyd", "Salah", 3, 0), _captain("Dan", "Salah", 2, 0)]
+    assert [g.multiplier for g in captain_groups(picks)] == [2, 3]
+    assert [g.multiplier for g in captain_groups(picks[::-1])] == [2, 3]

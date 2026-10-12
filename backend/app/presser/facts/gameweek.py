@@ -14,10 +14,12 @@ from app.presser.facts.schema import (
     BenchItem,
     BenchTransfers,
     Captaincy,
+    CaptainGroup,
     CaptainPick,
     Hit,
     ManagerScore,
     PlayerStats,
+    ScoreRecord,
     Season,
     TransferMiss,
     TransferPair,
@@ -47,26 +49,51 @@ def to_score(row: MemberRow, names: dict[int, str], nth_of_season: int) -> Manag
     )
 
 
+def score_season_line(
+    score: ManagerScore, season: Season, gameweek: int, winner: bool
+) -> tuple[int, ScoreRecord | None]:
+    """The winner's or the flop's streak and GW-rank record, from the season facts."""
+    row = next((row for row in season.rows if row.manager == score.manager), None)
+    streak = 0 if row is None else (row.win_streak if winner else row.flop_streak)
+    league = season.best_gameweek if winner else season.worst_gameweek
+    personal = season.personal_bests if winner else season.personal_worsts
+    record: ScoreRecord | None = None
+    if score.gameweek_rank is not None:
+        if any(
+            (item.manager, item.gameweek, item.gameweek_rank)
+            == (score.manager, gameweek, score.gameweek_rank)
+            for item in league
+        ):
+            record = "league_best" if winner else "league_worst"
+        elif any(
+            (item.manager, item.gameweek_rank) == (score.manager, score.gameweek_rank)
+            for item in personal
+        ):
+            record = "personal_best" if winner else "personal_worst"
+    return streak, record
+
+
 def winners_and_flops(
     rows: list[MemberRow],
     names: dict[int, str],
     season: Season,
+    gameweek: int,
 ) -> tuple[list[ManagerScore], list[ManagerScore]]:
     if not rows:
         return [], []
     to_date = {row.manager: row for row in season.rows}
     best = max(net_points(row) for row in rows)
     worst = min(net_points(row) for row in rows)
-    winners = [
-        to_score(row, names, to_date[names[row.entry_id]].gameweek_wins_to_date)
-        for row in rows
-        if net_points(row) == best
-    ]
-    flops = [
-        to_score(row, names, to_date[names[row.entry_id]].gameweek_flops_to_date)
-        for row in rows
-        if net_points(row) == worst
-    ]
+
+    def scored(row: MemberRow, winner: bool) -> ManagerScore:
+        totals = to_date[names[row.entry_id]]
+        nth = totals.gameweek_wins_to_date if winner else totals.gameweek_flops_to_date
+        score = to_score(row, names, nth)
+        streak, record = score_season_line(score, season, gameweek, winner)
+        return score.model_copy(update={"streak": streak, "record": record})
+
+    winners = [scored(row, True) for row in rows if net_points(row) == best]
+    flops = [scored(row, False) for row in rows if net_points(row) == worst]
     return (
         sorted(winners, key=lambda score: score.manager),
         sorted(flops, key=lambda score: score.manager),
@@ -114,6 +141,30 @@ def multiplier_for(chip: str | None) -> int:
     return 3 if chip == "3xc" else 2
 
 
+def captain_stats(stats: PlayerStats, multiplier: int) -> PlayerStats:
+    if stats.breakdown is None:
+        return stats
+    scaled = [
+        entry.model_copy(update={"points": entry.points * multiplier}) for entry in stats.breakdown
+    ]
+    return stats.model_copy(update={"breakdown": scaled})
+
+
+def captain_groups(picks: list[CaptainPick]) -> list[CaptainGroup]:
+    counts: dict[tuple[str, int, int], int] = {}
+    for pick in picks:
+        key = (pick.player, pick.multiplier, pick.points)
+        counts[key] = counts.get(key, 0) + 1
+    groups = [
+        CaptainGroup(player=player, multiplier=multiplier, points=points, managers=managers)
+        for (player, multiplier, points), managers in counts.items()
+    ]
+    return sorted(
+        groups,
+        key=lambda group: (-group.managers, -group.points, group.player, group.multiplier),
+    )
+
+
 def captaincy(
     rows: list[MemberRow],
     refs: dict[tuple[int, int], CaptainRef],
@@ -130,6 +181,7 @@ def captaincy(
         if credit is None:
             continue
         multiplier = multiplier_for(row.active_chip)
+        stats = player_facts.get(credit.player_id, PlayerStats())
         picks.append(
             CaptainPick(
                 manager=names[row.entry_id],
@@ -140,7 +192,7 @@ def captaincy(
                 triple_captain=row.active_chip == "3xc",
                 vice_stepped_in=credit.vice_stepped_in,
                 blank=credit.blank,
-                **dict(player_facts.get(credit.player_id, PlayerStats())),
+                **dict(captain_stats(stats, multiplier)),
             )
         )
     picks.sort(key=lambda pick: (-pick.points, pick.manager))
@@ -150,6 +202,7 @@ def captaincy(
     bottom = min(pick.points for pick in picks)
     return Captaincy(
         picks=picks,
+        groups=captain_groups(picks),
         best=sorted(pick.manager for pick in picks if pick.points == top),
         worst=sorted(pick.manager for pick in picks if pick.points == bottom),
     )

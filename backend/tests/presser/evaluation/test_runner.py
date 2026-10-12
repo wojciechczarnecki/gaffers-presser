@@ -311,3 +311,77 @@ def test_recorded_decisive_stat_and_bps_verdicts_counted():
     assert record["faithfulness"] == 0.0
     sent = fake.received_messages[0][1].content
     assert '"decisive": true' in sent and "bonus_missed_by_one" in sent
+
+
+def test_recorded_threshold_rounding_and_invented_streak_verdicts_counted():
+    facts = sheet().model_copy(deep=True)
+    facts.overall = facts.overall.model_validate(
+        {
+            "rows": [
+                {
+                    "manager": "Bartas",
+                    "overall_rank": 1_010_000,
+                    "previous_overall_rank": 950_000,
+                    "movement": -60_000,
+                    "entered": [],
+                    "left": [1_000_000],
+                    "notable": True,
+                }
+            ],
+            "biggest_climbers": [],
+            "biggest_fallers": ["Bartas"],
+        }
+    )
+    facts.empty_sections = empty_sections(facts)
+    item = PresserCase(id="round", split="dev", source="real", tags=[], facts=facts, previous=[])
+    writer, _ = writer_for(
+        PresserDraft(text="Bartas wypadł z top 1M i ma 1,0M. Kuba wtopa drugi raz z rzędu")
+    )
+    recorded = JudgeVerdict(
+        claims=[
+            JudgedClaim(claim="Bartas wypadł z top 1M", label="supported"),
+            JudgedClaim(claim="Bartas ma 1,0M", label="unsupported"),
+            JudgedClaim(claim="Kuba wtopa drugi raz z rzędu", label="unsupported"),
+        ]
+    )
+    judge, fake = judge_for(recorded)
+    result = run([item], writer, judge)
+    (record,) = result["pressers"]
+    assert [c["label"] for c in record["claims"]] == ["supported", "unsupported", "unsupported"]
+    assert record["faithfulness"] == 1 / 3
+    sent = fake.received_messages[0][1].content
+    assert '"overall_rank": 1010000' in sent and '"nth_of_season": 1' in sent
+
+
+def test_recorded_manager_count_and_personal_record_verdicts_counted():
+    facts = sheet().model_copy(deep=True)
+    facts.season_facts = facts.season_facts.model_validate(
+        facts.season_facts.model_dump()
+        | {
+            "worst_gameweek": [
+                {"manager": "Bartas", "gameweek": 2, "gameweek_rank": 9_800_000, "net_points": 30}
+            ],
+            "personal_worsts": [
+                {"manager": "Kuba", "gameweek_rank": 9_300_000, "ranked_gameweeks": 3}
+            ],
+        }
+    )
+    item = PresserCase(id="count", split="dev", source="real", tags=[], facts=facts, previous=[])
+    writer, _ = writer_for(
+        PresserDraft(
+            text="Haaland dał 12 trzem kapitanom. Kuba ma najgorszy GW rank sezonu w lidze"
+        )
+    )
+    recorded = JudgeVerdict(
+        claims=[
+            JudgedClaim(claim="Haaland dał 12 trzem kapitanom", label="unsupported"),
+            JudgedClaim(claim="Kuba: najgorszy GW rank sezonu w lidze", label="unsupported"),
+        ]
+    )
+    judge, fake = judge_for(recorded)
+    result = run([item], writer, judge)
+    (record,) = result["pressers"]
+    assert [c["label"] for c in record["claims"]] == ["unsupported", "unsupported"]
+    assert record["faithfulness"] == 0.0
+    sent = fake.received_messages[0][1].content
+    assert '"personal_worsts"' in sent and '"gameweek_rank": 9800000' in sent

@@ -114,10 +114,10 @@ example = "Grał szablonem, a i tak przegrał z szablonem."
 source = "fantasypl.pl (szablon FPL), fantasyfootballscout (template)"
 
 [[term]]
-term = "differential / hipsterski wybór"
-meaning = "zawodnik z małym posiadaniem, szansa na odskok"
-example = "Hipsterski wybór dowiózł — reszta ligi może tylko patrzeć."
-source = "soccerway (hipsterski wybór), fantasyfootballscout (differential)"
+term = "różnica / hipsterski wybór"
+meaning = "zawodnik z małym posiadaniem, szansa na odskok; „różnica” to zdecydowanie najpopularniejsze i najczęściej używane słowo, „hipsterski wybór” pojawia się tylko sporadycznie, a „differential” albo „dyferencjał” od czasu do czasu"
+example = "Jego różnica dowiozła — reszta ligi może tylko patrzeć."
+source = "właściciel ligi (różnica), soccerway (hipsterski wybór), fantasyfootballscout (differential)"
 
 [[term]]
 term = "masowo posiadany"

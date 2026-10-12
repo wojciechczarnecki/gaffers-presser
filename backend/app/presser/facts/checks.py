@@ -1,8 +1,14 @@
 from decimal import Decimal
 
 from app.presser.facts import ranks
-from app.presser.facts.gameweek import BLANK_MAX_POINTS
-from app.presser.facts.moments import MAX_KEY_MOMENTS
+from app.presser.facts.chips import chip_counts
+from app.presser.facts.gameweek import BLANK_MAX_POINTS, captain_groups, score_season_line
+from app.presser.facts.moments import (
+    CLEAN_SHEET_KINDS,
+    MAX_KEY_MOMENTS,
+    against_xgc,
+    counted_swing,
+)
 from app.presser.facts.pitch import MAX_PITCH_ITEMS
 from app.presser.facts.schema import FactSheet, PlayerStats, empty_sections
 from app.presser.facts.stats import (
@@ -10,7 +16,7 @@ from app.presser.facts.stats import (
     GOAL_FROM_NOTHING_BELOW_XG,
     HAT_TRICK_MIN_GOALS,
     KEEPER_WALL_MIN_SAVE_POINTS,
-    can_decide,
+    decisive_identifier,
 )
 from app.presser.facts.table import RIVALRY_MIN_NEIGHBOUR_GAMEWEEKS
 
@@ -188,13 +194,15 @@ def _check_moment_breakdown(moment) -> list[str]:
     total = sum(entry.points for entry in moment.breakdown)
     if moment.ahead_points != total * ahead or moment.behind_points != total * behind:
         problems.append("breakdown: does not sum to the player's points")
+    swings = {entry.identifier: entry.swing for entry in moment.breakdown}
+    decisive = decisive_identifier(swings, moment.margin)
     for entry in moment.breakdown:
         if entry.swing != entry.points * (ahead - behind):
             problems.append(
                 "key moments: a breakdown swing does not match its points and multipliers"
             )
-        if entry.decisive != (entry.swing >= moment.margin and can_decide(entry.identifier)):
-            problems.append("key moments: decisive does not match the swing and the margin")
+        if entry.decisive != (entry.identifier == decisive):
+            problems.append("key moments: decisive is not the first cause reaching the margin")
     return problems
 
 
@@ -210,7 +218,7 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
         if moment.margin <= 0:
             problems.append("key moments: a margin is not positive")
         missed = moment.kind == "bonus_missed_by_one"
-        if moment.swing < moment.margin and not decided:
+        if counted_swing(moment) < moment.margin and not decided:
             problems.append(
                 "key moments: a missed bonus swing is below its margin"
                 if missed
@@ -225,17 +233,27 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
             problems.append("key moments: a swing does not match the points")
         if moment.missed_bonus is not None and not missed:
             problems.append("key moments: missed_bonus on a kind that has none")
-        if moment.expected_goals_conceded is not None and moment.kind != "clean_sheet_lost":
-            problems.append("key moments: expected goals conceded outside a lost clean sheet")
+        clean_sheet = moment.kind in CLEAN_SHEET_KINDS
+        if moment.expected_goals_conceded is not None and not clean_sheet:
+            problems.append("key moments: expected goals conceded outside a clean sheet")
+        if moment.against_xgc != (
+            against_xgc(moment.kind, moment.expected_goals_conceded) if clean_sheet else None
+        ):
+            problems.append("key moments: against_xgc does not match the expected goals conceded")
         problems += _check_moment_breakdown(moment)
         if not _pair_exists(sheet, moment):
             problems.append("key moments: a pair is not a winner, a swap or a podium change")
     return problems
 
 
-def _check_player_stats(points: int, facts: PlayerStats) -> list[str]:
+def _check_player_stats(points: int, facts: PlayerStats, breakdown_total: int) -> list[str]:
+    # points are the player's own; breakdown_total is what the breakdown sums to (a captain's
+    # breakdown is in captain points, CaptainPick)
     problems: list[str] = []
-    if facts.breakdown is not None and sum(entry.points for entry in facts.breakdown) != points:
+    if (
+        facts.breakdown is not None
+        and sum(entry.points for entry in facts.breakdown) != breakdown_total
+    ):
         problems.append("breakdown: does not sum to the player's points")
     goals = 0
     if facts.breakdown is not None:
@@ -260,6 +278,11 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
             problems.append(f"{label}: managers on different net points")
     if sheet.winners and sheet.flops and sheet.winners[0].net_points < sheet.flops[0].net_points:
         problems.append("winners score below the flops")
+    for winner, scores in ((True, sheet.winners), (False, sheet.flops)):
+        for score in scores:
+            line = score_season_line(score, sheet.season_facts, sheet.gameweek, winner)
+            if (score.streak, score.record) != line:
+                problems.append("winners or flops: streak or record does not match the season")
 
     rows = sheet.table.rows
     if rows:
@@ -301,12 +324,16 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
     if len(sheet.pitch.items) > MAX_PITCH_ITEMS:
         problems.append("pitch: more than 8 items")
 
+    if sheet.captaincy.groups != captain_groups(sheet.captaincy.picks):
+        problems.append("captaincy: groups do not match the picks")
+    if sheet.chips.counts != chip_counts(sheet.chips.plays):
+        problems.append("chips: counts do not match the plays")
     for pick in sheet.captaincy.picks:
         if pick.points != pick.base_points * pick.multiplier:
             problems.append("captaincy: points do not match base points and multiplier")
-        problems += _check_player_stats(pick.base_points, pick)
+        problems += _check_player_stats(pick.base_points, pick, pick.points)
     for item in sheet.pitch.items:
-        problems += _check_player_stats(item.points, item)
+        problems += _check_player_stats(item.points, item, item.points)
         # the breakdown sums a double gameweek's fixtures, so these two rules cannot tell 2 + 1
         # goals from a hat-trick in one fixture: the builder counts per fixture (matches.py)
         entries = {entry.identifier: entry for entry in item.breakdown or []}

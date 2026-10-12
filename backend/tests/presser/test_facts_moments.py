@@ -6,8 +6,9 @@ from app.fpl.models import Player
 from app.presser.facts import build_fact_sheet, check_fact_sheet
 from app.presser.facts.load import MemberRow
 from app.presser.facts.matches import FixtureFact
-from app.presser.facts.moments import build_key_moments
+from app.presser.facts.moments import _tier, build_key_moments
 from app.presser.facts.schema import Table
+from app.presser.facts.stats import CAUSE_ORDER
 from tests.presser.helpers import LEAGUE_ID, SEASON, World, live, stats
 
 
@@ -246,8 +247,8 @@ def test_penalty_save_is_a_moment(world):
     pick(world, 12, 40, [])
     result = moments(world)
     assert [(m.kind, m.players, m.swing) for m in result] == [
-        ("player", ["Saver"], 11),
         ("penalty_saved", ["Saver"], 5),
+        ("player", ["Saver"], 11),
     ]
 
 
@@ -357,10 +358,14 @@ def test_breakdown_swing_and_decisive_boundary(world, margin, decisive):
     pick(world, 10, 60, [1], captain=1)
     pick(world, 11, 60 - margin, [1])
     pick(world, 12, 10, [])
+    if not decisive:
+        # the swing of 5 reaches the margin only with the minutes, which never count
+        assert moments(world) == []
+        return
     (moment,) = moments(world)
     assert (moment.margin, moment.swing) == (margin, 5)
     assert entries(moment)["bonus"].swing == 3
-    assert entries(moment)["bonus"].decisive is decisive
+    assert entries(moment)["bonus"].decisive is True
 
 
 def test_trailing_captains_yellow_card_decides_at_margin_1(world):
@@ -427,16 +432,25 @@ def test_goals_conceded_entry_never_decisive(world):
     assert moments(world) == []
 
 
-def test_decisive_moment_ranks_by_its_decisive_swing(world):
-    booked = [stats(501, minutes=(90, 2), yellow_cards=(1, -1))]
-    zed = [stats(501, minutes=(90, 2), bonus=(1, 1))]
-    player(world, 1, "Apple", 1, explain=booked, live_stats=live())
-    player(world, 2, "Wee", 2, explain=[stats(501, minutes=(90, 2))], live_stats=live())
-    player(world, 3, "Zed", 3, explain=zed, live_stats=live())
-    pick(world, 10, 60, [2, 3])
-    pick(world, 11, 58, [1], captain=1)
+def test_whole_player_ranks_above_a_defcon_cause(world):
+    # Zed decides only with bonus and DefCon together (tier 6), Wee's captain DefCon alone (tier 7)
+    zed = [stats(501, minutes=(90, 2), bonus=(2, 2), defensive_contribution=(10, 2))]
+    wee = [stats(501, minutes=(90, 2), defensive_contribution=(10, 2))]
+    player(world, 2, "Wee", 4, explain=wee, live_stats=live())
+    player(world, 3, "Zed", 6, explain=zed, live_stats=live())
+    pick(world, 10, 60, [2, 3], captain=2)
+    pick(world, 11, 57, [])
     pick(world, 12, 10, [])
-    assert [m.players[0] for m in moments(world)] == ["Zed", "Apple", "Wee"]
+    assert [m.players[0] for m in moments(world)] == ["Zed", "Wee"]
+
+
+def test_minutes_never_make_a_whole_player_moment(world):
+    explain = [stats(501, minutes=(90, 2), bonus=(1, 1))]
+    player(world, 1, "Starter", 3, explain=explain, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 58, [])
+    pick(world, 12, 10, [])
+    assert moments(world) == []
 
 
 def test_player_moment_without_live_stats_has_no_breakdown(world):
@@ -627,3 +641,129 @@ def test_lost_clean_sheet_xgc_null_without_stats(world):
 def test_lost_clean_sheet_xgc_comes_from_a_player_with_stats(world):
     moment = lost_sheet(world, None, live(xgc="1.10"))
     assert moment.expected_goals_conceded == Decimal("1.10")
+
+
+def test_lost_clean_sheet_against_the_xgc_only_at_a_low_xgc(world):
+    assert lost_sheet(world, live(xgc="1.40"), live(xgc="1.10")).against_xgc is False
+
+
+def test_lost_clean_sheet_at_a_low_xgc_goes_against_the_xgc(world):
+    assert lost_sheet(world, live(xgc="0.30"), live(xgc="0.20")).against_xgc is True
+
+
+def test_lost_clean_sheet_against_the_xgc_unknown_without_stats(world):
+    assert lost_sheet(world, None, None).against_xgc is None
+
+
+def test_kept_clean_sheet_of_two_defenders_ranks_above_a_goal(world):
+    world.fixture(501, 5, 2, 1, 1, 0)
+    kept = [stats(501, minutes=(90, 2), clean_sheets=(1, 4))]
+    player(world, 1, "Zeta", 6, position=1, club=2, explain=kept, live_stats=live(xgc="1.70"))
+    player(world, 2, "Left", 6, position=2, club=2, explain=kept, live_stats=live(xgc="1.60"))
+    scored = [stats(501, minutes=(90, 2), goals_scored=(1, 5))]
+    player(world, 3, "Gol", 7, club=2, explain=scored, live_stats=live(goals=1))
+    pick(world, 10, 60, [1, 2, 3])
+    pick(world, 11, 55, [])
+    pick(world, 12, 40, [])
+    result = moments(world)
+    # the defenders' own moments (6 points, 4 of them the clean sheet) are told by the club's
+    assert [(m.kind, m.players) for m in result] == [
+        ("clean_sheet_kept", ["Left", "Zeta"]),
+        ("player", ["Gol"]),
+    ]
+    kept_moment = result[0]
+    assert (kept_moment.swing, kept_moment.margin, kept_moment.club) == (8, 5, "Klub Drugi")
+    # equal minutes: the xGC comes from the first player by name
+    assert kept_moment.expected_goals_conceded == Decimal("1.60")
+    assert kept_moment.against_xgc is True
+
+
+def test_single_kept_clean_sheet_ranks_below_a_goal(world):
+    world.fixture(501, 5, 2, 1, 1, 0)
+    kept = [stats(501, minutes=(90, 2), clean_sheets=(1, 4))]
+    player(world, 1, "Zeta", 6, position=1, club=2, explain=kept, live_stats=live(xgc="0.40"))
+    scored = [stats(501, minutes=(90, 2), goals_scored=(1, 5))]
+    player(world, 3, "Gol", 7, club=2, explain=scored, live_stats=live(goals=1))
+    pick(world, 10, 60, [1, 3])
+    pick(world, 11, 56, [])
+    pick(world, 12, 40, [])
+    assert [(m.kind, m.against_xgc) for m in moments(world)] == [
+        ("player", None),
+        ("clean_sheet_kept", False),
+    ]
+
+
+def test_goal_is_the_cause_before_bonus(world):
+    explain = [stats(501, minutes=(90, 2), goals_scored=(1, 5), bonus=(3, 3))]
+    player(world, 1, "Haulman", 10, explain=explain, live_stats=live(goals=1))
+    pick(world, 10, 60, [1])
+    pick(world, 11, 57, [])
+    pick(world, 12, 10, [])
+    (moment,) = moments(world)
+    assert [(e.identifier, e.decisive) for e in moment.breakdown] == [
+        ("goals_scored", True),
+        ("bonus", False),
+        ("minutes", False),
+    ]
+
+
+def test_midfielder_clean_sheet_is_the_last_cause(world):
+    explain = [stats(501, minutes=(90, 2), clean_sheets=(1, 1))]
+    player(world, 1, "Mid", 3, explain=explain, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 59, [])
+    pick(world, 12, 10, [])
+    (moment,) = moments(world)
+    assert entries(moment)["clean_sheets"].decisive is True
+
+
+def test_lucky_sub_keeps_his_own_clean_sheet_not_the_clubs(world):
+    world.fixture(501, 5, 2, 1, 0, 1)
+    lucky = [stats(501, minutes=(65, 2), clean_sheets=(1, 4))]
+    player(world, 1, "Early", 6, position=2, club=2, explain=lucky, minutes=65, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 57, [])
+    pick(world, 12, 10, [])
+    assert [m.kind for m in moments(world) if m.kind == "clean_sheet_kept"] == []
+
+
+def test_goals_conceded_never_lift_a_whole_player(world):
+    # saves 2 + bonus 2 - goals conceded 2: no stat reaches 3, and minutes never count
+    explain = [stats(501, minutes=(90, 2), saves=(6, 2), bonus=(2, 2), goals_conceded=(4, -2))]
+    player(world, 1, "Keeper", 4, position=1, explain=explain, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 57, [])
+    pick(world, 12, 10, [])
+    assert moments(world) == []
+
+
+def test_captained_defender_below_his_club_moment_ranks_as_a_clean_sheet(world):
+    world.fixture(501, 5, 2, 1, 1, 0)
+    kept = [stats(501, minutes=(90, 2), clean_sheets=(1, 4))]
+    player(world, 1, "Cap", 6, position=2, club=2, explain=kept, live_stats=live())
+    player(world, 2, "Other", 6, position=2, club=2, explain=kept, live_stats=live())
+    pick(world, 10, 60, [1], captain=1)
+    pick(world, 11, 55, [2])
+    pick(world, 12, 10, [])
+    (moment,) = [m for m in moments(world) if m.kind == "player"]
+    assert entries(moment)["clean_sheets"].decisive is True
+    assert _tier(moment) == CAUSE_ORDER.index("club_clean_sheet")
+
+
+def test_double_gameweek_clean_sheet_outside_the_club_moment_stays_told(world):
+    world.fixture(501, 5, 2, 1, 1, 0)
+    world.fixture(502, 5, 1, 2, 0, 2)
+    both = [
+        stats(501, minutes=(90, 2), clean_sheets=(1, 4)),
+        stats(502, minutes=(90, 2), clean_sheets=(1, 4)),
+    ]
+    player(world, 1, "Twice", 12, position=2, club=2, explain=both, minutes=180, live_stats=live())
+    second = [stats(502, minutes=(90, 2), clean_sheets=(1, 4))]
+    player(world, 2, "Once", 6, position=2, club=2, explain=second, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 56, [2])
+    pick(world, 12, 10, [])
+    result = moments(world)
+    # fixture 501's clean sheet is the club's moment; fixture 502's (4 more) keeps his own
+    assert ("clean_sheet_kept", ["Twice"]) in [(m.kind, m.players) for m in result]
+    assert ("player", ["Twice"]) in [(m.kind, m.players) for m in result]

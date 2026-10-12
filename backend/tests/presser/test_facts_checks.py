@@ -1,6 +1,8 @@
 import pytest
 
 from app.presser.facts import check_fact_sheet
+from app.presser.facts.chips import chip_counts
+from app.presser.facts.gameweek import captain_groups
 from app.presser.facts.schema import FactSheet, KeyMoment, empty_sections
 from tests.presser.evaluation.factories import sheet as base_sheet
 
@@ -50,6 +52,7 @@ def ranked_sheet(gameweek: int = 5) -> FactSheet:
             "biggest_fallers": ["Kuba"],
         }
     )
+    value.winners[0].record = "personal_best"
     value.empty_sections = empty_sections(value)
     return value
 
@@ -81,6 +84,7 @@ def test_first_gameweek_sheet_with_entered_thresholds_is_consistent():
     value.season_facts.best_gameweek[0].gameweek = 1
     value.season_facts.worst_gameweek[0].gameweek = 1
     value.season_facts.personal_bests = []
+    value.winners[0].record = None
     value.empty_sections = empty_sections(value)
     assert check_fact_sheet(value) == []
 
@@ -184,6 +188,7 @@ PITCH_ITEM = {
 
 def add_chip(value):
     value.chips = value.chips.model_validate({"plays": [CHIP_PLAY]})
+    value.chips.counts = chip_counts(value.chips.plays)
 
 
 def add_pitch_item(value):
@@ -417,6 +422,7 @@ def add_pitch(**changes):
 def add_captain(**changes):
     def mutate(value):
         value.captaincy = value.captaincy.model_validate({"picks": [CAPTAIN_PICK | changes]})
+        value.captaincy.groups = captain_groups(value.captaincy.picks)
 
     return mutate
 
@@ -435,6 +441,10 @@ def breakdown_of(*entries):
         (
             "breakdown: does not sum to the player's points",
             add_captain(breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 9))),
+        ),
+        (
+            "breakdown: does not sum to the player's points",
+            add_captain(breakdown=breakdown_of(("minutes", 90, 2), ("goals_scored", 1, 10))),
         ),
         (
             "xG: a flag does not match the thresholds",
@@ -531,23 +541,23 @@ RED_ENTRY_MOMENT = {
             add_moments(with_entry(1, swing=11)),
         ),
         (
-            "key moments: decisive does not match the swing and the margin",
+            "key moments: decisive is not the first cause reaching the margin",
             add_moments(with_entry(0, decisive=True)),
         ),
         (
-            "key moments: decisive does not match the swing and the margin",
+            "key moments: decisive is not the first cause reaching the margin",
             add_moments(with_entry(1, decisive=False)),
         ),
         (
-            "key moments: decisive does not match the swing and the margin",
+            "key moments: decisive is not the first cause reaching the margin",
             add_moments(with_entry(1, decisive=False) | {"margin": 12}),
         ),
         (
-            "key moments: decisive does not match the swing and the margin",
+            "key moments: decisive is not the first cause reaching the margin",
             add_moments(with_entry(0, decisive=True) | {"margin": 2}),
         ),
         (
-            "key moments: decisive does not match the swing and the margin",
+            "key moments: decisive is not the first cause reaching the margin",
             add_moments(
                 RED_ENTRY_MOMENT
                 | {
@@ -615,7 +625,7 @@ MISSED_MOMENT = {
             add_moments({"missed_bonus": 1}),
         ),
         (
-            "key moments: expected goals conceded outside a lost clean sheet",
+            "key moments: expected goals conceded outside a clean sheet",
             add_moments({"expected_goals_conceded": "1.20"}),
         ),
     ],
@@ -632,8 +642,74 @@ def test_lost_clean_sheet_with_xgc_is_consistent():
         "behind_points": -4,
         "swing": 4,
         "expected_goals_conceded": "1.40",
+        "against_xgc": False,
     }
     assert problems_after(add_moments(moment)) == []
+
+
+def test_kept_clean_sheet_against_the_xg_is_consistent():
+    moment = {
+        "kind": "clean_sheet_kept",
+        "margin": 4,
+        "ahead_points": 8,
+        "behind_points": 0,
+        "swing": 8,
+        "expected_goals_conceded": "1.60",
+        "against_xgc": True,
+    }
+    assert problems_after(add_moments(moment)) == []
+
+
+@pytest.mark.parametrize(
+    ("kind", "conceded", "against"),
+    [
+        ("clean_sheet_lost", "0.60", True),
+        ("clean_sheet_lost", "0.40", False),
+        ("clean_sheet_kept", "1.40", True),
+        ("clean_sheet_kept", None, False),
+        ("player", None, True),
+    ],
+)
+def test_wrong_against_xgc_is_reported(kind, conceded, against):
+    moment = {
+        "kind": kind,
+        "margin": 4,
+        "ahead_points": 8,
+        "behind_points": 0,
+        "swing": 8,
+        "expected_goals_conceded": conceded,
+        "against_xgc": against,
+    }
+    expected = "key moments: against_xgc does not match the expected goals conceded"
+    assert expected in problems_after(add_moments(moment), recompute=False)
+
+
+def test_bonus_is_not_decisive_when_a_goal_reaches_the_margin():
+    moment = {
+        "margin": 3,
+        "ahead_points": 10,
+        "behind_points": 0,
+        "swing": 10,
+        "ahead_multiplier": 1,
+        "behind_multiplier": 0,
+        "breakdown": moment_entries(
+            ("goals_scored", 1, 5, 5, False), ("bonus", 3, 3, 3, True), ("minutes", 90, 2, 2, False)
+        ),
+    }
+    expected = "key moments: decisive is not the first cause reaching the margin"
+    assert expected in problems_after(add_moments(moment), recompute=False)
+
+
+def test_captain_groups_and_chip_counts_must_match():
+    def mutate(value):
+        add_captain()(value)
+        add_chip(value)
+        value.captaincy.groups[0].managers = 2
+        value.chips.counts[0].managers = 3
+
+    problems = problems_after(mutate)
+    assert "captaincy: groups do not match the picks" in problems
+    assert "chips: counts do not match the plays" in problems
 
 
 def test_consistent_missed_bonus_has_no_problems():
@@ -668,7 +744,7 @@ def test_consistent_v4_stats_have_no_problems():
                     goal_from_nothing=True,
                 )(v),
                 add_captain(
-                    breakdown=full,
+                    breakdown=breakdown_of(("minutes", 90, 4), ("goals_scored", 1, 20)),
                     expected_goals="0.10",
                     big_miss=False,
                     goal_from_nothing=True,
@@ -693,3 +769,12 @@ def test_chips_and_pitch_sections_consistent_when_listed():
         )
         == []
     )
+
+
+def test_wrong_flop_streak_or_record_is_reported():
+    def mutate(value):
+        value.flops[0].streak = 5
+        value.winners[0].record = "league_worst"
+
+    expected = "winners or flops: streak or record does not match the season"
+    assert expected in problems_after(mutate)
