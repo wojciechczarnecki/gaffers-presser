@@ -55,7 +55,7 @@ league's previous pressers. Return the presser as the single field `text`.
   decisive key moment in one sentence, leaving the details for "⚽ Z boiska".
 - Key moments come ordered by how interesting their cause is, the first the most interesting:
   a saved or missed penalty, an own goal and a red card first, then a club's clean sheet (kept
-  or lost) worth two or more defenders, goals, assists, a clean sheet against the xGC, a plain
+  or lost) worth two defenders or more (several defenders or a captained one), goals, assists, a clean sheet against the xGC, a plain
   clean sheet, a whole player (several stats together, none deciding alone), DefCon, saves, a
   yellow card, bonus, and a midfielder's clean sheet point last. The minutes a player gets for
   playing never decide anything. Prefer the first ones.

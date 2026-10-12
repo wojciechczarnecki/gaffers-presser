@@ -482,3 +482,10 @@ def test_flop_line_carries_only_his_own_worst_when_the_league_worst_is_another()
 def test_record_from_an_earlier_gameweek_is_not_this_line():
     assert score_season_line(_score("Ala", 20_000), SEASON_FACTS, 6, True) == (2, None)
     assert score_season_line(_score("Ala", None), SEASON_FACTS, 5, True) == (2, None)
+
+
+def test_captain_groups_order_ties_by_multiplier_not_by_pick_order():
+    picks = [_captain("Ala", "Salah", 3, 0), _captain("Bob", "Salah", 2, 0)]
+    picks += [_captain("Cyd", "Salah", 3, 0), _captain("Dan", "Salah", 2, 0)]
+    assert [g.multiplier for g in captain_groups(picks)] == [2, 3]
+    assert [g.multiplier for g in captain_groups(picks[::-1])] == [2, 3]

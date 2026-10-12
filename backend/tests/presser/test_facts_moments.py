@@ -6,8 +6,9 @@ from app.fpl.models import Player
 from app.presser.facts import build_fact_sheet, check_fact_sheet
 from app.presser.facts.load import MemberRow
 from app.presser.facts.matches import FixtureFact
-from app.presser.facts.moments import build_key_moments
+from app.presser.facts.moments import _tier, build_key_moments
 from app.presser.facts.schema import Table
+from app.presser.facts.stats import CAUSE_ORDER
 from tests.presser.helpers import LEAGUE_ID, SEASON, World, live, stats
 
 
@@ -714,3 +715,55 @@ def test_midfielder_clean_sheet_is_the_last_cause(world):
     pick(world, 12, 10, [])
     (moment,) = moments(world)
     assert entries(moment)["clean_sheets"].decisive is True
+
+
+def test_lucky_sub_keeps_his_own_clean_sheet_not_the_clubs(world):
+    world.fixture(501, 5, 2, 1, 0, 1)
+    lucky = [stats(501, minutes=(65, 2), clean_sheets=(1, 4))]
+    player(world, 1, "Early", 6, position=2, club=2, explain=lucky, minutes=65, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 57, [])
+    pick(world, 12, 10, [])
+    assert [m.kind for m in moments(world) if m.kind == "clean_sheet_kept"] == []
+
+
+def test_goals_conceded_never_lift_a_whole_player(world):
+    # saves 2 + bonus 2 - goals conceded 2: no stat reaches 3, and minutes never count
+    explain = [stats(501, minutes=(90, 2), saves=(6, 2), bonus=(2, 2), goals_conceded=(4, -2))]
+    player(world, 1, "Keeper", 4, position=1, explain=explain, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 57, [])
+    pick(world, 12, 10, [])
+    assert moments(world) == []
+
+
+def test_captained_defender_below_his_club_moment_ranks_as_a_clean_sheet(world):
+    world.fixture(501, 5, 2, 1, 1, 0)
+    kept = [stats(501, minutes=(90, 2), clean_sheets=(1, 4))]
+    player(world, 1, "Cap", 6, position=2, club=2, explain=kept, live_stats=live())
+    player(world, 2, "Other", 6, position=2, club=2, explain=kept, live_stats=live())
+    pick(world, 10, 60, [1], captain=1)
+    pick(world, 11, 55, [2])
+    pick(world, 12, 10, [])
+    (moment,) = [m for m in moments(world) if m.kind == "player"]
+    assert entries(moment)["clean_sheets"].decisive is True
+    assert _tier(moment) == CAUSE_ORDER.index("club_clean_sheet")
+
+
+def test_double_gameweek_clean_sheet_outside_the_club_moment_stays_told(world):
+    world.fixture(501, 5, 2, 1, 1, 0)
+    world.fixture(502, 5, 1, 2, 0, 2)
+    both = [
+        stats(501, minutes=(90, 2), clean_sheets=(1, 4)),
+        stats(502, minutes=(90, 2), clean_sheets=(1, 4)),
+    ]
+    player(world, 1, "Twice", 12, position=2, club=2, explain=both, minutes=180, live_stats=live())
+    second = [stats(502, minutes=(90, 2), clean_sheets=(1, 4))]
+    player(world, 2, "Once", 6, position=2, club=2, explain=second, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 56, [2])
+    pick(world, 12, 10, [])
+    result = moments(world)
+    # fixture 501's clean sheet is the club's moment; fixture 502's (4 more) keeps his own
+    assert ("clean_sheet_kept", ["Twice"]) in [(m.kind, m.players) for m in result]
+    assert ("player", ["Twice"]) in [(m.kind, m.players) for m in result]

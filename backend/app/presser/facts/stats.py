@@ -10,12 +10,24 @@ GOAL_FROM_NOTHING_BELOW_XG = Decimal("0.15")
 HAT_TRICK_MIN_GOALS = 3
 KEEPER_WALL_MIN_SAVE_POINTS = 2
 OWN_KIND_STATS = ("red_cards", "own_goals", "penalties_missed", "penalties_saved")
-# routine points every starter gets or loses: never what decided a moment
-ROUTINE_STATS = ("minutes", "goals_conceded")
-# the stats that can decide a player moment, the most interesting cause first; the events
-# (OWN_KIND_STATS) and a goalkeeper's or a defender's clean sheet are moments of their own, so
-# clean_sheets last is a midfielder's single point
-CAUSE_PRIORITY = (
+# the causes of a key moment, the most interesting first (the owner's order, DECISIONS
+# 2026-10-12); the stat identifiers among them can decide a player moment, the rest name the
+# other moments, and minutes and goals conceded never decide
+CAUSE_ORDER = (
+    "event",  # a saved or missed penalty, an own goal, a red card
+    "club_clean_sheet_amplified",  # a club's clean sheet worth two defenders or more
+    "goals_scored",
+    "assists",
+    "club_clean_sheet_against_xgc",
+    "club_clean_sheet",  # a goalkeeper's or a defender's
+    "whole_player",  # several stats together, none deciding alone
+    "defensive_contribution",
+    "saves",
+    "yellow_cards",
+    "bonus",
+    "clean_sheets",  # a midfielder's single point
+)
+DECIDING_STATS = (
     "goals_scored",
     "assists",
     "defensive_contribution",
@@ -24,6 +36,7 @@ CAUSE_PRIORITY = (
     "bonus",
     "clean_sheets",
 )
+CAUSE_PRIORITY = tuple(cause for cause in CAUSE_ORDER if cause in DECIDING_STATS)
 
 
 def decisive_identifier(swings: dict[str, int], margin: int) -> str | None:

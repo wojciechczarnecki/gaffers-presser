@@ -159,7 +159,10 @@ def captain_groups(picks: list[CaptainPick]) -> list[CaptainGroup]:
         CaptainGroup(player=player, multiplier=multiplier, points=points, managers=managers)
         for (player, multiplier, points), managers in counts.items()
     ]
-    return sorted(groups, key=lambda group: (-group.managers, -group.points, group.player))
+    return sorted(
+        groups,
+        key=lambda group: (-group.managers, -group.points, group.player, group.multiplier),
+    )
 
 
 def captaincy(
