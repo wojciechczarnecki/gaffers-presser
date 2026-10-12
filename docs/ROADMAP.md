@@ -91,7 +91,8 @@ and each LLM step that produces data has an evaluation set with recorded results
 - [x] Presser fixes from the owner's reading of the writer 7 pressers: one decisive stat in the
       owner's order of interest, a club's kept clean sheet and `against_xgc`, key moments sorted
       by their cause, captain and chip counts in the sheet, thresholds only from `entered` and
-      `left`, declined names, a fixed title, evaluation set v6 (fast path, no spec)
+      `left`, the winner's and the flop's streak and record, declined names, a fixed title,
+      evaluation set v6 (fast path, no spec)
 - [ ] Presser model comparison with the owner's ratings: report, ADR and the new
       `PRESSER_MODEL` default; decides the name-inflection problem (BACKLOG #32, after spec 015)
 - [ ] Slang glossary and style examples (from X and Polish FPL podcasts) (spec: TBD)

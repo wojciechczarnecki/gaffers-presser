@@ -2,8 +2,18 @@ import pytest
 
 from app.presser.facts import NoFactsError, build_fact_sheet
 from app.presser.facts.chips import chip_counts
-from app.presser.facts.gameweek import captain_groups
-from app.presser.facts.schema import SECTIONS, BenchTransfers, CaptainPick, ChipPlay
+from app.presser.facts.gameweek import captain_groups, score_season_line
+from app.presser.facts.schema import (
+    SECTIONS,
+    BenchTransfers,
+    CaptainPick,
+    ChipPlay,
+    ManagerScore,
+    PersonalRank,
+    Record,
+    Season,
+    SeasonRow,
+)
 from tests.presser.helpers import LEAGUE_ID, SEASON, World
 
 
@@ -433,3 +443,42 @@ def test_chip_counts_count_managers_per_chip():
         ChipPlay(manager="Cyd", chip="freehit", effect=-7),
     ]
     assert [(c.chip, c.managers) for c in chip_counts(plays)] == [("3xc", 2), ("freehit", 1)]
+
+
+def _season_row(manager: str, win_streak: int = 0, flop_streak: int = 0) -> SeasonRow:
+    return SeasonRow(
+        manager=manager,
+        gameweek_wins_to_date=win_streak,
+        gameweek_flops_to_date=flop_streak,
+        win_streak=win_streak,
+        flop_streak=flop_streak,
+        captain_blank_streak=0,
+    )
+
+
+def _score(manager: str, rank: int | None) -> ManagerScore:
+    return ManagerScore(
+        manager=manager, transfers_cost=0, net_points=40, nth_of_season=1, gameweek_rank=rank
+    )
+
+
+SEASON_FACTS = Season(
+    rows=[_season_row("Ala", win_streak=2), _season_row("Bob", flop_streak=1)],
+    best_gameweek=[Record(manager="Ala", gameweek=5, gameweek_rank=20_000, net_points=90)],
+    worst_gameweek=[Record(manager="Cyd", gameweek=3, gameweek_rank=9_900_000, net_points=30)],
+    personal_worsts=[PersonalRank(manager="Bob", gameweek_rank=9_300_000, ranked_gameweeks=5)],
+)
+
+
+def test_winner_line_carries_his_streak_and_the_league_record():
+    assert score_season_line(_score("Ala", 20_000), SEASON_FACTS, 5, True) == (2, "league_best")
+
+
+def test_flop_line_carries_only_his_own_worst_when_the_league_worst_is_another():
+    line = score_season_line(_score("Bob", 9_300_000), SEASON_FACTS, 5, False)
+    assert line == (1, "personal_worst")
+
+
+def test_record_from_an_earlier_gameweek_is_not_this_line():
+    assert score_season_line(_score("Ala", 20_000), SEASON_FACTS, 6, True) == (2, None)
+    assert score_season_line(_score("Ala", None), SEASON_FACTS, 5, True) == (2, None)

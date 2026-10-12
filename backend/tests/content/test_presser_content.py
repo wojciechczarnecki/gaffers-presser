@@ -26,9 +26,9 @@ WRITER_HEADERS = (
 )
 
 
-def test_writer_prompt_v8_rules():
+def test_writer_prompt_v9_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 8
+    assert prompt.version == 9
     positions = [prompt.text.index(header) for header in WRITER_HEADERS]
     assert positions == sorted(positions)
     assert prompt.text.index("⚽") < prompt.text.index("🪑")
@@ -74,8 +74,8 @@ def test_writer_prompt_v8_rules():
         "never a bare xG",
         "already in captain\n  points",
         "`nth_of_season`, `gameweek_wins_to_date` and `gameweek_flops_to_date`",
-        "`captain_blank_streak` of 2 or more",
-        "neither a\n  count nor a streak",
+        "`captain_blank_streak`\n  of 2 or more",
+        "neither a count nor a streak",
         "counted name by name",
         "`captaincy.groups`",
         "`chips.counts`",
@@ -93,6 +93,12 @@ def test_writer_prompt_v8_rules():
         "empty lists never mean\n  nobody made a transfer",
         "więcej niż połowa średniej ligowej",
         "`🎙️ *Presser GW<gameweek> — <league>*`",
+        "`league_best` or `league_worst`",
+        "`nth_of_season` 1 and `streak` 1 is simply his first flop",
+        "Judge a chip by its `effect`",
+        '"1,01M"',
+        "the name is its subject, in the nominative",
+        "with no figure",
         "Never give a player, a bench, an autosub or a transfer to another manager",
         "Never present a personal record as the league's",
         "Tell each player's story once",
@@ -106,9 +112,9 @@ def test_writer_prompt_v8_rules():
     assert "mln" not in prompt.text.replace('"mln"', "")
 
 
-def test_judge_prompt_v7_checks_counts_streaks_and_rounding():
+def test_judge_prompt_v8_checks_counts_streaks_and_rounding():
     prompt = load_prompt("presser_judge")
-    assert prompt.version == 7
+    assert prompt.version == 8
     for needle in (
         "pitch",
         "key moment",
@@ -158,6 +164,8 @@ def test_judge_prompt_v7_checks_counts_streaks_and_rounding():
         "`unlucky_sub`",
         "only notable transfers",
         "A comparison that is\nfalse",
+        "A chip told\nagainst its `effect`",
+        "a winner's or a flop's `streak`",
     ):
         assert needle in prompt.text, needle
     assert "mln" not in prompt.text

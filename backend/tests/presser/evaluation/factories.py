@@ -18,6 +18,7 @@ def sheet(gameweek: int = 5, league: str = "League One") -> FactSheet:
                     "transfers_cost": 0,
                     "net_points": 60,
                     "nth_of_season": 1,
+                    "streak": 1,
                 }
             ],
             "flops": [
@@ -26,6 +27,7 @@ def sheet(gameweek: int = 5, league: str = "League One") -> FactSheet:
                     "transfers_cost": 0,
                     "net_points": 50,
                     "nth_of_season": 1,
+                    "streak": 1,
                 }
             ],
             "table": {

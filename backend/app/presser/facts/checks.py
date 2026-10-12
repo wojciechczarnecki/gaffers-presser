@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from app.presser.facts import ranks
 from app.presser.facts.chips import chip_counts
-from app.presser.facts.gameweek import BLANK_MAX_POINTS, captain_groups
+from app.presser.facts.gameweek import BLANK_MAX_POINTS, captain_groups, score_season_line
 from app.presser.facts.moments import (
     CLEAN_SHEET_KINDS,
     MAX_KEY_MOMENTS,
@@ -278,6 +278,11 @@ def check_fact_sheet(sheet: FactSheet) -> list[str]:
             problems.append(f"{label}: managers on different net points")
     if sheet.winners and sheet.flops and sheet.winners[0].net_points < sheet.flops[0].net_points:
         problems.append("winners score below the flops")
+    for winner, scores in ((True, sheet.winners), (False, sheet.flops)):
+        for score in scores:
+            line = score_season_line(score, sheet.season_facts, sheet.gameweek, winner)
+            if (score.streak, score.record) != line:
+                problems.append("winners or flops: streak or record does not match the season")
 
     rows = sheet.table.rows
     if rows:

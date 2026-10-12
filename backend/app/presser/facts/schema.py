@@ -19,6 +19,9 @@ class Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+ScoreRecord = Literal["league_best", "league_worst", "personal_best", "personal_worst"]
+
+
 class ManagerScore(Strict):
     manager: str
     transfers_cost: int
@@ -26,6 +29,10 @@ class ManagerScore(Strict):
     # this gameweek's win (in `winners`) or flop (in `flops`) is the Nth of the season
     nth_of_season: int
     gameweek_rank: int | None = None
+    # the winner's win_streak or the flop's flop_streak, this gameweek included
+    streak: int = 0
+    # this gameweek's GW rank as the league's record of the season or the manager's own
+    record: ScoreRecord | None = None
 
 
 class StatPoints(Strict):

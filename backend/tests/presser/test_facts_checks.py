@@ -52,6 +52,7 @@ def ranked_sheet(gameweek: int = 5) -> FactSheet:
             "biggest_fallers": ["Kuba"],
         }
     )
+    value.winners[0].record = "personal_best"
     value.empty_sections = empty_sections(value)
     return value
 
@@ -83,6 +84,7 @@ def test_first_gameweek_sheet_with_entered_thresholds_is_consistent():
     value.season_facts.best_gameweek[0].gameweek = 1
     value.season_facts.worst_gameweek[0].gameweek = 1
     value.season_facts.personal_bests = []
+    value.winners[0].record = None
     value.empty_sections = empty_sections(value)
     assert check_fact_sheet(value) == []
 
@@ -767,3 +769,12 @@ def test_chips_and_pitch_sections_consistent_when_listed():
         )
         == []
     )
+
+
+def test_wrong_flop_streak_or_record_is_reported():
+    def mutate(value):
+        value.flops[0].streak = 5
+        value.winners[0].record = "league_worst"
+
+    expected = "winners or flops: streak or record does not match the season"
+    assert expected in problems_after(mutate)
