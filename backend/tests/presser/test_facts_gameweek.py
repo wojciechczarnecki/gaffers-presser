@@ -1,7 +1,9 @@
 import pytest
 
 from app.presser.facts import NoFactsError, build_fact_sheet
-from app.presser.facts.schema import SECTIONS, BenchTransfers
+from app.presser.facts.chips import chip_counts
+from app.presser.facts.gameweek import captain_groups
+from app.presser.facts.schema import SECTIONS, BenchTransfers, CaptainPick, ChipPlay
 from tests.presser.helpers import LEAGUE_ID, SEASON, World
 
 
@@ -361,7 +363,7 @@ def test_average_is_net_and_rounded_half_up(world):
     assert sheet(world).average_net_points == 55  # (61 + 48) / 2 = 54.5
 
 
-def test_sheet_v5_sections_in_order(world):
+def test_sheet_v6_sections_in_order(world):
     world.gw(10, 5, 60)
     world.gw(11, 5, 50)
     assert SECTIONS == (
@@ -374,7 +376,7 @@ def test_sheet_v5_sections_in_order(world):
         "table",
         "overall",
     )
-    assert sheet(world).version == 5
+    assert sheet(world).version == 6
 
 
 def test_chips_section_empty_without_chips(world):
@@ -395,3 +397,39 @@ def test_bench_transfers_holds_no_chip_facts():
         "transfer_wins",
         "auto_subs",
     }
+
+
+def _captain(manager: str, player: str, multiplier: int, base: int) -> CaptainPick:
+    return CaptainPick(
+        manager=manager,
+        player=player,
+        base_points=base,
+        multiplier=multiplier,
+        points=base * multiplier,
+        triple_captain=multiplier == 3,
+        vice_stepped_in=False,
+        blank=base <= 2,
+    )
+
+
+def test_captain_groups_count_managers_per_player_and_multiplier():
+    picks = [
+        _captain("Ala", "Haaland", 2, 13),
+        _captain("Bob", "Haaland", 3, 13),
+        _captain("Cyd", "Haaland", 2, 13),
+        _captain("Dan", "Salah", 2, 2),
+    ]
+    assert [(g.player, g.multiplier, g.points, g.managers) for g in captain_groups(picks)] == [
+        ("Haaland", 2, 26, 2),
+        ("Haaland", 3, 39, 1),
+        ("Salah", 2, 4, 1),
+    ]
+
+
+def test_chip_counts_count_managers_per_chip():
+    plays = [
+        ChipPlay(manager="Ala", chip="3xc", effect=9),
+        ChipPlay(manager="Bob", chip="3xc", effect=9),
+        ChipPlay(manager="Cyd", chip="freehit", effect=-7),
+    ]
+    assert [(c.chip, c.managers) for c in chip_counts(plays)] == [("3xc", 2), ("freehit", 1)]

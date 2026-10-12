@@ -14,6 +14,7 @@ from app.presser.facts.schema import (
     BenchItem,
     BenchTransfers,
     Captaincy,
+    CaptainGroup,
     CaptainPick,
     Hit,
     ManagerScore,
@@ -123,6 +124,18 @@ def captain_stats(stats: PlayerStats, multiplier: int) -> PlayerStats:
     return stats.model_copy(update={"breakdown": scaled})
 
 
+def captain_groups(picks: list[CaptainPick]) -> list[CaptainGroup]:
+    counts: dict[tuple[str, int, int], int] = {}
+    for pick in picks:
+        key = (pick.player, pick.multiplier, pick.points)
+        counts[key] = counts.get(key, 0) + 1
+    groups = [
+        CaptainGroup(player=player, multiplier=multiplier, points=points, managers=managers)
+        for (player, multiplier, points), managers in counts.items()
+    ]
+    return sorted(groups, key=lambda group: (-group.managers, -group.points, group.player))
+
+
 def captaincy(
     rows: list[MemberRow],
     refs: dict[tuple[int, int], CaptainRef],
@@ -160,6 +173,7 @@ def captaincy(
     bottom = min(pick.points for pick in picks)
     return Captaincy(
         picks=picks,
+        groups=captain_groups(picks),
         best=sorted(pick.manager for pick in picks if pick.points == top),
         worst=sorted(pick.manager for pick in picks if pick.points == bottom),
     )

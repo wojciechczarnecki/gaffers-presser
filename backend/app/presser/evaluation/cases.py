@@ -10,15 +10,15 @@ from app.presser.facts import FactSheet, check_fact_sheet
 from app.presser.writer import PreviousPresser
 
 EVALS_DIR = Path(__file__).resolve().parents[3] / "evals" / "presser"
-DEFAULT_CASES_PATH = EVALS_DIR / "v5" / "cases.jsonl"
-HISTORY_PATH = EVALS_DIR / "v5" / "history.jsonl"
-PSEUDONYMS_PATH = EVALS_DIR / "v5" / "pseudonyms.toml"
+DEFAULT_CASES_PATH = EVALS_DIR / "v6" / "cases.jsonl"
+HISTORY_PATH = EVALS_DIR / "v6" / "history.jsonl"
+PSEUDONYMS_PATH = EVALS_DIR / "v6" / "pseudonyms.toml"
 DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
 
-MIN_CASES = 41
-MAX_CASES = 45
+MIN_CASES = 44
+MAX_CASES = 48
 REAL_CASES = 10
-MIN_SYNTHETIC_CASES = 33
+MIN_SYNTHETIC_CASES = 36
 MIN_TEST_CASES = 20
 MAX_PREVIOUS = 2
 EDGE_TAGS = (
@@ -55,6 +55,11 @@ EDGE_TAGS = (
     "no_match_stats",
     "first_flop_after_other",
     "drop_just_outside_1m",
+    "entered_1m_not_100k",
+    "drop_inside_top_1m",
+    "stat_swing_not_whole",
+    "personal_worst_not_league",
+    "kept_clean_sheet_against_xg",
 )
 
 

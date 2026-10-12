@@ -6,7 +6,7 @@ sections in order, ties a key moment to a result in its "Z boiska" paragraph, na
 sparingly, jokes only about FPL decisions and uses no vulgar words. They show tone and form only:
 the writer never copies a phrase or a joke from them.
 
-## Example 1 — a „różnica” haul (a differential) and its bonus points decide the gameweek
+## Example 1 — a „różnica” haul (a differential) and its goal decide the gameweek
 
 🎙️ *Presser GW9 — Liga Kawiarniana*
 
@@ -16,7 +16,7 @@ the writer never copies a phrase or a joke from them.
 
 ©️ *Kapitanowie:* Czterech z sześciu postawiło na Salaha i zgarnęło po 12. Lena dała opaskę Palmerowi: 15 punktów, najlepiej w lidze. Markowi Isak odpłacił 2 punktami.
 
-⚽ *Z boiska:* Przewaga Kowala nad Leną to 3 punkty i dokładnie tyle dały mu bonusy Cunhy, którego miał jako jedyny w lidze. Ta różnica zebrała 17 punktów, a w całej grze Cunhę ma poniżej 10% managerów. Haaland, który stał w składach niemal całej ligi, dał po 2 punkty, choć jego xG sięgało 0,9, więc to był pech, a nie forma.
+⚽ *Z boiska:* Przewaga Kowala nad Leną to 3 punkty, a sam gol Cunhy, którego miał jako jedyny w lidze, dał mu 5. Ta różnica zebrała 17 punktów, a w całej grze Cunhę ma poniżej 10% managerów. Haaland, który stał w składach niemal całej ligi, dał po 2 punkty, choć jego xG sięgało 0,9, więc to był pech, a nie forma.
 
 🪑 *Ławka i transfery:* Lena wymieniła Gordona (2) na Foldena (9) i dopisała sobie 7 punktów. Jacek zostawił na ławce 13 punktów, a jedyny autosub dorzucił mu 1.
 

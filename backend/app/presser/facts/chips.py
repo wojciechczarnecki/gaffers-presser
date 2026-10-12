@@ -14,7 +14,7 @@ from app.presser.facts.load import (
     PlayerResult,
     SquadPick,
 )
-from app.presser.facts.schema import ChipPlay, Chips, ChipSquadChange, SquadPlayer
+from app.presser.facts.schema import ChipCount, ChipPlay, Chips, ChipSquadChange, SquadPlayer
 
 MAX_SQUAD_CHANGES = 5
 
@@ -141,4 +141,14 @@ def build_chips(
                 )
             )
     changes.sort(key=lambda change: change.manager)
-    return Chips(plays=plays, squad_changes=changes)
+    return Chips(plays=plays, counts=chip_counts(plays), squad_changes=changes)
+
+
+def chip_counts(plays: list[ChipPlay]) -> list[ChipCount]:
+    counts: dict[str, int] = {}
+    for play in plays:
+        counts[play.chip] = counts.get(play.chip, 0) + 1
+    return sorted(
+        (ChipCount(chip=chip, managers=managers) for chip, managers in counts.items()),
+        key=lambda count: (-count.managers, count.chip),
+    )

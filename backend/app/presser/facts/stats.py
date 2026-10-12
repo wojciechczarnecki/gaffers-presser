@@ -12,10 +12,21 @@ KEEPER_WALL_MIN_SAVE_POINTS = 2
 OWN_KIND_STATS = ("red_cards", "own_goals", "penalties_missed", "penalties_saved")
 # routine points every starter gets or loses: never what decided a moment
 ROUTINE_STATS = ("minutes", "goals_conceded")
+# the stats that can decide a player moment, the most interesting cause first; the events
+# (OWN_KIND_STATS) and a defender's clean sheet are moments of their own
+CAUSE_PRIORITY = (
+    "goals_scored",
+    "assists",
+    "defensive_contribution",
+    "saves",
+    "yellow_cards",
+    "bonus",
+)
 
 
-def can_decide(identifier: str) -> bool:
-    return identifier not in OWN_KIND_STATS and identifier not in ROUTINE_STATS
+def decisive_identifier(swings: dict[str, int], margin: int) -> str | None:
+    """The cause: the first stat in CAUSE_PRIORITY whose own swing reaches the margin."""
+    return next((name for name in CAUSE_PRIORITY if swings.get(name, margin - 1) >= margin), None)
 
 
 def breakdown(result: MatchResult) -> list[StatPoints] | None:
@@ -54,17 +65,18 @@ def moment_breakdown(
 ) -> list[MomentStat] | None:
     if entries is None:
         return None
-    result = []
-    for entry in entries:
-        swing = entry.points * (ahead_multiplier - behind_multiplier)
-        result.append(
-            MomentStat(
-                **dict(entry),
-                swing=swing,
-                decisive=swing >= margin and can_decide(entry.identifier),
-            )
+    swings = {
+        entry.identifier: entry.points * (ahead_multiplier - behind_multiplier) for entry in entries
+    }
+    decisive = decisive_identifier(swings, margin)
+    return [
+        MomentStat(
+            **dict(entry),
+            swing=swings[entry.identifier],
+            decisive=entry.identifier == decisive,
         )
-    return result
+        for entry in entries
+    ]
 
 
 @dataclass(frozen=True)

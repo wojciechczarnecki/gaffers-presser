@@ -38,6 +38,7 @@ class StatPoints(Strict):
 class MomentStat(StatPoints):
     # points * (ahead multiplier - behind multiplier)
     swing: int
+    # at most one per breakdown: the first stat in CAUSE_PRIORITY whose own swing reaches the margin
     decisive: bool
 
 
@@ -62,8 +63,17 @@ class CaptainPick(PlayerStats):
     blank: bool
 
 
+class CaptainGroup(Strict):
+    # the managers who captained the same player with the same multiplier, counted
+    player: str
+    multiplier: int
+    points: int
+    managers: int
+
+
 class Captaincy(Strict):
     picks: list[CaptainPick] = Field(default_factory=list)
+    groups: list[CaptainGroup] = Field(default_factory=list)
     best: list[str] = Field(default_factory=list)
     worst: list[str] = Field(default_factory=list)
 
@@ -139,8 +149,14 @@ class BenchTransfers(Strict):
     auto_subs: list[AutoSub] = Field(default_factory=list)
 
 
+class ChipCount(Strict):
+    chip: str
+    managers: int
+
+
 class Chips(Strict):
     plays: list[ChipPlay] = Field(default_factory=list)
+    counts: list[ChipCount] = Field(default_factory=list)
     squad_changes: list[ChipSquadChange] = Field(default_factory=list)
 
 
@@ -201,6 +217,7 @@ class KeyMoment(Strict):
     kind: Literal[
         "player",
         "clean_sheet_lost",
+        "clean_sheet_kept",
         "red_card",
         "own_goal",
         "penalty_missed",
@@ -221,8 +238,11 @@ class KeyMoment(Strict):
     breakdown: list[MomentStat] | None = None
     # kind bonus_missed_by_one only
     missed_bonus: int | None = None
-    # kind clean_sheet_lost only; null in a double gameweek or without stats
+    # clean-sheet kinds only; null in a double gameweek or without stats
     expected_goals_conceded: Decimal | None = None
+    # clean-sheet kinds only: lost at a low or kept at a high expected_goals_conceded;
+    # null when it is unknown
+    against_xg: bool | None = None
 
 
 class TableRow(Strict):
@@ -317,7 +337,7 @@ class Overall(Strict):
 
 
 class FactSheet(Strict):
-    version: Literal[5] = 5
+    version: Literal[6] = 6
     league: str
     season: str
     gameweek: int

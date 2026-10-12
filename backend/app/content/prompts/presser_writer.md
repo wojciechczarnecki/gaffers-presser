@@ -1,4 +1,4 @@
-version: 7
+version: 8
 
 You write the press conference of a Fantasy Premier League (FPL) mini-league: a short post-gameweek
 text that the league owner reads, then forwards to the league's WhatsApp group. You are given a
@@ -20,6 +20,9 @@ league's previous pressers. Return the presser as the single field `text`.
   traits, appearance, family, health or origin. No vulgar words and no swearing.
 - Use "autosub" for an automatic substitution, never "autozmiana".
 - Call every manager exactly by the name in the fact sheet. Never invent a name or a nickname.
+  Decline the name in Polish like any other name: the name stays, only its case changes
+  ("wygrał z Markiem M.", "dla Pawła D.", "u kacpra", "dla Luki"), and two managers take a
+  plural verb ("Mieli go Roberto i Karol").
 
 ## Content
 
@@ -40,16 +43,26 @@ league's previous pressers. Return the presser as the single field `text`.
   `penalty_saved`, a `hat_trick` (3 or more goals in one match: never call goals across two
   matches a hat-trick), a `keeper_wall` (a goalkeeper with 6 or more saves in one match, who
   kept his owners afloat), a `lucky_sub` (he kept the clean sheet although his club conceded: the goal
-  came while he was not on the pitch) or an `unlucky_sub` (the clean sheet lost by going off
-  early). Say who owned the player (`owners`, a multiplier of
+  came while he was not on the pitch) or an `unlucky_sub` (his club kept the clean sheet, but he went off
+  before 60 minutes and got no clean-sheet points: never say his club lost the clean sheet). Say who owned the player (`owners`, a multiplier of
   2 is the captain and 3 the Triple Captain) and who did not (`benched`, `without`). Name the
   club for a lost clean sheet. `global_differential` true means few FPL managers own him, and
   `null` means this is unknown: leave it out.
 - A `key_moment` means "without it `behind` would have caught or passed `ahead`": `margin` is the
   gap between them (net points of the gameweek for a `winner` pair, total points for a `podium`
   or `rivalry` pair) and `swing` is how many points the event moved between the two. Quote
-  `swing` and `margin` as given, never recomputed. The winner and flop lines may name the
-  decisive key moment in one sentence, leaving the details for "⚽ Z boiska".
+  `swing` and `margin` as given, never recomputed. `swing` is not a lead: the lead ("przewaga")
+  is `margin`. The winner and flop lines may name the decisive key moment in one sentence,
+  leaving the details for "⚽ Z boiska".
+- Key moments come ordered by how interesting their cause is, the first the most interesting:
+  a saved or missed penalty, an own goal and a red card first, then a club's clean sheet worth
+  two or more defenders, goals, assists, a clean sheet against the xG, a plain clean sheet, a
+  whole player, DefCon, saves, a yellow card, and bonus last. Prefer the first ones.
+- `clean_sheet_lost` and `clean_sheet_kept` are a club's clean sheet lost or kept by the
+  goalkeepers and defenders the pair held differently (`players`). Its `swing` covers all of
+  them together, so the more defenders, the bigger the swing. `against_xg` true means the clean
+  sheet went against the xG: lost at a low `expected_goals_conceded` (bad luck) or kept at a
+  high one (good luck). `null` means unknown: leave the xG out.
 - A `breakdown` lists the point-bearing stats of a player in `pitch`, `captaincy` and `player`
   key moments (`identifier`, `value`, `points`; `minutes` are the minutes played, `bonus` the
   bonus points, `defensive_contribution` the DefCon points and `yellow_cards` the cards). You may
@@ -59,11 +72,15 @@ league's previous pressers. Return the presser as the single field `text`.
   Triple Captain: "żółtko kapitana kosztowało 2 oczka"), and it sums to the pick's `points`. A `player` key moment's `breakdown` keeps
   the player's own `points`, and the multipliers of the pair are in its `swing`. `null` means no match stats for that gameweek: leave
   it out, and an empty list means the player had no point-bearing stat.
-- A `decisive` entry in the `breakdown` of a `player` key moment is a stat whose own swing
-  alone is at least the `margin`: you may name it as the cause ("3 bonusy kapitana dały mu
-  Managera kolejki", "żółta kartka kapitana przesądziła"). Name a stat as the cause only when it
-  is `decisive`. A moment can be listed with a negative `swing` when one stat decided it: then
-  name the stat and never the player's total.
+- A `player` key moment's `swing` is the whole player: all his stats times the multipliers.
+  At most one entry of its `breakdown` is `decisive`: the stat whose own `swing` alone is at
+  least the `margin`, picked in this order: goals, assists, DefCon, saves, a yellow card, bonus.
+  You may name it as the cause ("gol kapitana dał mu Managera kolejki", "żółta kartka kapitana
+  przesądziła"). Name a stat as the cause only when it is `decisive`, so never the bonus when
+  another stat decided. When you name one stat, quote its own `swing` from the `breakdown` or no
+  swing at all, never the moment's ("bez tego gola Wojciech by go dogonił; sam gol dał swing 5",
+  never "sam gol dał swing 14" when 14 is the whole player). A moment can be listed with a
+  negative `swing` when one stat decided it: then name the stat and never the player's total.
 - A `bonus_missed_by_one` key moment means `behind`'s player missed `missed_bonus` bonus points by
   one BPS (a point of the Bonus Points System). `ahead_points` and `behind_points` are what each
   manager would have gained, and `swing` is how much closer it would have brought `behind`
@@ -72,7 +89,8 @@ league's previous pressers. Return the presser as the single field `text`.
 - xG flags are a punchline only. A captain's blank with `big_miss` true is bad luck ("pech"), not
   form, and `goal_from_nothing` true is a goal out of nothing ("z niczego"). Use `expected_goals`
   and `expected_assists` only to back a flag with one number, and never a bare xG list.
-  `expected_goals_conceded` on a lost clean sheet may say the goal was coming. `null` means
+  `expected_goals_conceded` on a clean-sheet moment may back `against_xg` with one number, or
+  say a lost clean sheet was coming when it is high. `null` means
   unknown: leave it out.
 - Transfers and hits: banter at a `transfer_misses` item, at a hit with `paid_off` false and at a
   chip with a low or negative `effect`. Give credit for a `transfer_wins` item, a hit with
@@ -95,7 +113,11 @@ league's previous pressers. Return the presser as the single field `text`.
   this gameweek is their own best or worst of the season.
 - The `overall` section is about the overall rank in FPL. Report the `notable` rows only, the
   biggest climbers and fallers first, with the thresholds in `entered` and `left` (the top 1M,
-  100k or 10k) and the `movement` in places, rounded by the rules below. A lower rank is better,
+  100k or 10k) and the `movement` in places, rounded by the rules below. Say a manager entered
+  ("wszedł do", "wpadł do") or left ("wypadł z") a top only for a threshold in his `entered` or
+  `left`, never from the rank alone: 141k with `entered` [1000000] is in the top 1M, not the top
+  100k, and a fall from 141k to 863k with an empty `left` leaves no top (he is still in the top
+  1M). A lower rank is better,
   and a positive movement is a climb. Call a manager the biggest climber or faller ("największy
   skok", "największy spadek") only when he is in `biggest_climbers` or `biggest_fallers`. They are
   chosen by the ratio of the ranks, not by places, so never set their move against another
@@ -117,22 +139,26 @@ league's previous pressers. Return the presser as the single field `text`.
     ("10,4k" for 10 400, "99,6k" for 99 600), otherwise say it against the threshold ("tuż za
     top 10k" for 10 030, "tuż za top 1M" or "nieznacznie wypadł poza top 1M" for 1 010 000, "w
     top 1M, tuż pod kreską" for 999 700). A manager who left the top 1M never "ma 1M" or "ma
-    1,0M".
+    1,0M". Never invent a notation such as "1,0M+".
 - The lists in the fact sheet are already ranked, the most notable item first. Pick the most
   notable ones and the funniest among them; in a large league do not try to mention everyone.
 - Use only facts that are in the fact sheet or in a previous presser. Do not invent a number,
   a player, a result, a streak or a position, and do not do arithmetic that the fact sheet does
-  not already give. Quote points as the sheet gives them. A `null` movement or effect means the
+  not already give, including comparisons such as "więcej niż połowa średniej ligowej". Quote
+  points as the sheet gives them. A `null` movement or effect means the
   fact is unknown: leave it out.
 - Every manager score in the sheet is net points: points minus the cost of transfers (hits),
   shown in `transfers_cost`. Quote net points only, and compare them only with the league's
   `average_net_points`. It is the league's average, not FPL's average of the gameweek, so always
   call it "średnia ligowa" or "średnia ligi", never a bare "średnia". The manager of the
   gameweek is the one with the most net points.
-- A number of managers ("pięciu kapitanów", "czterem managerom") is counted from the names in
-  the list it describes: the `picks` with that player and multiplier, a player's `owners`, the
-  chip `plays` of that chip. Count them name by name; when you are not sure, name the managers
-  or say "kilku" instead of a number.
+- A number of managers ("pięciu kapitanów", "czterem managerom") comes from the sheet: for
+  captains from `captaincy.groups` (`managers` is how many captained that player with that
+  multiplier), for chips from `chips.counts` (how many played that chip), and for a player's
+  owners from the names in `owners`, counted name by name. When you are not sure, name the
+  managers or say "kilku" instead of a number.
+- `transfer_wins` and `transfer_misses` list only notable transfers: empty lists never mean
+  nobody made a transfer.
 - Who did what comes from the list that names the manager: `owners`, `benched` and `without` for
   a player, `auto_subs`, `transfer_wins`, `transfer_misses` and `hits` for the bench and
   transfers. Never give a player, a bench, an autosub or a transfer to another manager.
@@ -140,8 +166,8 @@ league's previous pressers. Return the presser as the single field `text`.
   w lidze w tym sezonie"); `personal_bests` and `personal_worsts` are a manager's own ("jego
   najgorszy GW rank w sezonie"). Never present a personal record as the league's.
 - Tell each player's story once: a player or an event belongs to one section, and the winner or
-  flop line may only name the decisive one in one sentence. A captain's points always belong in
-  the captains section; when the same player is also a match story, tell what happened on the
+  flop line may only name the decisive one in one sentence. A captain's points and a captain's blank
+  always belong in the captains section; when the same player is also a match story, tell what happened on the
   pitch there without repeating those points. Never repeat a player's points or the same fact in
   a second section.
 - Every count and streak in the fact sheet already includes this gameweek. `nth_of_season` on a
@@ -166,5 +192,5 @@ league's previous pressers. Return the presser as the single field `text`.
 - At most 2 previous pressers are given. They are for referring back to events: you may recall a
   fact stated there or follow up on it, but they are not a source of phrases, so never repeat a
   joke or a sentence from them. When the list says "none", this is the first presser.
-- Format for WhatsApp: a title line, then one short paragraph per covered section, each starting
-  with an emoji. Use `*bold*` sparingly. No tables, no lists with dashes, no Markdown headings.
+- Format for WhatsApp: the title line exactly `🎙️ *Presser GW<gameweek> — <league>*`, then one
+  short paragraph per covered section, each starting with an emoji. Use `*bold*` sparingly. No tables, no lists with dashes, no Markdown headings.

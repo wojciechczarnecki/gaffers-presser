@@ -22,8 +22,8 @@ def test_the_committed_set_has_no_composition_problems():
     assert composition_problems(CASES) == []
 
 
-def test_split_is_twenty_one_and_twenty_two_with_real_and_synthetic_in_each():
-    for split, size, synthetic in (("dev", 21, 16), ("test", 22, 17)):
+def test_split_is_twenty_two_and_twenty_four_with_real_and_synthetic_in_each():
+    for split, size, synthetic in (("dev", 22, 17), ("test", 24, 19)):
         in_split = [case for case in CASES if case.split == split]
         assert len(in_split) == size
         assert sum(case.source == "real" for case in in_split) == 5
@@ -65,8 +65,8 @@ def _without_rank_values(value):
     return value
 
 
-def test_the_set_has_43_cases_and_the_rank_cases():
-    assert len(CASES) == 43
+def test_the_set_has_46_cases_and_the_rank_cases():
+    assert len(CASES) == 46
     tags = {tag for case in CASES for tag in case.tags}
     assert {"enter_top_10k", "rise_in_top_10k", "drop_out_of_top_1m", "gw_rank_unknown"} <= tags
 
@@ -96,6 +96,20 @@ def test_rank_cases_show_what_their_tag_says():
     assert last.gameweek == flop_case.facts.gameweek - 1
     (flop_line,) = [line for line in last.text.splitlines() if "Wtopa kolejki:*" in line]
     assert flop.manager not in flop_line
+    (into_1m,) = [row for row in by_tag["entered_1m_not_100k"].facts.overall.rows if row.entered]
+    assert into_1m.entered == [1_000_000] and 100_000 < into_1m.overall_rank < 150_000
+    (inside,) = [
+        row
+        for row in by_tag["drop_inside_top_1m"].facts.overall.rows
+        if row.notable and row.movement is not None and row.movement < 0
+    ]
+    assert inside.left == [] and inside.previous_overall_rank < inside.overall_rank < 1_000_000
+    worst_case = by_tag["personal_worst_not_league"].facts
+    (flop,) = worst_case.flops
+    (personal,) = worst_case.season_facts.personal_worsts
+    (league,) = worst_case.season_facts.worst_gameweek
+    assert personal.manager == flop.manager != league.manager
+    assert personal.gameweek_rank == flop.gameweek_rank < league.gameweek_rank
     unknown = by_tag["gw_rank_unknown"].facts
     assert all(score.gameweek_rank is None for score in unknown.winners + unknown.flops)
     assert unknown.season_facts.best_gameweek == [] and "overall" in unknown.empty_sections
@@ -177,6 +191,15 @@ def test_full_stats_cases_show_what_their_tag_says():
     assert any(i.global_differential or i.league_differential for i in walls)
     assert any(p.big_miss for p in _synthetic("captain_big_miss").captaincy.picks)
     assert any(i.goal_from_nothing for i in _synthetic("goal_from_nothing").pitch.items)
+    whole = _synthetic("stat_swing_not_whole").key_moments
+    assert any(
+        entry.decisive and entry.swing < moment.swing
+        for moment in whole
+        for entry in moment.breakdown or []
+    )
+    kept = _synthetic("kept_clean_sheet_against_xg").key_moments
+    assert kept[0].kind == "clean_sheet_kept" and kept[0].against_xg is True
+    assert len(kept[0].players) >= 2
     lost = _synthetic("lost_clean_sheet_xgc").key_moments
     assert any(m.kind == "clean_sheet_lost" and m.expected_goals_conceded is not None for m in lost)
     facts = _synthetic("double_gameweek_bps")

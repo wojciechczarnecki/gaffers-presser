@@ -246,8 +246,8 @@ def test_penalty_save_is_a_moment(world):
     pick(world, 12, 40, [])
     result = moments(world)
     assert [(m.kind, m.players, m.swing) for m in result] == [
-        ("player", ["Saver"], 11),
         ("penalty_saved", ["Saver"], 5),
+        ("player", ["Saver"], 11),
     ]
 
 
@@ -427,7 +427,8 @@ def test_goals_conceded_entry_never_decisive(world):
     assert moments(world) == []
 
 
-def test_decisive_moment_ranks_by_its_decisive_swing(world):
+def test_whole_player_ranks_above_a_yellow_card_cause(world):
+    # Zed and Wee decide as whole players (tier 6), Apple's captain yellow card (tier 9) after
     booked = [stats(501, minutes=(90, 2), yellow_cards=(1, -1))]
     zed = [stats(501, minutes=(90, 2), bonus=(1, 1))]
     player(world, 1, "Apple", 1, explain=booked, live_stats=live())
@@ -436,7 +437,7 @@ def test_decisive_moment_ranks_by_its_decisive_swing(world):
     pick(world, 10, 60, [2, 3])
     pick(world, 11, 58, [1], captain=1)
     pick(world, 12, 10, [])
-    assert [m.players[0] for m in moments(world)] == ["Zed", "Apple", "Wee"]
+    assert [m.players[0] for m in moments(world)] == ["Zed", "Wee", "Apple"]
 
 
 def test_player_moment_without_live_stats_has_no_breakdown(world):
@@ -627,3 +628,67 @@ def test_lost_clean_sheet_xgc_null_without_stats(world):
 def test_lost_clean_sheet_xgc_comes_from_a_player_with_stats(world):
     moment = lost_sheet(world, None, live(xgc="1.10"))
     assert moment.expected_goals_conceded == Decimal("1.10")
+
+
+def test_lost_clean_sheet_against_the_xg_only_at_a_low_xgc(world):
+    assert lost_sheet(world, live(xgc="1.40"), live(xgc="1.10")).against_xg is False
+
+
+def test_lost_clean_sheet_at_a_low_xgc_goes_against_the_xg(world):
+    assert lost_sheet(world, live(xgc="0.30"), live(xgc="0.20")).against_xg is True
+
+
+def test_lost_clean_sheet_against_the_xg_unknown_without_stats(world):
+    assert lost_sheet(world, None, None).against_xg is None
+
+
+def test_kept_clean_sheet_of_two_defenders_ranks_above_a_goal(world):
+    world.fixture(501, 5, 2, 1, 1, 0)
+    kept = [stats(501, minutes=(90, 2), clean_sheets=(1, 4))]
+    player(world, 1, "Zeta", 6, position=1, club=2, explain=kept, live_stats=live(xgc="1.70"))
+    player(world, 2, "Left", 6, position=2, club=2, explain=kept, live_stats=live(xgc="1.60"))
+    scored = [stats(501, minutes=(90, 2), goals_scored=(1, 5))]
+    player(world, 3, "Gol", 7, club=2, explain=scored, live_stats=live(goals=1))
+    pick(world, 10, 60, [1, 2, 3])
+    pick(world, 11, 55, [])
+    pick(world, 12, 40, [])
+    result = moments(world)
+    # the defenders' own moments (6 points, 4 of them the clean sheet) are told by the club's
+    assert [(m.kind, m.players) for m in result] == [
+        ("clean_sheet_kept", ["Left", "Zeta"]),
+        ("player", ["Gol"]),
+    ]
+    kept_moment = result[0]
+    assert (kept_moment.swing, kept_moment.margin, kept_moment.club) == (8, 5, "Klub Drugi")
+    # equal minutes: the xGC comes from the first player by name
+    assert kept_moment.expected_goals_conceded == Decimal("1.60")
+    assert kept_moment.against_xg is True
+
+
+def test_single_kept_clean_sheet_ranks_below_a_goal(world):
+    world.fixture(501, 5, 2, 1, 1, 0)
+    kept = [stats(501, minutes=(90, 2), clean_sheets=(1, 4))]
+    player(world, 1, "Zeta", 6, position=1, club=2, explain=kept, live_stats=live(xgc="0.40"))
+    scored = [stats(501, minutes=(90, 2), goals_scored=(1, 5))]
+    player(world, 3, "Gol", 7, club=2, explain=scored, live_stats=live(goals=1))
+    pick(world, 10, 60, [1, 3])
+    pick(world, 11, 56, [])
+    pick(world, 12, 40, [])
+    assert [(m.kind, m.against_xg) for m in moments(world)] == [
+        ("player", None),
+        ("clean_sheet_kept", False),
+    ]
+
+
+def test_goal_is_the_cause_before_bonus(world):
+    explain = [stats(501, minutes=(90, 2), goals_scored=(1, 5), bonus=(3, 3))]
+    player(world, 1, "Haulman", 10, explain=explain, live_stats=live(goals=1))
+    pick(world, 10, 60, [1])
+    pick(world, 11, 57, [])
+    pick(world, 12, 10, [])
+    (moment,) = moments(world)
+    assert [(e.identifier, e.decisive) for e in moment.breakdown] == [
+        ("goals_scored", True),
+        ("bonus", False),
+        ("minutes", False),
+    ]

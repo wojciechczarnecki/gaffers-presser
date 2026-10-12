@@ -44,7 +44,7 @@ def problems_with(mutate):
 
 
 def test_case_count_outside_range():
-    assert any("cases: 40" in p for p in problems_with(lambda c: [c.pop() for _ in range(3)]))
+    assert any("cases: 43" in p for p in problems_with(lambda c: [c.pop() for _ in range(5)]))
     assert any(
         "cases:" in p
         for p in problems_with(lambda c: c.extend([case("x1"), case("x2"), case("x3")]))
@@ -92,7 +92,7 @@ def _mutated(mutate):
 def test_small_test_split():
     def mutate(cases):
         for index in range(len(cases)):
-            if cases[index].id in ("real-9", "syn-no_team"):
+            if cases[index].id in ("real-5", "real-6", "real-7", "real-8", "real-9"):
                 cases[index] = cases[index].model_copy(update={"split": "dev"})
 
     assert any("test split: 19" in p for p in problems_with(mutate))

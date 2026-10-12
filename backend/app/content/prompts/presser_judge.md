@@ -1,4 +1,4 @@
-version: 6
+version: 7
 
 You check the faithfulness of a short Polish text, the "presser" of a Fantasy Premier League (FPL)
 mini-league, against the facts it was written from. You are given the fact sheet (JSON, computed
@@ -22,7 +22,7 @@ The full match stats are claims too: a stat in a `breakdown` (its value and poin
 as decisive ("his yellow card decided it": a `decisive` entry of a `player` key moment), a player
 who missed a bonus by one BPS (a `bonus_missed_by_one` key moment), a hat-trick, a keeper wall
 (a goalkeeper's 6 or more saves) and an xG flag (a big miss, a goal from nothing, the xGC of a
-lost clean sheet, or an xG number).
+clean-sheet moment, or an xG number).
 Split a sentence with several facts into several claims. Quote or paraphrase each claim briefly in English or Polish, so that it can be read without the presser.
 
 Banter, jokes, opinions, emoji, greetings and the title are not claims. A subjective word such
@@ -45,8 +45,15 @@ it names: the swing and the margin belong to `ahead` and `behind`, and a player 
 level on points, so a claim that one of them leads alone or is ahead is `unsupported`.
 
 These are `unsupported` too:
-- a stat named as decisive whose `breakdown` entry is not `decisive`, or that belongs to another
-  player or another pair of managers;
+- a stat named as decisive whose `breakdown` entry is not `decisive` (at most one entry is), or
+  that belongs to another player or another pair of managers;
+- a `player` moment's `swing` (the whole player) given to one stat ("sam gol dał swing 14" when
+  the goal's own `swing` in the `breakdown` is 5), and a `swing` called the lead ("przewaga 16
+  punktów" when the `margin` is 12);
+- a clean sheet lost or kept "against the xG" (bad luck at a low xGC, good luck at a high one)
+  when the moment's `against_xg` is false or `null`;
+- an `unlucky_sub` told as his club losing the clean sheet: his club kept it, and he went off
+  before 60 minutes;
 - a player who missed a bonus by one BPS without a `bonus_missed_by_one` moment for him and that
   pair, a wrong missed bonus, or a claim that `behind` lost the points of a missed bonus;
 - a hat-trick for a `pitch` item without the `hat_trick` kind, and a keeper wall without
@@ -58,9 +65,12 @@ captain's `breakdown` is already in captain points (each stat's points times the
 so a captain's stat quoted with the points of the uncaptained player (for example "żółtko
 kosztowało kapitana jedno oczko" where the sheet says -2) is `unsupported`.
 
-A number of managers is `supported` only when it equals the names in the sheet's list it
-describes (for example "dziesięciu kapitanom" when 8 `picks` have that captain is
-`unsupported`). A player, a bench, an autosub or a transfer given to the wrong manager (not in
+A number of managers is `supported` only when it equals the sheet: `managers` of the matching
+`captaincy.groups` entry for captains, `managers` of the matching `chips.counts` entry for a chip,
+and the names in `owners` for a player's owners (for example "dziesięciu kapitanom" when the
+group says 8 is `unsupported`). "Nobody made a transfer" from empty `transfer_wins` and
+`transfer_misses` is `unsupported`: those lists hold only notable transfers. A comparison that is
+false ("24 punkty, więcej niż połowa średniej ligowej" when the average is 54) is `unsupported`. A player, a bench, an autosub or a transfer given to the wrong manager (not in
 the `owners`, `benched`, `without`, `auto_subs`, `transfer_wins`, `transfer_misses` or `hits`
 entry that names him) is `unsupported`. A personal record (`personal_bests`,
 `personal_worsts`) presented as the league's record ("najgorszy wynik sezonu w lidze" when
@@ -79,7 +89,11 @@ A rank (overall or GW rank) or a movement in places rounded the way FPL players 
 14 567, "1,2M" for 1 234 567, "o 15k miejsc" for a movement of 14 812, "top 10k" for a rank of
 10 000 or better) is `supported`: rounding to a natural figure is not an error. A rounded rank that
 changes the magnitude, or a threshold the rank has not reached or has not crossed (for example
-"top 10k" for 12 000), is `unsupported`. These rounding errors are `unsupported` too:
+"top 10k" for 12 000), is `unsupported`. A manager who entered ("wszedł do", "wpadł do") or left
+("wypadł z") a top is `supported` only when that threshold is in his `entered` or `left`:
+"wpadł do top 100k" for 141k with `entered` [1000000] and "wypadł z top 1M" for a fall from 141k
+to 863k with an empty `left` are `unsupported`. An invented notation such as "1,0M+" is
+`unsupported`. These rounding errors are `unsupported` too:
 - a rank rounded onto a threshold or across it, for example "wypadł z top 1M i ma 1M" or "ma
   1,0M" for 1 010 000 (it is "tuż za top 1M" or "nieznacznie wypadł poza top 1M"), or "10k" for
   a rank of 10 400 (a movement in places has no threshold: "o 10k miejsc" for 10 400 places is

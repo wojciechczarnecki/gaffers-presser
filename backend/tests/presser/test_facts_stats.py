@@ -212,7 +212,7 @@ def test_data_only_stats_absent_from_the_schema():
     assert not DATA_ONLY & names
 
 
-def test_gameweek_without_match_stats_builds_a_v5_sheet(world):
+def test_gameweek_without_match_stats_builds_a_v6_sheet(world):
     world.fixture(501, 5, 1, 2, 0, 0)
     player(world, 1, "Haulman", 14, [])
     player(world, 2, "Sent", -2, [stats(501, minutes=(40, 1), red_cards=(1, -3))])
@@ -226,7 +226,7 @@ def test_gameweek_without_match_stats_builds_a_v5_sheet(world):
     pick(world, 11, 55, [2, 3, 4])
     pick(world, 12, 40, [])
     result = sheet(world)
-    assert result.version == 5
+    assert result.version == 6
     kinds = {i.player: i.kinds for i in result.pitch.items}
     assert kinds == {
         "Haulman": ["differential_haul"],

@@ -26,9 +26,9 @@ WRITER_HEADERS = (
 )
 
 
-def test_writer_prompt_v7_rules():
+def test_writer_prompt_v8_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 7
+    assert prompt.version == 8
     positions = [prompt.text.index(header) for header in WRITER_HEADERS]
     assert positions == sorted(positions)
     assert prompt.text.index("⚽") < prompt.text.index("🪑")
@@ -76,13 +76,29 @@ def test_writer_prompt_v7_rules():
         "`nth_of_season`, `gameweek_wins_to_date` and `gameweek_flops_to_date`",
         "`captain_blank_streak` of 2 or more",
         "neither a\n  count nor a streak",
-        "Count them name by name",
+        "counted name by name",
+        "`captaincy.groups`",
+        "`chips.counts`",
+        "never from the rank alone",
+        "is in the top 1M, not the top\n  100k",
+        '"1,0M+"',
+        "Decline the name in Polish",
+        "`clean_sheet_kept`",
+        "`against_xg` true",
+        "goals, assists, DefCon, saves, a yellow card, bonus",
+        "never the bonus when\n  another stat decided",
+        "never the moment's",
+        "`swing` is not a lead",
+        "never say his club lost the clean sheet",
+        "empty lists never mean\n  nobody made a transfer",
+        "więcej niż połowa średniej ligowej",
+        "`🎙️ *Presser GW<gameweek> — <league>*`",
         "Never give a player, a bench, an autosub or a transfer to another manager",
         "Never present a personal record as the league's",
         "Tell each player's story once",
         "only when he is in `biggest_climbers` or `biggest_fallers`",
         "never with more than one decimal",
-        "A captain's points always belong in",
+        "A captain's points and a captain's blank",
         "the player's own `points`, and the multipliers of the pair are in its `swing`",
     ):
         assert needle in prompt.text, needle
@@ -90,9 +106,9 @@ def test_writer_prompt_v7_rules():
     assert "mln" not in prompt.text.replace('"mln"', "")
 
 
-def test_judge_prompt_v6_checks_counts_streaks_and_rounding():
+def test_judge_prompt_v7_checks_counts_streaks_and_rounding():
     prompt = load_prompt("presser_judge")
-    assert prompt.version == 6
+    assert prompt.version == 7
     for needle in (
         "pitch",
         "key moment",
@@ -133,6 +149,15 @@ def test_judge_prompt_v6_checks_counts_streaks_and_rounding():
         "more than one decimal",
         "a movement in places has no threshold",
         '"kolejny raz") is',
+        "`captaincy.groups`",
+        "`chips.counts`",
+        "only when that threshold is in his `entered` or `left`",
+        '"1,0M+"',
+        "sam gol dał swing 14",
+        "`against_xg` is false or `null`",
+        "`unlucky_sub`",
+        "only notable transfers",
+        "A comparison that is\nfalse",
     ):
         assert needle in prompt.text, needle
     assert "mln" not in prompt.text
@@ -195,7 +220,7 @@ def test_style_examples_eight_headers_no_shared_sentence():
         assert any(name in sections[3] for name in named), named
         assert "gw rank" in "\n".join(sections).casefold()
         pitch = sections[3].casefold()
-        assert any(stat in pitch for stat in ("bonus", "żółt", "defcon", "bps")), pitch
+        assert any(stat in pitch for stat in ("gol", "bonus", "żółt", "defcon", "bps")), pitch
         assert any(punchline in pitch for punchline in ("xg", "pech", "z niczego")), pitch
         sentence_sets.append(set(_sentences(sections)))
         words = re.findall(r"\w+", HEADER_LABEL.sub("", "\n".join(sections)).casefold())
