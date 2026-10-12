@@ -26,9 +26,9 @@ WRITER_HEADERS = (
 )
 
 
-def test_writer_prompt_v11_rules():
+def test_writer_prompt_v12_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 11
+    assert prompt.version == 12
     positions = [prompt.text.index(header) for header in WRITER_HEADERS]
     assert positions == sorted(positions)
     assert prompt.text.index("⚽") < prompt.text.index("🪑")
@@ -100,7 +100,7 @@ def test_writer_prompt_v11_rules():
         "only when he is in `biggest_climbers` or `biggest_fallers`",
         "never with more than one decimal",
         "A captain's points always belong in",
-        "the player's own `points`, and the multipliers of the pair are in its `swing`",
+        "the multipliers of the\n  pair are in its `swing`",
     ):
         assert needle in prompt.text, needle
     assert prompt.text.index("`table`") < prompt.text.index("`overall`")
