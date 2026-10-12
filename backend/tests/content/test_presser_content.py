@@ -26,9 +26,9 @@ WRITER_HEADERS = (
 )
 
 
-def test_writer_prompt_v10_rules():
+def test_writer_prompt_v11_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 10
+    assert prompt.version == 11
     positions = [prompt.text.index(header) for header in WRITER_HEADERS]
     assert positions == sorted(positions)
     assert prompt.text.index("⚽") < prompt.text.index("🪑")
@@ -46,6 +46,7 @@ def test_writer_prompt_v10_rules():
         "penalty_saved",
         "kept the clean sheet although his club conceded",
         "team_name",
+        "once or twice in the presser",
         "only where it sounds natural",
         "never copy",
         "gameweek_rank",
