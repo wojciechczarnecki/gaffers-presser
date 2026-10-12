@@ -242,7 +242,7 @@ class KeyMoment(Strict):
     expected_goals_conceded: Decimal | None = None
     # clean-sheet kinds only: lost at a low or kept at a high expected_goals_conceded;
     # null when it is unknown
-    against_xg: bool | None = None
+    against_xgc: bool | None = None
 
 
 class TableRow(Strict):

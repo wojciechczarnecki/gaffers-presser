@@ -89,7 +89,7 @@ and each LLM step that produces data has an evaluation set with recorded results
       season counts and streaks only from their fields, "M" for millions, the judge flags
       threshold rounding, "różnica" in the glossary, evaluation set v5 (fast path, no spec)
 - [x] Presser fixes from the owner's reading of the writer 7 pressers: one decisive stat in the
-      owner's order of interest, a club's kept clean sheet and `against_xg`, key moments sorted
+      owner's order of interest, a club's kept clean sheet and `against_xgc`, key moments sorted
       by their cause, captain and chip counts in the sheet, thresholds only from `entered` and
       `left`, declined names, a fixed title, evaluation set v6 (fast path, no spec)
 - [ ] Presser model comparison with the owner's ratings: report, ADR and the new

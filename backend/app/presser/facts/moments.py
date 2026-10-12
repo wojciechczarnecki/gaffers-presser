@@ -11,21 +11,24 @@ MAX_KEY_MOMENTS = 5
 EVENT_KINDS = ("red_card", "own_goal", "penalty_missed", "penalty_saved")
 CLEAN_SHEET_KINDS = ("clean_sheet_lost", "clean_sheet_kept")
 PAIR_ORDER = {"winner": 0, "podium": 1, "rivalry": 2}
-# a clean sheet lost below or kept from this many expected goals conceded went against the xG
-LOST_AGAINST_XG_BELOW = Decimal("0.50")
-KEPT_AGAINST_XG_FROM = Decimal("1.50")
+# a clean sheet lost below or kept from this many expected goals conceded went against the xGC
+LOST_AGAINST_XGC_BELOW = Decimal("0.50")
+KEPT_AGAINST_XGC_FROM = Decimal("1.50")
 # a club's clean sheet worth at least two defenders' points between the pair outranks goals
 AMPLIFIED_CLEAN_SHEET_SWING = 2 * CLEAN_SHEET_POINTS
 # the cause of a moment, the most interesting first (the owner's order, DECISIONS 2026-10-12):
-# events, an amplified clean sheet, goals, assists, a clean sheet against the xG, a plain clean
-# sheet, a whole player with no single deciding stat, DefCon, saves, a yellow card, bonus
+# events, an amplified clean sheet, goals, assists, a clean sheet against the xGC, a plain clean
+# sheet, a whole player with no single deciding stat, DefCon, saves, a yellow card, bonus, a
+# midfielder's clean sheet
 EVENT_TIER = 0
 AMPLIFIED_CLEAN_SHEET_TIER = 1
-CLEAN_SHEET_AGAINST_XG_TIER = 4
+CLEAN_SHEET_AGAINST_XGC_TIER = 4
 CLEAN_SHEET_TIER = 5
 WHOLE_PLAYER_TIER = 6
 BONUS_TIER = 10
 STAT_TIERS = {
+    # a midfielder's clean sheet point; a goalkeeper's or a defender's is his club's moment
+    "clean_sheets": 11,
     "goals_scored": 2,
     "assists": 3,
     "defensive_contribution": 7,
@@ -72,13 +75,21 @@ def _decisive_swing(moment: KeyMoment) -> int | None:
     return None if entry is None else entry.swing
 
 
+def counted_swing(moment: KeyMoment) -> int:
+    """The swing without the routine points (minutes, goals conceded) of a player moment."""
+    routine = sum(
+        entry.swing for entry in moment.breakdown or [] if entry.identifier in ROUTINE_STATS
+    )
+    return moment.swing - routine
+
+
 def _tier(moment: KeyMoment) -> int:
     if moment.kind in EVENT_KINDS:
         return EVENT_TIER
     if moment.kind in CLEAN_SHEET_KINDS:
         if moment.swing >= AMPLIFIED_CLEAN_SHEET_SWING:
             return AMPLIFIED_CLEAN_SHEET_TIER
-        return CLEAN_SHEET_AGAINST_XG_TIER if moment.against_xg else CLEAN_SHEET_TIER
+        return CLEAN_SHEET_AGAINST_XGC_TIER if moment.against_xgc else CLEAN_SHEET_TIER
     if moment.kind == "bonus_missed_by_one":
         return BONUS_TIER
     entry = _decisive(moment)
@@ -86,18 +97,18 @@ def _tier(moment: KeyMoment) -> int:
 
 
 def _cause_key(moment: KeyMoment) -> tuple[int, bool, int]:
-    """Sorts a pair's moments by the cause: its tier, against the xG first, then its swing."""
+    """Sorts a pair's moments by the cause: its tier, against the xGC first, then its swing."""
     decisive = _decisive_swing(moment)
-    swing = moment.swing if decisive is None else decisive
-    return (_tier(moment), not moment.against_xg, -swing)
+    swing = counted_swing(moment) if decisive is None else decisive
+    return (_tier(moment), not moment.against_xgc, -swing)
 
 
-def against_xg(kind: str, conceded_xg: Decimal | None) -> bool | None:
+def against_xgc(kind: str, conceded_xg: Decimal | None) -> bool | None:
     if conceded_xg is None:
         return None
     if kind == "clean_sheet_lost":
-        return conceded_xg < LOST_AGAINST_XG_BELOW
-    return conceded_xg >= KEPT_AGAINST_XG_FROM
+        return conceded_xg < LOST_AGAINST_XGC_BELOW
+    return conceded_xg >= KEPT_AGAINST_XGC_FROM
 
 
 def _conceded_xg(
@@ -184,7 +195,7 @@ def _pair_moments(
             ahead_points,
             behind_points,
             expected_goals_conceded=conceded_xg,
-            against_xg=against_xg(kind, conceded_xg),
+            against_xgc=against_xgc(kind, conceded_xg),
         )
 
     found: list[KeyMoment] = []
@@ -227,7 +238,8 @@ def _pair_moments(
                 pair.margin,
             ),
         )
-        if player_id in in_club_moment and _decisive(player_moment) is None:
+        cause = _decisive(player_moment)
+        if player_id in in_club_moment and (cause is None or cause.identifier == "clean_sheets"):
             # without the clean sheet and the routine points, did the rest of his game decide?
             told = sum(
                 entry.swing
@@ -303,7 +315,7 @@ def _pair_moments(
                 missed_bonus=miss.missed_bonus,
             )
         )
-    return [m for m in found if m.swing >= pair.margin or _decisive_swing(m) is not None]
+    return [m for m in found if counted_swing(m) >= pair.margin or _decisive_swing(m) is not None]
 
 
 def build_key_moments(

@@ -55,13 +55,15 @@ league's previous pressers. Return the presser as the single field `text`.
   is `margin`. The winner and flop lines may name the decisive key moment in one sentence,
   leaving the details for "⚽ Z boiska".
 - Key moments come ordered by how interesting their cause is, the first the most interesting:
-  a saved or missed penalty, an own goal and a red card first, then a club's clean sheet worth
-  two or more defenders, goals, assists, a clean sheet against the xG, a plain clean sheet, a
-  whole player, DefCon, saves, a yellow card, and bonus last. Prefer the first ones.
+  a saved or missed penalty, an own goal and a red card first, then a club's clean sheet (kept
+  or lost) worth two or more defenders, goals, assists, a clean sheet against the xGC, a plain
+  clean sheet, a whole player (several stats together, none deciding alone), DefCon, saves, a
+  yellow card, bonus, and a midfielder's clean sheet point last. The minutes a player gets for
+  playing never decide anything. Prefer the first ones.
 - `clean_sheet_lost` and `clean_sheet_kept` are a club's clean sheet lost or kept by the
   goalkeepers and defenders the pair held differently (`players`). Its `swing` covers all of
-  them together, so the more defenders, the bigger the swing. `against_xg` true means the clean
-  sheet went against the xG: lost at a low `expected_goals_conceded` (bad luck) or kept at a
+  them together, so the more defenders, the bigger the swing. `against_xgc` true means the clean
+  sheet went against the xGC: lost at a low `expected_goals_conceded` (bad luck) or kept at a
   high one (good luck). `null` means unknown: leave the xG out.
 - A `breakdown` lists the point-bearing stats of a player in `pitch`, `captaincy` and `player`
   key moments (`identifier`, `value`, `points`; `minutes` are the minutes played, `bonus` the
@@ -74,7 +76,8 @@ league's previous pressers. Return the presser as the single field `text`.
   it out, and an empty list means the player had no point-bearing stat.
 - A `player` key moment's `swing` is the whole player: all his stats times the multipliers.
   At most one entry of its `breakdown` is `decisive`: the stat whose own `swing` alone is at
-  least the `margin`, picked in this order: goals, assists, DefCon, saves, a yellow card, bonus.
+  least the `margin`, picked in this order: goals, assists, DefCon, saves, a yellow card, bonus,
+  a midfielder's clean sheet.
   You may name it as the cause ("gol kapitana dał mu Managera kolejki", "żółta kartka kapitana
   przesądziła"). Name a stat as the cause only when it is `decisive`, so never the bonus when
   another stat decided. When you name one stat, quote its own `swing` from the `breakdown` or no
@@ -89,7 +92,7 @@ league's previous pressers. Return the presser as the single field `text`.
 - xG flags are a punchline only. A captain's blank with `big_miss` true is bad luck ("pech"), not
   form, and `goal_from_nothing` true is a goal out of nothing ("z niczego"). Use `expected_goals`
   and `expected_assists` only to back a flag with one number, and never a bare xG list.
-  `expected_goals_conceded` on a clean-sheet moment may back `against_xg` with one number, or
+  `expected_goals_conceded` on a clean-sheet moment may back `against_xgc` with one number, or
   say a lost clean sheet was coming when it is high. `null` means
   unknown: leave it out.
 - Transfers and hits: banter at a `transfer_misses` item, at a hit with `paid_off` false and at a

@@ -50,8 +50,8 @@ These are `unsupported` too:
 - a `player` moment's `swing` (the whole player) given to one stat ("sam gol dał swing 14" when
   the goal's own `swing` in the `breakdown` is 5), and a `swing` called the lead ("przewaga 16
   punktów" when the `margin` is 12);
-- a clean sheet lost or kept "against the xG" (bad luck at a low xGC, good luck at a high one)
-  when the moment's `against_xg` is false or `null`;
+- a clean sheet lost or kept "against the xGC" (bad luck at a low xGC, good luck at a high one)
+  when the moment's `against_xgc` is false or `null`;
 - an `unlucky_sub` told as his club losing the clean sheet: his club kept it, and he went off
   before 60 minutes;
 - a player who missed a bonus by one BPS without a `bonus_missed_by_one` moment for him and that

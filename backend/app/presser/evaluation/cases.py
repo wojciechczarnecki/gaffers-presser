@@ -59,7 +59,7 @@ EDGE_TAGS = (
     "drop_inside_top_1m",
     "stat_swing_not_whole",
     "personal_worst_not_league",
-    "kept_clean_sheet_against_xg",
+    "kept_clean_sheet_against_xgc",
 )
 
 

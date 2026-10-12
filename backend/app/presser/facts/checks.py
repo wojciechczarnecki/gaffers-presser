@@ -3,7 +3,12 @@ from decimal import Decimal
 from app.presser.facts import ranks
 from app.presser.facts.chips import chip_counts
 from app.presser.facts.gameweek import BLANK_MAX_POINTS, captain_groups
-from app.presser.facts.moments import CLEAN_SHEET_KINDS, MAX_KEY_MOMENTS, against_xg
+from app.presser.facts.moments import (
+    CLEAN_SHEET_KINDS,
+    MAX_KEY_MOMENTS,
+    against_xgc,
+    counted_swing,
+)
 from app.presser.facts.pitch import MAX_PITCH_ITEMS
 from app.presser.facts.schema import FactSheet, PlayerStats, empty_sections
 from app.presser.facts.stats import (
@@ -213,7 +218,7 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
         if moment.margin <= 0:
             problems.append("key moments: a margin is not positive")
         missed = moment.kind == "bonus_missed_by_one"
-        if moment.swing < moment.margin and not decided:
+        if counted_swing(moment) < moment.margin and not decided:
             problems.append(
                 "key moments: a missed bonus swing is below its margin"
                 if missed
@@ -231,10 +236,10 @@ def _check_key_moments(sheet: FactSheet) -> list[str]:
         clean_sheet = moment.kind in CLEAN_SHEET_KINDS
         if moment.expected_goals_conceded is not None and not clean_sheet:
             problems.append("key moments: expected goals conceded outside a clean sheet")
-        if moment.against_xg != (
-            against_xg(moment.kind, moment.expected_goals_conceded) if clean_sheet else None
+        if moment.against_xgc != (
+            against_xgc(moment.kind, moment.expected_goals_conceded) if clean_sheet else None
         ):
-            problems.append("key moments: against_xg does not match the expected goals conceded")
+            problems.append("key moments: against_xgc does not match the expected goals conceded")
         problems += _check_moment_breakdown(moment)
         if not _pair_exists(sheet, moment):
             problems.append("key moments: a pair is not a winner, a swap or a podium change")

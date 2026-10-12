@@ -13,7 +13,8 @@ OWN_KIND_STATS = ("red_cards", "own_goals", "penalties_missed", "penalties_saved
 # routine points every starter gets or loses: never what decided a moment
 ROUTINE_STATS = ("minutes", "goals_conceded")
 # the stats that can decide a player moment, the most interesting cause first; the events
-# (OWN_KIND_STATS) and a defender's clean sheet are moments of their own
+# (OWN_KIND_STATS) and a goalkeeper's or a defender's clean sheet are moments of their own, so
+# clean_sheets last is a midfielder's single point
 CAUSE_PRIORITY = (
     "goals_scored",
     "assists",
@@ -21,6 +22,7 @@ CAUSE_PRIORITY = (
     "saves",
     "yellow_cards",
     "bonus",
+    "clean_sheets",
 )
 
 

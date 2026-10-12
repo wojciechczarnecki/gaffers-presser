@@ -197,8 +197,8 @@ def test_full_stats_cases_show_what_their_tag_says():
         for moment in whole
         for entry in moment.breakdown or []
     )
-    kept = _synthetic("kept_clean_sheet_against_xg").key_moments
-    assert kept[0].kind == "clean_sheet_kept" and kept[0].against_xg is True
+    kept = _synthetic("kept_clean_sheet_against_xgc").key_moments
+    assert kept[0].kind == "clean_sheet_kept" and kept[0].against_xgc is True
     assert len(kept[0].players) >= 2
     lost = _synthetic("lost_clean_sheet_xgc").key_moments
     assert any(m.kind == "clean_sheet_lost" and m.expected_goals_conceded is not None for m in lost)

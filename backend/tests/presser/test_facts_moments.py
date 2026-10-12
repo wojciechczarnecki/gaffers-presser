@@ -357,10 +357,14 @@ def test_breakdown_swing_and_decisive_boundary(world, margin, decisive):
     pick(world, 10, 60, [1], captain=1)
     pick(world, 11, 60 - margin, [1])
     pick(world, 12, 10, [])
+    if not decisive:
+        # the swing of 5 reaches the margin only with the minutes, which never count
+        assert moments(world) == []
+        return
     (moment,) = moments(world)
     assert (moment.margin, moment.swing) == (margin, 5)
     assert entries(moment)["bonus"].swing == 3
-    assert entries(moment)["bonus"].decisive is decisive
+    assert entries(moment)["bonus"].decisive is True
 
 
 def test_trailing_captains_yellow_card_decides_at_margin_1(world):
@@ -427,17 +431,25 @@ def test_goals_conceded_entry_never_decisive(world):
     assert moments(world) == []
 
 
-def test_whole_player_ranks_above_a_yellow_card_cause(world):
-    # Zed and Wee decide as whole players (tier 6), Apple's captain yellow card (tier 9) after
-    booked = [stats(501, minutes=(90, 2), yellow_cards=(1, -1))]
-    zed = [stats(501, minutes=(90, 2), bonus=(1, 1))]
-    player(world, 1, "Apple", 1, explain=booked, live_stats=live())
-    player(world, 2, "Wee", 2, explain=[stats(501, minutes=(90, 2))], live_stats=live())
-    player(world, 3, "Zed", 3, explain=zed, live_stats=live())
-    pick(world, 10, 60, [2, 3])
-    pick(world, 11, 58, [1], captain=1)
+def test_whole_player_ranks_above_a_defcon_cause(world):
+    # Zed decides only with bonus and DefCon together (tier 6), Wee's captain DefCon alone (tier 7)
+    zed = [stats(501, minutes=(90, 2), bonus=(2, 2), defensive_contribution=(10, 2))]
+    wee = [stats(501, minutes=(90, 2), defensive_contribution=(10, 2))]
+    player(world, 2, "Wee", 4, explain=wee, live_stats=live())
+    player(world, 3, "Zed", 6, explain=zed, live_stats=live())
+    pick(world, 10, 60, [2, 3], captain=2)
+    pick(world, 11, 57, [])
     pick(world, 12, 10, [])
-    assert [m.players[0] for m in moments(world)] == ["Zed", "Wee", "Apple"]
+    assert [m.players[0] for m in moments(world)] == ["Zed", "Wee"]
+
+
+def test_minutes_never_make_a_whole_player_moment(world):
+    explain = [stats(501, minutes=(90, 2), bonus=(1, 1))]
+    player(world, 1, "Starter", 3, explain=explain, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 58, [])
+    pick(world, 12, 10, [])
+    assert moments(world) == []
 
 
 def test_player_moment_without_live_stats_has_no_breakdown(world):
@@ -630,16 +642,16 @@ def test_lost_clean_sheet_xgc_comes_from_a_player_with_stats(world):
     assert moment.expected_goals_conceded == Decimal("1.10")
 
 
-def test_lost_clean_sheet_against_the_xg_only_at_a_low_xgc(world):
-    assert lost_sheet(world, live(xgc="1.40"), live(xgc="1.10")).against_xg is False
+def test_lost_clean_sheet_against_the_xgc_only_at_a_low_xgc(world):
+    assert lost_sheet(world, live(xgc="1.40"), live(xgc="1.10")).against_xgc is False
 
 
-def test_lost_clean_sheet_at_a_low_xgc_goes_against_the_xg(world):
-    assert lost_sheet(world, live(xgc="0.30"), live(xgc="0.20")).against_xg is True
+def test_lost_clean_sheet_at_a_low_xgc_goes_against_the_xgc(world):
+    assert lost_sheet(world, live(xgc="0.30"), live(xgc="0.20")).against_xgc is True
 
 
-def test_lost_clean_sheet_against_the_xg_unknown_without_stats(world):
-    assert lost_sheet(world, None, None).against_xg is None
+def test_lost_clean_sheet_against_the_xgc_unknown_without_stats(world):
+    assert lost_sheet(world, None, None).against_xgc is None
 
 
 def test_kept_clean_sheet_of_two_defenders_ranks_above_a_goal(world):
@@ -662,7 +674,7 @@ def test_kept_clean_sheet_of_two_defenders_ranks_above_a_goal(world):
     assert (kept_moment.swing, kept_moment.margin, kept_moment.club) == (8, 5, "Klub Drugi")
     # equal minutes: the xGC comes from the first player by name
     assert kept_moment.expected_goals_conceded == Decimal("1.60")
-    assert kept_moment.against_xg is True
+    assert kept_moment.against_xgc is True
 
 
 def test_single_kept_clean_sheet_ranks_below_a_goal(world):
@@ -674,7 +686,7 @@ def test_single_kept_clean_sheet_ranks_below_a_goal(world):
     pick(world, 10, 60, [1, 3])
     pick(world, 11, 56, [])
     pick(world, 12, 40, [])
-    assert [(m.kind, m.against_xg) for m in moments(world)] == [
+    assert [(m.kind, m.against_xgc) for m in moments(world)] == [
         ("player", None),
         ("clean_sheet_kept", False),
     ]
@@ -692,3 +704,13 @@ def test_goal_is_the_cause_before_bonus(world):
         ("bonus", False),
         ("minutes", False),
     ]
+
+
+def test_midfielder_clean_sheet_is_the_last_cause(world):
+    explain = [stats(501, minutes=(90, 2), clean_sheets=(1, 1))]
+    player(world, 1, "Mid", 3, explain=explain, live_stats=live())
+    pick(world, 10, 60, [1])
+    pick(world, 11, 59, [])
+    pick(world, 12, 10, [])
+    (moment,) = moments(world)
+    assert entries(moment)["clean_sheets"].decisive is True

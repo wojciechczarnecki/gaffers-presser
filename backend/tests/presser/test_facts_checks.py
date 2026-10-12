@@ -640,7 +640,7 @@ def test_lost_clean_sheet_with_xgc_is_consistent():
         "behind_points": -4,
         "swing": 4,
         "expected_goals_conceded": "1.40",
-        "against_xg": False,
+        "against_xgc": False,
     }
     assert problems_after(add_moments(moment)) == []
 
@@ -653,7 +653,7 @@ def test_kept_clean_sheet_against_the_xg_is_consistent():
         "behind_points": 0,
         "swing": 8,
         "expected_goals_conceded": "1.60",
-        "against_xg": True,
+        "against_xgc": True,
     }
     assert problems_after(add_moments(moment)) == []
 
@@ -668,7 +668,7 @@ def test_kept_clean_sheet_against_the_xg_is_consistent():
         ("player", None, True),
     ],
 )
-def test_wrong_against_xg_is_reported(kind, conceded, against):
+def test_wrong_against_xgc_is_reported(kind, conceded, against):
     moment = {
         "kind": kind,
         "margin": 4,
@@ -676,9 +676,9 @@ def test_wrong_against_xg_is_reported(kind, conceded, against):
         "behind_points": 0,
         "swing": 8,
         "expected_goals_conceded": conceded,
-        "against_xg": against,
+        "against_xgc": against,
     }
-    expected = "key moments: against_xg does not match the expected goals conceded"
+    expected = "key moments: against_xgc does not match the expected goals conceded"
     assert expected in problems_after(add_moments(moment), recompute=False)
 
 
