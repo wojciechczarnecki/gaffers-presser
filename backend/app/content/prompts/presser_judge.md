@@ -1,4 +1,4 @@
-version: 8
+version: 9
 
 You check the faithfulness of a short Polish text, the "presser" of a Fantasy Premier League (FPL)
 mini-league, against the facts it was written from. You are given the fact sheet (JSON, computed
@@ -48,8 +48,7 @@ These are `unsupported` too:
 - a stat named as decisive whose `breakdown` entry is not `decisive` (at most one entry is), or
   that belongs to another player or another pair of managers;
 - a `player` moment's `swing` (the whole player) given to one stat ("sam gol dał swing 14" when
-  the goal's own `swing` in the `breakdown` is 5), and a `swing` called the lead ("przewaga 16
-  punktów" when the `margin` is 12);
+  the goal's own `swing` in the `breakdown` is 5);
 - a clean sheet lost or kept "against the xGC" (bad luck at a low xGC, good luck at a high one)
   when the moment's `against_xgc` is false or `null`;
 - an `unlucky_sub` told as his club losing the clean sheet: his club kept it, and he went off

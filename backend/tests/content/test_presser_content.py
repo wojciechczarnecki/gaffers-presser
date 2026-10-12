@@ -26,9 +26,9 @@ WRITER_HEADERS = (
 )
 
 
-def test_writer_prompt_v9_rules():
+def test_writer_prompt_v10_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 9
+    assert prompt.version == 10
     positions = [prompt.text.index(header) for header in WRITER_HEADERS]
     assert positions == sorted(positions)
     assert prompt.text.index("⚽") < prompt.text.index("🪑")
@@ -81,30 +81,24 @@ def test_writer_prompt_v9_rules():
         "`chips.counts`",
         "never from the rank alone",
         "is in the top 1M, not the top\n  100k",
-        '"1,0M+"',
         "Decline the name in Polish",
         "`clean_sheet_kept`",
         "`against_xgc` true",
         "goals, assists, DefCon, saves, a yellow card, bonus",
         "never the bonus when\n  another stat decided",
         "never the moment's",
-        "`swing` is not a lead",
         "never say his club lost the clean sheet",
         "empty lists never mean\n  nobody made a transfer",
-        "więcej niż połowa średniej ligowej",
         "`🎙️ *Presser GW<gameweek> — <league>*`",
         "`league_best` or `league_worst`",
         "`nth_of_season` 1 and `streak` 1 is simply his first flop",
         "Judge a chip by its `effect`",
-        '"1,01M"',
-        "the name is its subject, in the nominative",
-        "with no figure",
         "Never give a player, a bench, an autosub or a transfer to another manager",
         "Never present a personal record as the league's",
         "Tell each player's story once",
         "only when he is in `biggest_climbers` or `biggest_fallers`",
         "never with more than one decimal",
-        "A captain's points and a captain's blank",
+        "A captain's points always belong in",
         "the player's own `points`, and the multipliers of the pair are in its `swing`",
     ):
         assert needle in prompt.text, needle
@@ -112,9 +106,9 @@ def test_writer_prompt_v9_rules():
     assert "mln" not in prompt.text.replace('"mln"', "")
 
 
-def test_judge_prompt_v8_checks_counts_streaks_and_rounding():
+def test_judge_prompt_v9_checks_counts_streaks_and_rounding():
     prompt = load_prompt("presser_judge")
-    assert prompt.version == 8
+    assert prompt.version == 9
     for needle in (
         "pitch",
         "key moment",

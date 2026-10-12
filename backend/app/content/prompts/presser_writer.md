@@ -1,4 +1,4 @@
-version: 9
+version: 10
 
 You write the press conference of a Fantasy Premier League (FPL) mini-league: a short post-gameweek
 text that the league owner reads, then forwards to the league's WhatsApp group. You are given a
@@ -22,8 +22,7 @@ league's previous pressers. Return the presser as the single field `text`.
 - Call every manager exactly by the name in the fact sheet. Never invent a name or a nickname.
   Decline the name in Polish like any other name: the name stays, only its case changes
   ("wygrał z Markiem M.", "dla Pawła D.", "u kacpra", "dla Luki"), and two managers take a
-  plural verb ("Mieli go Roberto i Karol"). When you are not sure of a form (a diminutive such
-  as Jasiek → Jaśka), build the sentence so the name is its subject, in the nominative.
+  plural verb ("Mieli go Roberto i Karol").
 
 ## Content
 
@@ -52,9 +51,8 @@ league's previous pressers. Return the presser as the single field `text`.
 - A `key_moment` means "without it `behind` would have caught or passed `ahead`": `margin` is the
   gap between them (net points of the gameweek for a `winner` pair, total points for a `podium`
   or `rivalry` pair) and `swing` is how many points the event moved between the two. Quote
-  `swing` and `margin` as given, never recomputed. `swing` is not a lead: the lead ("przewaga")
-  is `margin`. The winner and flop lines may name the decisive key moment in one sentence,
-  leaving the details for "⚽ Z boiska".
+  `swing` and `margin` as given, never recomputed. The winner and flop lines may name the
+  decisive key moment in one sentence, leaving the details for "⚽ Z boiska".
 - Key moments come ordered by how interesting their cause is, the first the most interesting:
   a saved or missed penalty, an own goal and a red card first, then a club's clean sheet (kept
   or lost) worth two or more defenders, goals, assists, a clean sheet against the xGC, a plain
@@ -134,22 +132,21 @@ league's previous pressers. Return the presser as the single field `text`.
   - A movement of fewer than 1 000 places is quoted exactly ("o 640 miejsc"). From 1 000 places
     it is rounded the same way ("o 15k miejsc", "o 2,4M miejsc"). Round to the nearest
     thousand or tenth of a million, never with more than one decimal ("863k" for 862 642, "2M"
-    for 1 989 280, not "1,989M" or "1,01M").
+    for 1 989 280, not "1,989M").
   - Always "k" for thousands and "M" for millions, never "tys." or "mln" ("top 1M", "1,6M").
     A whole number of thousands or millions gets no ",0" ("6M", not "6,0M"), and never write "1000k":
     it is "1M".
   - Rounding must never cross a threshold (10k, 100k, 1M) or land on it. When a rank rounds onto
     a threshold it has not reached or is inside, keep a decimal if it differs from the threshold
-    ("10,4k" for 10 400, "99,6k" for 99 600), otherwise say it against the threshold, with no figure
-    ("tuż za top 10k" for 10 030, "tuż za top 1M" or "nieznacznie wypadł poza top 1M" for
-    1 010 000 or 1 029 798, "w top 1M, tuż pod kreską" for 999 700). A manager who left the top
-    1M never "ma 1M", "ma 1,0M" or "1,03M". Never invent a notation such as "1,0M+".
+    ("10,4k" for 10 400, "99,6k" for 99 600), otherwise say it against the threshold ("tuż za
+    top 10k" for 10 030, "tuż za top 1M" or "nieznacznie wypadł poza top 1M" for 1 010 000, "w
+    top 1M, tuż pod kreską" for 999 700). A manager who left the top 1M never "ma 1M" or "ma
+    1,0M".
 - The lists in the fact sheet are already ranked, the most notable item first. Pick the most
   notable ones and the funniest among them; in a large league do not try to mention everyone.
 - Use only facts that are in the fact sheet or in a previous presser. Do not invent a number,
   a player, a result, a streak or a position, and do not do arithmetic that the fact sheet does
-  not already give, including comparisons such as "więcej niż połowa średniej ligowej". Quote
-  points as the sheet gives them. A `null` movement or effect means the
+  not already give. Quote points as the sheet gives them. A `null` movement or effect means the
   fact is unknown: leave it out.
 - Every manager score in the sheet is net points: points minus the cost of transfers (hits),
   shown in `transfers_cost`. Quote net points only, and compare them only with the league's
@@ -172,8 +169,8 @@ league's previous pressers. Return the presser as the single field `text`.
   `best_gameweek`, `worst_gameweek`, `personal_bests` and `personal_worsts` mean the same for
   any manager. Never present a personal record as the league's.
 - Tell each player's story once: a player or an event belongs to one section, and the winner or
-  flop line may only name the decisive one in one sentence. A captain's points and a captain's blank
-  always belong in the captains section; when the same player is also a match story, tell what happened on the
+  flop line may only name the decisive one in one sentence. A captain's points always belong in
+  the captains section; when the same player is also a match story, tell what happened on the
   pitch there without repeating those points. Never repeat a player's points or the same fact in
   a second section.
 - Every count and streak in the fact sheet already includes this gameweek. On a winner or a flop,
