@@ -7,20 +7,6 @@ One stage at a time: a stage reaches its MVP and is merged before the next one s
 **Definition of done for every stage that calls an LLM:** its calls are traced in Langfuse,
 and each LLM step that produces data has an evaluation set with recorded results.
 
-## Current focus
-
-Stage 2 is not finished while Stage 3 has moved ahead; the work returns to Stage 2, in this
-order:
-
-1. An audit of the code and the documents against the current state of the project: a
-   ranked findings list; the audit decides what, if anything, enters this roadmap or the
-   backlog
-2. Retrieval evaluation report (Stage 2, planned spec 016)
-3. Extraction and corroboration evaluation v2 (Stage 2, planned spec 017)
-4. README rewritten for the portfolio (Stage 2)
-
-The LLM-written alert summary (Stage 2) and the slang glossary (Stage 3) wait until then.
-
 ## Stage 0 — FPL data collector
 
 - [x] Collector for players, teams, fixtures, gameweeks and the configured classic leagues
@@ -30,9 +16,6 @@ The LLM-written alert summary (Stage 2) and the slang glossary (Stage 3) wait un
 - [x] Worker running the jobs on a deadline-driven schedule, with a job run log, catch-up on
       start, a container image and Railway configuration
       (spec: [002](../specs/002-fpl-worker/SPEC.md))
-- Production deployment on Railway (spec 002, AC21) is postponed indefinitely: the system
-  runs locally (DECISIONS 2026-10-13); the image, `railway.json` and the runbook stay ready —
-  BACKLOG #37
 
 ## Stage 1 — Tweet ingest and extraction
 
