@@ -7,6 +7,20 @@ One stage at a time: a stage reaches its MVP and is merged before the next one s
 **Definition of done for every stage that calls an LLM:** its calls are traced in Langfuse,
 and each LLM step that produces data has an evaluation set with recorded results.
 
+## Current focus
+
+Stage 2 is not finished while Stage 3 has moved ahead; the work returns to Stage 2, in this
+order:
+
+1. An audit of the code and the documents against the current state of the project: a
+   ranked findings list; the audit decides what, if anything, enters this roadmap or the
+   backlog
+2. Retrieval evaluation report (Stage 2, planned spec 016)
+3. Extraction and corroboration evaluation v2 (Stage 2, planned spec 017)
+4. README rewritten for the portfolio (Stage 2)
+
+The LLM-written alert summary (Stage 2) and the slang glossary (Stage 3) wait until then.
+
 ## Stage 0 — FPL data collector
 
 - [x] Collector for players, teams, fixtures, gameweeks and the configured classic leagues
@@ -16,10 +30,9 @@ and each LLM step that produces data has an evaluation set with recorded results
 - [x] Worker running the jobs on a deadline-driven schedule, with a job run log, catch-up on
       start, a container image and Railway configuration
       (spec: [002](../specs/002-fpl-worker/SPEC.md))
-- [ ] Production deployment on Railway: the owner follows the runbook and confirms the
-      first deploy (spec: [002](../specs/002-fpl-worker/SPEC.md), AC21; after the owner's local
-      test run of the alerts on the GW6 deadline, 2026-10-10; the tweet ingest catch-up after
-      downtime it needed (former BACKLOG #26) is done)
+- Production deployment on Railway (spec 002, AC21) is postponed indefinitely: the system
+  runs locally (DECISIONS 2026-10-13); the image, `railway.json` and the runbook stay ready —
+  BACKLOG #37
 
 ## Stage 1 — Tweet ingest and extraction
 
@@ -61,12 +74,24 @@ and each LLM step that produces data has an evaluation set with recorded results
       outside the List is stored but never extracted or alerted, and a catch-up is no longer
       ended by an old quoted post; closes BACKLOG #11
       (spec: [010](../specs/010-off-list-posts/SPEC.md))
-- [ ] LLM-written per-player alert summary with a faithfulness evaluation, after the
-      production deployment: it only summarises the facts already in the alert and neither
+- [ ] Retrieval evaluation report on the GW6 window: the owner's review of set v1 extended
+      with queries from the GW6 deadline window, the comparison of modes (full-text, vector,
+      hybrid) and embedding models, the default-model ADR, a decision on reranking
+      (BACKLOG #16), a results section in the README (tooling and set v1 come with spec 006);
+      before the next item, because the corroboration judge reads retrieval's output
+      (spec: TBD, planned as 016) — **portfolio MVP**
+- [ ] Extraction and corroboration evaluation v2 on the GW6 window: real pre-deadline leaks
+      in the extraction set, the rehearsal e-mail cases added before the prompt fixes, the
+      model comparison re-run and the default model revisited (ADR 0006); `contradicts` cases
+      in the corroboration judge set and the judge evaluation re-run on the retrieval chosen
+      above (BACKLOG #12, #23) (spec: TBD, planned as 017)
+- [ ] README rewritten for the portfolio once the two evaluations above have results: what
+      it does and why, an architecture diagram, a results table linking the reports, the
+      engineering process (specs, ADRs, evaluation, tracing), a sample presser on made-up
+      data, the commands moved to a development guide (spec: TBD)
+- [ ] LLM-written per-player alert summary with a faithfulness evaluation, deferred until
+      the items above are done: it only summarises the facts already in the alert and neither
       chooses what or when to send nor changes grades (spec: TBD)
-- [ ] Retrieval evaluation report after the GW6 window: the owner's review of set v1, the
-      comparison of modes and embedding models, the default-model ADR, a results section in
-      the README (tooling and set v1 come with spec 006) (spec: TBD) — **portfolio MVP**
 
 ## Stage 3 — League presser
 
