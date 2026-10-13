@@ -198,7 +198,7 @@ league by e-mail, in Polish FPL slang: the manager and the flop of the gameweek,
 the bench, transfers and chips, and the table. The facts are computed in SQL, an LLM only writes
 the text, and the e-mail has a "send to WhatsApp" button. It runs when delivery is enabled and
 `OPENROUTER_API_KEY` is set. Variables (`backend/.env.example`): `PRESSER_ENABLED` (default true),
-`PRESSER_MODEL` (default `openai/gpt-6-luna`) and `PRESSER_NICKNAMES` (a JSON object of FPL entry
+`PRESSER_MODEL` (default `openai/gpt-6-sol`, ADR 0007) and `PRESSER_NICKNAMES` (a JSON object of FPL entry
 ID to nickname, kept out of the repository). `uv run python -m app.worker status` ends with a
 `Presser:` line. The CLI works by hand, also for an older gameweek and with `PRESSER_ENABLED=false`
 (which switches off only the automatic presser), and the evaluation tooling

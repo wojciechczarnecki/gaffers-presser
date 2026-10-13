@@ -1759,7 +1759,7 @@ def test_deps_enable_the_presser_with_key_and_delivery(monkeypatch, tmp_path):
     deps = worker_cli._deps_from_settings()
 
     assert deps.presser is not None and deps.presser_disabled_reason is None
-    assert deps.presser.config_model == "openai/gpt-6-luna"
+    assert deps.presser.config_model == "openai/gpt-6-sol"
     assert deps.presser.nicknames == {7: "Bartas"}
 
 

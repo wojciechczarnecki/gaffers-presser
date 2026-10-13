@@ -67,7 +67,7 @@ def test_evaluate_writes_result(cases_path, tmp_path):
     assert [p["case_id"] for p in data["pressers"]] == ["c1", "c2"]
     assert [p["faithfulness"] for p in data["pressers"]] == [0.5, 1.0]
     assert data["totals"]["faithfulness"] == 0.75
-    assert data["model"] == "openai/gpt-6-luna" and data["judge_model"] == "openai/gpt-6.1-sol"
+    assert data["model"] == "openai/gpt-6-sol" and data["judge_model"] == "openai/gpt-6.1-sol"
     assert "faithfulness: 0.750" in result.stdout
     assert f"result: {output}" in result.stdout
 
@@ -291,3 +291,158 @@ def test_writer_gets_temperature_and_judge_zero(monkeypatch):
     built.make_writer("w")
     built.make_judge("j")
     assert seen == [("w", 0.8), ("j", 0.0)]
+
+
+def unjudged_run(tmp_path):
+    built, _, judge_fake = deps([PresserDraft(text="Pierwszy"), PresserDraft(text="Drugi")])
+    output = tmp_path / "run.json"
+    path = tmp_path / "cases.jsonl"
+    write_cases(path, [case("c1", "dev"), case("c2", "dev")])
+    result = invoke(
+        built,
+        "evaluate",
+        "--split",
+        "dev",
+        "--cases",
+        str(path),
+        "--output",
+        str(output),
+        "--no-judge",
+    )
+    assert result.exit_code == 0, result.output
+    assert judge_fake.received_messages == []
+    return output, path
+
+
+def write_verdicts(directory, **verdicts):
+    directory.mkdir()
+    for case_id, labels in verdicts.items():
+        (directory / f"{case_id}.json").write_text(
+            verdict(*labels).model_dump_json(), encoding="utf-8"
+        )
+
+
+def test_evaluate_without_judge_writes_unjudged_pressers(tmp_path):
+    run, _ = unjudged_run(tmp_path)
+    data = read(run)
+    assert [p["text"] for p in data["pressers"]] == ["Pierwszy", "Drugi"]
+    assert [p["faithfulness"] for p in data["pressers"]] == [None, None]
+    assert data["judge_model"] is None
+
+
+def test_export_judge_inputs_writes_prompt_and_one_input_per_presser(tmp_path):
+    from app.presser.evaluation.judge import JUDGE_PROMPT
+
+    run, cases_path = unjudged_run(tmp_path)
+    out = tmp_path / "judge"
+    result = invoke(
+        deps()[0],
+        "export-judge-inputs",
+        "--run",
+        str(run),
+        "--out",
+        str(out),
+        "--cases",
+        str(cases_path),
+    )
+    assert result.exit_code == 0, result.output
+    assert (out / "judge-prompt.md").read_text(encoding="utf-8") == JUDGE_PROMPT.text
+    assert sorted(p.name for p in out.glob("c*.md")) == ["c1.md", "c2.md"]
+    assert "# Presser to check\nPierwszy" in (out / "c1.md").read_text(encoding="utf-8")
+
+
+def test_export_judge_inputs_refuses_a_non_empty_directory(tmp_path):
+    run, cases_path = unjudged_run(tmp_path)
+    out = tmp_path / "judge"
+    out.mkdir()
+    (out / "old.md").write_text("x", encoding="utf-8")
+    result = invoke(
+        deps()[0],
+        "export-judge-inputs",
+        "--run",
+        str(run),
+        "--out",
+        str(out),
+        "--cases",
+        str(cases_path),
+    )
+    assert result.exit_code == 1
+    assert "not empty" in result.stderr
+
+
+def test_import_judge_records_verdicts_and_totals(tmp_path):
+    run, _ = unjudged_run(tmp_path)
+    verdicts = tmp_path / "verdicts"
+    write_verdicts(verdicts, c1=("supported", "unsupported"), c2=("supported",))
+    result = invoke(
+        deps()[0],
+        "import-judge",
+        "--run",
+        str(run),
+        "--verdicts",
+        str(verdicts),
+        "--judge-model",
+        "claude-opus-5-5 (session)",
+    )
+    assert result.exit_code == 0, result.output
+    data = read(run)
+    assert [p["faithfulness"] for p in data["pressers"]] == [0.5, 1.0]
+    assert data["pressers"][0]["claims"][1] == {
+        "claim": "claim 1",
+        "label": "unsupported",
+        "owner_label": None,
+    }
+    assert data["totals"]["faithfulness"] == 0.75
+    assert data["judge_model"] == "claude-opus-5-5 (session)"
+    assert data["judge_prompt_version"].startswith("presser_judge@")
+
+
+def test_import_judge_needs_a_verdict_for_every_presser(tmp_path):
+    run, _ = unjudged_run(tmp_path)
+    verdicts = tmp_path / "verdicts"
+    write_verdicts(verdicts, c1=("supported",))
+    result = invoke(
+        deps()[0],
+        "import-judge",
+        "--run",
+        str(run),
+        "--verdicts",
+        str(verdicts),
+        "--judge-model",
+        "session",
+    )
+    assert result.exit_code == 1
+    assert "no verdict for: c2" in result.stderr
+    assert read(run)["pressers"][0]["faithfulness"] is None
+
+
+def test_import_judge_rejects_an_invalid_verdict(tmp_path):
+    run, _ = unjudged_run(tmp_path)
+    verdicts = tmp_path / "verdicts"
+    write_verdicts(verdicts, c1=("supported",))
+    (verdicts / "c2.json").write_text('{"claims": [{"claim": "x", "label": "maybe"}]}')
+    result = invoke(
+        deps()[0],
+        "import-judge",
+        "--run",
+        str(run),
+        "--verdicts",
+        str(verdicts),
+        "--judge-model",
+        "session",
+    )
+    assert result.exit_code == 1
+    assert "c2.json is not a valid verdict" in result.stderr
+
+
+def test_import_judge_never_replaces_verdicts_without_force(tmp_path):
+    run, _ = recorded_run(tmp_path)
+    verdicts = tmp_path / "verdicts"
+    write_verdicts(verdicts, c1=("supported",), c2=("supported",))
+    args = ("import-judge", "--run", str(run), "--verdicts", str(verdicts), "--judge-model", "s")
+    refused = invoke(deps()[0], *args)
+    assert refused.exit_code == 1
+    assert "--force" in refused.stderr
+    forced = invoke(deps()[0], *args, "--force")
+    assert forced.exit_code == 0, forced.output
+    assert read(run)["totals"]["faithfulness"] == 1.0

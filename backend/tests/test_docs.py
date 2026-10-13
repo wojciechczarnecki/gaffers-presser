@@ -77,16 +77,10 @@ def test_decisions_cover_alert_slots():
     assert "2026-10-02" in row and "supersedes" in row.lower()
 
 
-def test_backlog_32_after_spec_015():
-    (row,) = [row for row in _rows() if row.startswith("| 32 |")]
-    needles = (
-        "spec 015 is merged",
-        "writer prompt version 12",
-        "judge prompt version 9",
-        "set v6",
-        "inflection",
-    )
-    for needle in needles:
+def test_backlog_32_closed_by_the_model_comparison():
+    assert not [row for row in _rows() if row.startswith("| 32 |")]
+    (row,) = [row for row in _rows() if row.startswith("| 35 | P1 |")]
+    for needle in ("presser-model-comparison.md", "gpt-6-sol", "ADR 0007 is merged"):
         assert needle in row, needle
 
 

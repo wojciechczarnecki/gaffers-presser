@@ -45,6 +45,8 @@ checked = "2026-09-29"
 reasoning_effort = "none"
 temperature = false
 checked = "2026-10-09"
+# no endpoint accepts a forced tool_choice under require_parameters (presser test run, 2026-10-12)
+structured_method = "json_schema"
 
 ["deepseek/deepseek-v4.1-flash"]
 reasoning_effort = "none"
@@ -65,3 +67,23 @@ checked = "2026-10-09"
 reasoning_effort = "low"
 temperature = false
 checked = "2026-10-09"
+
+["xiaomi/mimo-v2.6-pro"]
+reasoning_effort = "none"
+temperature = true
+checked = "2026-10-13"
+
+["moonshotai/kimi-k2.6"]
+reasoning_effort = "none"
+temperature = true
+checked = "2026-10-13"
+
+["deepseek/deepseek-v4-pro"]
+reasoning_effort = "none"
+temperature = true
+checked = "2026-10-13"
+
+["openai/gpt-6-sol"]
+reasoning_effort = "none"
+temperature = false
+checked = "2026-10-13"

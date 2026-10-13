@@ -1,0 +1,4073 @@
+{
+  "model": "openai/gpt-6-sol",
+  "judge_model": "claude-opus-5-5 (Claude Code session, headless, joint per case)",
+  "prompt_version": "presser_writer@12",
+  "judge_prompt_version": "presser_judge@9",
+  "split": "test",
+  "date": "2026-10-13T10:30:56.357847+00:00",
+  "pressers": [
+    {
+      "case_id": "real-l1-gw1",
+      "text": "🎙️ *Presser GW1 — Liga Pod Złotym Kurem*\n\n🏆 *Manager kolejki:* Rysiek otwiera sezon 79 punktami netto przy średniej ligowej 56. GW rank 121k, najlepszy w lidze; o wygranej nad Julkiem zdecydował gol Szoboszlaia.\n\n🤦 *Wtopa kolejki:* Zenek zaczyna od 34 punktów i GW ranku 8,1M — najgorszego w lidze. Na ławce miał jeszcze 18 oczek; skład startowy może już pisać wyjaśnienia.\n\n©️ *Kapitanowie:* Dwunastu postawiło na Haalanda, ośmiu na B.Fernandesa — obie opaski dały po 4 punkty. Haaland miał dużą okazję (0,74 xG), więc tu bardziej pech niż zły pomysł. Wiesiek wybrał Calverta-Lewina: 2 punkty, w tym żółtko za -2.\n\n⚽ *Z boiska:* Thiago zmarnował karnego i skończył z zerem u Antka, Bolka, Leszka, Remigiusza i Wacka. M.Sangaré dorzucił Julkowi 14 punktów za dwie asysty, DefCon i bonusy, a Patryk trzymał go na ławce. Palmer dał Heńkowi 13 za gola i asystę. Rysiek pokonał Julka o 1 punkt; sam gol Szoboszlaia dał między nimi swing 5. João Pedro strzelił gola i zaliczył asystę — mieli go wszyscy, więc z tego akurat nikt nie uciekł.\n\n🪑 *Ławka i transfery:* U Patryka zostało na ławce 25 punktów — przed GW2 warto sprawdzić, gdzie w aplikacji jest przycisk „wystaw”. Romkowi autosub za Pedro Porro wpuścił Diopa za 2 punkty.\n\n🃏 *Chipy:* Sześciu managerów odpaliło Bench Boost. Najwięcej wyciągnął Julek: 25 punktów, Rysiek dorzucił 21. U Heńka chip dał tylko 3 — ławka wybrała oszczędny start sezonu.\n\n📊 *Tabela:* Grad Bramek prowadzi z 79 punktami, Zielone Strzałki mają 78, a Tadek z Jedenastu Gniewnych zamyka podium z 69. Po pierwszej kolejce jest już o co się spierać przy jednym punkcie różnicy na szczycie.\n\n🌍 *Overall:* Rysiek (121k), Julek (144k), Tadek (607k) i Kuba (787k) weszli do top 1M. Na razie bez zielonych i czerwonych strzałek — to dopiero start.",
+      "length": 1767,
+      "within_limit": true,
+      "input_tokens": 21430,
+      "output_tokens": 679,
+      "cost_usd": 0.04965,
+      "latency_seconds": 8.008793308981694,
+      "claims": [
+        {
+          "claim": "Rysiek scored 79 net points against a league average of 56",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rysiek's GW rank of 121k is the best in the league",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Szoboszlai's goal decided Rysiek's win over Julek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek scored 34 points with a GW rank of 8.1M, the worst in the league",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek had 18 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "12 managers captained Haaland and 8 captained B.Fernandes, each giving 4 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland had a big chance with 0.74 xG",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wiesiek captained Calvert-Lewin for 2 points, including a yellow card for -2",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Thiago missed a penalty and scored 0 for Antek, Bolek, Leszek, Remigiusz and Wacek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "M.Sangaré gave Julek 14 points from two assists, a DefCon and bonus",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk had M.Sangaré on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer gave Heniek 13 points from a goal and an assist",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rysiek beat Julek by 1 point",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Szoboszlai's goal alone gave a 5-point swing between Rysiek and Julek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "João Pedro scored a goal and an assist, and every manager owned him",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk left 25 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Romek's autosub replaced Pedro Porro with Diop, who scored 2 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Six managers played Bench Boost",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek got the most from Bench Boost (25), and Rysiek got 21",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Bench Boost gave Heniek only 3 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Grad Bramek leads with 79 and Zielone Strzałki have 78",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek's team Jedenastu Gniewnych is third with 69",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The gap at the top is one point",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rysiek (121k), Julek (144k), Tadek (607k) and Kuba (787k) entered the top 1M",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "Najbardziej naturalny i dowcipny tekst, z żartami o decyzjach FPL (przycisk „wystaw”, wyjaśnienia od składu startowego), tylko końcówka o strzałkach jest płaska.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "real-l1-gw3",
+      "text": "🎙️ *Presser GW3 — Liga Pod Złotym Kurem*\n\n🏆 *Manager kolejki:* Romek zgarnia pierwsze zwycięstwo w sezonie: 75 punktów netto przy średniej ligowej 54. GW rank 177k to jego najlepszy w tym sezonie. O 2 punkty wyprzedził Antka.\n\n🤦 *Wtopa kolejki:* Patryk kończy z 34 punktami. GW rank 9,9M to najgorszy wynik w lidze w tym sezonie. Wildcard miał pomóc, ale rachunek wystawiamy niżej.\n\n©️ *Kapitanowie:* Dziesięciu odpaliło TC na Haalandzie i wzięło po 27 punktów, dziewięciu z normalną opaską po 18. Leszkowi Semenyo dał 12, Remigiuszowi B.Fernandes 4, a Wiesiek dostał od Calverta-Lewina 2 — żółtko kapitana kosztowało go 2 oczka.\n\n⚽ *Z boiska:* Thiaw strzelił samobója i skończył z -1 u Edzia. Za to Heniek wyciągnął 11 od Gakpo: dwie asysty i 2 bonusy. W walce o Managera kolejki dublet Isaka u Romka zrobił różnicę: same gole dały swing 8 przy przewadze 2 nad Antkiem, który Isaka nie miał. B.Fernandes zablankował w składzie Patryka, za to Romek go nie miał.\n\n🪑 *Ławka i transfery:* Wiesiek zostawił 24 punkty na ławce. U Heńka autosub wprowadził Egana za Frimponga i dał 6. Oskar wymienił E.Le Fée (8) na Elangę (1); Kuba zapłacił 4 za hit, a transfery przyniosły stratę 3 punktów względem sprzedanych graczy. Tego nie da się obronić kalkulatorem.\n\n🃏 *Chipy:* Wildcard Heńka dał +16, a Free Hit Zbycha +12, mimo że z dawnego składu odstawił punktujących Gakpo i Mbeumo. Dziesięć TC dorzuciło po 9. U Patryka Wildcard dał -12: odstawił Ødegaarda i E.Le Fée, których punkty liczyłyby się w starym składzie. Dzika karta, tylko wynik poszedł w złą stronę.\n\n📊 *Tabela:* Pogromcy Wildcardów prowadzą z 256 punktami, 26 przed Julkiem. Konrad wchodzi na podium z 226, Patryk spada z drugiego na piąte miejsce. Największy awans w tabeli ma Antek, o 6 pozycji; Wiesiek osuwa się o 8.\n\n🌍 *Overall:* Największy skok należy do Zbycha: o 40k miejsc, do top 10k (8 745.). Największy spadek u Patryka: o 721k miejsc, na 863k. Antek zyskuje 2,8M miejsc, Alojzy wchodzi do top 1M, Rysiek też; Remigiusz z top 1M wypada.",
+      "length": 2005,
+      "within_limit": true,
+      "input_tokens": 25770,
+      "output_tokens": 779,
+      "cost_usd": 0.05933,
+      "latency_seconds": 8.416776216006838,
+      "claims": [
+        {
+          "claim": "This is Romek's first gameweek win of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Romek scored 75 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The league average is 54",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Romek's GW rank of 177k is his best of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Romek beat Antek by 2 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk finished with 34 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk's GW rank of 9.9M is the league's worst result of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Ten managers played TC on Haaland for 27 each",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Nine managers captained Haaland normally for 18",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Semenyo gave Leszek 12",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "B.Fernandes gave Remigiusz 4",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Calvert-Lewin gave Wiesiek 2",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The captain's yellow card cost Wiesiek 2 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Thiaw scored an own goal and finished with -1 for Edzio",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek got 11 from Gakpo",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gakpo had two assists and 2 bonus points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Isak's brace for Romek made the difference",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The goals alone gave a swing of 8 against a margin of 2 over Antek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek did not have Isak",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "B.Fernandes blanked in Patryk's squad",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Romek did not have B.Fernandes",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wiesiek left 24 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek's autosub brought in Egan for Frimpong and gave 6",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar swapped E.Le Fée (8) for Elanga (1)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kuba paid 4 for a hit",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kuba's transfers brought a loss of 3 points against the players he sold",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek's Wildcard gave +16",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zbychu's Free Hit gave +12",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zbychu's Free Hit removed Gakpo and Mbeumo, who scored points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Ten TCs added 9 each",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk's Wildcard gave -12",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk removed Ødegaard and E.Le Fée, whose points would have counted in the old squad",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Pogromcy Wildcardów lead with 256 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The leader is 26 points ahead of Julek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad enters the podium with 226",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk drops from second to fifth",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek had the biggest climb in the table, 6 places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wiesiek fell 8 places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zbychu had the biggest overall jump, 40k places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zbychu entered the top 10k at 8 745",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk had the biggest overall fall: 721k places, to 863k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek gained 2.8M places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Alojzy entered the top 1M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rysiek entered the top 1M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Remigiusz left the top 1M",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "Ma najwięcej charakteru („rachunek wystawiamy niżej”, „nie da się obronić kalkulatorem”) i poprawną odmianę imion, choć zdarzają się płaskie zdania, np. „Dzika karta, tylko wynik poszedł w złą stronę”.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "real-l1-gw5",
+      "text": "🎙️ *Presser GW5 — Liga Pod Złotym Kurem*\n\n🏆 *Manager kolejki:* Zenek bierze kolejkę: 76 punktów netto przy średniej ligowej 50 i jego najlepszy GW rank w sezonie, 139k. Bez Großa Leszek mógłby go dogonić.\n\n🤦 *Wtopa kolejki:* Kuba kończy z 34 punktami i swoim najgorszym GW rankiem w sezonie: 9,6M. Free Hit miał pomóc, ale szczegóły są jeszcze mniej zachęcające.\n\n©️ *Kapitanowie:* Piętnastu managerów dostało po 12 od Haalanda. Zenek postawił na Isaka i zgarnął 16, choć żółtko kapitana kosztowało 2 oczka. Wacek z TC wycisnął z Haalanda 18. U Kuby, Wieśka i Zbycha Calvert-Lewin dał po 4; tyle samo dostali Heniek od Palmera i Remigiusz od Gibbsa-White’a.\n\n⚽ *Z boiska:* Tzolakis obronił karnego: 5 punktów za tę interwencję trafiło do Zenka, podczas gdy Kuba trzymał go na ławce. Wissa za to nie wykorzystał karnego u Edzia i skończył z zerem. Groß dołożył Zenkowi gola, asystę i 3 bonusy; całe jego 14 punktów dało swing 14 przy przewadze 12 nad Leszkiem — żaden pojedynczy składnik nie rozstrzygał. Tarkowski zebrał 14 dla Remigiusza i Zbycha, a Hall strzelił gola i dał Leszkowi 13.\n\n🪑 *Ławka i transfery:* Zbychu zostawił 20 punktów na ławce, choć wymiana White’a na Tarkowskiego przyniosła mu 14 do zera. Alojzemu, Bartasowi i Wackowi autosub za João Pedro wpuścił Großa z 14 punktami. Fabian zapłacił 4 za transfery, które zyskały 10; u Remigiusza hit za 4 dał zysk −9, zwłaszcza po wymianie Semenyo (17) na Gibbsa-White’a (2).\n\n🃏 *Chipy:* Pięć Free Hitów i jeden TC. Lolek ugrał na FH 26 punktów więcej od starego składu, Leszek 18. Kuba po dziewięciu podmianach stracił 7: wyrzucił Großa, którego 14 by się liczyło, a sprowadzony Tzolakis i jego 6 punktów zostali na ławce. TC Wacka dołożył 6.\n\n📊 *Tabela:* Pogromcy Wildcardów nadal prowadzą z 387 punktami, przed Alojzym (371) i Bartasem (362). Zenek skacze o osiem miejsc na 12., Kuba spada o sześć na 10. — przy takim ścisku jeden tydzień potrafi przestawić pół tabeli.\n\n🌍 *Overall:* Największy skok Zenka: o 2,4M miejsc, na 1,8M. Największy spadek Kuby: o 858k, na 1,6M i poza top 1M. Julek też wypadł z top 1M: zjazd o 847k miejsc na 1,7M.",
+      "length": 2105,
+      "within_limit": true,
+      "input_tokens": 25284,
+      "output_tokens": 822,
+      "cost_usd": 0.058788,
+      "latency_seconds": 8.950425824034028,
+      "claims": [
+        {
+          "claim": "Zenek is the manager of the gameweek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek scored 76 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "League average is 50",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek's GW rank 139k is his best of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Without Groß, Leszek could have caught Zenek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kuba finished with 34 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kuba's GW rank 9,6M is his worst of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Fifteen managers got 12 each from Haaland as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek captained Isak and got 16",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Isak's yellow card cost the captain 2 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek got 18 from Haaland with TC",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Calvert-Lewin gave 4 each to Kuba, Wiesiek and Zbychu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek got 4 from Palmer and Remigiusz 4 from Gibbs-White",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tzolakis saved a penalty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The 5 points for the penalty save went to Zenek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kuba had Tzolakis on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wissa missed a penalty, owned by Edzio",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wissa finished with 0 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Groß gave Zenek a goal, an assist and 3 bonus points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Groß's 14 points gave a swing of 14 with a margin of 12 over Leszek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "No single stat of Groß was decisive",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tarkowski scored 14 for Remigiusz and Zbychu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Hall scored a goal and gave Leszek 13",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zbychu left 20 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zbychu's White→Tarkowski transfer gave 14 vs 0",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Autosub replaced João Pedro with Groß (14) for Alojzy, Bartas and Wacek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Fabian paid 4 for transfers that gained 10",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Remigiusz's 4-point hit had a transfer gain of -9",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Remigiusz swapped Semenyo (17) for Gibbs-White (2)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Five Free Hits and one TC played",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Lolek gained +26 from Free Hit, Leszek +18",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kuba made nine replacements with his Free Hit and lost 7",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kuba removed Groß, whose 14 would have counted",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kuba's new Tzolakis and his 6 points stayed on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek's TC added 6",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Pogromcy Wildcardów (Zbychu) still lead with 387",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Alojzy 371 and Bartas 362 are behind the leader",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek climbed eight places to 12th",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kuba fell six places to 10th",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek had the biggest overall climb: 2,4M places to 1,8M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kuba had the biggest overall fall: 858k to 1,6M, out of top 1M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek also left the top 1M, falling 847k places to 1,7M",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Mocną stroną są konkretne smaczki, np. dziewięć podmian Kuby na Free Hicie i „żółtko kapitana”, ale fragmenty o swingu („żaden pojedynczy składnik nie rozstrzygał”) i „zysk −9” brzmią sztywno i technicznie.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "real-l2-gw2",
+      "text": "🎙️ *Presser GW2 — Klub Smutnych Kapitanów*\n\n🏆 *Manager kolejki:* Gruby bierze kolejkę: 132 punkty netto przy średniej ligowej 101 i GW rank 25k. To najlepszy wynik GW w naszej lidze w tym sezonie.\n\n🤦 *Wtopa kolejki:* Zenek kończy z 68 punktami netto i GW rankiem 7,4M — najgorszym w lidze w tym sezonie. Tym razem punkty wybrały ławkę.\n\n©️ *Kapitanowie:* Gruby, Ignacy i Oskar dali opaskę B.Fernandesowi: po 46 punktów. Staszek wziął 18 od João Pedro, a Zenek 8 od Szoboszlaia. Po zeszłotygodniowych blankach opaski wreszcie przypominają o swoim przeznaczeniu.\n\n⚽ *Z boiska:* João Pedro strzelił gola, zaliczył asystę i samobója — ten ostatni kosztował Staszka na kapitanie 4 punkty; Gruby i Oskar mieli go bez opaski. B.Fernandes ustrzelił hat-tricka i dołożył asystę: kapitan u Grubego, Ignacego i Oskara, zwykły skład u Zenka, a Staszek bez niego. Gibbs-White uzbierał 13 punktów dla Staszka, podczas gdy u Zenka siedział na ławce. Groß też dał 13 Ignacemu; jego gol przy xG 0,05 padł właściwie z niczego, a u Staszka te punkty zostały na ławce.\n\n🪑 *Ławka i transfery:* Staszek zostawił na rezerwie 25 punktów, Zenek 16. Trudno patrzeć na takie liczby, kiedy wynik już zatwierdzony.\n\n🃏 *Chipy:* Gruby odpalił Bench Boost i zgarnął z ławki 17 punktów. Po 25 punktach, które zostawił tam w GW1, tym razem włączył licznik we właściwym momencie.\n\n📊 *Tabela:* Spalony na Starcie wskakuje z czwartego miejsca na fotel lidera: 182 punkty. Ignacy awansuje z piątego na drugie ze 168, Oskar jest trzeci ze 158. Staszek spada z pierwszego na czwarte, Zenek z trzeciego na piąte.\n\n🌍 *Overall:* Największy skok należy do Grubego: o 4,2M miejsc, na 142k i do top 1M. Ignacy też wchodzi do top 1M — awans o 5,3M miejsc, na 571k. Oskar pnie się o 2,6M miejsc, na 1,2M.",
+      "length": 1756,
+      "within_limit": true,
+      "input_tokens": 14632,
+      "output_tokens": 677,
+      "cost_usd": 0.036034,
+      "latency_seconds": 7.4274957799352705,
+      "claims": [
+        {
+          "claim": "Gruby wins the gameweek with 132 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "League average is 101",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby's GW rank is 25k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby's 132 is the best GW result in the league this season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek ends with 68 net points and GW rank 7,4M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek's result is the worst in the league this season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby, Ignacy and Oskar captained B.Fernandes, 46 each",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Staszek got 18 from João Pedro as captain, Zenek 8 from Szoboszlai",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Captains blanked last week (GW1)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "João Pedro scored, assisted and scored an own goal",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The own goal cost Staszek 4 points on the captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby and Oskar had João Pedro without the armband",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "B.Fernandes hat-trick plus an assist",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "B.Fernandes was captain for Gruby, Ignacy and Oskar, in Zenek's XI uncaptained, Staszek didn't own him",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gibbs-White scored 13 for Staszek, sat on Zenek's bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Groß gave 13 to Ignacy",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Groß's goal came at an xG of 0,05, from nothing",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Groß's points stayed on Staszek's bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Staszek left 25 on the bench, Zenek 16",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby played Bench Boost and got 17 points from the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby left 25 points on the bench in GW1",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Spalony na Starcie jumps from 4th to leader with 182 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Ignacy rises from 5th to 2nd with 168",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar is 3rd with 158",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Staszek drops from 1st to 4th, Zenek from 3rd to 5th",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby has the biggest jump: 4,2M places, to 142k, into the top 1M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Ignacy enters the top 1M, up 5,3M places, to 571k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar climbs 2,6M places, to 1,2M",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Widać próbę kolorytu: nawiązanie do ławki z GW1 przy Bench Booście dobrze siedzi, ale reszta komentarzy jest wymuszona albo płaska („opaski przypominają o swoim przeznaczeniu”, „kiedy wynik już zatwierdzony”).",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "real-l2-gw4",
+      "text": "🎙️ *Presser GW4 — Klub Smutnych Kapitanów*\n\n🏆 *Manager kolejki:* Oskar bierze pierwszą wygraną w sezonie: 97 punktów netto przy średniej ligowej 84. GW rank 334k to jego najlepszy wynik w tym sezonie; gol kapitana João Pedro pomógł mu utrzymać 3 punkty przewagi nad Ignacym.\n\n🤦 *Wtopa kolejki:* Zenek kończy z 72 punktami i GW rankiem 4,7M. Druga wtopa w sezonie, choć jego Calvert-Lewin akurat nie zawiódł. Opaska nie pociągnęła reszty składu.\n\n©️ *Kapitanowie:* Oskar i Staszek wzięli po 24 od João Pedro: gol, asysta i 3 bonusy. Palmer dał Ignacemu i Zenkowi po 10, a Grubemu na TC 15. Potrójna opaska trafiła na asystę, ale do wyboru João Pedro trochę zabrakło.\n\n⚽ *Z boiska:* João Pedro do gola dołożył asystę; mieli go też bez opaski Gruby i Ignacy, a Zenek wcale. Sam gol dał Oskarowi swing 4 wobec Ignacego przy marginesie 3. Raya obronił karnego, zachował czyste konto i uzbierał 14 dla Oskara i Ignacego. Groß strzelił gola i zaliczył dwie asysty: 17 punktów zgarnęli Gruby, Ignacy i Oskar, za to u Staszka cały haul został na ławce. Zenek grał bez Großa.\n\n🪑 *Ławka i transfery:* Staszek odłożył na ławkę aż 37 punktów. Zamiana Gabriela (9) na Konsę (6) nie pomogła, ale Tavernier (8) za Ndiaye (1) już tak. Oskar zostawił na ławce 11 punktów, w tym Calverta-Lewina z 10; Gakpo (1) za Tonaliego (3) też nie był transferowym przebłyskiem.\n\n🃏 *Chipy:* TC Grubego dołożył 5 punktów. Na plus, choć przy potrojeniu każdy pewnie zerkał na większą zdobycz.\n\n📊 *Tabela:* Trzy Punkty w Kieszeni obejmują prowadzenie: Ignacy ma 309, Oskar 305, Gruby 296. Ignacy i Gruby przez 3 kolejki byli sąsiadami w tabeli, teraz zamienili się miejscami, a między nimi jest 13 punktów. Oskar też minął Grubego i wskoczył na drugie miejsce. Grubego nadal nikt nie przebił w ligowych rekordach GW ranku: 25k z GW2 i 9,9M z GW3.\n\n🌍 *Overall:* Największy skok należy do Oskara: w górę o 968k miejsc, na 549k i do top 1M. Ignacy poprawił się o 522k miejsc, na 405k.",
+      "length": 1947,
+      "within_limit": true,
+      "input_tokens": 15960,
+      "output_tokens": 737,
+      "cost_usd": 0.03929,
+      "latency_seconds": 8.55665325699374,
+      "claims": [
+        {
+          "claim": "Oskar's first GW win of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar 97 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "League average 84",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar's GW rank 334k is his best this season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Captain João Pedro's goal helped Oskar keep a 3-point margin over Ignacy",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek 72 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek GW rank 4,7M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek's second flop of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek's Calvert-Lewin did not disappoint (10 pts)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar and Staszek got 24 each from João Pedro",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "João Pedro: goal, assist and 3 bonus",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer gave Ignacy and Zenek 10 each",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer gave Gruby 15 on TC",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer's TC haul came from an assist",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby and Ignacy owned João Pedro uncaptained",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek did not own João Pedro",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The goal alone gave Oskar a swing of 4 vs Ignacy at margin 3",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Raya saved a penalty and kept a clean sheet",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Raya 14 points for Oskar and Ignacy",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Groß scored a goal and two assists",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Groß 17 points for Gruby, Ignacy and Oskar",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Groß's haul was on Staszek's bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek played without Groß",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Staszek left 37 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Staszek swapped Gabriel (9) for Konsa (6)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Staszek's Tavernier (8) for Ndiaye (1) helped",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar left 11 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Calvert-Lewin with 10 on Oskar's bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar's Gakpo (1) for Tonali (3)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby's TC added 5 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Trzy Punkty w Kieszeni (Ignacy) take the lead",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Ignacy 309, Oskar 305, Gruby 296",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Ignacy and Gruby neighbours for 3 gameweeks, now swapped",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "13 points between Ignacy and Gruby",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar passed Gruby and moved to second",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby holds the league's best GW rank record: 25k in GW2",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby holds the league's worst GW rank record: 9,9M in GW3",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar has the biggest overall climb",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar up 968k places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar now 549k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar entered top 1M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Ignacy up 522k places to 405k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "Naturalny, z kilkoma udanymi puentami o decyzjach („cały haul został na ławce”, „nie był transferowym przebłyskiem”), choć sekcja tabeli to głównie wyliczanka, a „Zenek grał bez Großa” jest płaskie.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-low-captain",
+      "text": "🎙️ *Presser GW4 — Stowarzyszenie Wolnych Transferów*\n\n🏆 *Manager kolejki:* Tadek zgarnia 59 punktów netto i drugą wygraną w sezonie. GW rank 88k to jego najlepszy wynik dotąd; średnia ligowa wyniosła 50.\n\n🤦 *Wtopa kolejki:* Edzio kończy z 35 punktami netto i drugim flopem w sezonie. GW rank 3,9M to najgorszy wynik naszej ligi w tym sezonie. Tego rekordu raczej nie chciał bić.\n\n©️ *Kapitanowie:* Tadek postawił na Mbeumo i dostał 16 punktów — gol zrobił swoje. Haaland dał po 2 Antkowi, Edziowi, Julkowi i Wackowi, a Saka tyle samo Frankowi. U Antka to już drugi blank kapitana z rzędu; opaska prosi o zmianę planu.\n\n🪑 *Ławka i transfery:* Wacek zostawił 9 punktów na ławce. Edzio zapłacił 4 punkty za wymianę Gordona (6) na Wissę (3): transfery przyniosły mu stratę 3 punktów jeszcze przed kosztem hita. Tadkowi odwrotna wymiana tych samych nazwisk — Gordon (2), Wissa (7) — dała zysk 5 punktów, więc jego hit się spłacił.\n\n📊 *Tabela:* Tiki-Taka z Bazaru awansuje o cztery miejsca i dzieli prowadzenie z Julkiem: obaj mają po 210 punktów. Tadek i Wacek są tuż za nimi, obaj po 209. Edzio spadł o cztery miejsca na piąte; cała liga mieści się między 210 a 204 punktami.\n\n🌍 *Overall:* Największy spadek zaliczył Edzio: o 1,4M miejsc, na 2,6M. Największy skok należy do Franka — o 450k miejsc, na 450k. Julek awansował o 25k miejsc i wszedł do top 100k; jest na 95k.",
+      "length": 1366,
+      "within_limit": true,
+      "input_tokens": 12050,
+      "output_tokens": 517,
+      "cost_usd": 0.02927,
+      "latency_seconds": 6.657667229999788,
+      "claims": [
+        {
+          "claim": "Tadek zdobył 59 punktów netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek ma drugą wygraną kolejki w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank Tadka 88k to jego najlepszy wynik dotąd",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Średnia ligowa wyniosła 50",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio zdobył 35 punktów netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio ma drugi flop w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank Edzia 3,9M to najgorszy wynik ligi w tym sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek dał opaskę Mbeumo i dostał 16 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo strzelił gola",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland dał po 2 punkty Antkowi, Edziowi, Julkowi i Wackowi",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Saka dał Frankowi 2 punkty jako kapitan",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek ma drugi z rzędu blank kapitana",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek zostawił 9 punktów na ławce",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio zapłacił 4 punkty za zamianę Gordona (6) na Wissę (3)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Transfer Edzia dał stratę 3 punktów jeszcze przed kosztem hita",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek zamienił Gordona (2) na Wissę (7) i zyskał 5 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Hit Tadka się spłacił",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tiki-Taka z Bazaru awansowała o cztery miejsca",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tiki-Taka z Bazaru dzieli prowadzenie z Julkiem, obaj mają po 210 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek i Wacek mają po 209 punktów, tuż za liderami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio spadł o cztery miejsca, na piąte",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Cała liga mieści się między 210 a 204 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio zaliczył największy spadek overall: o 1,4M miejsc, na 2,6M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Franek ma największy skok overall: o 450k miejsc, na 450k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek awansował o 25k miejsc, wszedł do top 100k i jest na 95k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Rzetelny i poprawny, z paroma udanymi akcentami (rekord, którego nie chciał bić; opaska prosi o zmianę planu), ale całość brzmi raportowo, a zdanie „o 450k miejsc, na 450k” jest niezgrabne.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-chip-flop",
+      "text": "🎙️ *Presser GW7 — Liga Pod Złotym Kurem*\n\n🏆 *Manager kolejki:* Oskar bierze trzecią wygraną w sezonie: 66 punktów netto przy średniej ligowej 55. GW rank 25k to najlepszy wynik naszej ligi w tym sezonie i jego osobisty rekord.\n\n🤦 *Wtopa kolejki:* Konrad kończy z 45 punktami, drugi raz w sezonie i drugą kolejkę z rzędu na końcu stawki. Opaska i chip miały ratować wynik; wyszedł GW rank 1,1M.\n\n©️ *Kapitanowie:* Haaland dał Oskarowi 16 punktów, ale u Zenka zablankował na 4. Palmer u Patryka dorzucił 12, Saka u Fabiana 10, Mbeumo u Alojzego 8. Konrad postawił potrójną opaskę na Salaha: 30 minut i 3 punkty.\n\n🪑 *Ławka i transfery:* Oskar zostawił 5 punktów na ławce, Patryk 2. Patryk dołożył hita za 4, żeby wymienić Gordona (6) na Wissę (3): same transfery dały mu 3 punkty mniej niż sprzedany zawodnik. Trudno o lepszą reklamę cierpliwości.\n\n🃏 *Chipy:* Free Hit Fabiana dał 3 punkty więcej niż stary skład; za tydzień wraca poprzedni. Zenek odpalił Bench Boost dla 1 punktu, a Triple Captain Konrada dołożył tylko 1. Na takie otwarcie sezonu chipów czekaliśmy?\n\n📊 *Tabela:* Rezerwowi Marzyciele prowadzą z 392 punktami. Oskar skoczył o trzy miejsca na drugie i traci do Alojzego 6 punktów. Konrad i Patryk mają po 380 punktów na trzecim miejscu; Zenek spadł o dwie pozycje na piąte.\n\n🌍 *Overall:* Największy skok należy do Patryka: o 1,1M miejsc, prosto do top 1M na 900k. Największy spadek u Zenka — o 50k miejsc; wypadł z top 1M i jest na 1,1M.",
+      "length": 1450,
+      "within_limit": true,
+      "input_tokens": 12371,
+      "output_tokens": 556,
+      "cost_usd": 0.030302,
+      "latency_seconds": 6.152177451993339,
+      "claims": [
+        {
+          "claim": "Oskar wins the gameweek for the third time this season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar scored 66 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "League average was 55",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar's GW rank was 25k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank 25k is the league's best result this season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank 25k is Oskar's personal record",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad finished with 45 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad's flop is his second this season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad's flop is his second gameweek in a row",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad's GW rank was 1,1M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland gave Oskar 16 points as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland blanked for Zenek with 4 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer gave Patryk 12 as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Saka gave Fabian 10 as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo gave Alojzy 8 as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad put Triple Captain on Salah",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salah played 30 minutes and gave Konrad 3 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar left 5 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk left 2 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk took a 4-point hit",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk swapped Gordon (6) for Wissa (3)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The transfer gave Patryk 3 points less than the sold player",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Fabian's Free Hit gave 3 points more than his old squad",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek's Bench Boost gave 1 point",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad's Triple Captain added only 1 point",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rezerwowi Marzyciele lead with 392 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar climbed three places to second",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar is 6 points behind Alojzy",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad and Patryk share third place with 380 points each",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek fell two places to fifth",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk made the biggest overall climb",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk climbed 1,1M places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk entered the top 1M and is at 900k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek had the biggest overall fall",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek fell 50k places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek left the top 1M and is at 1,1M",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "Najbardziej naturalny z trzech tekstów: celna puenta o „reklamie cierpliwości” i zgrabne użycie słów blank i hit, choć zdanie we Wtopie jest trochę toporne, a sekcja Overall płaska.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-no-team",
+      "text": "🎙️ *Presser GW3 — Stowarzyszenie Wolnych Transferów*\n\n🏆 *Manager kolejki:* Gustaw zgarnia drugie zwycięstwo w sezonie: 56 punktów netto przy średniej ligowej 51. GW rank 60k to jego osobisty najlepszy wynik w tym sezonie, choć hit wcale mu nie pomógł.\n\n🤦 *Wtopa kolejki:* Oskar też ma już drugą taką kolejkę: 38 punktów netto i GW rank 2,8M. Na ławce zostało mu 10 punktów — trudno o lepszy komentarz do wyboru jedenastki.\n\n©️ *Kapitanowie:* Najlepszą opaskę miał Fabian: Salah dał mu 16 punktów. Palmer dorzucił Gustawowi 14, Haaland przyniósł po 12 Oskarowi i Remigiuszowi, a Saka u Patryka skończył na 6.\n\n🪑 *Ławka i transfery:* Gustaw zapłacił 4 punkty za zamianę Gordona (6) na Wissę (3): transfery dały mu 3 punkty mniej niż sprzedany zawodnik. Wygrał kolejkę, ale tej decyzji do gabloty raczej nie wstawi. Remigiusz zostawił na ławce 5 punktów.\n\n📊 *Tabela:* Młode Wilki prowadzą ze 167 punktami. Tajny Skład i Kwaśne Jabłka mają po 164 i dzielą drugie miejsce; Bramkarz na Gali jest trzy punkty za nimi. Jedenastu Gniewnych spadło z pierwszego na piąte miejsce, ale do lidera traci tylko 9 punktów.\n\n🌍 *Overall:* Największy spadek zaliczył Remigiusz: o 900k miejsc, wypadł z top 1M i jest na 1,9M. Największy skok należy do Patryka: awans o 45k miejsc, wejście do top 100k i obecnie 95k.",
+      "length": 1294,
+      "within_limit": true,
+      "input_tokens": 11781,
+      "output_tokens": 487,
+      "cost_usd": 0.028432,
+      "latency_seconds": 5.276068873004988,
+      "claims": [
+        {
+          "claim": "Gustaw's second gameweek win of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gustaw scored 56 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The league average is 51",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gustaw's GW rank of 60k is his personal best this season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gustaw's hit did not help him",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar's second flop",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar scored 38 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar's GW rank is 2,8M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar left 10 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Fabian had the best captain: Salah gave him 16",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer gave Gustaw 14 as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland gave 12 each to Oskar and Remigiusz",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Saka gave Patryk 6 as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gustaw paid 4 points to swap Gordon (6) for Wissa (3)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The transfer gave 3 points less than the player sold",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gustaw won the gameweek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Remigiusz left 5 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Młode Wilki lead with 167 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tajny Skład and Kwaśne Jabłka share second place with 164 each",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Bramkarz na Gali is three points behind them",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Jedenastu Gniewnych fell from first to fifth",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Jedenastu Gniewnych trail the leader by 9 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Remigiusz had the biggest fall in overall rank",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Remigiusz fell by 900k places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Remigiusz dropped out of the top 1M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Remigiusz is at 1,9M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk had the biggest climb",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk climbed by 45k places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk entered the top 100k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk is at 95k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "Puenty o gablocie i o wyborze jedenastki wypadają naturalnie i dotyczą decyzji FPL, ale zdanie „transfery dały mu 3 punkty mniej niż sprzedany zawodnik” jest sztywne, a kapitanowie i overall są suche.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-enter-top-10k",
+      "text": "🎙️ *Presser GW8 — Klub Smutnych Kapitanów*\n\n🏆 *Manager kolejki:* Oskar bierze trzecią wygraną w sezonie: 66 punktów netto przy średniej ligowej 55. GW rank 18k to najlepszy wynik naszej ligi w tym sezonie — i jego własny rekord.\n\n🤦 *Wtopa kolejki:* Konrad kończy z 45 punktami, GW rankiem 1,4M i drugą wtopą z rzędu. Potrójna opaska nie pomogła.\n\n©️ *Kapitanowie:* Haaland dał Oskarowi 16 punktów, ale u Zenka zablankował za 4. Palmer Patryka przyniósł 12, Saka Fabiana 10, a Mbeumo Alojzego 8. Konrad odpalił TC na Salahu i dostał 3 punkty — opaska z opcją potrojenia rozczarowania.\n\n🪑 *Ławka i transfery:* Oskar zostawił 5 punktów na ławce, Patryk tylko 2. Gorzej z hitem Patryka: zapłacił 4 punkty za zamianę Gordona (6) na Wissę (3). Same transfery dały mu stratę 3 punktów względem sprzedanego zawodnika.\n\n🃏 *Chipy:* Free Hit Fabiana poprawił wynik o 3 punkty względem starego składu, więc chip wyszedł na plus. TC Konrada dołożył 1 punkt, podobnie jak Bench Boost Zenka. Tyle zachodu, żeby dołożyć po oczku.\n\n📊 *Tabela:* Strzał z Dystansu prowadzi z 392 punktami, a Oskar awansował o trzy miejsca na drugie: ma 386. Konrad i Patryk są na równi po 380, Zenek spada o dwie pozycje na piątą. Od lidera do Fabiana na szóstym miejscu jest ciasno, choć każdy punkt zaczyna ważyć.\n\n🌍 *Overall:* Największy skok należy do Alojzego: o 2,6k miejsc, z 12,4k na 9 800. Obiecane zbliżanie się do top 10k skończyło się wejściem do środka.",
+      "length": 1430,
+      "within_limit": true,
+      "input_tokens": 12397,
+      "output_tokens": 543,
+      "cost_usd": 0.030224,
+      "latency_seconds": 6.636180657893419,
+      "claims": [
+        {
+          "claim": "Oskar won his third gameweek of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar scored 66 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The league average is 55",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar's GW rank is 18k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar's result is the league's best this season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar's result is his own record",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad finished with 45 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad's GW rank is 1,4M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "This is Konrad's second flop in a row",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad used the triple armband (Triple Captain)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland gave Oskar 16 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland blanked for Zenek and gave 4",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk's Palmer brought 12",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Fabian's Saka brought 10",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Alojzy's Mbeumo brought 8",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad played TC on Salah and got 3 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar left 5 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk left 2 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk paid 4 points to swap Gordon (6) for Wissa (3)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The transfer gave Patryk a loss of 3 points compared with the player sold",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Fabian's Free Hit improved his score by 3 points compared with the old squad",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad's TC added 1 point",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek's Bench Boost added 1 point",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Strzał z Dystansu leads with 392 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar climbed three places to second with 386",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad and Patryk are level on 380",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek fell two places to fifth",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Fabian is sixth",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Alojzy made the biggest climb",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Alojzy climbed 2,6k places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Alojzy went from 12,4k to 9800",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Alojzy entered the top 10k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "Najzabawniejszy z trzech, a żarty dotyczą decyzji („opaska z opcją potrojenia rozczarowania”, „po oczku”); słabsze są „zablankował za 4” i nielogiczne zdania o tabeli i top 10k.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-drop-out-of-top-1m",
+      "text": "🎙️ *Presser GW9 — Stowarzyszenie Wolnych Transferów*\n\n🏆 *Manager kolejki:* Tadek bierze drugą wygraną w sezonie: 59 punktów netto przy średniej ligowej 50. GW rank 140k, a nawet hit za -4 nie przeszkodził.\n\n🤦 *Wtopa kolejki:* Edzio kończy z 35 punktami netto i GW rankiem 5,2M. To jego druga wtopa sezonu i najgorszy GW rank w całej naszej lidze w tym sezonie. Hit też mu nie pomógł.\n\n©️ *Kapitanowie:* Tadek postawił na Mbeumo i dostał 16 punktów, w tym 10 za gola. U Antka, Edzia, Julka i Wacka Haaland przyniósł po 2; Saka dał tyle samo Frankowi. Antek ma już dwa blanki kapitana z rzędu.\n\n🪑 *Ławka i transfery:* Dwóch wzięło hita za -4 i kupiło Wissę za Gordona. U Tadka Wissa dał 7 wobec 2 Gordona: transfer zyskał 5 punktów i spłacił koszt. U Edzia Wissa dał 3 wobec 6 Gordona: zysk wyniósł -3, więc hit tylko pogłębił stratę. Wacek zostawił 9 punktów na ławce.\n\n📊 *Tabela:* Grad Bramek i Cichy Kapitan są na wspólnym prowadzeniu po 210 punktów. Różowe Okulary i Autobus Zaparkowany mają po 209 — cała czwórka mieści się w jednym punkcie. Franek skoczył o cztery miejsca, Edzio spadł o cztery, na piąte.\n\n🌍 *Overall:* Zapowiedź z GW8 się sprawdziła: Edzio zaliczył największy spadek, o 1,3M miejsc, wypadł z top 1M i jest na 2,3M. Wacek też opuszcza top 1M: spadek o 360k miejsc, na 1,2M. Julek wypadł z top 100k, spadając o 15k miejsc na 105k.",
+      "length": 1350,
+      "within_limit": true,
+      "input_tokens": 12068,
+      "output_tokens": 535,
+      "cost_usd": 0.029486000000000002,
+      "latency_seconds": 5.9034999019932,
+      "claims": [
+        {
+          "claim": "Tadek bierze drugą wygraną w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek ma 59 punktów netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Średnia ligowa wynosi 50",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank Tadka to 140k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek wziął hit za -4",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio kończy z 35 punktami netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank Edzia to 5,2M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To druga wtopa Edzia w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To najgorszy GW rank w lidze w tym sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Hit nie pomógł Edziowi",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo dał Tadkowi 16 punktów, w tym 10 za gola",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "U Antka, Edzia, Julka i Wacka kapitan Haaland przyniósł po 2",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Saka dał Frankowi 2 punkty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek ma dwa blanki kapitana z rzędu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Dwóch managerów wzięło hita za -4 i kupiło Wissę za Gordona",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "U Tadka Wissa dał 7 punktów, Gordon 2; transfer zyskał 5 i spłacił koszt",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "U Edzia Wissa dał 3 punkty, Gordon 6; zysk -3, hit pogłębił stratę",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek zostawił 9 punktów na ławce",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Grad Bramek i Cichy Kapitan prowadzą wspólnie po 210 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Różowe Okulary i Autobus Zaparkowany mają po 209",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Cała czwórka mieści się w jednym punkcie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Franek awansował o cztery miejsca",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio spadł o cztery miejsca, na piąte",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zapowiedź z GW8 o wypadnięciu z top 1M się sprawdziła",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio zaliczył największy spadek w overall, o 1,3M miejsc",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio wypadł z top 1M i jest na 2,3M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek opuszcza top 1M: spadek o 360k miejsc, na 1,2M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek wypadł z top 100k, spadając o 15k miejsc na 105k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Nawiązanie do zapowiedzi z GW8 i „cała czwórka mieści się w jednym punkcie” dodają kolorytu, ale ton pozostaje sprawozdawczy, a zwrot „zysk wyniósł -3” jest niezgrabny.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-red-card-own-goal",
+      "text": "🎙️ *Presser GW6 — Stowarzyszenie Wolnych Transferów*\n\n🏆 *Manager kolejki:* Tadek bierze swoje pierwsze zwycięstwo w sezonie: 61 punktów netto przy średniej ligowej 53. Julek był o 2 punkty od niego, ale jego kartki na boisku zrobiły różnicę.\n\n🤦 *Wtopa kolejki:* Antek kończy z 40 punktami. Szósta wtopa w sześciu kolejkach z rzędu — tabeli nie da się przekonać, że to tylko słabszy weekend.\n\n©️ *Kapitanowie:* Haaland dał Tadkowi 18 punktów, a Cześkowi na TC tylko 6. Julek i Olek zgarnęli po 12 od Salaha. U Antka i Wieśka Palmer dał po 8; zmarnowany karny kosztował każdego z nich 4 punkty kapitańskie.\n\n⚽ *Z boiska:* Caicedo zobaczył czerwoną kartkę: Julek i Olek mieli go w składzie, Tadek nie. W starciu Tadka z Julkiem dało to swing 3 punkty przy różnicy 2. Dias dołożył Julkowi samobója za -2; swing z tego zdarzenia wyniósł 2. Julek miał niezły plan na pościg, tylko boisko dopisało dwa wyjątki.\n\n🪑 *Ławka i transfery:* U Antka zostało 5 punktów na ławce. Po takiej kolejce nawet rezerwowi mogą wyglądać kusząco.\n\n🃏 *Chipy:* Czesiek odpalił Triple Captain na Haalandzie. Efekt chipa: 2 punkty ekstra. Wielki przycisk, skromny dopisek do wyniku.\n\n📊 *Tabela:* Klub Czwartej Kolejki nadal prowadzi z 334 punktami. Olek ma 327, a Szalony Szatniarz trzyma trzecie miejsce z 321. Nikt nie zmienił pozycji, ale Tadek przerwał Julkowi serię zwycięstw w kolejkach — Julek ma ich już pięć w sezonie.",
+      "length": 1397,
+      "within_limit": true,
+      "input_tokens": 12720,
+      "output_tokens": 525,
+      "cost_usd": 0.030690000000000002,
+      "latency_seconds": 6.59943430009298,
+      "claims": [
+        {
+          "claim": "Tadek's first win of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek scored 61 net points; league average 53",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek finished 2 points behind Tadek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek's cards (plural) made the difference",
+          "label": "unsupported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek scored 40 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek's sixth flop in six gameweeks, in a row",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland gave Tadek 18 and Czesiek, on Triple Captain, only 6",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek and Olek got 12 each from Salah",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer gave 8 each to Antek and Wiesiek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer's missed penalty cost each of them 4 captain points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Caicedo got a red card; Julek and Olek owned him, Tadek did not",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "In Tadek vs Julek: swing 3 points against a margin of 2",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Dias's own goal cost Julek -2; swing 2",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Klub Czwartej Kolejki still leads with 334 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Olek has 327",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Szalony Szatniarz (Tadek) holds third with 321",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Nobody changed position",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek ended Julek's streak of gameweek wins",
+          "label": "unsupported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek has five gameweek wins this season",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 0.8947368421052632,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "W prawie każdej sekcji jest coś ciekawego, a puenty dotyczą decyzji FPL („Wielki przycisk, skromny dopisek do wyniku”), ale miejscami tekst jest sztywny i myli słownictwo („swing 3 przy różnicy 2”, „kartki zrobiły różnicę”).",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-hits-judged",
+      "text": "🎙️ *Presser GW7 — Klub Smutnych Kapitanów*\n\n🏆 *Manager kolejki:* Rysiek bierze siódmą wygraną z rzędu: 70 punktów netto przy średniej ligowej 53. W GW6 jeszcze grał bez hitów, teraz zapłacił 8 punktów za transfery i nadal wygrał.\n\n🤦 *Wtopa kolejki:* Antek kończy z 44 punktami netto — to jego pierwsza wtopa sezonu. Opaska nie pomogła, ale szczegóły za chwilę.\n\n©️ *Kapitanowie:* Mbeumo dał Ryśkowi 16 punktów, najwięcej ze wszystkich opasek. Bolek, Dobromir i Lolek dostali po 12 od Salaha, Wacek 10 od Haalanda, a Antek tylko 6 od Palmera. Kapitanowie Smutnych Kapitanów tym razem wcale nie byli zgodni.\n\n⚽ *Z boiska:* Bowen strzelił, asystował i zebrał 11 punktów; miał go w lidze tylko Rysiek, a poza ligą też jest rzadkim wyborem. Ta różnica zrobiła robotę. Na podium zdecydował gol Wooda: Lolek ma nad Bolkiem 1 punkt przewagi, a sam gol dał między nimi swing 5. Bez niego Bolek by go dogonił.\n\n🪑 *Ławka i transfery:* Ryśkowi dwa transfery za -8 przyniosły 14 punktów zysku względem sprzedanych graczy. Bolek zapłacił -4 za zamianę Isaka (6) na Gibbsa-White’a (1) — trudno o lepszy sposób, żeby oddać punkty sąsiadowi w tabeli. Lolek wziął -4 za Ekitike (7) zamiast Solanke (3): zysk z transferu pokrył koszt hita, nic ponadto.\n\n📊 *Tabela:* Siódme Niebo wskakuje na drugie miejsce przed Bolkiem: dzieli ich 1 punkt po sześciu kolejkach sąsiedztwa w tabeli. Niebieskie Migdały prowadzą z 400 punktami i mają 30 przewagi nad drugim miejscem.",
+      "length": 1445,
+      "within_limit": true,
+      "input_tokens": 12626,
+      "output_tokens": 537,
+      "cost_usd": 0.030622,
+      "latency_seconds": 6.7428120450349525,
+      "claims": [
+        {
+          "claim": "Rysiek ma siódmą wygraną z rzędu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rysiek zdobył 70 punktów netto przy średniej ligowej 53",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "W GW6 Rysiek grał bez hitów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rysiek zapłacił 8 punktów za transfery i mimo to wygrał",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek skończył z 44 punktami netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To pierwsza wtopa Antka w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo dał Ryśkowi 16 punktów, najwięcej ze wszystkich kapitanów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Bolek, Dobromir i Lolek dostali po 12 od Salaha",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek dostał 10 od Haalanda",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek dostał tylko 6 od Palmera",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Bowen strzelił gola, asystował i zebrał 11 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "W lidze Bowena miał tylko Rysiek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Poza ligą Bowen też jest rzadkim wyborem",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gol Wooda rozstrzygnął walkę o podium",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Lolek ma nad Bolkiem 1 punkt przewagi",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Sam gol Wooda dał między nimi swing 5",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Bez gola Wooda Bolek dogoniłby Lolka",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Dwa transfery Ryśka za -8 dały 14 punktów zysku względem sprzedanych graczy",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Bolek zapłacił -4 za zamianę Isaka (6) na Gibbs-White'a (1)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Lolek zapłacił -4 za Ekitike (7) w miejsce Solanke (3)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zysk z transferu Lolka dokładnie pokrył koszt hita, nic ponad to",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Siódme Niebo (Lolek) wskoczyło na drugie miejsce przed Bolka",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Lolka i Bolka dzieli 1 punkt po sześciu kolejkach sąsiedztwa w tabeli",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Niebieskie Migdały (Rysiek) prowadzą z 400 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Lider ma 30 punktów przewagi nad drugim miejscem",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "To najpełniejszy tekst z celną puentą o oddawaniu punktów sąsiadowi w tabeli, ale zawiera zapychacze („szczegóły za chwilę”) i chybiony żart o zgodności kapitanów.",
+        "inflection_errors": 2,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-podium-new-leader",
+      "text": "🎙️ *Presser GW12 — Kółko Różańcowe FPL*\n\n🏆 *Manager kolejki:* Wacek bierze swoje pierwsze zwycięstwo w sezonie: 80 punktów netto przy średniej ligowej 54. Salah rozstrzygnął pojedynek z Antkiem.\n\n🤦 *Wtopa kolejki:* Leszek po 11 wygranych kolejkach notuje pierwszą wtopę: 40 punktów netto. Hit nie pomógł, ale rachunek za ten ruch zostawmy na transfery.\n\n©️ *Kapitanowie:* Wacek postawił potrójną opaskę na Salaha i zgarnął 45 punktów. Palmer dał po 10 Antkowi i Ignacemu, a Haaland po 8 Leszkowi i Zenkowi. Trudno było dogonić Wacka z taką różnicą na kapitanie.\n\n⚽ *Z boiska:* Salah, rzadki wybór także poza naszą ligą, strzelił dwa gole i dorzucił asystę. Miał go tylko Wacek, z potrójnym mnożnikiem; sam dublet dał swing 30 punktów przy 25 punktach przewagi nad Antkiem w tej kolejce. W tabeli te gole też ważą: między Wackiem a Leszkiem jest 18 punktów, a ich swing to 30.\n\n🪑 *Ławka i transfery:* Leszek wziął hita za 4 punkty, żeby zamienić Mbeumo (9) na Gordona (2). Transfery przyniosły mu stratę 7 punktów względem sprzedanego gracza. To był zakup z paragonem, którego lepiej nie oglądać.\n\n🃏 *Chipy:* Wacek trzymał Triple Captain w GW11, a teraz odpalił go z efektem +15 punktów. Tym razem czekanie się opłaciło.\n\n📊 *Tabela:* Strzał z Dystansu wskakuje na fotel lidera z 784 punktami; Jedenastu Gniewnych ma 766. Wacek i Leszek byli sąsiadami przez 11 kolejek, a teraz zamienili się miejscami. Antek zostaje trzeci z 715 punktami.\n\n🌍 *Overall:* Wacek zalicza największy skok: o 35k miejsc, ze 130k na 95k. Wszedł do top 100k.",
+      "length": 1532,
+      "within_limit": true,
+      "input_tokens": 12345,
+      "output_tokens": 584,
+      "cost_usd": 0.03053,
+      "latency_seconds": 6.256550036021508,
+      "claims": [
+        {
+          "claim": "It is Wacek's first gameweek win of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek scored 80 net points against a league average of 54",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salah decided the duel with Antek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Leszek has his first flop after 11 gameweek wins",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Leszek scored 40 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Leszek's hit did not help",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek put the triple armband on Salah for 45 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer gave 10 points each to Antek and Ignacy",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland gave 8 points each to Leszek and Zenek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salah is a rare pick outside the league too",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salah scored two goals and added an assist",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Only Wacek owned Salah, with a triple multiplier",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The brace alone gave a 30-point swing against a 25-point margin over Antek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek and Leszek are 18 points apart and the goals' swing between them is 30",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Leszek took a 4-point hit to swap Mbeumo (9) for Gordon (2)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The transfer lost him 7 points against the player sold",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek held Triple Captain in GW11",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Triple Captain had a +15 effect",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Strzał z Dystansu takes the lead with 784 points; Jedenastu Gniewnych has 766",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek and Leszek were neighbours for 11 gameweeks and swapped places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek stays third with 715 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek made the biggest overall climb",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek climbed 35k places, from 130k to 95k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek entered the top 100k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "Brzmi naturalnie, słownictwo jest trafne („wziął hita”, „swing 30 przy 25 punktach przewagi”, „potrójna opaska”) i jest udany żart o paragonie, ale tekst się powtarza, a zdanie „rachunek zostawmy na transfery” brzmi sztucznie.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-ownership-unknown",
+      "text": "🎙️ *Presser GW5 — Stowarzyszenie Wolnych Transferów*\n\n🏆 *Manager kolejki:* Julek bierze swoją pierwszą wygraną: 62 punkty netto przy średniej ligowej 52. Wybór kapitana zrobił różnicę, i to dosłownie.\n\n🤦 *Wtopa kolejki:* Po 47 punktów mają Czesiek i Wiesiek. Dla Cześka to piąta wtopa z rzędu; Wiesiek zalicza pierwszą, choć tym razem sam dopłacił do wyniku hitem.\n\n©️ *Kapitanowie:* Julek założył opaskę Cunhi i dostał 26 punktów za dublet i bonus. Salah dał po 12 Cześkowi i Tadkowi, Haaland 10 Olkowi, a Palmer 8 Wieśkowi. Opaski punktowały, tylko jedna uciekła reszcie.\n\n⚽ *Z boiska:* Cunha strzelił dwa gole dla Wolves i jako kapitan Julka rozstrzygnął kolejkę: same bramki dały swing 20 punktów przy 9 punktach przewagi nad Olkiem. Cały występ przesunął między nimi 26 punktów; Olka nie było z Cunhą w składzie. Te same gole utrzymały też Julka przed Tadkiem w tabeli: swing 20 przy 9 punktach różnicy. Casemiro dostał czerwoną kartkę, wartą -3 punkty; mieli go Tadek i Olek. Nie każda różnica pomaga.\n\n🪑 *Ławka i transfery:* Wiesiek wziął hita za 4 punkty, żeby zamienić Isaka (5) na Ekitike (4). Transfer dał o punkt mniej od sprzedanego zawodnika, więc minus cztery zostało bez pokrycia.\n\n🃏 *Chipy:* Czesiek odpalił Bench Boost i dostał 7 punktów z ławki. Chip zrobił swoje, ale przed ostatnim miejscem w kolejce nie uratował.\n\n📊 *Tabela:* Po czterech kolejkach sąsiadowania Julek i Tadek zamienili się miejscami: Fabryka Hitów prowadzi z 282 punktami, Tadek ma 273. Olek trzyma trzecią lokatę z 269. Cztery wygrane Tadkowi wystarczyły na fotel lidera do tej kolejki; piąta należała do Julka.",
+      "length": 1601,
+      "within_limit": true,
+      "input_tokens": 12668,
+      "output_tokens": 584,
+      "cost_usd": 0.031176000000000002,
+      "latency_seconds": 7.691971056978218,
+      "claims": [
+        {
+          "claim": "Julek wins his first gameweek of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek scored 62 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "League average is 52",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The captain choice made the difference for Julek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Czesiek and Wiesiek both scored 47 and share the flop",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "This is Czesiek's fifth flop in a row",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "This is Wiesiek's first flop",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wiesiek took a hit this gameweek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek captained Cunha and got 26 points from a brace and a bonus",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salah gave 12 each to Czesiek and Tadek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland gave Olek 10",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer gave Wiesiek 8",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Every captain scored (no captain blanked)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Cunha scored two goals for Wolves",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Cunha, as Julek's captain, decided the gameweek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Cunha's goals alone gave a swing of 20 against a 9-point margin over Olek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Cunha's whole performance swung 26 points between Julek and Olek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Olek did not have Cunha in his team",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The same goals kept Julek ahead of Tadek in the table: swing 20 against a 9-point gap",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Casemiro got a red card worth -3 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek and Olek owned Casemiro",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wiesiek took a 4-point hit to swap Isak (5) for Ekitike (4)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The transfer gave one point less, so the hit did not pay off",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Czesiek played Bench Boost and got 7 points from the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Despite the chip, Czesiek finished at the bottom of the gameweek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "After four gameweeks as neighbours, Julek and Tadek swapped places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Fabryka Hitów (Julek) leads with 282 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek has 273 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Olek holds third place with 269",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek has four gameweek wins and led the table until this gameweek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The fifth gameweek win went to Julek",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Plusem są poprawne imiona i kilka udanych puent (np. „Nie każda różnica pomaga”, „minus cztery zostało bez pokrycia”), ale sekcja „Z boiska” dwa razy powtarza swing 20 przy 9, a kilka zdań brzmi sztywno („tylko jedna uciekła reszcie”).",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-lost-clean-sheet-moment",
+      "text": "🎙️ *Presser GW9 — Klub Smutnych Kapitanów*\n\n🏆 *Manager kolejki:* Heniek zgarnia pierwsze zwycięstwo w sezonie: 63 punkty netto przy średniej ligowej 51. Dublet Mbeumo załatwił sprawę w starciu z Frankiem.\n\n🤦 *Wtopa kolejki:* Rysiek kończy z 41 punktami. Dziewiąta wtopa w dziewięciu kolejkach — tabeli nie da się zagadać, trzeba w końcu trafić z opaską.\n\n©️ *Kapitanowie:* Mbeumo dał Heńkowi 28 punktów, w tym 20 za dwa gole. U Kowala Haaland przyniósł 14, u Franka i Grubego Salah po 12, a Palmer u Ryśka 6.\n\n⚽ *Z boiska:* Mbeumo był ligową różnicą Heńka: Franek go nie miał, a same dwa gole dały swing 20 przy 8 punktach różnicy w walce o wygraną kolejki. Gvardiol zachował czyste konto dla Franka, bo zszedł po 70 minutach, zanim Man City straciło gola. Arsenal stracił czyste konto, co w starciu o podium przesunęło 12 punktów na korzyść Heńka względem Grubego: Gabriel, Raya i Saliba nie uratowali Grubego, a dzielą ich tylko 2 punkty.\n\n🪑 *Ławka i transfery:* Kowal zostawił 8 punktów na ławce. Gruby wziął hita za 4, żeby zamienić Jacksona (7) na Solanke (2). Transfer przyniósł stratę 5 punktów jeszcze przed kosztem hita — Fabryka Hitów pracuje pełną parą.\n\n🃏 *Chipy:* Wildcard Franka dał o 3 punkty mniej niż stary skład. Remont był, ale na tę kolejkę rachunek wyszedł na minus.\n\n📊 *Tabela:* Wolne Elektrony Franka nadal prowadzą z 535 punktami, Kowal ma 514. Po 8 kolejkach sąsiedztwa Heniek i Gruby zamienili się miejscami: Heniek wchodzi na podium z 495, Gruby spada na czwarte z 493.\n\n🌍 *Overall:* Największy skok Heńka: o 35k miejsc, ze 120k na 85k. Wszedł do top 100k.",
+      "length": 1583,
+      "within_limit": true,
+      "input_tokens": 12876,
+      "output_tokens": 598,
+      "cost_usd": 0.031732,
+      "latency_seconds": 7.213127824943513,
+      "claims": [
+        {
+          "claim": "Heniek zdobywa pierwsze zwycięstwo w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek zdobył 63 punkty netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Średnia ligowa wyniosła 51",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Dublet Mbeumo rozstrzygnął starcie Heńka z Frankiem",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rysiek zdobył 41 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To dziewiąta wtopa Ryśka w dziewięciu kolejkach",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo dał Heńkowi 28 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "W tym 20 punktów za dwa gole",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland dał Kowalowi 14 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salah dał Frankowi i Grubemu po 12 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer dał Ryśkowi 6 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo był ligową różnicą Heńka, Franek go nie miał",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Dwa gole Mbeumo dały swing 20",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "W walce o wygraną kolejki różnica wyniosła 8 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gvardiol zachował czyste konto dla Franka, bo zszedł po 70 minutach, zanim Man City straciło gola",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Utrata czystego konta przez Arsenal przesunęła 12 punktów na korzyść Heńka względem Grubego",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gabriel, Raya i Saliba to zawodnicy Grubego",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heńka i Grubego dzielą 2 punkty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kowal zostawił 8 punktów na ławce",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby wziął hita za 4",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby zamienił Jacksona (7) na Solanke (2)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Transfer przyniósł stratę 5 punktów przed kosztem hita",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Fabryka Hitów to drużyna Grubego",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wildcard Franka dał o 3 punkty mniej niż stary skład",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wolne Elektrony Franka prowadzą z 535 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kowal ma 514 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Po 8 kolejkach sąsiedztwa Heniek i Gruby zamienili się miejscami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek wchodzi na podium z 495 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby spada na czwarte miejsce z 493 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek zaliczył największy skok w overall",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek awansował o 35k miejsc",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek awansował ze 120k na 85k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek wszedł do top 100k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Ma kilka trafionych puent („Fabryka Hitów pracuje pełną parą”, „tabeli nie da się zagadać”), ale akapit o Arsenalu jest zagmatwany, a „po 8 kolejkach sąsiedztwa” brzmi jak przeklejone z danych.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-yellow-card-decides-pair",
+      "text": "🎙️ *Presser GW11 — Liga Pod Złotym Kurem*\n\n🏆 *Manager kolejki:* Hubert bierze 58 punktów netto przy średniej ligowej 52. To jego jedenasta wygrana z rzędu; po ostatnim pościgu Gustawa tym razem pomogło mu czyste konto Virgila — szczegóły za chwilę.\n\n🤦 *Wtopa kolejki:* Oskar kończy z 46 punktami. Jedenasta wtopa z rzędu, choć tym razem kapitan akurat zrobił swoje. Dziewięć punktów na ławce to już mniej przyjemna część tej historii.\n\n©️ *Kapitanowie:* Hubert i Oskar dostali po 14 od Salaha. Haaland dał Fabianowi 10, Palmer Norbertowi 8, a Saka Gustawowi tylko 2 — żółta kartka kapitana kosztowała go 2 oczka.\n\n⚽ *Z boiska:* Virgil zachował czyste konto dla Huberta, choć Liverpool stracił gola dopiero po jego zejściu. Ten CS dał swing 4 przy przewadze Huberta nad Gustawem wynoszącej 1 punkt. Po drugiej stronie Porro Gustawa zszedł przed 60. minutą: Spurs dowieźli czyste konto, on nie dostał za nie punktów.\n\n🪑 *Ławka i transfery:* Fabian zamienił Wissę (3) na Evanilsona (10) i zyskał 7 punktów. U Oskara 9 punktów zostało na ławce — dobry wynik, tylko w niewłaściwym miejscu.\n\n🃏 *Chipy:* Free Hit Norberta dał 5 punktów więcej niż stary skład. Na przyszłą kolejkę wraca poprzednia ekipa, ale ten tydzień chip wygrał.\n\n📊 *Tabela:* Piąty Obrońca prowadzi z 608 punktami, Gustaw ma 597, a Fabian 580. Bez zmian miejsc; różnica między Hubertem a Gustawem to 11 punktów. Po ich pościgu z GW10 tabela nadal trzyma nas przy kalkulatorach.",
+      "length": 1440,
+      "within_limit": true,
+      "input_tokens": 12061,
+      "output_tokens": 506,
+      "cost_usd": 0.029182,
+      "latency_seconds": 6.087965989019722,
+      "claims": [
+        {
+          "claim": "Hubert scored 58 net points against a league average of 52",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "This is Hubert's eleventh win in a row",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Virgil's clean sheet helped Hubert win",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar finished with 46 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "This is Oskar's eleventh flop in a row",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar's captain did his job this time (14 points, one of the best)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar left nine points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Hubert and Oskar each got 14 from Salah",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland gave Fabian 10 and Palmer gave Norbert 8",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Saka gave Gustaw only 2, and the captain's yellow card cost 2 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Virgil kept a clean sheet for Hubert, although Liverpool conceded after he went off",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The clean sheet gave a swing of 4, with Hubert ahead of Gustaw by 1 point",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gustaw's Porro went off before the 60th minute, Spurs kept a clean sheet, and he got no points for it",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Fabian swapped Wissa (3) for Evanilson (10) and gained 7 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Norbert's Free Hit gave 5 points more than his old squad",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Piąty Obrońca leads with 608 points, Gustaw has 597 and Fabian 580",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "No changes of places in the table",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The gap between Hubert and Gustaw is 11 points",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Puenta o ławce Oskara jest zgrabna, ale tekst ma niezręczne zdania („przy przewadze Huberta nad Gustawem wynoszącej 1 punkt”, „trzyma nas przy kalkulatorach”), a słowo „różnica” pada w znaczeniu straty w tabeli.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-bonus-missed-flips-swap",
+      "text": "🎙️ *Presser GW6 — Liga Pod Złotym Kurem*\n\n🏆 *Manager kolejki:* Bartas bierze szóstą kolejkę z rzędu: 70 punktów netto przy średniej ligowej 60. O wygranej zdecydował Salah — bez niego Kuba mógłby go dogonić.\n\n🤦 *Wtopa kolejki:* Zbychu z 40 punktami zalicza pierwszą wtopę sezonu. Kowal oddał mu ostatnie miejsce w tabeli, ale nie jest to wymiana, którą warto świętować.\n\n©️ *Kapitanowie:* Opaska Bartasa na Salahu dała 24 punkty. Wood Kowalowi przyniósł 20, Haaland Kubie 16, Palmer Matiemu 12, a Gordon Zbychowi 10. Wszyscy trafili w punktujących, tylko rozmiar wypłaty był inny.\n\n⚽ *Z boiska:* Salah strzelił dwa gole; tylko Bartas miał go w lidze, i to z opaską. Jego gole dały swing 20 przy 4 punktach przewagi nad Kubą w tej kolejce. Wood dołożył gola i asystę u Kowala. Sam gol dał swing 10 przy 6 punktach przewagi nad Zbychem w tabeli. A Gordonowi Zbycha zabrakło jednego BPS do 3 bonusów — przy takim finiszu każdy szczegół drażni.\n\n🪑 *Ławka i transfery:* U Bartasa zostały 4 punkty na ławce. Tym razem nawet rezerwowi nie byli potrzebni do wygrania kolejki.\n\n🃏 *Chipy:* Kuba odpalił Bench Boost i zebrał z ławki 8 punktów. Chip pomógł, choć kolejki nie wygrał.\n\n📊 *Tabela:* Młode Wilki prowadzą z 420 punktami, Tajny Skład ma 396. Kowal i Zbychu przez pięć kolejek sąsiadowali w tabeli; teraz zamienili się miejscami. Kowal jest czwarty z 347, Zbychu piąty z 341 — między nimi 6 punktów.",
+      "length": 1397,
+      "within_limit": true,
+      "input_tokens": 12481,
+      "output_tokens": 513,
+      "cost_usd": 0.030092,
+      "latency_seconds": 6.213903923053294,
+      "claims": [
+        {
+          "claim": "Bartas wins his sixth gameweek in a row",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Bartas scored 70 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "League average was 60",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salah decided Bartas's win; without him Kuba could have caught him",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zbychu scored 40 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "This is Zbychu's first flop of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kowal handed last place in the table to Zbychu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Bartas's captain Salah gave 24 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wood gave Kowal 20 as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland gave Kuba 16 as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer gave Mati 12 as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gordon gave Zbychu 10 as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Every captain returned points (no blanks)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salah scored two goals",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Only Bartas owned Salah in the league, and he captained him",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salah's goals gave a swing of 20 with a 4-point margin over Kuba this gameweek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wood scored a goal and made an assist for Kowal",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wood's goal alone gave a swing of 10, with a 6-point gap to Zbychu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zbychu's Gordon was one BPS short of 3 bonus points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Bartas left 4 points on his bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kuba played Bench Boost and got 8 points from his bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The Bench Boost helped Kuba but he did not win the gameweek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Młode Wilki lead with 420 points; Tajny Skład has 396",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kowal and Zbychu were table neighbours for five gameweeks and have now swapped places",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kowal is 4th with 347, Zbychu 5th with 341, 6 points apart",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Ma kilka udanych zdań, np. o tym, że wszyscy trafili w punktujących i różnił się tylko rozmiar wypłaty, ale całość czyta się jak raport, a sekcja o ławce jest płaska.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-differential-keeper-wall",
+      "text": "🎙️ *Presser GW4 — Stowarzyszenie Wolnych Transferów*\n\n🏆 *Manager kolejki:* Tadek bierze drugie zwycięstwo w sezonie: 59 punktów netto przy średniej ligowej 50. GW rank 88k to jego najlepszy w tym sezonie. O pięciu punktach przewagi nad Julkiem przesądziła opaska, ale do niej zaraz wrócimy.\n\n🤦 *Wtopa kolejki:* Edzio kończy z 35 punktami netto i GW rankiem 3,9M — to najgorszy GW rank w lidze w tym sezonie. Druga wtopa w sezonie, choć jeszcze w GW3 świętował wygraną. FPL szybko zmienia temat.\n\n©️ *Kapitanowie:* Mbeumo oddał Tadkowi 16 punktów z opaski. Haaland dał po 2 Antkowi, Edziowi, Julkowi i Wackowi; Saka dorzucił Frankowi również 2. U Antka to już drugi blank kapitana z rzędu.\n\n⚽ *Z boiska:* Raya obronił 8 strzałów i zgarnął 3 bonusy — 7 punktów trzymało Tadkowi wynik, a Julka nie było z nim w składzie. W starciu o Managera kolejki gol Mbeumo dał Tadkowi swing 10 punktów przy pięciopunktowej przewadze nad Julkiem. Ten jeden strzał rozstrzygnął sprawę.\n\n🪑 *Ławka i transfery:* U Wacka na ławce zostało 9 punktów. Tadek zapłacił 4 za zamianę Gordona (2) na Wissę (7): transfery dały 5 punktów więcej, więc hit się spłacił. Edzio też wziął Wissę, ale u niego skończyło się na 3 punktach zamiast 6 Gordona i hitem za 4. Ta sama nazwa na potwierdzeniu transferu, zupełnie inny rachunek.\n\n📊 *Tabela:* Tiki-Taka z Bazaru i Fabryka Hitów mają po 210 punktów i dzielą prowadzenie. Wolne Elektrony i Grad Bramek są tuż za nimi, po 209. Edzio zjeżdża z pierwszego na piąte miejsce — w tej tabeli nawet punkt odstępu nie daje miejsca na oddech.\n\n🌍 *Overall:* Największy spadek Edzia: o 1,4M miejsc, na 2,6M. Największy skok Franka: o 450k miejsc, na 450k. Julek wszedł do top 100k, awansując o 25k miejsc na 95k.",
+      "length": 1717,
+      "within_limit": true,
+      "input_tokens": 12774,
+      "output_tokens": 645,
+      "cost_usd": 0.031998,
+      "latency_seconds": 7.407087325002067,
+      "claims": [
+        {
+          "claim": "Tadek takes his second win of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek scored 59 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The league average is 50",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek's GW rank of 88k is his best this season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek won by five points over Julek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The captain's armband decided it",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio scored 35 net points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio's GW rank is 3.9M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio's GW rank is the worst in the league this season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "It is Edzio's second flop of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio won GW3",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo gave Tadek 16 points as captain",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland gave 2 points each to Antek, Edzio, Julek and Wacek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Saka gave Franek 2 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek has blanked with his captain two gameweeks in a row",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Raya made 8 saves and got 3 bonus points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Raya scored 7 points for Tadek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek did not have Raya in his team",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo's goal gave Tadek a swing of 10 points against a five-point margin over Julek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo's goal decided it",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek left 9 points on the bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek paid 4 to swap Gordon (2) for Wissa (7)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek's transfer gained 5 points, so the hit paid off",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio also brought in Wissa: 3 points against Gordon's 6, with a 4-point hit",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tiki-Taka z Bazaru and Fabryka Hitów have 210 points each and share the lead",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wolne Elektrony and Grad Bramek are just behind with 209 each",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio dropped from first to fifth place",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio had the biggest overall fall: 1.4M places, down to 2.6M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Franek had the biggest overall climb: 450k places, up to 450k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek entered the top 100k, climbing 25k places to 95k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "Ma najwięcej trafnych puent o decyzjach FPL („Ta sama nazwa na potwierdzeniu transferu, zupełnie inny rachunek”), ale zdanie o Rayi i Julku jest niezgrabne, a sekcja Overall sucha.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-goal-from-nothing",
+      "text": "🎙️ *Presser GW6 — Stowarzyszenie Wolnych Transferów*\n\n🏆 *Manager kolejki:* Tadek bierze pierwszą wygraną w sezonie: 61 punktów netto przy średniej ligowej 53. Z Julkiem wygrał o 2 punkty, choć o wyniku rozstrzygnęła też czerwona kartka w składzie rywala.\n\n🤦 *Wtopa kolejki:* Antek kończy z 40 punktami. Szósta kolejka, szósta wtopa — tabeli nie da się zagadać.\n\n©️ *Kapitanowie:* Tadek dostał 18 od Haalanda, Julek i Olek po 12 od Salaha. Palmer dał Antkowi i Wieśkowi po 8: asysta pomogła, ale nietrafiony karny kosztował każdą opaskę 4 punkty. Czesiek postawił TC na Haalandzie i dostał 6 za sam występ.\n\n⚽ *Z boiska:* Caicedo obejrzał czerwoną kartkę, więc Julek i Olek zapisali po -1. W pojedynku Tadka z Julkiem ta kartka dała swing 3 punkty przy przewadze 2. Do tego Dias strzelił samobója: Julek miał go za 0 punktów, a sam gol przyniósł swing 2. Palmer przestrzelił karnego również w składzie Olka. Za to Wissa u Wieśka wziął 11 punktów; mało kto posiada go w całej grze, a gola strzelił przy xG 0,09.\n\n🪑 *Ławka i transfery:* U Antka zostało 5 punktów na ławce. Przy wyniku poniżej średniej ligi rezerwowi też mają prawo czuć się pominięci.\n\n🃏 *Chipy:* TC Cześka dorzucił tylko 2 punkty. Chip odpalony, fajerwerków brak.\n\n📊 *Tabela:* Klub Czwartej Kolejki utrzymuje prowadzenie z 334 punktami. Rezerwowi Marzyciele mają 327, a Szalony Szatniarz 321. Tadek przerwał Julkowi zbieranie wygranych kolejki, ale na podium wszyscy zostają na swoich miejscach.",
+      "length": 1460,
+      "within_limit": true,
+      "input_tokens": 12933,
+      "output_tokens": 552,
+      "cost_usd": 0.031386,
+      "latency_seconds": 7.267002037959173,
+      "claims": [
+        {
+          "claim": "Tadek takes his first gameweek win of the season",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek scored 61 net points; the league average is 53",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek beat Julek by 2 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "A red card in the rival's (Julek's) squad decided the result",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek finished with 40 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Sixth gameweek, sixth flop for Antek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek got 18 from Haaland",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek and Olek got 12 each from Salah",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer gave Antek and Wiesiek 8 each",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer's missed penalty cost each captaincy 4 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Czesiek played TC on Haaland and got 6 for playing time alone",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Caicedo got a red card, so Julek and Olek scored -1 each",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "In Tadek vs Julek the red card gave a swing of 3 with a margin of 2",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Dias scored an own goal; Julek had him for 0 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "The own goal brought a swing of 2",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer also missed a penalty in Olek's squad",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wissa took 11 points for Wiesiek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Few managers in the whole game own Wissa",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wissa scored at xG 0.09",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek left 5 points on his bench",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek's score was below the league average",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Czesiek's TC added only 2 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Klub Czwartej Kolejki keeps the lead with 334 points",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rezerwowi Marzyciele have 327, Szalony Szatniarz 321",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek stopped Julek collecting gameweek wins",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Everyone on the podium stays in place",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Tekst jest poprawny i ma kilka udanych puent („tabeli nie da się zagadać”, „Chip odpalony, fajerwerków brak”), ale przeważa styl sprawozdania, a sformułowania typu „Julek miał go za 0 punktów” są niezgrabne.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-double-gameweek-bps",
+      "text": "🎙️ *Presser GW9 — Stowarzyszenie Wolnych Transferów*\n\n🏆 *Manager kolejki:* Tadek bierze drugą wygraną w sezonie: 59 punktów netto przy średniej ligowej 50 i GW rank 140k. Julka wyprzedził o 2 punkty, a jeden BPS mógł wywrócić ten wynik.\n\n🤦 *Wtopa kolejki:* Edzio kończy z 35 punktami netto i GW rankiem 5,2M — najgorszym w naszej lidze w tym sezonie. To jego druga wtopa, ale o serię jeszcze go nie oskarżamy.\n\n©️ *Kapitanowie:* Julek zgarnął 30 punktów z opaski na Salahu: gol, asysta i 3 bonusy. Tadkowi Mbeumo dał 16. Haaland u Antka, Edzia i Wacka oraz Saka u Franka skończyli na 2 punktach. U Antka to już drugi blank kapitana z rzędu.\n\n⚽ *Z boiska:* Salahowi u Julka zabrakło one BPS do jeszcze jednego bonusu. Dałoby to Julkowi 2 punkty, dokładnie tyle, ile dzieliło go od Tadka w walce o Managera kolejki. Jeden drobiazg w punktacji bonusowej i trofeum nie miałoby jednego właściciela.\n\n🪑 *Ławka i transfery:* Obaj zapłacili po 4 punkty za wymianę Gordona na Wissę. U Tadka transfer dał 5 punktów przewagi nad sprzedanym graczem i hit się spłacił; u Edzia przyniósł stratę 3. Wacek zostawił na ławce 9 punktów — ławka miała swoje zdanie o wyjściowej jedenastce.\n\n📊 *Tabela:* Grad Bramek i Cichy Kapitan mają po 210 punktów i dzielą prowadzenie. Różowe Okulary oraz Autobus Zaparkowany są na 209; Franek awansował o cztery miejsca, a Edzio spadł o cztery. Tu nawet jeden punkt ma ambicje zrobić przewrót.\n\n🌍 *Overall:* Największy spadek zaliczył Edzio: o 1,3M miejsc, na 2,3M, wypadając z top 1M. Wacek też wypadł z top 1M (spadek o 360k, na 1,2M), a Julek opuścił top 100k: spadł o 15k miejsc, na 105k.",
+      "length": 1610,
+      "within_limit": true,
+      "input_tokens": 12280,
+      "output_tokens": 619,
+      "cost_usd": 0.03075,
+      "latency_seconds": 7.463536716997623,
+      "claims": [
+        {
+          "claim": "Tadek bierze drugą wygraną w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek zdobył 59 punktów netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Średnia ligowa to 50",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank Tadka to 140k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek wyprzedził Julka o 2 punkty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Jeden BPS mógł zmienić wynik walki o managera kolejki",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio skończył z 35 punktami netto i GW rankiem 5,2M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To najgorszy wynik w lidze w tym sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To druga wtopa Edzia, ale nie seria",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek zdobył 30 punktów z kapitana Salaha",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salah miał gola, asystę i 3 bonusy",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo dał Tadkowi 16",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland u Antka, Edzia i Wacka oraz Saka u Franka skończyli na 2 punktach",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek ma drugi z rzędu blank kapitana",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salahowi zabrakło jednego BPS do bonusu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Ten bonus dałby Julkowi 2 punkty, tyle, ile dzieliło go od Tadka",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek i Edzio zapłacili po 4 punkty za wymianę Gordona na Wissę",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "U Tadka transfer dał +5 i hit się spłacił",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "U Edzia transfer dał stratę 3",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek zostawił na ławce 9 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Grad Bramek i Cichy Kapitan mają po 210 punktów i dzielą prowadzenie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Różowe Okulary i Autobus Zaparkowany mają po 209 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Franek awansował o cztery miejsca",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio spadł o cztery miejsca",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio zaliczył największy spadek w overall: o 1,3M miejsc, na 2,3M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio wypadł z top 1M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek wypadł z top 1M, spadł o 360k na 1,2M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek opuścił top 100k, spadł o 15k miejsc na 105k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Są próby humoru („ławka miała swoje zdanie”) i niezłe kapitańskie szczegóły, ale wtrącone angielskie „one BPS” i wymuszone puenty („jeden punkt ma ambicje zrobić przewrót”) psują naturalność.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-no-match-stats",
+      "text": "🎙️ *Presser GW9 — Klub Smutnych Kapitanów*\n\n🏆 *Manager kolejki:* Heniek bierze pierwszą wygraną w sezonie: 63 punkty netto przy średniej ligowej 51. Bez Mbeumo Franek dogoniłby go w walce o tę kolejkę.\n\n🤦 *Wtopa kolejki:* Rysiek kończy z 41 punktami netto. To jego dziewiąta wtopa i dziewiąta kolejka z rzędu na końcu stawki. Opaska też nie pomogła.\n\n©️ *Kapitanowie:* Mbeumo dał Heńkowi 28 punktów, najwięcej ze wszystkich opasek. Kowal dostał 14 od Haalanda, Franek i Gruby po 12 od Salaha, a Rysiek 6 od Palmera.\n\n⚽ *Z boiska:* Mbeumo zgarnął 14 punktów dla Brentford; tylko Heniek miał go w lidze, i to z opaską. W pojedynku o wygraną z Frankiem dało to swing 28 przy różnicy 8 punktów. Arsenal stracił czyste konto, co w starciu Heńka z Grubym przesunęło 12 punktów przez Gabriela, Rayę i Salibę; w tabeli dzielą ich 2. Gvardiol u Franka zdążył zejść, zanim Man City straciło gola — czyste konto zostało mu w FPL.\n\n🪑 *Ławka i transfery:* Kowal zostawił 8 punktów na ławce. Gruby wziął hita za 4, żeby wymienić Jacksona (7) na Solanke (2): transfer dał 5 punktów mniej od starego wyboru, jeszcze przed kosztem hita.\n\n🃏 *Chipy:* Wildcard Franka dał 3 punkty mniej niż jego poprzedni skład. Przebudowa na razie nie przyniosła premii.\n\n📊 *Tabela:* Przez osiem kolejek Heniek i Gruby byli sąsiadami; teraz Grad Bramek wskakuje na trzecie miejsce z 495 punktami, a Gruby wypada z podium z 493. Wolne Elektrony Franka prowadzą z 535, Kowal ma 514.\n\n🌍 *Overall:* Największy skok należy do Heńka: awans o 35k miejsc, ze 120k na 85k, i wejście do top 100k.",
+      "length": 1551,
+      "within_limit": true,
+      "input_tokens": 12035,
+      "output_tokens": 587,
+      "cost_usd": 0.02994,
+      "latency_seconds": 7.283931421930902,
+      "claims": [
+        {
+          "claim": "To pierwsza wygrana Heńka w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek zdobył 63 punkty netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Średnia ligowa wynosi 51",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Bez Mbeumo Franek dogoniłby Heńka w walce o kolejkę",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rysiek skończył z 41 punktami netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To dziewiąta wtopa Ryśka",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rysiek jest na końcu stawki dziewiątą kolejkę z rzędu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo dał Heńkowi 28 punktów, najwięcej ze wszystkich opasek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kowal dostał 14 od Haalanda",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Franek i Gruby dostali po 12 od Salaha",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Rysiek dostał 6 od Palmera",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo zdobył 14 punktów dla Brentford",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tylko Heniek miał Mbeumo w lidze, i to z opaską",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "W pojedynku z Frankiem Mbeumo dał swing 28 przy różnicy 8 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Arsenal stracił czyste konto, co między Heńkiem a Grubym przesunęło 12 punktów przez Gabriela, Rayę i Salibę",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "W tabeli Heńka i Grubego dzielą 2 punkty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gvardiol u Franka zszedł, zanim Man City straciło gola, i zachował czyste konto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kowal zostawił 8 punktów na ławce",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby wziął hita za 4, wymieniając Jacksona (7) na Solanke (2)",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Jeszcze przed kosztem hita transfer dał 5 punktów mniej",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wildcard Franka dał 3 punkty mniej niż poprzedni skład",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek i Gruby byli sąsiadami przez osiem kolejek",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Grad Bramek (Heniek) wskakuje na trzecie miejsce z 495 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Gruby wypada z podium z 493 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wolne Elektrony Franka prowadzą z 535 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Kowal ma 514 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek zaliczył największy skok",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek awansował o 35k miejsc, ze 120k na 85k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Heniek wszedł do top 100k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Tekst jest rzetelny i czytelny, z dobrze wyjaśnionymi swingami, ale bardzo sprawozdawczy, prawie bez żartów, a zdanie o przewadze Heńka w sekcji managera jest zbędne.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-drop-just-outside-1m",
+      "text": "🎙️ *Presser GW9 — Stowarzyszenie Wolnych Transferów*\n\n🏆 *Manager kolejki:* Tadek zgarnia drugie zwycięstwo w sezonie: 59 punktów netto przy średniej ligowej 50. GW rank 140k, a opaska tym razem naprawdę pracowała.\n\n🤦 *Wtopa kolejki:* Edzio kończy z 35 punktami netto i GW rankiem 5,2M — najgorszym w naszej lidze w tym sezonie. To jego druga wtopa; hit też nie pomógł.\n\n©️ *Kapitanowie:* Tadek postawił na Mbeumo i dostał 16 punktów, w tym 10 za gola. Haaland u Antka, Edzia, Julka i Wacka dał po 2; Saka u Franka tyle samo. Antek ma już drugi blank kapitana z rzędu.\n\n🪑 *Ławka i transfery:* Wacek zostawił 9 punktów na ławce. Ten sam ruch transferowy, dwa różne rachunki: Tadek wziął W هيئةissę za Gordona, zyskał 5 punktów na transferze i pokrył koszt hita za 4. U Edzia Wissa dał 3, sprzedany Gordon 6 — hit za 4 tylko pogłębił stratę.\n\n📊 *Tabela:* Grad Bramek i Cichy Kapitan dzielą prowadzenie po 210 punktów. Różowe Okulary oraz Autobus Zaparkowany mają po 209, więc u góry wystarczy jeden punkt, żeby przemeblować kolejność. Edzio spadł na piąte miejsce.\n\n🌍 *Overall:* Największy spadek zaliczył Edzio: o 1,3M miejsc, na 2,3M, i wypadł z top 1M. Wacek też opuścił top 1M — po spadku o 130k jest tuż za progiem. Julek spadł o 15k na 105k i wypadł z top 100k.",
+      "length": 1264,
+      "within_limit": true,
+      "input_tokens": 12068,
+      "output_tokens": 492,
+      "cost_usd": 0.029056000000000002,
+      "latency_seconds": 6.337291878997348,
+      "claims": [
+        {
+          "claim": "To drugie zwycięstwo Tadka w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek: 59 punktów netto przy średniej ligowej 50",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank Tadka wyniósł 140k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio: 35 punktów netto i GW rank 5,2M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wynik Edzia to najgorszy wynik w lidze w tym sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To druga wtopa Edzia",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Hit Edzia nie pomógł",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek dał opaskę Mbeumo i dostał 16 punktów, w tym 10 za gola",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland jako kapitan Antka, Edzia, Julka i Wacka dał po 2 punkty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Saka jako kapitan Franka dał 2 punkty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek ma drugi z rzędu blank kapitana",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek zostawił na ławce 9 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek wziął Wissę za Gordona i zyskał na transferze 5 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zysk Tadka pokrył koszt hita za 4",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "U Edzia Wissa zdobył 3, a sprzedany Gordon 6; hit za 4 pogłębił stratę",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Grad Bramek i Cichy Kapitan dzielą prowadzenie z 210 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Różowe Okulary i Autobus Zaparkowany mają po 209 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio spadł na piąte miejsce",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio zaliczył największy spadek w overall: o 1,3M miejsc, na 2,3M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio wypadł z top 1M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek wypadł z top 1M po spadku o 130k i jest tuż za progiem",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Julek spadł o 15k na 105k i wypadł z top 100k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 3,
+        "note": "Ma najlepsze momenty stylistyczne („opaska tym razem naprawdę pracowała”, „dwa różne rachunki”, „przemeblować kolejność”), ale nazwisko Wissy jest zepsute arabskimi znakami.",
+        "inflection_errors": 1,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-threshold-only-from-lists",
+      "text": "🎙️ *Presser GW9 — Stowarzyszenie Wolnych Transferów*\n\n🏆 *Manager kolejki:* Tadek bierze drugą wygraną w sezonie: 59 punktów netto przy średniej ligowej 50. GW rank 140k, a hit tym razem nie przeszkodził.\n\n🤦 *Wtopa kolejki:* Edzio kończy z 35 punktami netto i GW rankiem 5,2M — to najgorszy GW rank w naszej lidze w tym sezonie i jego druga wtopa. Nawet tabeli nie udało się przekonać, że było lepiej.\n\n©️ *Kapitanowie:* Tadek dał opaskę Mbeumo i zebrał 16 punktów. Haaland u Antka, Edzia, Julka i Wacka oraz Saka u Franka dali po 2. U Antka to już drugi blank kapitana z rzędu.\n\n🪑 *Ławka i transfery:* Wacek zostawił 9 punktów na ławce, Tadek tylko 2. Obaj z Edziem wzięli hita za 4 punkty na wymianę Gordona na Wissę: u Tadka transfery zyskały 5 punktów i pokryły koszt, u Edzia straciły 3. Ten sam ruch, dwa zupełnie różne rachunki.\n\n📊 *Tabela:* Grad Bramek i Cichy Kapitan dzielą prowadzenie z 210 punktami. Różowe Okulary i Autobus Zaparkowany są ex aequo na trzecim miejscu z 209. Pan Różnica spadł z pierwszego na piąte; od liderów dzieli go 5 punktów.\n\n🌍 *Overall:* Tu Edzio ma za to największy skok: o 4,2M miejsc, na 142k, i wchodzi do top 1M. Wacek notuje największy spadek, o 721k miejsc na 863k, ale nadal jest w top 1M. Mini-liga i overall wystawiły im w tej kolejce dwa różne świadectwa.",
+      "length": 1301,
+      "within_limit": true,
+      "input_tokens": 12055,
+      "output_tokens": 493,
+      "cost_usd": 0.02904,
+      "latency_seconds": 6.350699798902497,
+      "claims": [
+        {
+          "claim": "Tadek jest managerem kolejki",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To druga wygrana Tadka w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek zdobył 59 punktów netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Średnia ligowa wynosi 50",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank Tadka to 140k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Hit nie przeszkodził Tadkowi",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio kończy z 35 punktami netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank Edzia to 5,2M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To najgorszy GW rank w lidze w tym sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To druga wtopa Edzia w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek dał kapitana Mbeumo i zebrał 16 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland u Antka, Edzia, Julka i Wacka dał po 2 punkty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Saka jako kapitan u Franka dał 2 punkty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Antek ma drugi blank kapitana z rzędu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek zostawił 9 punktów na ławce",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek zostawił 2 punkty na ławce",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Tadek i Edzio wzięli hita za 4 punkty na wymianę Gordona na Wissę",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "U Tadka transfery zyskały 5 punktów i pokryły koszt",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "U Edzia transfery straciły 3 punkty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Grad Bramek i Cichy Kapitan dzielą prowadzenie z 210 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Różowe Okulary i Autobus Zaparkowany są ex aequo trzecie z 209 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Pan Różnica spadł z pierwszego miejsca na piąte",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Pan Różnica traci 5 punktów do liderów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio zalicza największy skok w overallu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio awansował o 4,2M miejsc",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio ma teraz OR 142k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Edzio wchodzi do top 1M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek zalicza największy spadek w overallu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek spadł o 721k miejsc na 863k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Wacek nadal jest w top 1M",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "Jako jedyny ma puenty o decyzjach FPL („ten sam ruch, dwa zupełnie różne rachunki”, „dwa różne świadectwa”), ale zdania „Nawet tabeli nie udało się przekonać…” i „Obaj z Edziem wzięli hita” brzmią sztywno.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    },
+    {
+      "case_id": "syn-kept-clean-sheet-against-xg",
+      "text": "🎙️ *Presser GW8 — Klub Smutnych Kapitanów*\n\n🏆 *Manager kolejki:* Oskar bierze trzecią wygraną w sezonie: 66 punktów netto przy średniej ligowej 55. GW rank 18k to najlepszy wynik naszej ligi w tym sezonie. O losach wygranej przesądziło czyste konto Crystal Palace.\n\n🤦 *Wtopa kolejki:* Konrad kończy z 45 punktami netto i GW rankiem 1,4M. Druga wtopa w sezonie, druga z rzędu — potrójna opaska też nie pomogła.\n\n©️ *Kapitanowie:* Haaland dał Oskarowi 16 punktów, ale u Zenka zablankował za 4. Palmer u Patryka zebrał 12, Saka u Fabiana 10, a Mbeumo u Alojzego 8. Salah z TC Konrada przyniósł tylko 3 punkty. Potrójny mnożnik, skromny rachunek.\n\n⚽ *Z boiska:* Guéhi, Henderson i Muñoz dowieźli czyste konto Crystal Palace dla Oskara. Dało to swing 12 punktów przy przewadze 7 nad Patrykiem; Palace utrzymało zero mimo xGC 1,85. Patrykowi uciekło też czyste konto Newcastle: Botman, Burn i Pope to kolejny swing 12, choć przy xGC 1,62 gol dla rywali nie był zaskoczeniem.\n\n🪑 *Ławka i transfery:* U Oskara zostało na ławce 5 punktów, u Patryka 2. Patryk wziął hita za 4, żeby zamienić Gordona (6) na Wissę (3): transfery dały mu wynik o 3 punkty gorszy od sprzedanych zawodników. Droga zamiana.\n\n🃏 *Chipy:* Free Hit Fabiana poprawił wynik względem starego składu o 3 punkty. Wymienił dwóch graczy; Saka (9) w starym składzie by punktował, Wissa (6) punktował w nowym, a Ajer (0) nie liczył się do wyniku. TC Konrada dodał 1 punkt, podobnie Bench Boost Zenka — chipy ledwo drgnęły.\n\n📊 *Tabela:* Strzał z Dystansu prowadzi z 392 punktami, ale Oskar wskoczył z piątego na drugie miejsce i ma 386. Konrad i Patryk są na równi z 380, Zenek spadł o dwie pozycje. Na górze nie ma miejsca na spokojny deadline.\n\n🌍 *Overall:* Największy skok należy do Alojzego: awans o 2,6k miejsc, z 12k na 9 800. Wszedł do top 10k.",
+      "length": 1804,
+      "within_limit": true,
+      "input_tokens": 12667,
+      "output_tokens": 677,
+      "cost_usd": 0.032104,
+      "latency_seconds": 7.556755607016385,
+      "claims": [
+        {
+          "claim": "Oskar ma trzecią wygraną kolejki w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar zdobył 66 punktów netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Średnia ligowa wynosi 55",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank Oskara to 18k",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank 18k to najlepszy wynik ligi w tym sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "O wygranej Oskara przesądziło czyste konto Crystal Palace",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad ma 45 punktów netto",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "GW rank Konrada to 1,4M",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To druga wtopa Konrada w sezonie",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "To druga wtopa Konrada z rzędu",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad zagrał potrójnego kapitana",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland dał Oskarowi 16 punktów jako kapitan",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Haaland jako kapitan Zenka zablankował z 4 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palmer jako kapitan Patryka zdobył 12 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Saka jako kapitan Fabiana zdobył 10 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Mbeumo jako kapitan Alojzego zdobył 8 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Salah z TC Konrada przyniósł 3 punkty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Guéhi, Henderson i Muñoz dali Oskarowi czyste konto Crystal Palace",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Czyste konto Palace dało swing 12 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar wygrał z przewagą 7 punktów nad Patrykiem",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Palace zachowało czyste konto mimo xGC 1,85",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk stracił czyste konto Newcastle (Botman, Burn, Pope), swing 12",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "xGC Newcastle wynosiło 1,62, a stracony gol nie był zaskoczeniem",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar miał 5 punktów na ławce, Patryk 2",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Patryk wziął hita za 4: Gordon (6) wyszedł, Wissa (3) wszedł",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Transfery dały Patrykowi wynik o 3 punkty gorszy od sprzedanych",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Free Hit Fabiana poprawił wynik o 3 punkty",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Fabian wymienił na Free Hicie dwóch graczy",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Saka (9) w starym składzie, Wissa (6) liczył się w nowym, Ajer (0) się nie liczył",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "TC Konrada dodał 1 punkt",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Bench Boost Zenka dodał 1 punkt",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Strzał z Dystansu (Alojzy) prowadzi z 392 punktami",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Oskar awansował z piątego na drugie miejsce i ma 386 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Konrad i Patryk mają po 380 punktów",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Zenek spadł o dwie pozycje",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Największy skok w overallu należy do Alojzego",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Alojzy awansował o 2,6k miejsc, z 12k na 9 800",
+          "label": "supported",
+          "owner_label": null
+        },
+        {
+          "claim": "Alojzy wszedł do top 10k",
+          "label": "supported",
+          "owner_label": null
+        }
+      ],
+      "faithfulness": 1.0,
+      "judge_cost_usd": null,
+      "error_class": null,
+      "style": {
+        "rating": 4,
+        "note": "Naturalny, płynny tekst z kilkoma celnymi puentami („Potrójny mnożnik, skromny rachunek”, „Droga zamiana”); sekcja o chipach jest jednak zagmatwana i czyta się jak raport.",
+        "inflection_errors": 0,
+        "rated_by": "claude-opus-5-5 (blind, per case); owner preferred gpt-6-sol in 3 of 3 blind pairs"
+      }
+    }
+  ],
+  "totals": {
+    "pressers": 24,
+    "errored": 0,
+    "faithfulness": 0.9956140350877193,
+    "within_limit_share": 1.0,
+    "avg_cost_usd": 0.03412933333333334,
+    "avg_latency_seconds": 7.019075352616103,
+    "judge_cost_usd": null
+  }
+}

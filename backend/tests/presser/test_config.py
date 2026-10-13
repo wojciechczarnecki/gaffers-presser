@@ -30,14 +30,14 @@ def settings(**values) -> PresserSettings:
 
 
 def test_default_model():
-    assert DEFAULT_PRESSER_MODEL == "openai/gpt-6-luna"
-    assert settings().presser_model == "openai/gpt-6-luna"
+    assert DEFAULT_PRESSER_MODEL == "openai/gpt-6-sol"
+    assert settings().presser_model == "openai/gpt-6-sol"
 
 
 def test_default_model_resolves_with_a_key():
     config = resolve_presser_llm(settings(openrouter_api_key="k"))
     assert isinstance(config, LlmConfig)
-    assert config.model == "openai/gpt-6-luna"
+    assert config.model == "openai/gpt-6-sol"
     assert config.fallback_model is None
 
 
