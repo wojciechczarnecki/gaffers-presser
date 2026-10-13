@@ -64,6 +64,7 @@ def test_build_pseudonymises(db, world):
         assert {score.manager for score in facts.winners + facts.flops} <= pool
         assert {row.manager for row in facts.table.rows} <= pool
         assert {row.team_name for row in facts.table.rows} <= set(TEAMS)
+        assert {score.team_name for score in facts.winners + facts.flops} <= set(TEAMS)
         assert {pick.manager for pick in facts.captaincy.picks} <= pool
         assert str(LEAGUE_1) not in case.id and str(LEAGUE_2) not in case.id
         assert "88000" not in json.dumps(case.model_dump(mode="json")) + case.id

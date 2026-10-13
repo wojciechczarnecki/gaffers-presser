@@ -56,7 +56,7 @@ the writer never copies a phrase or a joke from them.
 
 ©️ *Kapitanowie:* Kuba wybrał Isaka i zebrał 4, reszta stawki wzięła po 16. Odwaga tym razem się nie opłaciła.
 
-⚽ *Z boiska:* Zbychu zawdzięcza wygraną Watkinsowi: 13 punktów, a poza Zbychem miał go tylko Kowal, więc różnicę zrobił jeden gol, który padł z niczego, bo xG Watkinsa wynosiło 0,1. Starcie Bartasa z Kowalem rozstrzygnął DefCon: obrońca Bartasa zebrał 12 akcji defensywnych i dopisał 2 punkty, a Kowal nie miał go wcale. Matiego pogrążyła jeszcze czerwona kartka jego pomocnika, czyli -3 do wyniku.
+⚽ *Z boiska:* Zbychu zawdzięcza wygraną Watkinsowi: 13 punktów, a poza Zbychem miał go tylko Kowal, więc różnicę zrobił jeden gol, który padł z niczego, bo xG Watkinsa wynosiło 0,1. Starcie Bartasa z Kowalem rozstrzygnął DefCon: obrońca Bartasa zebrał 12 akcji defensywnych i dopisał 2 punkty, a Kowal nie miał go wcale. Mati dostał jeszcze czerwoną kartkę swojego pomocnika, czyli -3 do wyniku.
 
 🪑 *Ławka i transfery:* Bartas zrobił dwa transfery za -4 i zyskał na nich 9 punktów, więc hit się spłacił. Kowal zostawił na ławce 11 punktów, a rezerwowy dał mu 5 jako autosub.
 

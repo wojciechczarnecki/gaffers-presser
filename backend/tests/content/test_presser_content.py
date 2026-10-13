@@ -50,6 +50,7 @@ def test_writer_prompt_v13_rules():
         "by\n  the team followed by its owner",
         "`swing` is greater than `margin`",
         "Ending or breaking a streak",
+        "never correct yourself",
         "different players in `captaincy.groups`",
         'never "nikt nie…"',
         '"1,01M", "1,03M" or "1M"',
@@ -196,7 +197,8 @@ FLAGGED_PHRASES = (
     "punktów netto, ",
 )
 HEADER_MARKS = ("🏆", "🤦", "\u00a9\ufe0f", "⚽", "🪑", "🃏", "📊", "🌍")
-OWNER_WORD = re.compile(r"\b[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+")
+# a winner's or a flop's opening "Team Name Owner": capitalised words, "i" between them
+OPENING_NAMES = re.compile(r"[A-ZĄĆĘŁŃÓŚŹŻ]\w*(?: (?:i|[A-ZĄĆĘŁŃÓŚŹŻ]\w*))*")
 HEADER_LABEL = re.compile(r"^\S+ \*[^*]+:\*\s*")
 
 
@@ -226,13 +228,12 @@ def test_style_examples_eight_headers_no_shared_sentence():
         starts = [p[0 : len(mark)] for p, mark in zip(sections, HEADER_MARKS, strict=True)]
         assert starts == list(HEADER_MARKS)
         assert sum(len(p) for p in paragraphs) + 2 * len(paragraphs) < 2500
-        # the winner and the flop open with "team + owner", so look for the owner's name
-        named = {
-            word
-            for n in (0, 1)
-            for word in re.findall(OWNER_WORD, HEADER_LABEL.sub("", sections[n]).split(",")[0])
-        }
-        assert any(name in sections[3] for name in named), named
+        # the winner and the flop open with "team + owner": the owner is the last word, and
+        # its stem matches any case of his name in "Z boiska" ("Zbycha" -> "Zbychu")
+        owners = [
+            OPENING_NAMES.match(HEADER_LABEL.sub("", sections[n]))[0].split()[-1] for n in (0, 1)
+        ]
+        assert any(owner[:4] in sections[3] for owner in owners), owners
         assert "gw rank" in "\n".join(sections).casefold()
         pitch = sections[3].casefold()
         assert any(stat in pitch for stat in ("gol", "bonus", "żółt", "defcon", "bps")), pitch

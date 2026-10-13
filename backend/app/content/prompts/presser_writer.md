@@ -107,10 +107,10 @@ league's previous pressers. Return the presser as the single field `text`.
   leaving the top 3, two podium managers swapping places. A podium change with `gap` 0 is
   between managers level on points: say they are level (for example joint leaders), never that
   one of them is ahead.
-- Every table row has a `team_name`, the manager's FPL team name: write it exactly as given and
-  never invent one. In `📊 *Tabela:*` name every manager by his team: the `team_name` alone or
+- Every table row, winner and flop has a `team_name`, the manager's FPL team name: write it
+  exactly as given and never invent one. In `📊 *Tabela:*` name every manager by his team: the `team_name` alone or
   followed by its owner's name in the genitive ("Kawowy Odlot Leny"), never by the manager's name
-  alone. In `🏆 *Manager kolejki:*` and `🤦 *Wtopa kolejki:*` introduce every winner and flop by
+  alone, and mix the two forms instead of adding the owner every time. In `🏆 *Manager kolejki:*` and `🤦 *Wtopa kolejki:*` introduce every winner and flop by
   the team followed by its owner ("Kawowy Odlot Leny bierze kolejkę"); after that his name alone
   is fine. The other sections use the managers' names. The team is the manager himself, so
   never name both as two people ("Kawowy Odlot i Lena kończą").
@@ -147,8 +147,9 @@ league's previous pressers. Return the presser as the single field `text`.
   - Rounding must never cross a threshold (10k, 100k, 1M) or land on it. When a rank rounds onto
     a threshold it has not reached or is inside, keep a decimal if it differs from the threshold
     ("10,4k" for 10 400, "99,6k" for 99 600), otherwise say it against the threshold ("tuż za
-    top 10k" for 10 030, "tuż za top 1M" or "nieznacznie wypadł poza top 1M" for 1 010 000 or
-    1 029 798, never "1,01M", "1,03M" or "1M", "w top 1M, tuż pod kreską" for 999 700). A manager who left the top 1M never "ma 1M" or "ma
+    top 10k" for 10 030, "tuż za top 1M" or "nieznacznie wypadł poza top 1M" for 1 010 000 and
+    for 1 029 798, "w top 1M, tuż pod kreską" for 999 700). A rank just outside the top 1M is
+    never "1,01M", "1,03M" or "1M". A manager who left the top 1M never "ma 1M" or "ma
     1,0M".
 - The lists in the fact sheet are already ranked, the most notable item first. Pick the most
   notable ones and the funniest among them; in a large league do not try to mention everyone.
@@ -194,8 +195,8 @@ league's previous pressers. Return the presser as the single field `text`.
   of 2 or more (and, for a rivalry swap, `neighbour_gameweeks`). A streak of 1 is no streak, and
   the records and the previous pressers are neither a count nor a streak: a flop with
   `nth_of_season` 1 and `streak` 1 is simply his first flop. Ending or breaking a streak
-  ("przerwał serię", "koniec passy") is a streak too: say it only when a previous presser
-  stated that streak, of 2 or more.
+  ("przerwał serię", "koniec passy") is a streak too, and the sheet never gives one: never say
+  it.
 - Points are whole numbers. A chip `effect` is in points: the Bench Boost's bench points, the
   Triple Captain's extra captain points, and for a Free Hit or a Wildcard the points against
   what the squad before the chip would have scored this gameweek. Judge a chip by its `effect`
@@ -210,5 +211,7 @@ league's previous pressers. Return the presser as the single field `text`.
 - At most 2 previous pressers are given. They are for referring back to events: you may recall a
   fact stated there or follow up on it, but they are not a source of phrases, so never repeat a
   joke or a sentence from them. When the list says "none", this is the first presser.
+- The presser is the final text: never correct yourself in it or leave a question to yourself
+  ("w tym Halla? Nie: …"). Check a fact before you write it.
 - Format for WhatsApp: the title line exactly `🎙️ *Presser GW<gameweek> — <league>*`, then one
   short paragraph per covered section, each starting with an emoji. Use `*bold*` sparingly. No tables, no lists with dashes, no Markdown headings.

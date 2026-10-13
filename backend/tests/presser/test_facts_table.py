@@ -201,6 +201,16 @@ def test_team_names_argument_overrides_the_stored_ones(world):
     assert {r.manager: r.team_name for r in result.table.rows}["Bartek"] == "Pseudo B"
 
 
+def test_winners_and_flops_carry_their_team_name(world):
+    play(world, 5, {10: 30, 11: 70, 12: 20})
+    with world.session() as session:
+        result = build_fact_sheet(
+            session, SEASON, LEAGUE_ID, 5, {}, {10: "Pseudo A", 11: "Pseudo B", 12: "Pseudo C"}
+        )
+    assert [(w.manager, w.team_name) for w in result.winners] == [("Bartek", "Pseudo B")]
+    assert [(f.manager, f.team_name) for f in result.flops] == [("Cezary", "Pseudo C")]
+
+
 @pytest.fixture
 def rivals(db):
     world = World(db, gameweeks=6, finished=6)

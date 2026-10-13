@@ -149,6 +149,9 @@ def build_fact_sheet(
     previous = [row for row in all_rows if row.gameweek == gameweek - 1]
     team_names = team_names or load_team_names(session, season, league_id)
     sheet.table = build_table(rows, previous, names, team_names)
+    teams = {row.manager: row.team_name for row in sheet.table.rows}
+    for score in [*sheet.winners, *sheet.flops]:
+        score.team_name = teams.get(score.manager)
     sheet.table.rivalry_swaps = rivalry_swaps(all_rows, names, gameweek)
     sheet.table.podium_changes = podium_changes(all_rows, names, gameweek)
     club_names = load_club_names(session, season)

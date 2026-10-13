@@ -107,7 +107,11 @@ def check_for_leaks(case: PresserCase, real: RealNames, pseudonyms: Pseudonyms) 
     if case.facts.league.casefold() not in league_pool:
         raise PseudonymisationError(f"the league name of case {case.id} is not a pseudonym")
     team_pool = {name.casefold() for name in pseudonyms.teams}
-    if any(row.team_name.casefold() not in team_pool for row in case.facts.table.rows):
+    scores = [*case.facts.winners, *case.facts.flops]
+    if any(row.team_name.casefold() not in team_pool for row in case.facts.table.rows) or any(
+        score.team_name is not None and score.team_name.casefold() not in team_pool
+        for score in scores
+    ):
         raise PseudonymisationError(f"a team name of case {case.id} is not a pseudonym")
     if any(name.casefold() not in pool for name in _manager_names(case.facts)):
         raise PseudonymisationError(f"a manager name of case {case.id} is not a pseudonym")
