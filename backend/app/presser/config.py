@@ -4,7 +4,7 @@ from app.core.errors import ConfigError
 from app.llm.chat import ChatModelSpec, LlmConfig, build_chat_model, single_model_config
 from app.llm.settings import LlmSettings
 
-DEFAULT_PRESSER_MODEL = "openai/gpt-6-luna"
+DEFAULT_PRESSER_MODEL = "openai/gpt-6-sol"
 MAX_NICKNAME_LENGTH = 30
 WRITER_TEMPERATURE = 0.8
 

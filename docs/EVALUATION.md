@@ -18,15 +18,15 @@ the session. Decided on 2026-10-12 (DECISIONS) for the presser model comparison 
   versioned prompt from `app/content/prompts/`) and the input file holding exactly the
   user message the API judge would get (`render_input`). Nothing else: no repository, no
   other cases, no other models' outputs.
-- **A fresh context per item.** One subagent per judged item, like one API call per item. A
-  subagent never judges two items, so it cannot compare them or drift.
+- **A fresh context per item.** One headless `claude -p` call per judged item, like one API
+  call per item. A call never judges two items, so it cannot compare them or drift.
 - **Blind.** The input directories are named `A`, `B`, … and the mapping to models is kept
   outside them until the verdicts are imported.
 - **The same output schema**, validated on import (`JudgeVerdict` for the presser); an
-  invalid file fails the import and the item is judged again by a fresh subagent.
+  invalid file fails the import and the item is judged again by a fresh call.
 - **Recorded.** The run file's `judge_model` names the session judge, e.g.
   `claude-opus-5-5 (Claude Code session)`, and keeps `judge_prompt_version`; the report says
-  who judged. `judge_cost_usd` stays empty (the subagents count against the subscription,
+  who judged. `judge_cost_usd` stays empty (the judges count against the Claude subscription,
   not OpenRouter).
 - **Vendor overlap is reported, not avoided.** Every judge shares a vendor with some
   candidate (the API judge `openai/gpt-6.1-sol` with `openai/gpt-6-luna`, the session judge
@@ -44,7 +44,8 @@ uv run python -m app.presser.evaluation evaluate --split test --model MODEL --no
 uv run python -m app.presser.evaluation export-judge-inputs \
     --run evals/presser/results/test-MODEL.json --out $SCRATCH/judge/A/inputs
 
-# 3. One subagent per input file (the prompt below) writes $SCRATCH/judge/A/verdicts/<case_id>.json
+# 3. One headless judge call per input, 6 in parallel; rerun to retry what failed
+../scripts/session_judge.sh $SCRATCH/judge/A 6 opus
 
 # 4. Import per run; review, judge-review and summary then work as with an API judge
 uv run python -m app.presser.evaluation import-judge \
@@ -52,22 +53,38 @@ uv run python -m app.presser.evaluation import-judge \
     --judge-model "claude-opus-5-5 (Claude Code session)"
 ```
 
-The subagent prompt, filled with the three paths:
+`scripts/session_judge.sh` runs `claude -p` outside the repository with the judge prompt as
+the system prompt, the input as the only message and no tools, so one item is one model turn.
+It writes the bare JSON to `verdicts/` and the CLI result with its token usage to `raw/`.
 
-```text
-You are the faithfulness judge of an evaluation. Work only from the two files below; do not
-read anything else in the repository or the directory.
+## Lessons from the first run (presser comparison, 2026-10-12)
 
-1. Read your instructions: <inputs>/judge-prompt.md
-2. Read the item to judge: <inputs>/<case_id>.md (a fact sheet, previous pressers and the
-   presser to check)
-3. Follow the instructions exactly. Write your answer with the Write tool to
-   <verdicts>/<case_id>.json as JSON only, in this shape:
-   {"claims": [{"claim": "<the claim, quoted or paraphrased from the presser>",
-                "label": "supported" | "unsupported"}]}
-   Every factual claim of the presser is one entry; the label is one of the two words.
-Reply with one line: the number of claims and how many are unsupported.
-```
+The first session-judged comparison (5 models × 24 test pressers = 120 items) used one
+`general-purpose` subagent per item, orchestrated from the main session. It cost about 5.8M
+tokens of the Claude subscription and hit the session limit after 91 of 120 verdicts. What
+made it expensive, and what to do instead:
+
+1. **Estimate before fanning out.** Tokens per item × items, stated to the owner before the
+   run, with a warning when it may reach the session limit; spread a large run across limit
+   windows rather than finding out mid-run.
+2. **One model turn per item, not a tool loop.** A subagent read three files and wrote one
+   (about 5 tool calls), and every call re-sent its whole context: about 45–70k tokens per
+   item. A headless call with the prompt and the input inline and the verdict in the reply is
+   one turn: about 25–30k tokens for the largest real case, less for the synthetic ones.
+3. **No heavy agent type.** `general-purpose` carries every tool and a long system prompt;
+   the headless call carries the judge prompt only (`--system-prompt`, `--tools ""`).
+4. **Keep the orchestrator's context out of the loop.** Each subagent's completion woke the
+   main session, which re-read its growing context about 120 times — likely a large share of
+   the cost. A shell script running the calls in parallel (`xargs -P`) writes only files; the
+   main session reads the summary once.
+5. **Consider one call per case instead of one per item** when comparing models: one judge
+   sees the case's fact sheet once and judges every model's presser for it, in shuffled order
+   and unnamed. That is several times fewer tokens and labels the models by the same reading
+   of the facts; the cost is that verdicts on one case are no longer independent. Decide per
+   run and write the choice in the report.
+6. **Try a cheaper judge on a sample first.** Opus judged every item. Before a large run,
+   judge a handful of items with Sonnet (or Opus at a lower `--effort`) as well and compare
+   with the owner's `judge-review`; switch when the agreement holds.
 
 ## Other evaluations
 

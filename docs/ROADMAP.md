@@ -93,8 +93,10 @@ and each LLM step that produces data has an evaluation set with recorded results
       by their cause, captain and chip counts in the sheet, thresholds only from `entered` and
       `left`, the winner's and the flop's streak and record, declined names, a fixed title,
       evaluation set v6 (fast path, no spec)
-- [ ] Presser model comparison with the owner's ratings: report, ADR and the new
-      `PRESSER_MODEL` default; decides the name-inflection problem (BACKLOG #32, after spec 015)
+- [x] Presser model comparison: eleven configurations judged in the Claude Code session,
+      style rated blind with the owner's check on 3 pairs, report, ADR 0007 and the new
+      `PRESSER_MODEL` default `openai/gpt-6-sol`; the session judge and its procedure
+      (`docs/EVALUATION.md`) (BACKLOG #32; [report](reports/presser-model-comparison.md))
 - [ ] Slang glossary and style examples (from X and Polish FPL podcasts) (spec: TBD)
 
 ## Stage 4 — Source credibility and Q&A

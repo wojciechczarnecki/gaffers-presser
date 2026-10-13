@@ -21,7 +21,7 @@ from tests.delivery.fakes import FakeChannel, FixedClock
 from tests.extraction.fakes import FakeChatModel
 from tests.presser.helpers import LEAGUE_ID, SEASON, World
 
-MODEL = "openai/gpt-6-luna"
+MODEL = "openai/gpt-6-sol"
 
 
 @pytest.fixture(autouse=True)

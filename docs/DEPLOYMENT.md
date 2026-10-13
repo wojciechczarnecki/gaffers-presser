@@ -209,7 +209,7 @@ below; agents never touch production.
       GW<n> <status>  failed: <k>` and the worker logs `presser enabled: model=<m>`.
     - Variables (all optional; an invalid value stops the worker and the CLI at start with a
       message naming it, never its value): `PRESSER_ENABLED=false` turns it off explicitly;
-      `PRESSER_MODEL` (default `openai/gpt-6-luna`; a model needs rows in
+      `PRESSER_MODEL` (default `openai/gpt-6-sol`, ADR 0007; a model needs rows in
       `app/llm/model_settings.toml` and `prices.toml`); `PRESSER_NICKNAMES`, a JSON object of
       FPL entry ID to nickname (`{"123": "Bartas"}`), at most 30 characters each and unique
       ignoring case. Without a nickname a manager appears under the first word of the FPL name.

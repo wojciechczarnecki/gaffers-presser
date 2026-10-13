@@ -67,7 +67,7 @@ def test_evaluate_writes_result(cases_path, tmp_path):
     assert [p["case_id"] for p in data["pressers"]] == ["c1", "c2"]
     assert [p["faithfulness"] for p in data["pressers"]] == [0.5, 1.0]
     assert data["totals"]["faithfulness"] == 0.75
-    assert data["model"] == "openai/gpt-6-luna" and data["judge_model"] == "openai/gpt-6.1-sol"
+    assert data["model"] == "openai/gpt-6-sol" and data["judge_model"] == "openai/gpt-6.1-sol"
     assert "faithfulness: 0.750" in result.stdout
     assert f"result: {output}" in result.stdout
 
