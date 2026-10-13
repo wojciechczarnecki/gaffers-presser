@@ -16,10 +16,6 @@ and each LLM step that produces data has an evaluation set with recorded results
 - [x] Worker running the jobs on a deadline-driven schedule, with a job run log, catch-up on
       start, a container image and Railway configuration
       (spec: [002](../specs/002-fpl-worker/SPEC.md))
-- [ ] Production deployment on Railway: the owner follows the runbook and confirms the
-      first deploy (spec: [002](../specs/002-fpl-worker/SPEC.md), AC21; after the owner's local
-      test run of the alerts on the GW6 deadline, 2026-10-10; the tweet ingest catch-up after
-      downtime it needed (former BACKLOG #26) is done)
 
 ## Stage 1 — Tweet ingest and extraction
 
@@ -61,12 +57,24 @@ and each LLM step that produces data has an evaluation set with recorded results
       outside the List is stored but never extracted or alerted, and a catch-up is no longer
       ended by an old quoted post; closes BACKLOG #11
       (spec: [010](../specs/010-off-list-posts/SPEC.md))
-- [ ] LLM-written per-player alert summary with a faithfulness evaluation, after the
-      production deployment: it only summarises the facts already in the alert and neither
+- [ ] Retrieval evaluation report on the GW6 window: the owner's review of set v1 extended
+      with queries from the GW6 deadline window, the comparison of modes (full-text, vector,
+      hybrid) and embedding models, the default-model ADR, a decision on reranking
+      (BACKLOG #16), a results section in the README (tooling and set v1 come with spec 006);
+      before the next item, because the corroboration judge reads retrieval's output
+      (spec: TBD, planned as 016) — **portfolio MVP**
+- [ ] Extraction and corroboration evaluation v2 on the GW6 window: real pre-deadline leaks
+      in the extraction set, the rehearsal e-mail cases added before the prompt fixes, the
+      model comparison re-run and the default model revisited (ADR 0006); `contradicts` cases
+      in the corroboration judge set and the judge evaluation re-run on the retrieval chosen
+      above (BACKLOG #12, #23) (spec: TBD, planned as 017)
+- [ ] README rewritten for the portfolio once the two evaluations above have results: what
+      it does and why, an architecture diagram, a results table linking the reports, the
+      engineering process (specs, ADRs, evaluation, tracing), a sample presser on made-up
+      data, the commands moved to a development guide (spec: TBD)
+- [ ] LLM-written per-player alert summary with a faithfulness evaluation, deferred until
+      the items above are done: it only summarises the facts already in the alert and neither
       chooses what or when to send nor changes grades (spec: TBD)
-- [ ] Retrieval evaluation report after the GW6 window: the owner's review of set v1, the
-      comparison of modes and embedding models, the default-model ADR, a results section in
-      the README (tooling and set v1 come with spec 006) (spec: TBD) — **portfolio MVP**
 
 ## Stage 3 — League presser
 

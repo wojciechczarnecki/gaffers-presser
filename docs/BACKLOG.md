@@ -4,6 +4,9 @@ Deferred improvements and technical debt. Every item has a priority and a **trig
 condition that brings it back to work. An item without a trigger never comes back, so we
 require one.
 
+An item planned into the roadmap stays here, with its details, until the PR that does it
+removes the row; the roadmap item only names it by number.
+
 - **P1** — return at the next opportunity in this area
 - **P2** — return when the trigger occurs
 - **P3** — deliberately deferred; return only on the trigger
@@ -37,3 +40,4 @@ require one.
 | 33 | P2 | Run the corroboration judge calls of one player in parallel too (players already are, `CORROBORATION_WORKERS`): about 10 judge calls of ~1.75 s per player stay sequential; needs one bound on the LLM calls in flight across both levels and the generations kept in the thread that holds the player's span | a digest is still sent more than a minute after its slot |
 | 34 | P3 | An outside match-events source for the presser (goal and card minutes, stoppage time, VAR decisions, substitution times): its own collector with its own risk; spec 014 derives what it can from FPL data only (lost clean sheets, lucky and unlucky subs, cards, differentials) | the owner misses timeline stories in the presser after #32 |
 | 36 | P3 | Judge the owner's agreement with the session judge on the comparison run (`judge-review` on at least 3 pressers of `test-openai-gpt-6-sol.json`) | the next presser evaluation run, or a doubt about the judge |
+| 37 | P3 | Production deployment on Railway (spec 002, AC21): the owner follows `docs/DEPLOYMENT.md` and confirms the first deploy; postponed, the system runs locally (DECISIONS 2026-10-13); the image, `railway.json` and the runbook stay and keep building in CI | the system has to run without the owner's computer (alerts while the owner is away), or a first user outside the owner's leagues |
