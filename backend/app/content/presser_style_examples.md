@@ -22,7 +22,7 @@ the writer never copies a phrase or a joke from them.
 
 🃏 *Chipy:* Ania odpaliła Triple Captain na Haalandzie i dołożyła do wyniku tylko 2 punkty. Bench Boost Jacka dał 9 z ławki, więc ten chip się spłacił.
 
-📊 *Tabela:* Kowadło United awansuje na drugie miejsce, a lider, Kawowy Odlot Leny, ma nad nim już tylko 5 punktów. Drewniane Korki Marka spadają o dwie pozycje.
+📊 *Tabela:* Kowadło United awansuje na drugie miejsce, a lider, Kawowy Odlot, ma nad nim już tylko 5 punktów. Drewniane Korki spadają o dwie pozycje.
 
 🌍 *Overall:* Kowal wskoczył do top 100k: był 140k, jest 88k. Marek wypadł z top 1M i ma 2,3M.
 
@@ -42,7 +42,7 @@ the writer never copies a phrase or a joke from them.
 
 🃏 *Chipy:* Wildcard Kuby wyszedł lepiej niż stary skład o 6 punktów. Free Hit Marka dał 3 mniej niż poprzednia jedenastka, więc ten chip nie wypalił.
 
-📊 *Tabela:* Spóźniony Pociąg Piotrka schodzi z trzeciego miejsca na piąte, a na podium wskakują Biurowe Orły Ani. Między pierwszym a trzecim jest tylko 9 punktów.
+📊 *Tabela:* Spóźniony Pociąg schodzi z trzeciego miejsca na piąte, a na podium wskakują Biurowe Orły. Między pierwszym a trzecim jest tylko 9 punktów.
 
 🌍 *Overall:* Ola wchodzi do top 10k: jest 9 412., a tydzień temu była 16k. Piotrek spadł z 1,4M na 3,1M.
 
@@ -62,6 +62,6 @@ the writer never copies a phrase or a joke from them.
 
 🃏 *Chipy:* Bartas zagrał Triple Captain na Salahu i dołożył 16 punktów, czyli najlepszy chip tego tygodnia.
 
-📊 *Tabela:* Przez pięć kolejek Nocna Zmiana Bartasa i Zardzewiały Gwizdek Kowala szły łeb w łeb, a teraz Nocna Zmiana po raz pierwszy wyprzedziła rywala, o 2 punkty. Stalowe Łydki prowadzą, a Młyn Zakładowy trzyma trzecią lokatę.
+📊 *Tabela:* Przez pięć kolejek Nocna Zmiana i Zardzewiały Gwizdek szły łeb w łeb, a teraz Nocna Zmiana po raz pierwszy wyprzedziła rywala, o 2 punkty. Stalowe Łydki prowadzą, a Młyn Zakładowy trzyma trzecią lokatę.
 
 🌍 *Overall:* Zbychu wszedł do top 100k, bo poprawił się ze 120k na 74k. Mati spadł z 3,2M na 4,1M.

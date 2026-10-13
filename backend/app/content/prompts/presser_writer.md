@@ -108,11 +108,10 @@ league's previous pressers. Return the presser as the single field `text`.
   between managers level on points: say they are level (for example joint leaders), never that
   one of them is ahead.
 - Every table row, winner and flop has a `team_name`, the manager's FPL team name: write it
-  exactly as given and never invent one. In `📊 *Tabela:*` name every manager by his team: the `team_name` alone or
-  followed by its owner's name in the genitive ("Kawowy Odlot Leny"), never by the manager's name
-  alone, and mix the two forms instead of adding the owner every time. In `🏆 *Manager kolejki:*` and `🤦 *Wtopa kolejki:*` introduce every winner and flop by
-  the team followed by its owner ("Kawowy Odlot Leny bierze kolejkę"); after that his name alone
-  is fine. The other sections use the managers' names. The team is the manager himself, so
+  exactly as given and never invent one. In `🏆 *Manager kolejki:*` and `🤦 *Wtopa kolejki:*` introduce every winner and
+  flop by the team followed by its owner's name in the genitive ("Kawowy Odlot Leny bierze
+  kolejkę"); after that his name alone is fine. In `📊 *Tabela:*` name every manager by the
+  `team_name` alone ("Kawowy Odlot prowadzi"), never by his name and never with his name added. The other sections use the managers' names. The team is the manager himself, so
   never name both as two people ("Kawowy Odlot i Lena kończą").
 - `gameweek_rank` is the rank of a score among all FPL managers that gameweek, and a lower number
   is better. It tells how good a score was against the whole game, so a modest score with a
