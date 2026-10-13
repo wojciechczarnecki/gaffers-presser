@@ -10,9 +10,9 @@ from app.presser.facts import FactSheet, check_fact_sheet
 from app.presser.writer import PreviousPresser
 
 EVALS_DIR = Path(__file__).resolve().parents[3] / "evals" / "presser"
-DEFAULT_CASES_PATH = EVALS_DIR / "v6" / "cases.jsonl"
-HISTORY_PATH = EVALS_DIR / "v6" / "history.jsonl"
-PSEUDONYMS_PATH = EVALS_DIR / "v6" / "pseudonyms.toml"
+DEFAULT_CASES_PATH = EVALS_DIR / "v7" / "cases.jsonl"
+HISTORY_PATH = EVALS_DIR / "v7" / "history.jsonl"
+PSEUDONYMS_PATH = EVALS_DIR / "v7" / "pseudonyms.toml"
 DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
 
 MIN_CASES = 44

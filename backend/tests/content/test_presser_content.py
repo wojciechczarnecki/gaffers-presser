@@ -26,9 +26,9 @@ WRITER_HEADERS = (
 )
 
 
-def test_writer_prompt_v12_rules():
+def test_writer_prompt_v13_rules():
     prompt = load_prompt("presser_writer")
-    assert prompt.version == 12
+    assert prompt.version == 13
     positions = [prompt.text.index(header) for header in WRITER_HEADERS]
     assert positions == sorted(positions)
     assert prompt.text.index("⚽") < prompt.text.index("🪑")
@@ -46,7 +46,14 @@ def test_writer_prompt_v12_rules():
         "penalty_saved",
         "kept the clean sheet although his club conceded",
         "team_name",
-        "once or twice in the presser",
+        "flop by the team followed by its owner",
+        "never with his name added",
+        "`swing` is greater than `margin`",
+        "Ending or breaking a streak",
+        "never correct yourself",
+        "different players in `captaincy.groups`",
+        'never "nikt nie…"',
+        '"1,01M", "1,03M" or "1M"',
         "only where it sounds natural",
         "never copy",
         "gameweek_rank",
@@ -89,7 +96,7 @@ def test_writer_prompt_v12_rules():
         "never the bonus when\n  another stat decided",
         "never the moment's",
         "never say his club lost the clean sheet",
-        "empty lists never mean\n  nobody made a transfer",
+        "empty `transfer_wins` and `transfer_misses` never mean nobody made a transfer",
         "`🎙️ *Presser GW<gameweek> — <league>*`",
         "`league_best` or `league_worst`",
         "`nth_of_season` 1 and `streak` 1 is simply his first flop",
@@ -190,6 +197,8 @@ FLAGGED_PHRASES = (
     "punktów netto, ",
 )
 HEADER_MARKS = ("🏆", "🤦", "\u00a9\ufe0f", "⚽", "🪑", "🃏", "📊", "🌍")
+# a winner's or a flop's opening "Team Name Owner": capitalised words, "i" between them
+OPENING_NAMES = re.compile(r"[A-ZĄĆĘŁŃÓŚŹŻ]\w*(?: (?:i|[A-ZĄĆĘŁŃÓŚŹŻ]\w*))*")
 HEADER_LABEL = re.compile(r"^\S+ \*[^*]+:\*\s*")
 
 
@@ -219,8 +228,12 @@ def test_style_examples_eight_headers_no_shared_sentence():
         starts = [p[0 : len(mark)] for p, mark in zip(sections, HEADER_MARKS, strict=True)]
         assert starts == list(HEADER_MARKS)
         assert sum(len(p) for p in paragraphs) + 2 * len(paragraphs) < 2500
-        named = {re.match(r"\w+", HEADER_LABEL.sub("", sections[n]))[0] for n in (0, 1)}
-        assert any(name in sections[3] for name in named), named
+        # the winner and the flop open with "team + owner": the owner is the last word, and
+        # its stem matches any case of his name in "Z boiska" ("Zbycha" -> "Zbychu")
+        owners = [
+            OPENING_NAMES.match(HEADER_LABEL.sub("", sections[n]))[0].split()[-1] for n in (0, 1)
+        ]
+        assert any(owner[:4] in sections[3] for owner in owners), owners
         assert "gw rank" in "\n".join(sections).casefold()
         pitch = sections[3].casefold()
         assert any(stat in pitch for stat in ("gol", "bonus", "żółt", "defcon", "bps")), pitch

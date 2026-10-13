@@ -97,6 +97,11 @@ and each LLM step that produces data has an evaluation set with recorded results
       style rated blind with the owner's check on 3 pairs, report, ADR 0007 and the new
       `PRESSER_MODEL` default `openai/gpt-6-sol`; the session judge and its procedure
       (`docs/EVALUATION.md`) (BACKLOG #32; [report](reports/presser-model-comparison.md))
+- [x] Writer prompt version 13 for `openai/gpt-6-sol`: FPL team names in the table and
+      "team + owner" for the winner and the flop (`team_name` on each, fact sheet version 7,
+      evaluation set v7), style examples to match, guards on ended streaks, ranks just past 1M,
+      empty lists, counterfactuals, distinct captains and self-corrections; checked by reading
+      6 dev pressers before and after (BACKLOG #35, fast path)
 - [ ] Slang glossary and style examples (from X and Polish FPL podcasts) (spec: TBD)
 
 ## Stage 4 — Source credibility and Q&A

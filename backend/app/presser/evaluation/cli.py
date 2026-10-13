@@ -121,7 +121,7 @@ def parse_gameweeks(value: str) -> list[int]:
 
 
 @app.command(
-    name="build-cases", help="Build the real cases from the database, pseudonymised, into set v6."
+    name="build-cases", help="Build the real cases from the database, pseudonymised, into set v7."
 )
 def build_cases_command(
     ctx: typer.Context,
@@ -164,7 +164,7 @@ def build_cases_command(
         typer.echo(f"missing history: {alias} GW{number}")
 
 
-@app.command(help="Run a model over a split of set v6; the judge checks the faithfulness.")
+@app.command(help="Run a model over a split of set v7; the judge checks the faithfulness.")
 def evaluate(
     ctx: typer.Context,
     split: Annotated[str, typer.Option("--split", help="dev or test.")],

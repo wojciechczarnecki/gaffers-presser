@@ -226,7 +226,7 @@ def test_gameweek_without_match_stats_builds_a_v6_sheet(world):
     pick(world, 11, 55, [2, 3, 4])
     pick(world, 12, 40, [])
     result = sheet(world)
-    assert result.version == 6
+    assert result.version == 7
     kinds = {i.player: i.kinds for i in result.pitch.items}
     assert kinds == {
         "Haulman": ["differential_haul"],

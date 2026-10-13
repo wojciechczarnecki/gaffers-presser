@@ -77,10 +77,11 @@ def test_decisions_cover_alert_slots():
     assert "2026-10-02" in row and "supersedes" in row.lower()
 
 
-def test_backlog_32_closed_by_the_model_comparison():
-    assert not [row for row in _rows() if row.startswith("| 32 |")]
-    (row,) = [row for row in _rows() if row.startswith("| 35 | P1 |")]
-    for needle in ("presser-model-comparison.md", "gpt-6-sol", "ADR 0007 is merged"):
+def test_backlog_32_and_35_closed_by_the_comparison_and_writer_13():
+    assert not [row for row in _rows() if row.startswith(("| 32 |", "| 35 |"))]
+    decisions = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")
+    (row,) = [line for line in decisions.splitlines() if "Writer prompt version 13" in line]
+    for needle in ("team + owner", "BACKLOG #35", "gpt-6-sol"):
         assert needle in row, needle
 
 

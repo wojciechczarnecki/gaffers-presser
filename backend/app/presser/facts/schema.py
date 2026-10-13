@@ -33,6 +33,8 @@ class ManagerScore(Strict):
     streak: int = 0
     # this gameweek's GW rank as the league's record of the season or the manager's own
     record: ScoreRecord | None = None
+    # the manager's FPL team name from his table row
+    team_name: str | None = None
 
 
 class StatPoints(Strict):
@@ -344,7 +346,7 @@ class Overall(Strict):
 
 
 class FactSheet(Strict):
-    version: Literal[6] = 6
+    version: Literal[7] = 7
     league: str
     season: str
     gameweek: int
