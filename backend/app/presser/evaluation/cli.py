@@ -27,11 +27,19 @@ from app.presser.evaluation.cases import (
     load_history,
     write_cases,
 )
-from app.presser.evaluation.judge import JUDGE_MODEL, PresserJudge, build_presser_judge
+from app.presser.evaluation.judge import (
+    JUDGE_MODEL,
+    JUDGE_PROMPT,
+    JudgeVerdict,
+    PresserJudge,
+    build_presser_judge,
+)
 from app.presser.evaluation.runner import (
     EvaluationError,
     default_result_path,
     format_totals,
+    import_verdicts,
+    judge_inputs,
     load_result,
     run_evaluation,
     write_result,
@@ -167,6 +175,13 @@ def evaluate(
     force: Annotated[
         bool, typer.Option("--force", help="Overwrite an existing run file and its reviews.")
     ] = False,
+    no_judge: Annotated[
+        bool,
+        typer.Option(
+            "--no-judge",
+            help="Write the pressers only; judge them with export-judge-inputs and import-judge.",
+        ),
+    ] = False,
 ) -> None:
     if split not in ("dev", "test"):
         raise fail("--split must be dev or test")
@@ -179,16 +194,81 @@ def evaluate(
     cases = load_cases(cases_path)
     try:
         writer = deps.make_writer(model)
-        judge = deps.make_judge(judge_model)
+        judge = None if no_judge else deps.make_judge(judge_model)
     except CollectorError as exc:
         raise fail(str(exc)) from None
     try:
-        data = run_evaluation(cases, writer, judge, split, model, judge_model, deps.clock.now())
+        data = run_evaluation(
+            cases,
+            writer,
+            judge,
+            split,
+            model,
+            None if no_judge else judge_model,
+            deps.clock.now(),
+        )
     except EvaluationError as exc:
         raise fail(str(exc)) from None
     write_result(path, data)
     typer.echo(format_totals(data))
     typer.echo(f"result: {path}")
+
+
+JUDGE_PROMPT_FILE = "judge-prompt.md"
+
+
+@app.command(
+    name="export-judge-inputs",
+    help="Write the judge's prompt and one input file per presser, for a judge outside the API.",
+)
+def export_judge_inputs(
+    run: Annotated[Path, typer.Option("--run", help="The run file written by evaluate.")],
+    out: Annotated[Path, typer.Option("--out", help="An empty or new directory.")],
+    cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
+) -> None:
+    data = _load_run(run)
+    if out.exists() and any(out.iterdir()):
+        raise fail(f"{out} is not empty")
+    try:
+        inputs = judge_inputs(data, load_cases(cases_path))
+    except EvaluationError as exc:
+        raise fail(str(exc)) from None
+    out.mkdir(parents=True, exist_ok=True)
+    (out / JUDGE_PROMPT_FILE).write_text(JUDGE_PROMPT.text, encoding="utf-8")
+    for case_id, text in inputs.items():
+        (out / f"{case_id}.md").write_text(text, encoding="utf-8")
+    typer.echo(f"inputs: {len(inputs)}  prompt: {out / JUDGE_PROMPT_FILE}")
+
+
+@app.command(
+    name="import-judge",
+    help="Record the verdicts of a judge outside the API (one <case_id>.json per presser).",
+)
+def import_judge(
+    run: Annotated[Path, typer.Option("--run", help="The run file written by evaluate.")],
+    verdicts_dir: Annotated[Path, typer.Option("--verdicts", help="Directory of verdicts.")],
+    judge_model: Annotated[
+        str, typer.Option("--judge-model", help="Who judged, e.g. claude-opus-5-5 (session).")
+    ],
+    force: Annotated[
+        bool, typer.Option("--force", help="Replace verdicts already in the run.")
+    ] = False,
+) -> None:
+    data = _load_run(run)
+    if not force and any(p["faithfulness"] is not None for p in data["pressers"]):
+        raise fail(f"{run.name} is already judged; use --force to replace the verdicts")
+    verdicts: dict[str, JudgeVerdict] = {}
+    for path in sorted(verdicts_dir.glob("*.json")):
+        try:
+            verdicts[path.stem] = JudgeVerdict.model_validate_json(path.read_text(encoding="utf-8"))
+        except ValueError:
+            raise fail(f"{path.name} is not a valid verdict") from None
+    try:
+        import_verdicts(data, verdicts, judge_model)
+    except EvaluationError as exc:
+        raise fail(str(exc)) from None
+    write_result(run, data)
+    typer.echo(format_totals(data))
 
 
 RULE = "─" * 72

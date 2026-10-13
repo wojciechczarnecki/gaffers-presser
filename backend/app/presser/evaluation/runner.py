@@ -8,7 +8,7 @@ from typing import Any
 
 from app.presser.evaluation.cases import DEFAULT_RESULTS_DIR, PresserCase
 from app.presser.evaluation.judge import PROMPT_VERSION as JUDGE_PROMPT_VERSION
-from app.presser.evaluation.judge import JudgeInput, PresserJudge
+from app.presser.evaluation.judge import JudgeInput, JudgeVerdict, PresserJudge, render_input
 from app.presser.writer import PROMPT_VERSION as WRITER_PROMPT_VERSION
 from app.presser.writer import Writer, WriterInput
 
@@ -72,12 +72,13 @@ def _record(case: PresserCase) -> dict[str, Any]:
 def run_evaluation(
     cases: Sequence[PresserCase],
     writer: Writer,
-    judge: PresserJudge,
+    judge: PresserJudge | None,
     split: str,
     model: str,
-    judge_model: str,
+    judge_model: str | None,
     now: datetime,
 ) -> dict[str, Any]:
+    # judge None: the pressers are written only; `import_verdicts` adds the judge's labels later.
     chosen = [case for case in cases if case.split == split]
     if not chosen:
         raise EvaluationError(f"the {split} split has no cases")
@@ -101,16 +102,14 @@ def run_evaluation(
             cost_usd=reply.cost_usd,
             latency_seconds=time.monotonic() - started,
         )
+        if judge is None:
+            continue
         try:
             verdict = judge.run(JudgeInput(case.facts, case.previous, text))
         except Exception as exc:
             record["error_class"] = type(exc).__name__
             continue
-        claims = verdict.parsed.claims
-        record["claims"] = [
-            {"claim": item.claim, "label": item.label, "owner_label": None} for item in claims
-        ]
-        record["faithfulness"] = _faithfulness([item.label for item in claims])
+        _apply_verdict(record, verdict.parsed)
         record["judge_cost_usd"] = verdict.cost_usd
     return {
         "model": model,
@@ -122,6 +121,51 @@ def run_evaluation(
         "pressers": pressers,
         "totals": compute_totals(pressers),
     }
+
+
+def _apply_verdict(record: dict[str, Any], verdict: JudgeVerdict) -> None:
+    record["claims"] = [
+        {"claim": item.claim, "label": item.label, "owner_label": None} for item in verdict.claims
+    ]
+    record["faithfulness"] = _faithfulness([item.label for item in verdict.claims])
+
+
+def judge_inputs(data: dict[str, Any], cases: Sequence[PresserCase]) -> dict[str, str]:
+    """The judge's user message per case ID, exactly as the API judge would get it."""
+    by_id = {case.id: case for case in cases}
+    inputs = {}
+    for record in data["pressers"]:
+        if record["text"] is None:
+            continue
+        case = by_id.get(record["case_id"])
+        if case is None:
+            raise EvaluationError(f"case {record['case_id']} is not in the cases file")
+        inputs[case.id] = render_input(JudgeInput(case.facts, case.previous, record["text"]))
+    return inputs
+
+
+def import_verdicts(
+    data: dict[str, Any], verdicts: dict[str, JudgeVerdict], judge_model: str
+) -> dict[str, Any]:
+    """Records verdicts given outside the API (e.g. by a Claude Code session) in a run."""
+    written = {p["case_id"] for p in data["pressers"] if p["text"] is not None}
+    missing = sorted(written - verdicts.keys())
+    if missing:
+        raise EvaluationError(f"no verdict for: {', '.join(missing)}")
+    unknown = sorted(verdicts.keys() - written)
+    if unknown:
+        raise EvaluationError(f"verdicts for cases without a presser: {', '.join(unknown)}")
+    for record in data["pressers"]:
+        if record["text"] is None:
+            continue
+        _apply_verdict(record, verdicts[record["case_id"]])
+        record["judge_cost_usd"] = None
+        if record["error_class"] is not None and record["faithfulness"] is not None:
+            record["error_class"] = None  # the API judge's failure, now replaced
+    data["judge_model"] = judge_model
+    data["judge_prompt_version"] = JUDGE_PROMPT_VERSION
+    data["totals"] = compute_totals(data["pressers"])
+    return data
 
 
 def load_result(path: Path) -> dict[str, Any]:
