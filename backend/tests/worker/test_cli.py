@@ -193,6 +193,13 @@ def _sigterm_when(predicate) -> threading.Thread:
     return thread
 
 
+def _join_threads_started_since(before: set[threading.Thread]) -> None:
+    # A released call resumes in the daemon thread the worker abandoned and writes to the
+    # database; it must finish before the `db` fixture truncates, or the two deadlock.
+    for thread in set(threading.enumerate()) - before:
+        thread.join(timeout=10)
+
+
 def _extractions(db):
     from app.extraction.models import Extraction
 
@@ -522,6 +529,7 @@ def test_sigterm_with_extraction_blocked_in_a_call_exits_within_10_s(cli, db):
     block = threading.Event()
     extraction, llm = _extraction_runtime_and_fake(block)
 
+    threads = set(threading.enumerate())
     killer = _sigterm_when(lambda: len(llm.received_messages) >= 1)
     start = time.monotonic()
     try:
@@ -531,15 +539,18 @@ def test_sigterm_with_extraction_blocked_in_a_call_exits_within_10_s(cli, db):
             clock=RealClock(far_future),
             extraction=extraction,
         )
-    finally:
         elapsed = time.monotonic() - start
+        calls = len(llm.received_messages)  # read while the call is still blocked
+        stored = _extractions(db)
+    finally:
         killer.join(timeout=1)
         block.set()
+        _join_threads_started_since(threads)
 
     assert result.exit_code == 0
     assert elapsed < 10
-    assert len(llm.received_messages) == 1
-    assert _extractions(db) == []
+    assert calls == 1
+    assert stored == []
 
 
 def test_polls_continue_while_extraction_blocks(db):
@@ -735,6 +746,7 @@ def test_sigterm_with_embedder_blocked_in_a_call_exits_within_10_s(cli, db):
     block = threading.Event()
     embedder = BlockingEmbedder(block)
 
+    threads = set(threading.enumerate())
     killer = _sigterm_when(lambda: len(embedder.calls) >= 1)
     start = time.monotonic()
     try:
@@ -745,14 +757,16 @@ def test_sigterm_with_embedder_blocked_in_a_call_exits_within_10_s(cli, db):
             indexing=indexing_runtime(embedder),
         )
         elapsed = time.monotonic() - start
-        stored = _embeddings(db)  # read while the call is still blocked
+        calls = len(embedder.calls)  # read while the call is still blocked
+        stored = _embeddings(db)
     finally:
         killer.join(timeout=1)
         block.set()
+        _join_threads_started_since(threads)
 
     assert result.exit_code == 0
     assert elapsed < 10
-    assert len(embedder.calls) == 1
+    assert calls == 1
     assert stored == []
 
 
