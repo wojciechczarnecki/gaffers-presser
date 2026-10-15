@@ -8,7 +8,7 @@ from app.core.clock import Clock, StopAwareClock
 from app.core.shutdown import Shutdown
 from app.extraction.service import ExtractionRuntime, extract_post
 from app.extraction.store import next_pending
-from app.llm.tracing import flush, make_handler
+from app.extraction.tracing import make_extraction_tracer
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +30,7 @@ class ExtractionLoop:
         self._stop_event = stop_event
 
     def run(self) -> None:
-        try:
-            handler = make_handler(self._runtime.tracing)
-        except Exception as exc:
-            logger.error(
-                "langfuse tracing unavailable, extracting untraced: %s", type(exc).__name__
-            )
-            handler = None
+        tracer = make_extraction_tracer(self._runtime.tracing)
         try:
             while not self._stop_event.is_set():
                 try:
@@ -51,14 +45,14 @@ class ExtractionLoop:
                         post,
                         self._clock,
                         self._stop_event,
-                        handler,
+                        tracer,
                         record_latency=True,
                     )
                 except Exception as exc:
                     logger.error("extraction loop iteration failed: %s", type(exc).__name__)
                     self._clock.sleep(ITERATION_ERROR_SLEEP_SECONDS)
         finally:
-            flush(handler)
+            tracer.flush()
 
 
 def start_extractor(

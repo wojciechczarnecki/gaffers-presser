@@ -67,7 +67,7 @@ def test_typed_result():
     output = ExtractionOutput(events=[_event("Haaland")])
     flow = build_flow(_spec(output), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert len(result.events) == 1
     event = result.events[0]
@@ -82,7 +82,7 @@ def test_no_events_is_empty_result():
     output = ExtractionOutput(events=[])
     flow = build_flow(_spec(output), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert result.events == []
     assert result.llm_calls == 1
@@ -97,7 +97,7 @@ def test_leaked_xi_gives_starters_and_benched():
     )
     flow = build_flow(_spec(output), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     by_mention = {e.mention: e for e in result.events}
     assert by_mention["Haaland"].event_type == "confirmed_starter"
@@ -115,7 +115,7 @@ def test_out_and_starts_gives_two_events():
     )
     flow = build_flow(_spec(output), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert len(result.events) == 2
 
@@ -133,7 +133,7 @@ def test_repost_is_extracted_with_author():
         is_reply=False,
     )
 
-    flow.run(repost, config={})
+    flow.run(repost)
 
     sent = spec.chat_model.received_messages[0][1].content
     assert "listaccount" in sent
@@ -144,7 +144,7 @@ def test_unique_match_makes_no_llm_call():
     output = ExtractionOutput(events=[_event("Haaland")])
     flow = build_flow(_spec(output), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert result.llm_calls == 1
 
@@ -154,7 +154,7 @@ def test_disambiguation_picks_candidate():
     disambiguation = Disambiguation(fpl_id=SMITH_TWO.fpl_id)
     flow = build_flow(_spec(output, disambiguation), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert result.events[0].player_fpl_id == SMITH_TWO.fpl_id
     assert result.llm_calls == 2
@@ -165,7 +165,7 @@ def test_disambiguation_outside_list_unlinked():
     disambiguation = Disambiguation(fpl_id=999)
     flow = build_flow(_spec(output, disambiguation), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert result.events[0].player_fpl_id is None
     assert result.events[0].player_season is None
@@ -177,7 +177,7 @@ def test_disambiguation_none_unlinked():
     disambiguation = Disambiguation(fpl_id=None)
     flow = build_flow(_spec(output, disambiguation), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert result.events[0].player_fpl_id is None
 
@@ -186,7 +186,7 @@ def test_disambiguation_error_unlinked():
     output = ExtractionOutput(events=[_event("Smith")])
     flow = build_flow(_spec(output, RuntimeError("boom")), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert len(result.events) == 1
     assert result.events[0].player_fpl_id is None
@@ -197,7 +197,7 @@ def test_no_candidate_unlinked_without_call():
     output = ExtractionOutput(events=[_event("Nobody")])
     flow = build_flow(_spec(output), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert result.events[0].player_fpl_id is None
     assert result.llm_calls == 1
@@ -208,7 +208,7 @@ def test_usage_summed_over_calls():
     disambiguation = Disambiguation(fpl_id=SMITH_ONE.fpl_id)
     flow = build_flow(_spec(output, disambiguation), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert result.usage.input_tokens == 20
     assert result.usage.output_tokens == 10
@@ -218,7 +218,7 @@ def test_invalid_output_raises():
     flow = build_flow(_spec({"events": "not-a-list"}), INDEX)
 
     with pytest.raises(ExtractionOutputError):
-        flow.run(POST, config={})
+        flow.run(POST)
 
 
 def test_reasoning_tokens_summed():
@@ -227,7 +227,7 @@ def test_reasoning_tokens_summed():
     fake = FakeChatModel(responses=[output, disambiguation], reasoning_tokens=3, reported_cost=0.5)
     flow = build_flow(ChatModelSpec(provider="fake", model="fake", chat_model=fake), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert result.llm_calls == 2
     assert result.usage.reasoning_tokens == 6
@@ -238,7 +238,7 @@ def test_reasoning_tokens_summed():
 def test_no_reasoning_tokens_stays_none():
     flow = build_flow(_spec(ExtractionOutput(events=[])), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert result.usage.reasoning_tokens is None
     assert result.usage.reported_cost_usd is None
@@ -250,7 +250,7 @@ def test_answered_model_and_host_from_extraction_call():
     )
     flow = build_flow(ChatModelSpec(provider="fake", model="a/primary", chat_model=fake), INDEX)
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert result.answered_model == "b/fallback"
     assert result.host == "DeepInfra"

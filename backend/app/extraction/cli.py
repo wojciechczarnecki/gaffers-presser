@@ -41,7 +41,7 @@ from app.extraction.evaluation.review import (
     run_editor,
 )
 from app.extraction.evaluation.runner import run_evaluation
-from app.extraction.flow import PROMPT_VERSION, build_flow
+from app.extraction.flow import build_flow
 from app.extraction.generation import HostLookup
 from app.extraction.linking import PlayerIndex, load_aliases, load_players, load_snapshot
 from app.extraction.service import (
@@ -51,9 +51,9 @@ from app.extraction.service import (
     run_with_retries,
 )
 from app.extraction.store import posts_for_reextract
-from app.extraction.tracing import run_config
+from app.extraction.tracing import make_extraction_tracer
 from app.llm.chat import ChatModelSpec, build_chat_model, resolve_llm
-from app.llm.tracing import flush, make_handler, resolve_tracing
+from app.llm.tracing import resolve_tracing
 
 app = typer.Typer(add_completion=False, no_args_is_help=True, help="The extraction toolkit.")
 
@@ -171,7 +171,7 @@ def reextract(
         )
 
     tracing = resolve_tracing(deps.settings)
-    handler = make_handler(tracing)
+    tracer = make_extraction_tracer(tracing)
     runtime = ExtractionRuntime(
         provider=spec.provider,
         model=spec.model,
@@ -195,7 +195,7 @@ def reextract(
                 post,
                 deps.clock,
                 stop_event,
-                handler,
+                tracer,
                 record_latency=False,
             )
             if outcome is None:
@@ -209,7 +209,7 @@ def reextract(
                 any_cost = True
                 total_cost += outcome.cost_usd
     finally:
-        flush(handler)
+        tracer.flush()
 
     typer.echo(f"posts processed: {processed}")
     typer.echo(f"events: {events}")
@@ -275,8 +275,7 @@ def prelabel(
     new_cases: list[EvalCase] = []
     failures = 0
     for post in pending:
-        config = run_config(post.x_id, PROMPT_VERSION, spec.provider, spec.model, None)
-        outcome = run_with_retries(flow, post, config, deps.clock, stop_event)
+        outcome = run_with_retries(flow, post, deps.clock, stop_event)
         if outcome.result is None:
             failures += 1
             continue
@@ -360,14 +359,14 @@ def evaluate(
     players, teams = load_snapshot(players_path)
     player_aliases, team_aliases = load_aliases()
     index = PlayerIndex(players, teams, player_aliases, team_aliases)
-    handler = make_handler(resolve_tracing(deps.settings))
+    tracer = make_extraction_tracer(resolve_tracing(deps.settings))
     host_lookup = deps.host_lookup()
     try:
         report = run_evaluation(
             selected,
             spec,
             index,
-            handler,
+            tracer,
             run_name=name,
             split=split,
             clock=deps.clock,
@@ -376,7 +375,7 @@ def evaluate(
             host_lookup=host_lookup,
         )
     finally:
-        flush(handler)
+        tracer.flush()
         close = getattr(host_lookup, "close", None)
         if close is not None:
             close()

@@ -15,10 +15,11 @@ from app.extraction.service import (
     load_reference_files,
 )
 from app.extraction.store import current_extractions
+from app.extraction.tracing import NULL_EXTRACTION_TRACER
 from app.llm.chat import ChatModelSpec
 from app.llm.pricing import Price, load_prices
 from app.tweets.models import Tweet
-from tests.extraction.fakes import FakeChatModel, RecordingHandler
+from tests.extraction.fakes import FakeChatModel, RecordingExtractionTracer
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
 PRICES = {"fake-model": Price(input_per_million=1.0, output_per_million=2.0, checked="x")}
@@ -80,14 +81,14 @@ def _row(db_session, extraction_id: int) -> Extraction:
         return session.exec(select(Extraction).where(Extraction.id == extraction_id)).one()
 
 
-def _extract(db_session, runtime, clock, handler=None):
+def _extract(db_session, runtime, clock, tracer=NULL_EXTRACTION_TRACER):
     return extract_post(
         db_session.get_bind(),
         runtime,
         POST,
         clock,
         threading.Event(),
-        handler,
+        tracer,
         record_latency=False,
     )
 
@@ -98,7 +99,13 @@ def test_success_first_attempt(db_session):
     clock = RecordingClock([NOW, NOW + timedelta(seconds=1)])
 
     outcome = extract_post(
-        db_session.get_bind(), runtime, POST, clock, threading.Event(), None, record_latency=False
+        db_session.get_bind(),
+        runtime,
+        POST,
+        clock,
+        threading.Event(),
+        NULL_EXTRACTION_TRACER,
+        record_latency=False,
     )
 
     assert outcome is not None
@@ -113,7 +120,13 @@ def test_retries_then_success(db_session):
     clock = RecordingClock([NOW, NOW + timedelta(seconds=3)])
 
     outcome = extract_post(
-        db_session.get_bind(), runtime, POST, clock, threading.Event(), None, record_latency=False
+        db_session.get_bind(),
+        runtime,
+        POST,
+        clock,
+        threading.Event(),
+        NULL_EXTRACTION_TRACER,
+        record_latency=False,
     )
 
     assert outcome is not None
@@ -127,7 +140,13 @@ def test_retries_exhausted_stores_failed(db_session):
     clock = RecordingClock([NOW, NOW + timedelta(seconds=10)])
 
     outcome = extract_post(
-        db_session.get_bind(), runtime, POST, clock, threading.Event(), None, record_latency=False
+        db_session.get_bind(),
+        runtime,
+        POST,
+        clock,
+        threading.Event(),
+        NULL_EXTRACTION_TRACER,
+        record_latency=False,
     )
 
     assert outcome is not None
@@ -150,7 +169,13 @@ def test_stop_between_attempts_stores_nothing(db_session):
     stopping_clock = StoppingClock([NOW])
 
     outcome = extract_post(
-        db_session.get_bind(), runtime, POST, stopping_clock, stop_event, None, record_latency=False
+        db_session.get_bind(),
+        runtime,
+        POST,
+        stopping_clock,
+        stop_event,
+        NULL_EXTRACTION_TRACER,
+        record_latency=False,
     )
 
     assert outcome is None
@@ -168,7 +193,13 @@ def test_cost_null_without_price(db_session):
     clock = RecordingClock([NOW, NOW + timedelta(seconds=1)])
 
     outcome = extract_post(
-        db_session.get_bind(), runtime, POST, clock, threading.Event(), None, record_latency=False
+        db_session.get_bind(),
+        runtime,
+        POST,
+        clock,
+        threading.Event(),
+        NULL_EXTRACTION_TRACER,
+        record_latency=False,
     )
 
     assert outcome is not None
@@ -182,7 +213,13 @@ def test_cost_from_price_table(db_session):
     clock = RecordingClock([NOW, NOW + timedelta(seconds=1)])
 
     outcome = extract_post(
-        db_session.get_bind(), runtime, POST, clock, threading.Event(), None, record_latency=False
+        db_session.get_bind(),
+        runtime,
+        POST,
+        clock,
+        threading.Event(),
+        NULL_EXTRACTION_TRACER,
+        record_latency=False,
     )
 
     assert outcome is not None
@@ -198,7 +235,13 @@ def test_worker_extraction_records_latency(db_session):
     clock = RecordingClock([NOW, finished_at])
 
     outcome = extract_post(
-        db_session.get_bind(), runtime, POST, clock, threading.Event(), None, record_latency=True
+        db_session.get_bind(),
+        runtime,
+        POST,
+        clock,
+        threading.Event(),
+        NULL_EXTRACTION_TRACER,
+        record_latency=True,
     )
 
     assert outcome is not None
@@ -226,7 +269,7 @@ def test_credentials_never_logged_or_stored(db_session, caplog):
             POST,
             clock,
             threading.Event(),
-            None,
+            NULL_EXTRACTION_TRACER,
             record_latency=False,
         )
 
@@ -333,18 +376,38 @@ def test_bad_prices_file_is_a_config_error(monkeypatch, tmp_path):
         load_reference_files()
 
 
-def test_handler_receives_post_metadata(db_session):
+def test_one_span_per_post_holds_its_generation(db_session):
     _seed_tweet(db_session)
-    runtime = _runtime(ExtractionOutput(events=[]))
+    runtime = _runtime(ExtractionOutput(events=[]), prices=PRICES)
     clock = RecordingClock([NOW, NOW + timedelta(seconds=1)])
-    handler = RecordingHandler()
+    tracer = RecordingExtractionTracer()
 
-    _extract(db_session, runtime, clock, handler=handler)
+    _extract(db_session, runtime, clock, tracer=tracer)
 
-    assert len(handler.chat_model_starts) == 1
-    metadata = handler.chat_model_starts[0]["metadata"]
-    assert metadata["x_id"] == POST.x_id
-    assert metadata["prompt_version"] == PROMPT_VERSION
+    (span,) = tracer.spans
+    assert span["name"] == "extraction"
+    assert span["input"] == {
+        "x_id": POST.x_id,
+        "prompt_version": PROMPT_VERSION,
+        "provider": "fake",
+        "model": "fake-model",
+    }
+    assert span["outputs"] == [{"events": 0, "attempts": 1}]
+    (generation,) = span["generations"]
+    assert generation["cost_usd"] == pytest.approx(10 / 1e6 * 1.0 + 5 / 1e6 * 2.0)
+
+
+def test_retried_attempts_share_the_post_span(db_session):
+    _seed_tweet(db_session)
+    runtime = _runtime(RuntimeError("a"), RuntimeError("b"), RuntimeError("c"))
+    clock = RecordingClock([NOW, NOW + timedelta(seconds=1)])
+    tracer = RecordingExtractionTracer()
+
+    _extract(db_session, runtime, clock, tracer=tracer)
+
+    (span,) = tracer.spans
+    assert span["outputs"] == [{"error_class": "RuntimeError", "attempts": 3}]
+    assert [g["error_class"] for g in span["generations"]] == ["RuntimeError"] * 3
 
 
 def test_stored_provider_is_openrouter_and_model_is_answering_id(db_session):

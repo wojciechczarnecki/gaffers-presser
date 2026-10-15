@@ -17,7 +17,7 @@ from app.retrieval.evaluation.runner import EvaluationError
 from app.retrieval.evaluation.schema import load_eval_corpus
 from app.retrieval.indexing import IndexingRuntime, index_missing
 from app.retrieval.search import search
-from app.retrieval.tracing import RetrievalTracer
+from app.retrieval.tracing import NULL_TRACER, RetrievalTracer
 
 POOL_DEPTH = 10
 POOLED_MODES = ("fulltext", "vector", "hybrid")
@@ -105,7 +105,8 @@ def prelabel(
         tracing=None,
         clock=clock,
     )
-    indexed = index_missing(eval_engine, runtime, embedder, counting, clock, stop_event)
+    # The corpus is indexed untraced, like the evaluation's; its cost comes from the summary.
+    indexed = index_missing(eval_engine, runtime, embedder, NULL_TRACER, clock, stop_event)
     if indexed.failed:
         raise EvaluationError(f"{indexed.failed} corpus posts could not be embedded")
 
@@ -135,8 +136,10 @@ def prelabel(
         write_queries(queries_path, queries)
         labelled += 1
 
-    # the counting tracer has seen the corpus indexing and every query embedding
-    costs = [c for c in (counting.embedding_cost_usd, caller.cost_usd) if c is not None]
+    # the counting tracer has seen every query embedding
+    costs = [
+        c for c in (indexed.cost_usd, counting.embedding_cost_usd, caller.cost_usd) if c is not None
+    ]
     return PrelabelSummary(
         queries_labelled=labelled,
         candidates=candidates,

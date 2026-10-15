@@ -32,7 +32,7 @@ from app.llm.models import ModelSettings
 from app.llm.pricing import Price
 from app.tweets.models import Tweet
 from tests.conftest import BACKEND_DIR
-from tests.extraction.fakes import FakeChatModel, RecordingHandler
+from tests.extraction.fakes import FakeChatModel, RecordingExtractionTracer
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
 SENTINEL = "sentinel-secret-value"
@@ -803,7 +803,7 @@ def test_evaluate_case_error_is_recorded_and_run_continues(tmp_path):
 
 
 def test_evaluate_traces_with_run_name():
-    handler = RecordingHandler()
+    tracer = RecordingExtractionTracer()
     fake = FakeChatModel(responses=[_haaland_out()])
     spec = ChatModelSpec(provider="fake", model="m", chat_model=fake)
     players = [
@@ -821,7 +821,7 @@ def test_evaluate_traces_with_run_name():
         [_eval_case("1", "test")],
         spec,
         PlayerIndex(players, []),
-        handler,
+        tracer,
         run_name="eval-run-7",
         split="test",
         clock=FixedClock(NOW),
@@ -829,10 +829,11 @@ def test_evaluate_traces_with_run_name():
         usd_pln_rate=4.0,
     )
 
-    assert handler.chat_model_starts
-    for start in handler.chat_model_starts:
-        assert start["metadata"]["langfuse_session_id"] == "eval-run-7"
-        assert start["metadata"]["x_id"] == "1"
+    (span,) = tracer.spans
+    assert span["session_id"] == "eval-run-7"
+    assert span["input"]["x_id"] == "1"
+    assert span["outputs"] == [{"events": 1, "attempts": 1}]
+    assert len(span["generations"]) == 1
 
 
 @pytest.mark.parametrize("run_name", ["gemini/flash-v1", "../x", ".hidden", "a b"])

@@ -4,8 +4,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, ContextManager, Protocol
 
-from langfuse import Langfuse
-from langfuse.langchain import CallbackHandler
+from langfuse import Langfuse, propagate_attributes
 from pydantic import SecretStr
 
 from app.llm.settings import LlmSettings
@@ -31,24 +30,6 @@ def resolve_tracing(settings: LlmSettings) -> TracingConfig | None:
     return None
 
 
-def make_handler(tracing: TracingConfig | None) -> CallbackHandler | None:
-    if tracing is None:
-        return None
-    public_key = tracing.public_key.get_secret_value()
-    Langfuse(
-        public_key=public_key,
-        secret_key=tracing.secret_key.get_secret_value(),
-        host=tracing.host,
-    )
-    return CallbackHandler(public_key=public_key)
-
-
-def flush(handler: CallbackHandler | None) -> None:
-    if handler is None:
-        return
-    handler._langfuse_client.flush()
-
-
 def make_client(tracing: TracingConfig) -> Langfuse:
     return Langfuse(
         public_key=tracing.public_key.get_secret_value(),
@@ -64,7 +45,9 @@ class SpanHandle(Protocol):
 
 
 class GenerationTracer(Protocol):
-    def span(self, name: str, input: dict[str, Any]) -> ContextManager[SpanHandle]: ...
+    def span(
+        self, name: str, input: dict[str, Any], session_id: str | None = None
+    ) -> ContextManager[SpanHandle]: ...
 
     def generation(
         self,
@@ -93,7 +76,9 @@ NULL_SPAN = _NullSpan()
 
 class NullGenerationTracer:
     @contextmanager
-    def span(self, name: str, input: dict[str, Any]) -> Iterator[SpanHandle]:
+    def span(
+        self, name: str, input: dict[str, Any], session_id: str | None = None
+    ) -> Iterator[SpanHandle]:
         yield NULL_SPAN
 
     def generation(self, **_: Any) -> None:
@@ -127,22 +112,36 @@ class LangfuseGenerationTracer:
         logger.error("%s %s: %s", self._label, what, type(exc).__name__)
 
     @contextmanager
-    def span(self, name: str, input: dict[str, Any]) -> Iterator[SpanHandle]:
+    def span(
+        self, name: str, input: dict[str, Any], session_id: str | None = None
+    ) -> Iterator[SpanHandle]:
+        # A session (an evaluation run) groups its traces and doubles as their tag.
+        managers: list[Any] = []
         try:
+            if session_id is not None:
+                attributes = propagate_attributes(session_id=session_id, tags=[session_id])
+                attributes.__enter__()
+                managers.append(attributes)
             manager = self._client.start_as_current_observation(
                 name=name, as_type="chain", input=input
             )
             observation = manager.__enter__()
+            managers.append(manager)
         except Exception as exc:
             self._failed(exc)
+            self._close_all(managers, None, None, None)
             yield NULL_SPAN
             return
         try:
             yield _LangfuseSpan(observation, self._label)
         except BaseException as exc:
-            self._close(manager, type(exc), exc, exc.__traceback__)
+            self._close_all(managers, type(exc), exc, exc.__traceback__)
             raise
-        self._close(manager, None, None, None)
+        self._close_all(managers, None, None, None)
+
+    def _close_all(self, managers: list[Any], *exc_info: Any) -> None:
+        for manager in reversed(managers):
+            self._close(manager, *exc_info)
 
     def _close(self, manager: Any, *exc_info: Any) -> None:
         try:

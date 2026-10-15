@@ -1,13 +1,13 @@
 import threading
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from typing import Any
-from uuid import UUID
 
-from langchain_core.callbacks import BaseCallbackHandler, CallbackManagerForLLMRun
+from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
-from langchain_core.outputs import ChatGeneration, ChatResult, LLMResult
+from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import PrivateAttr
 
@@ -108,75 +108,42 @@ class FakeChatModel(BaseChatModel):
         return ChatResult(generations=[ChatGeneration(message=message)], llm_output=llm_output)
 
 
-class RecordingHandler(BaseCallbackHandler):
+class RecordingExtractionTracer:
     def __init__(self) -> None:
-        self.chat_model_starts: list[dict[str, Any]] = []
-        self.llm_ends: list[dict[str, Any]] = []
-        self._parents: dict[UUID, UUID | None] = {}
+        self.spans: list[dict[str, Any]] = []
+        self.generations: list[dict[str, Any]] = []
+        self.flushed = 0
 
-    def on_chain_start(
-        self,
-        serialized: dict[str, Any],
-        inputs: Any,
-        *,
-        run_id: UUID,
-        parent_run_id: UUID | None = None,
-        **kwargs: Any,
-    ) -> None:
-        self._parents[run_id] = parent_run_id
+    @contextmanager
+    def span(
+        self, name: str, input: dict[str, Any], session_id: str | None = None
+    ) -> Iterator[Any]:
+        record: dict[str, Any] = {
+            "name": name,
+            "input": input,
+            "session_id": session_id,
+            "outputs": [],
+            "generations": [],
+        }
+        self.spans.append(record)
+        self._open = record
 
-    def on_chat_model_start(
-        self,
-        serialized: dict[str, Any],
-        messages: list[list[BaseMessage]],
-        *,
-        run_id: UUID,
-        parent_run_id: UUID | None = None,
-        tags: list[str] | None = None,
-        metadata: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> None:
-        self._parents[run_id] = parent_run_id
-        self.chat_model_starts.append(
-            {
-                "run_id": run_id,
-                "parent_run_id": parent_run_id,
-                "metadata": metadata or {},
-                "messages": messages,
-            }
-        )
+        class Handle:
+            trace_id = "trace-rec"
 
-    def root_run_id(self, run_id: UUID) -> UUID:
-        seen: set[UUID] = set()
-        while run_id in self._parents and self._parents[run_id] is not None:
-            parent = self._parents[run_id]
-            assert parent is not None
-            if parent in seen:
-                break
-            seen.add(parent)
-            run_id = parent
-        return run_id
+            @staticmethod
+            def update(*, output: Any) -> None:
+                record["outputs"].append(output)
 
-    def on_llm_end(
-        self,
-        response: LLMResult,
-        *,
-        run_id: UUID,
-        parent_run_id: UUID | None = None,
-        **kwargs: Any,
-    ) -> None:
-        usage = None
-        for generations in response.generations:
-            for generation in generations:
-                message = getattr(generation, "message", None)
-                usage_metadata = getattr(message, "usage_metadata", None)
-                if usage_metadata:
-                    usage = usage_metadata
-        self.llm_ends.append(
-            {
-                "run_id": run_id,
-                "parent_run_id": parent_run_id,
-                "usage": usage,
-                "llm_output": response.llm_output,
-            }
-        )
+        try:
+            yield Handle()
+        finally:
+            self._open = None
+
+    def generation(self, **kwargs: Any) -> None:
+        self.generations.append(kwargs)
+        if getattr(self, "_open", None) is not None:
+            self._open["generations"].append(kwargs)
+
+    def flush(self) -> None:
+        self.flushed += 1

@@ -4,9 +4,6 @@ from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, replace
 from typing import Any
 
-from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.runnables import RunnableConfig
-
 from app.core.clock import Clock
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent
 from app.extraction.evaluation.metrics import CaseResult, Metrics, compute_metrics
@@ -14,7 +11,7 @@ from app.extraction.flow import PROMPT_VERSION, Flow, build_flow
 from app.extraction.linking import PlayerIndex
 from app.extraction.schemas import FlowResult, PostInput
 from app.extraction.service import run_with_retries
-from app.extraction.tracing import run_config
+from app.extraction.tracing import ExtractionTracer, span_input, span_output
 from app.llm.chat import ChatModelSpec
 from app.llm.models import ModelSettings
 from app.llm.pricing import compute_cost, load_prices
@@ -81,9 +78,9 @@ class _TimedFlow(Flow):
         self._inner = inner
         self.last_seconds: float | None = None
 
-    def run(self, post: PostInput, config: RunnableConfig) -> FlowResult:
+    def run(self, post: PostInput) -> FlowResult:
         started = time.perf_counter()
-        result = self._inner.run(post, config)
+        result = self._inner.run(post)
         self.last_seconds = time.perf_counter() - started
         return result
 
@@ -111,7 +108,7 @@ def run_evaluation(
     cases: Sequence[EvalCase],
     spec: ChatModelSpec,
     index: PlayerIndex,
-    handler: BaseCallbackHandler | None,
+    tracer: ExtractionTracer,
     run_name: str,
     split: str,
     clock: Clock,
@@ -119,17 +116,17 @@ def run_evaluation(
     usd_pln_rate: float,
     host_lookup: Callable[[str], str | None] | None = None,
 ) -> EvaluationReport:
-    flow = _TimedFlow(build_flow(spec, index))
     prices = load_prices()
+    flow = _TimedFlow(build_flow(spec, index, tracer, prices))
     stop_event = threading.Event()
     outcomes: list[CaseOutcome] = []
 
     for case in cases:
         post = _post_from_case(case)
-        config = run_config(
-            case.id, PROMPT_VERSION, spec.provider, spec.model, handler, run_name=run_name
-        )
-        retry = run_with_retries(flow, post, config, clock, stop_event)
+        trace_input = span_input(case.id, PROMPT_VERSION, spec.provider, spec.model)
+        with tracer.span("extraction", trace_input, session_id=run_name) as span:
+            retry = run_with_retries(flow, post, clock, stop_event)
+            span.update(output=span_output(retry))
         expected = list(case.expected_events)
         if retry.result is None:
             error_class = type(retry.error).__name__ if retry.error else "UnknownError"
