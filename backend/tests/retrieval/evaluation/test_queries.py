@@ -234,10 +234,8 @@ def test_build_queries_command_writes_file_and_prints_counts_and_cost(db, tmp_pa
         app,
         [
             "build-queries",
-            "--corpus",
-            str(tmp_path / "corpus.jsonl"),
-            "--output",
-            str(output),
+            "--set",
+            str(tmp_path),
             "--post-en",
             "3",
             "--post-pl",
@@ -260,7 +258,7 @@ def test_build_queries_command_writes_file_and_prints_counts_and_cost(db, tmp_pa
 
     again = CliRunner().invoke(
         app,
-        ["build-queries", "--corpus", str(tmp_path / "corpus.jsonl"), "--output", str(output)],
+        ["build-queries", "--set", str(tmp_path)],
         obj=deps,
     )
     assert again.exit_code == 1
@@ -274,10 +272,8 @@ def test_build_queries_without_a_key_names_the_variable(db, tmp_path):
         app,
         [
             "build-queries",
-            "--corpus",
-            str(tmp_path / "corpus.jsonl"),
-            "--output",
-            str(tmp_path / "q.jsonl"),
+            "--set",
+            str(tmp_path),
         ],
         obj=deps,
     )

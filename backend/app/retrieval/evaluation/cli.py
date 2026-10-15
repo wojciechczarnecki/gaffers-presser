@@ -11,15 +11,23 @@ from app.llm.pricing import load_prices
 from app.llm.structured import StructuredCaller
 from app.retrieval.cli import RetrievalCliDeps, _cost, db_engine, fail, get_deps
 from app.retrieval.evaluation.dataset import (
+    CORPUS_FILE,
     DEFAULT_CORPUS_PATH,
     DEFAULT_QUERIES_PATH,
     DEFAULT_RESULTS_DIR,
+    DEFAULT_SET_DIR,
+    QUERIES_FILE,
+    V1_DIR,
     CorpusPost,
+    FreeQuery,
     Judgement,
     Query,
+    SetError,
+    carry_v1,
     export_corpus,
     load_corpus,
     load_queries,
+    load_set,
     write_corpus,
     write_queries,
 )
@@ -79,8 +87,7 @@ def _chat_model(deps: RetrievalCliDeps, model: str) -> BaseChatModel:
 @app.command(name="build-queries", help="Build the evaluation queries from the corpus.")
 def build_queries_command(
     ctx: typer.Context,
-    corpus: Annotated[Path, typer.Option("--corpus")] = DEFAULT_CORPUS_PATH,
-    output: Annotated[Path, typer.Option("--output")] = DEFAULT_QUERIES_PATH,
+    set_dir: Annotated[Path, typer.Option("--set", help="The set directory.")] = DEFAULT_SET_DIR,
     event_en: Annotated[int, typer.Option("--event-en", min=0)] = QueryCounts.event_en,
     event_pl: Annotated[int, typer.Option("--event-pl", min=0)] = QueryCounts.event_pl,
     post_en: Annotated[int, typer.Option("--post-en", min=0)] = QueryCounts.post_en,
@@ -90,13 +97,14 @@ def build_queries_command(
     force: Annotated[bool, typer.Option("--force", help="Overwrite an existing file.")] = False,
 ) -> None:
     deps = get_deps(ctx)
+    output = set_dir / QUERIES_FILE
     if output.exists() and not force:
         raise fail(f"{output} already exists; pass --force to overwrite it")
     chat_model_id = model or DEFAULT_LABEL_MODEL
     chat_model = _chat_model(deps, chat_model_id)
     try:
         prices = deps.prices if deps.prices is not None else load_prices()
-        posts = load_corpus(corpus)
+        posts = load_corpus(set_dir / CORPUS_FILE)
     except (AppError, OSError, ValueError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
     events = current_events(db_engine(deps), [post.x_id for post in posts])
@@ -125,11 +133,33 @@ def build_queries_command(
     typer.echo(f"total cost: {_cost(caller.cost_usd)}")
 
 
+@app.command(
+    name="carry-v1", help="Carry set v1's queries and judgements into a set as free queries."
+)
+def carry_v1_command(
+    set_dir: Annotated[Path, typer.Option("--set", help="The set directory.")] = DEFAULT_SET_DIR,
+    from_dir: Annotated[Path, typer.Option("--from", help="The v1 directory.")] = V1_DIR,
+    first: Annotated[int | None, typer.Option("--first", min=1, help="Only the first N.")] = None,
+    force: Annotated[bool, typer.Option("--force", help="Replace the free queries.")] = False,
+) -> None:
+    try:
+        v1 = load_set(from_dir)
+        target = load_set(set_dir)
+        carried = v1.queries[:first] if first is not None else v1.queries
+        existing = target.queries
+        if force:
+            existing = [q for q in existing if not isinstance(q, FreeQuery)]
+        queries = carry_v1(carried, existing, {post.x_id for post in target.corpus})
+    except SetError as exc:
+        raise fail(str(exc)) from None
+    write_queries(set_dir / QUERIES_FILE, queries)
+    typer.echo(f"carried {len(carried)} queries into {set_dir / QUERIES_FILE}")
+
+
 @app.command(name="prelabel", help="Pool candidates for every query and pre-label them.")
 def prelabel_command(
     ctx: typer.Context,
-    queries: Annotated[Path, typer.Option("--queries")] = DEFAULT_QUERIES_PATH,
-    corpus: Annotated[Path, typer.Option("--corpus")] = DEFAULT_CORPUS_PATH,
+    set_dir: Annotated[Path, typer.Option("--set", help="The set directory.")] = DEFAULT_SET_DIR,
     model: Annotated[str | None, typer.Option("--model", help="Chat model ID.")] = None,
     embedding_model: Annotated[
         str | None, typer.Option("--embedding-model", help="Embedding model ID.")
@@ -141,12 +171,13 @@ def prelabel_command(
     try:
         embedder = deps.make_embedder(embedding_model)
         prices = deps.prices if deps.prices is not None else load_prices()
-        posts = load_corpus(corpus)
-        query_set = load_queries(queries)
+        posts = load_corpus(set_dir / CORPUS_FILE)
+        query_set = load_queries(set_dir / QUERIES_FILE)
     except AppError as exc:
         raise fail(str(exc)) from None
     except (OSError, ValueError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
+    queries = set_dir / QUERIES_FILE
     caller = StructuredCaller(
         chat_model,
         chat_model_id,

@@ -608,7 +608,7 @@ watches them fail for the expected reason, and then writes the code.
       and lint.
       `iterations: 0`
 
-- [ ] 6. **Set v2 format and `carry-v1` (AC2).** Files:
+- [x] 6. **Set v2 format and `carry-v1` (AC2).** Files:
       - `backend/app/retrieval/evaluation/dataset.py`: the models of Design §2,
         `SetManifest`, `load_set(dir) -> EvalSet(version, manifest, corpus, queries)`,
         `write_queries`, `write_manifest`, `DEFAULT_SET_DIR = EVALS_DIR / "v2"` and
@@ -631,6 +631,7 @@ watches them fail for the expected reason, and then writes the code.
         stay green.
 
       Automatic verification: `uv run pytest -q tests/retrieval/evaluation` and lint.
+      `iterations: 0`
 
 - [ ] 7. **Source posts in the corpus, export bounds and the eval schema (AC1, AC4).**
       Files:
@@ -1085,6 +1086,7 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 
 - `minor` — step 2: three existing tests monkeypatched `os.replace` in the module that held its own copy (`...cases.os.replace`, `...dataset.os.replace`); they now patch `app.core.eval_results.os.replace`, the same atomic-write behaviour tested at its new home. Also added `reasoning_effort_of(model)` to `app/llm/models.py` so the four evaluations read a model's effort the same way.
 - `minor` — step 3: two existing CLI tests of `summary` (`test_summary_reports_and_applies_thresholds`, `test_summary_without_runs_or_winner`) wrote header-less run files and expected a winner; AC17 says a header-less run is never ranked, so their fixtures now carry a header (`headed(...)`). The runs' header is added in the CLI, beside the other three evaluations, not inside `run_evaluation`.
+- `minor` — step 6: `carry-v1` has an extra `--first N` option (step 20 needs a set of two carried queries for the owner's review scenario). `build-queries` and `prelabel` took `--set DIR` already here, in place of `--corpus`/`--queries`/`--output`, with their existing tests switched to `--set <tmp dir>` (same file names); `prelabel` skips player queries. Corpus lines are written without null fields, so v1 corpus files rewrite byte-compatible.
 
 ## Final review
 

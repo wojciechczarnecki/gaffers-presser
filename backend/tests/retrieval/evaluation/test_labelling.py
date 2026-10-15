@@ -229,10 +229,8 @@ def test_prelabel_command_reports_unembeddable_corpus_without_a_traceback(eval_d
         app,
         [
             "prelabel",
-            "--queries",
-            str(tmp_path / "queries.jsonl"),
-            "--corpus",
-            str(tmp_path / "corpus.jsonl"),
+            "--set",
+            str(tmp_path),
         ],
         obj=deps,
     )
@@ -301,10 +299,8 @@ def test_prelabel_command_prints_the_summary_and_writes_labels(eval_db, tmp_path
         app,
         [
             "prelabel",
-            "--queries",
-            str(tmp_path / "queries.jsonl"),
-            "--corpus",
-            str(tmp_path / "corpus.jsonl"),
+            "--set",
+            str(tmp_path),
         ],
         obj=deps,
     )
