@@ -136,6 +136,12 @@ def _next_gameweek_jobs(state: ScheduleState, now: datetime) -> list[PlannedActi
         for job in (Job.results_sync, Job.league_sync):
             if state.latest_success.get((job, gw.fpl_id)) is not None:
                 continue
+            # The presser runs after league_sync and reads the gameweek's player results.
+            if (
+                job == Job.league_sync
+                and state.latest_success.get((Job.results_sync, gw.fpl_id)) is None
+            ):
+                continue
             last = state.latest.get((job, gw.fpl_id))
             if last is not None and last.outcome == "failed":
                 at = last.finished_at + GAMEWEEK_JOB_RETRY
