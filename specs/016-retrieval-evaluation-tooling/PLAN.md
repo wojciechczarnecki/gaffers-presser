@@ -974,7 +974,7 @@ watches them fail for the expected reason, and then writes the code.
       empty, so AC18 adds no new edge.
       `iterations: 0`
 
-- [ ] 20. **Full verification and the roadmap tick.** Files: `docs/ROADMAP.md`. Spec 016's
+- [x] 20. **Full verification and the roadmap tick.** Files: `docs/ROADMAP.md`. Spec 016's
       tooling part is noted as done in the retrieval item, and the item stays open because
       spec 017 delivers the report. Run the end-to-end checks below. Then prepare the
       owner's manual scenario: in a scratch directory outside the repository
@@ -983,6 +983,7 @@ watches them fail for the expected reason, and then writes the code.
       directory path under "Manual (performed by the owner)" in the final report.
       Automatic verification:
       `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto`.
+      `iterations: 1`
 
 ## Risks and traps
 
@@ -1040,6 +1041,26 @@ No step reaches the Compose database or the network. Run from `backend/`:
 6. `git diff main --stat -- backend/tests/test_module_boundaries.py backend/tests/alerts`:
    empty.
 
+**Result (implement, 2026-10-15):**
+
+1. `uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto`: green, 2109 passed. The first full run had one red,
+   `tests/core/test_settings.py::test_database_url_not_read_by_tests` (a new test of mine spelled the
+   environment variable `DATABASE_URL`); the test now asserts that `review` never builds the
+   dependencies, and the second run was green (step 20, one iteration).
+2. `python -m app.retrieval --help` lists `index`, `status` and `search`.
+3. `python -m app.retrieval.evaluation --help` lists the 12 commands: `export-corpus`,
+   `build-queries`, `build-player-slice`, `carry-v1`, `prelabel`, `export-judge-inputs`,
+   `import-judge`, `agreement`, `estimate`, `review`, `evaluate`, `compare`.
+4. No run against a database outside `pytest`, as planned.
+5. `bash -n scripts/session_judge.sh` is clean and `tests/test_session_judge.py` is green.
+6. `git diff main --stat -- backend/tests/test_module_boundaries.py backend/tests/alerts`: empty.
+
+The review scenario below was prepared in the session scratchpad,
+`/tmp/claude-1000/-home-czarny-Projects-gaffers-presser/baa65aa3-debd-4205-9c11-a51d92b6a387/scratchpad/review-set`
+(to recreate it: `mkdir DIR && cp backend/evals/retrieval/v1/corpus.jsonl DIR/`, then
+`cd backend && uv run python -m app.retrieval.evaluation carry-v1 --set DIR --first 2`), and tried on a copy (`review` with `r`, `n`, `s` stored
+two owner entries beside the model's and showed no judge label).
+
 ### Manual (performed by the owner)
 
 - Try the blind review on a hand-made set of two queries, prepared by the implementer in
@@ -1052,12 +1073,12 @@ No step reaches the Compose database or the network. Run from `backend/`:
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md`, `docs/EVALUATION.md`
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md`, `docs/EVALUATION.md`
       and `README.md` updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 

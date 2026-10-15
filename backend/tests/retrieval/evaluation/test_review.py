@@ -187,7 +187,9 @@ def test_split_filter_and_nothing_to_review(world):
 
 
 def test_review_needs_no_database_or_key(world, monkeypatch):
+    def refuse(*args, **kwargs):
+        raise AssertionError("review must not build the database or key dependencies")
+
+    monkeypatch.setattr("app.retrieval.evaluation.cli.get_deps", refuse)
     monkeypatch.chdir(world)
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     assert run(world, ["q"], "--sample", "0").exit_code == 0
