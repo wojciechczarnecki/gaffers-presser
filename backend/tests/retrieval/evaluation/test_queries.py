@@ -8,7 +8,8 @@ from app.extraction.store import ExtractionRecord, save_extraction
 from app.fpl.models.reference import Player, Season, Team
 from app.llm.chat import DEFAULT_MODEL
 from app.llm.structured import StructuredCaller
-from app.retrieval.cli import RetrievalCliDeps, app
+from app.retrieval.cli import RetrievalCliDeps
+from app.retrieval.evaluation.cli import app
 from app.retrieval.evaluation.dataset import CorpusPost, load_queries, write_corpus
 from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL, WrittenQuery
 from app.retrieval.evaluation.queries import (

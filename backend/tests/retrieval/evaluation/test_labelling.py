@@ -213,7 +213,8 @@ def test_failed_label_leaves_the_query_for_a_rerun(eval_db, tmp_path):
 def test_prelabel_command_reports_unembeddable_corpus_without_a_traceback(eval_db, tmp_path):
     from typer.testing import CliRunner
 
-    from app.retrieval.cli import RetrievalCliDeps, app
+    from app.retrieval.cli import RetrievalCliDeps
+    from app.retrieval.evaluation.cli import app
     from app.retrieval.evaluation.dataset import write_corpus
     from tests.retrieval.fakes import AlwaysFailingEmbedder
     from tests.retrieval.test_cli import _deps
@@ -284,7 +285,8 @@ def test_prelabel_cost_adds_chat_and_embeddings(eval_db, tmp_path):
 def test_prelabel_command_prints_the_summary_and_writes_labels(eval_db, tmp_path):
     from typer.testing import CliRunner
 
-    from app.retrieval.cli import RetrievalCliDeps, app
+    from app.retrieval.cli import RetrievalCliDeps
+    from app.retrieval.evaluation.cli import app
     from app.retrieval.evaluation.dataset import write_corpus
     from tests.retrieval.test_cli import _deps
 

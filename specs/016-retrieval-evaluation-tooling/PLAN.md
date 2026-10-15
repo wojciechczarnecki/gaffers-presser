@@ -579,7 +579,7 @@ watches them fail for the expected reason, and then writes the code.
       `bash -n ../scripts/session_judge.sh`.
       `iterations: 0`
 
-- [ ] 5. **The evaluation's own entry point, as a move with no behaviour change (AC18, the
+- [x] 5. **The evaluation's own entry point, as a move with no behaviour change (AC18, the
       move).** Files:
       - new `backend/app/retrieval/evaluation/cli.py` and `__main__.py`;
       - `backend/app/retrieval/cli.py`, where `export-corpus`, `build-queries`, `prelabel`,
@@ -606,6 +606,7 @@ watches them fail for the expected reason, and then writes the code.
       Automatic verification:
       `uv run pytest -q tests/retrieval tests/test_module_boundaries.py tests/test_readme.py`
       and lint.
+      `iterations: 0`
 
 - [ ] 6. **Set v2 format and `carry-v1` (AC2).** Files:
       - `backend/app/retrieval/evaluation/dataset.py`: the models of Design §2,

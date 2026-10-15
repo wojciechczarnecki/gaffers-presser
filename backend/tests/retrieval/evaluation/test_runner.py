@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import text
 from typer.testing import CliRunner
 
-from app.retrieval.cli import app
+from app.retrieval.evaluation.cli import app
 from app.retrieval.evaluation.dataset import (
     CorpusPost,
     Judgement,

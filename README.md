@@ -177,8 +177,8 @@ slices; none of these commands is run by `pytest`:
 uv run python -m app.retrieval index [--model MODEL]       # embed what is missing for a model
 uv run python -m app.retrieval status                      # embedded, missing and failed posts
 uv run python -m app.retrieval search "Isak injury" --mode hybrid   # or fulltext / vector
-uv run python -m app.retrieval review --split test         # accept, flip or add a judgement
-uv run python -m app.retrieval evaluate --split test --embedding-model openai/text-embedding-3-small
+uv run python -m app.retrieval.evaluation review --split test   # accept, flip or add a judgement
+uv run python -m app.retrieval.evaluation evaluate --split test --embedding-model openai/text-embedding-3-small
 ```
 
 Corroboration — for a player and a moment, `python -m app.corroboration <player>` takes the
