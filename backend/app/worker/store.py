@@ -1,7 +1,7 @@
 from sqlalchemy import Engine, text
 from sqlmodel import Session
 
-from app.fpl.calendar import current_season, season_gameweeks
+from app.fpl.calendar import read_calendar
 from app.worker.models import JobRun
 from app.worker.schedule import Job, RunRecord, ScheduleState
 
@@ -34,13 +34,10 @@ def _run_records(
 
 def load_state(engine: Engine) -> ScheduleState:
     with Session(engine) as session:
-        season = current_season(session)
-        gameweeks = season_gameweeks(session, season) if season is not None else []
-        latest = _run_records(session, season, only_success=False)
-        latest_success = _run_records(session, season, only_success=True)
-    return ScheduleState(
-        season=season, gameweeks=gameweeks, latest=latest, latest_success=latest_success
-    )
+        calendar = read_calendar(session)
+        latest = _run_records(session, calendar.season, only_success=False)
+        latest_success = _run_records(session, calendar.season, only_success=True)
+    return ScheduleState(calendar=calendar, latest=latest, latest_success=latest_success)
 
 
 def latest_runs_by_job(engine: Engine) -> dict[Job, JobRun | None]:

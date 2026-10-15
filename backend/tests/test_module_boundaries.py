@@ -65,10 +65,17 @@ ALLOWED = {
 COMPOSITION_ROOT = APP / "worker" / "cli.py"
 
 
-def _imported_modules(node: ast.ImportFrom | ast.Import) -> list[str]:
-    if isinstance(node, ast.ImportFrom):
-        return [node.module or ""] if node.level == 0 else []
-    return [alias.name for alias in node.names]
+def _imported_modules(path: Path, node: ast.ImportFrom | ast.Import) -> list[str]:
+    if isinstance(node, ast.Import):
+        return [alias.name for alias in node.names]
+    module = node.module or ""
+    if node.level > 0:
+        package = list(path.relative_to(APP.parent).parent.parts)
+        base = package[: len(package) - node.level + 1]
+        module = ".".join([*base, module] if module else base)
+    if module == "app":
+        return [f"app.{alias.name}" for alias in node.names]
+    return [module]
 
 
 def _edges() -> dict[str, set[tuple[str, str]]]:
@@ -78,7 +85,7 @@ def _edges() -> dict[str, set[tuple[str, str]]]:
         for path, node in _imports(package):
             if path == COMPOSITION_ROOT:
                 continue
-            for name in _imported_modules(node):
+            for name in _imported_modules(path, node):
                 parts = name.split(".")
                 if parts[0] == "app" and len(parts) > 1 and parts[1] != package:
                     found.add((parts[1], f"{path.relative_to(APP)}:{node.lineno}"))
@@ -117,12 +124,26 @@ def test_allowed_edges_have_no_cycle():
         visit(module, [])
 
 
+def test_relative_and_package_imports_are_edges():
+    path = APP / "alerts" / "loop.py"
+    found = [
+        _imported_modules(path, ast.parse(source).body[0])
+        for source in (
+            "from app import worker",
+            "from ..worker.jobs import run_job",
+            "from .. import worker",
+            "from .schedule import alert_deadlines",
+        )
+    ]
+    assert found == [["app.worker"], ["app.worker.jobs"], ["app.worker"], ["app.alerts.schedule"]]
+
+
 def test_the_composition_root_imports_the_loops():
     targets = {
         name.split(".")[1]
         for path, node in _imports("worker")
         if path == COMPOSITION_ROOT
-        for name in _imported_modules(node)
+        for name in _imported_modules(path, node)
         if name.startswith("app.")
     }
     assert {"alerts", "extraction", "presser", "retrieval", "tweets"} <= targets

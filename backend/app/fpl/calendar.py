@@ -25,7 +25,7 @@ def current_season(session: Session) -> str | None:
     return session.exec(select(Season.label).order_by(col(Season.label).desc())).first()
 
 
-def season_gameweeks(session: Session, season: str) -> list[GameweekState]:
+def _season_gameweeks(session: Session, season: str) -> list[GameweekState]:
     rows = session.exec(
         select(Gameweek).where(Gameweek.season == season).order_by(Gameweek.fpl_id)
     ).all()
@@ -40,8 +40,12 @@ def season_gameweeks(session: Session, season: str) -> list[GameweekState]:
     ]
 
 
+def read_calendar(session: Session) -> Calendar:
+    season = current_season(session)
+    gameweeks = _season_gameweeks(session, season) if season is not None else []
+    return Calendar(season=season, gameweeks=gameweeks)
+
+
 def load_calendar(engine: Engine) -> Calendar:
     with Session(engine) as session:
-        season = current_season(session)
-        gameweeks = season_gameweeks(session, season) if season is not None else []
-    return Calendar(season=season, gameweeks=gameweeks)
+        return read_calendar(session)

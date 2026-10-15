@@ -44,7 +44,7 @@ from app.extraction.config import load_extraction_settings
 from app.extraction.loop import start_extractor
 from app.extraction.service import ExtractionRuntime, load_reference_files
 from app.extraction.store import extraction_status
-from app.fpl.calendar import current_season
+from app.fpl.calendar import current_season, load_calendar
 from app.fpl.client import FplClient
 from app.fpl.deadlines import DEFAULT_MAX_LOOKBACK, upcoming_deadlines
 from app.llm.chat import PROVIDER, build_chat_model, resolve_llm
@@ -271,7 +271,7 @@ def _alerts_runtime(
     deps: WorkerDeps, setup: AlertsSetup, league_ids: list[int], stop_event: threading.Event
 ) -> tuple[AlertsRuntime, Channel]:
     now = deps.clock.now()
-    real_deadlines = [g.deadline_at for g in load_state(deps.engine).gameweeks]
+    real_deadlines = [g.deadline_at for g in load_calendar(deps.engine).gameweeks]
     check_rehearsal(setup.config, real_deadlines, now)
     corroboration = setup.make_corroboration(stop_event)
     channel = setup.make_channel()

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
 
-from app.fpl.calendar import GameweekState
+from app.fpl.calendar import Calendar, GameweekState
 from app.fpl.deadlines import latest_deadline_at_or_before, next_deadline_after
 
 
@@ -35,10 +35,17 @@ class RunRecord:
 
 @dataclass(frozen=True)
 class ScheduleState:
-    season: str | None
-    gameweeks: list[GameweekState]
+    calendar: Calendar
     latest: dict[tuple[Job, int | None], RunRecord]
     latest_success: dict[tuple[Job, int | None], RunRecord]
+
+    @property
+    def season(self) -> str | None:
+        return self.calendar.season
+
+    @property
+    def gameweeks(self) -> list[GameweekState]:
+        return self.calendar.gameweeks
 
 
 @dataclass(frozen=True)
