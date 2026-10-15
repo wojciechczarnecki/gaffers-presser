@@ -184,13 +184,105 @@ def test_results_then_league_finished_not_checked_plans_nothing():
     )
 
 
-def test_results_then_league_data_checked_plans_both_results_first():
+def _gameweek_jobs(actions):
+    return [(a.job, a.gameweek) for a in actions if a.job in (Job.results_sync, Job.league_sync)]
+
+
+def test_results_then_league_data_checked_plans_results_only():
     state = _state([_gw(6, D6, finished=True, data_checked=True)])
     now = D6 + timedelta(hours=70)
     due = due_actions(state, now)
-    gw_jobs = [a for a in due if a.job in (Job.results_sync, Job.league_sync)]
-    assert [a.job for a in gw_jobs] == [Job.results_sync, Job.league_sync]
-    assert all(a.at == now for a in gw_jobs)
+    assert _gameweek_jobs(due) == [(Job.results_sync, 6)]
+    assert _gameweek_jobs(plan(state, now)) == [(Job.results_sync, 6)]
+
+
+def test_league_not_planned_while_results_failed():
+    now = D6 + timedelta(hours=70)
+    failed = _run(Job.results_sync, 6, now, "failed")
+    state = _state(
+        [_gw(6, D6, finished=True, data_checked=True)],
+        latest={(Job.results_sync, 6): failed},
+    )
+    for later in (timedelta(minutes=1), timedelta(minutes=20)):
+        assert _gameweek_jobs(plan(state, now + later)) == [(Job.results_sync, 6)]
+
+
+def test_league_planned_despite_failed_rerun_after_success():
+    # latest_success counts, not latest: a failed re-run after a success does not block
+    now = D6 + timedelta(hours=70)
+    success = _run(Job.results_sync, 6, now, "succeeded")
+    state = _state(
+        [_gw(6, D6, finished=True, data_checked=True)],
+        latest={(Job.results_sync, 6): _run(Job.results_sync, 6, now, "failed")},
+        latest_success={(Job.results_sync, 6): success},
+    )
+    assert _gameweek_jobs(due_actions(state, now + timedelta(minutes=1))) == [(Job.league_sync, 6)]
+
+
+def test_league_planned_now_once_results_succeeded():
+    now = D6 + timedelta(hours=70)
+    success = _run(Job.results_sync, 6, now, "succeeded")
+    state = _state(
+        [_gw(6, D6, finished=True, data_checked=True)],
+        latest={(Job.results_sync, 6): success},
+        latest_success={(Job.results_sync, 6): success},
+    )
+    later = now + timedelta(seconds=10)
+    due = due_actions(state, later)
+    assert _gameweek_jobs(due) == [(Job.league_sync, 6)]
+    assert next(a for a in due if a.job == Job.league_sync).at == later
+
+
+def test_league_failed_retries_after_15_min_once_results_succeeded():
+    now = D6 + timedelta(hours=70)
+    success = _run(Job.results_sync, 6, now, "succeeded")
+    failed = _run(Job.league_sync, 6, now + timedelta(minutes=1), "failed")
+    state = _state(
+        [_gw(6, D6, finished=True, data_checked=True)],
+        latest={(Job.results_sync, 6): success, (Job.league_sync, 6): failed},
+        latest_success={(Job.results_sync, 6): success},
+    )
+    league = next(a for a in plan(state, now + timedelta(minutes=2)) if a.job == Job.league_sync)
+    assert league.at == failed.finished_at + timedelta(minutes=15)
+
+
+def test_catch_up_over_several_gameweeks_keeps_results_before_league():
+    gameweeks = [
+        _gw(4, D5 - timedelta(days=14), finished=True, data_checked=True),
+        _gw(5, D5, finished=True, data_checked=True),
+        _gw(6, D6, finished=True, data_checked=True),
+    ]
+    now = D6 + timedelta(hours=70)
+    latest, latest_success = {}, {}
+    failing = {(Job.results_sync, 5)}  # fails once, as FPL does while it updates
+    order = []
+    for _ in range(20):
+        due = _gameweek_jobs(due_actions(_state(gameweeks, latest, latest_success), now))
+        for job, gw in due:
+            if job == Job.league_sync:
+                assert (Job.results_sync, gw) in latest_success
+        if not due:
+            if len(order) == 6:
+                break
+            now += timedelta(minutes=15)
+            continue
+        key = due[0]
+        outcome = "failed" if key in failing else "succeeded"
+        failing.discard(key)
+        run = _run(key[0], key[1], now, outcome)
+        latest[key] = run
+        if outcome == "succeeded":
+            latest_success[key] = run
+            order.append(key)
+        now += timedelta(minutes=1)
+    assert order == [
+        (Job.results_sync, 4),
+        (Job.league_sync, 4),
+        (Job.results_sync, 6),  # gameweek 5 waits for its retry; 6 does not wait for it
+        (Job.league_sync, 6),
+        (Job.results_sync, 5),
+        (Job.league_sync, 5),
+    ]
 
 
 def test_results_then_league_done_plans_nothing():
@@ -229,7 +321,16 @@ def test_due_actions_priority_snapshot_then_reference_then_gameweek_jobs():
     assert due[0].job == Job.deadline_snapshot
 
     due2 = due_actions(state, now)
-    assert [a.job for a in due2] == [Job.reference_sync, Job.results_sync, Job.league_sync]
+    assert [a.job for a in due2] == [Job.reference_sync, Job.results_sync]
+
+    success = _run(Job.results_sync, 6, now, "succeeded")
+    state3 = _state(
+        state.gameweeks,
+        latest={(Job.results_sync, 6): success},
+        latest_success={(Job.results_sync, 6): success},
+    )
+    due3 = due_actions(state3, now + timedelta(seconds=10))
+    assert [a.job for a in due3] == [Job.reference_sync, Job.league_sync]
 
 
 def _snapshot_times(actions):

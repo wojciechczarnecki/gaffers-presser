@@ -209,6 +209,18 @@ def test_nonexistent_gameweek_fails(db_session):
         sync_results(db_session, _client(), 99, NOW)
 
 
+def test_live_data_with_no_players_fails_and_stores_nothing(db_session):
+    _load_reference(db_session)
+    live_payload = load("event-1-live")
+    live_payload["elements"] = []
+
+    with pytest.raises(JobError, match="gameweek 1 live data has no players"):
+        sync_results(db_session, _client(live_payload), 1, NOW)
+
+    assert db_session.exec(select(PlayerGameweekResult)).all() == []
+    assert db_session.exec(select(RawPayload)).all() == []
+
+
 def test_rerun_is_idempotent(db_session):
     _load_reference(db_session)
     client = _client()

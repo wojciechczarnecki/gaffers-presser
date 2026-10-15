@@ -66,6 +66,9 @@ def sync_results(session: Session, client: FplClient, gameweek: int, now: dateti
         raise JobError(f"gameweek {gameweek} is not finished and data-checked")
 
     live = client.live(gameweek)
+    if not live.data.elements:
+        # FPL may answer with no players while it updates; fail so the worker retries.
+        raise JobError(f"gameweek {gameweek} live data has no players")
     fixtures = client.fixtures()
 
     upsert(
