@@ -56,7 +56,7 @@ and postponed).
 ## Development
 
 ```bash
-cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto
 ```
 
 Tests that need PostgreSQL start their own throwaway container (testcontainers) — Docker is

@@ -57,7 +57,7 @@ and each LLM step that produces data has an evaluation set with recorded results
       outside the List is stored but never extracted or alerted, and a catch-up is no longer
       ended by an old quoted post; closes BACKLOG #11
       (spec: [010](../specs/010-off-list-posts/SPEC.md))
-- [ ] Hardening and cleanup before spec 016, from the code audit of October 2026: the presser
+- [x] Hardening and cleanup before spec 016, from the code audit of October 2026: the presser
       waits for the gameweek's results, extraction retries failed posts and serves fresh posts
       first, module boundaries without import cycles, the Langfuse event volume and one tracing
       path, a trial of a parallel test run; one PR each, in this order, fast path except the

@@ -57,7 +57,7 @@ Product content is Polish and lives in files, never as string literals in code:
   validation, empty lists, duplicates, range boundaries).
 - Specific assertions: where the content of a response matters, check the content.
 - Full verification of the stack in one command:
-  `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q` (`verify.command`).
+  `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` (`verify.command`).
 
 ### Interface tests
 

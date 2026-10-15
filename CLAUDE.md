@@ -77,7 +77,7 @@ hook enforce it (enabled once per clone: `git config core.hooksPath scripts/git-
 
 ```bash
 # full verification of the stack (the same command as `verify.command` in .claude/workflow.json)
-cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto
 
 # running the application locally (README, "Development", lists every module's CLI)
 docker compose up -d                         # PostgreSQL 16 with pgvector
