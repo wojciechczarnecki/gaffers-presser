@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 
 from app.core.errors import AppError
 from app.core.eval_results import write_json_atomic, write_lines_atomic
-from app.tweets.models import Tweet
+from app.tweets.models import ListMembership, Tweet
 
 EVALS_DIR = Path(__file__).resolve().parents[3] / "evals" / "retrieval"
 V1_DIR = EVALS_DIR / "v1"
@@ -23,7 +23,11 @@ QUERIES_FILE = "queries.jsonl"
 MANIFEST_FILE = "set.json"
 
 
-class SetError(AppError):
+class EvaluationError(AppError):
+    pass
+
+
+class SetError(EvaluationError):
     pass
 
 
@@ -216,14 +220,51 @@ def carry_v1(
 EXCLUDED_AUTHORS = frozenset({"gafferpresser"})
 
 
-def export_corpus(engine: Engine) -> list[CorpusPost]:
+def source_flags(
+    posts: Sequence[CorpusPost], list_handles: Sequence[str] | None
+) -> list[CorpusPost]:
+    # The Python copy of app.tweets.classes.source_post_sql over the corpus: load_eval_corpus
+    # checks it against the SQL rule.
+    if list_handles is None:
+        return [post.model_copy(update={"is_source": True}) for post in posts]
+    handles = set(list_handles)
+    listed = {post.x_id for post in posts if post.author_handle.lower() in handles}
+    quoted_by_listed = {
+        post.quoted_x_id
+        for post in posts
+        if post.quoted_x_id is not None and post.author_handle.lower() in handles
+    }
+    return [
+        post.model_copy(update={"is_source": post.x_id in listed or post.x_id in quoted_by_listed})
+        for post in posts
+    ]
+
+
+@dataclass(frozen=True)
+class Export:
+    posts: list[CorpusPost]
+    list_handles: list[str] | None
+
+
+def export_corpus(
+    engine: Engine, since: datetime | None = None, until: datetime | None = None
+) -> Export:
     with Session(engine) as session:
-        tweets = session.exec(
-            select(Tweet)
-            .where(func.lower(Tweet.author_handle).not_in(EXCLUDED_AUTHORS))
-            .order_by(Tweet.created_at, Tweet.x_id)
-        ).all()
-        return [
+        statement = select(Tweet).where(func.lower(Tweet.author_handle).not_in(EXCLUDED_AUTHORS))
+        if since is not None:
+            statement = statement.where(Tweet.created_at >= since)
+        if until is not None:
+            statement = statement.where(Tweet.created_at < until)
+        tweets = session.exec(statement.order_by(Tweet.created_at, Tweet.x_id)).all()
+        latest = session.exec(
+            select(ListMembership).order_by(
+                ListMembership.fetched_at.desc(), ListMembership.id.desc()
+            )
+        ).first()
+        handles = (
+            list(latest.handles) if latest is not None and latest.handles is not None else None
+        )
+        posts = [
             CorpusPost(
                 x_id=tweet.x_id,
                 author_handle=tweet.author_handle,
@@ -231,6 +272,8 @@ def export_corpus(engine: Engine) -> list[CorpusPost]:
                 created_at=tweet.created_at,
                 is_repost=tweet.is_repost,
                 is_reply=tweet.is_reply,
+                quoted_x_id=tweet.quoted_x_id,
             )
             for tweet in tweets
         ]
+    return Export(source_flags(posts, handles), handles)

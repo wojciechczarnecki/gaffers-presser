@@ -1,7 +1,6 @@
 import threading
 from datetime import UTC, datetime
 
-import pytest
 from sqlalchemy import text
 
 from app.retrieval.evaluation.dataset import CorpusPost
@@ -24,13 +23,6 @@ def _post(x_id: int, body: str) -> CorpusPost:
         is_repost=False,
         is_reply=False,
     )
-
-
-@pytest.fixture
-def eval_db(db):
-    yield db
-    with db.begin() as conn:
-        conn.execute(text(f"DROP SCHEMA IF EXISTS {EVAL_SCHEMA} CASCADE"))
 
 
 def _count(engine, table: str) -> int:

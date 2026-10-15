@@ -24,12 +24,20 @@ def test_export_corpus_writes_public_fields_only(db, tmp_path):
     add_tweet(db, 1, "First post", created_at=NOW - timedelta(hours=2), is_repost=True)
     output = tmp_path / "corpus.jsonl"
 
-    result = CliRunner().invoke(app, ["export-corpus", "--output", str(output)], obj=_deps(db))
+    result = CliRunner().invoke(app, ["export-corpus", "--set", str(tmp_path)], obj=_deps(db))
 
     assert result.exit_code == 0, result.output
     rows = [json.loads(line) for line in output.read_text().splitlines()]
     assert [row["x_id"] for row in rows] == [1, 2]
-    assert set(rows[0]) == {"x_id", "author_handle", "text", "created_at", "is_repost", "is_reply"}
+    assert set(rows[0]) == {
+        "x_id",
+        "author_handle",
+        "text",
+        "created_at",
+        "is_repost",
+        "is_reply",
+        "is_source",
+    }
     assert rows[0]["is_repost"] is True and rows[1]["is_reply"] is True
     assert "exported 2 posts" in result.stdout
     assert [post.x_id for post in load_corpus(output)] == [1, 2]
@@ -40,7 +48,7 @@ def test_export_corpus_leaves_out_the_own_test_account(db, tmp_path):
     add_tweet(db, 2, "Saka injury", author="FFScout")
     output = tmp_path / "corpus.jsonl"
 
-    result = CliRunner().invoke(app, ["export-corpus", "--output", str(output)], obj=_deps(db))
+    result = CliRunner().invoke(app, ["export-corpus", "--set", str(tmp_path)], obj=_deps(db))
 
     assert result.exit_code == 0, result.output
     assert [post.x_id for post in load_corpus(output)] == [2]
@@ -51,11 +59,11 @@ def test_export_corpus_refuses_to_overwrite_without_force(db, tmp_path):
     add_tweet(db, 1)
     output = tmp_path / "corpus.jsonl"
     output.write_text("keep\n")
-    result = CliRunner().invoke(app, ["export-corpus", "--output", str(output)], obj=_deps(db))
+    result = CliRunner().invoke(app, ["export-corpus", "--set", str(tmp_path)], obj=_deps(db))
     assert result.exit_code == 1
     assert output.read_text() == "keep\n"
     forced = CliRunner().invoke(
-        app, ["export-corpus", "--output", str(output), "--force"], obj=_deps(db)
+        app, ["export-corpus", "--set", str(tmp_path), "--force"], obj=_deps(db)
     )
     assert forced.exit_code == 0
     assert output.read_text() != "keep\n"

@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -5,7 +6,8 @@ import typer
 from langchain_core.language_models import BaseChatModel
 
 from app.core.errors import AppError
-from app.core.local_time import format_local
+from app.core.eval_results import ResultExistsError, check_new_result
+from app.core.local_time import format_local, parse_local
 from app.llm.chat import structured_kwargs_for
 from app.llm.pricing import load_prices
 from app.llm.structured import StructuredCaller
@@ -23,12 +25,14 @@ from app.retrieval.evaluation.dataset import (
     Judgement,
     Query,
     SetError,
+    SetManifest,
     carry_v1,
     export_corpus,
     load_corpus,
     load_queries,
     load_set,
     write_corpus,
+    write_manifest,
     write_queries,
 )
 from app.retrieval.evaluation.labelling import prelabel
@@ -60,19 +64,44 @@ def _callback() -> None:
     pass
 
 
-@app.command(name="export-corpus", help="Export every stored post (public fields only).")
+def _parse_time_option(value: str, option: str) -> datetime:
+    try:
+        return parse_local(value)
+    except ValueError:
+        raise fail(f"{option} must be YYYY-MM-DD or YYYY-MM-DDTHH:MM") from None
+
+
+@app.command(name="export-corpus", help="Export the stored posts (public fields only) as a set.")
 def export_corpus_command(
     ctx: typer.Context,
-    output: Annotated[Path, typer.Option("--output")] = DEFAULT_CORPUS_PATH,
+    set_dir: Annotated[Path, typer.Option("--set", help="The set directory.")] = DEFAULT_SET_DIR,
+    since: Annotated[str | None, typer.Option("--since", help="Europe/Warsaw time.")] = None,
+    until: Annotated[str | None, typer.Option("--until", help="Europe/Warsaw time.")] = None,
+    version: Annotated[str, typer.Option("--version", help="The set version.")] = "v2",
     force: Annotated[bool, typer.Option("--force", help="Overwrite an existing file.")] = False,
 ) -> None:
     deps = get_deps(ctx)
-    if output.exists() and not force:
-        raise fail(f"{output} already exists; pass --force to overwrite it")
-    posts = export_corpus(db_engine(deps))
-    output.parent.mkdir(parents=True, exist_ok=True)
-    write_corpus(output, posts)
-    typer.echo(f"exported {len(posts)} posts to {output}")
+    since_at = _parse_time_option(since, "--since") if since is not None else None
+    until_at = _parse_time_option(until, "--until") if until is not None else None
+    output = set_dir / CORPUS_FILE
+    try:
+        check_new_result(output, force)
+    except ResultExistsError as exc:
+        raise fail(str(exc)) from None
+    exported = export_corpus(db_engine(deps), since_at, until_at)
+    write_corpus(output, exported.posts)
+    write_manifest(
+        set_dir,
+        SetManifest(
+            version=version,
+            list_handles=exported.list_handles,
+            corpus_since=since_at,
+            corpus_until=until_at,
+            exported_at=deps.clock.now(),
+        ),
+    )
+    sources = sum(1 for post in exported.posts if post.is_source)
+    typer.echo(f"exported {len(exported.posts)} posts to {output} ({sources} source posts)")
 
 
 def _chat_model(deps: RetrievalCliDeps, model: str) -> BaseChatModel:

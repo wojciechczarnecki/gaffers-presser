@@ -8,12 +8,11 @@ from typing import Any
 from sqlalchemy import Engine
 
 from app.core.clock import Clock
-from app.core.errors import AppError
 from app.core.eval_results import write_json_atomic
 from app.core.retry import with_retries
 from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder, EmbeddingResult
-from app.retrieval.evaluation.dataset import CorpusPost, Query
+from app.retrieval.evaluation.dataset import CorpusPost, EvaluationError, Query
 from app.retrieval.evaluation.metrics import (
     MODES,
     SLICES,
@@ -25,10 +24,6 @@ from app.retrieval.evaluation.schema import load_eval_corpus
 from app.retrieval.indexing import IndexingRuntime, index_missing, traced_embed
 from app.retrieval.search import SearchError, search
 from app.retrieval.tracing import NULL_TRACER, RetrievalTracer
-
-
-class EvaluationError(AppError):
-    pass
 
 
 class _SearchTracer:

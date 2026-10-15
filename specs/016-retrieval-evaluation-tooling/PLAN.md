@@ -633,7 +633,7 @@ watches them fail for the expected reason, and then writes the code.
       Automatic verification: `uv run pytest -q tests/retrieval/evaluation` and lint.
       `iterations: 0`
 
-- [ ] 7. **Source posts in the corpus, export bounds and the eval schema (AC1, AC4).**
+- [x] 7. **Source posts in the corpus, export bounds and the eval schema (AC1, AC4).**
       Files:
       - `backend/app/retrieval/evaluation/dataset.py`: `export_corpus(engine, since,
         until)` returning posts and the list snapshot, and `source_flags`;
@@ -666,6 +666,7 @@ watches them fail for the expected reason, and then writes the code.
 
       Automatic verification:
       `uv run pytest -q tests/retrieval/evaluation tests/retrieval/test_search.py` and lint.
+      `iterations: 0`
 
 - [ ] 8. **Query variants (AC5).** Files: new `backend/app/retrieval/variants.py` and new
       `backend/tests/retrieval/test_variants.py`.

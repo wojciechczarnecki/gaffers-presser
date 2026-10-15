@@ -2,7 +2,6 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import text
 from typer.testing import CliRunner
 
 from app.retrieval.evaluation.cli import app
@@ -19,19 +18,11 @@ from app.retrieval.evaluation.runner import (
     format_table,
     run_evaluation,
 )
-from app.retrieval.evaluation.schema import EVAL_SCHEMA
 from tests.retrieval.fakes import AlwaysFailingEmbedder, FakeEmbedder, RecordingTracer
 from tests.retrieval.helpers import MODEL, PRICES, FixedClock
 from tests.retrieval.test_cli import _deps
 
 WHEN = datetime(2026, 9, 1, tzinfo=UTC)
-
-
-@pytest.fixture
-def eval_db(db):
-    yield db
-    with db.begin() as conn:
-        conn.execute(text(f"DROP SCHEMA IF EXISTS {EVAL_SCHEMA} CASCADE"))
 
 
 def _post(x_id: int, body: str) -> CorpusPost:
