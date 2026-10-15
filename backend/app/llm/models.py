@@ -35,6 +35,11 @@ def load_model_settings(path: Path = DEFAULT_PATH) -> dict[str, ModelSettings]:
     return settings
 
 
+def reasoning_effort_of(model: str, path: Path = DEFAULT_PATH) -> str | None:
+    entry = load_model_settings(path).get(model)
+    return entry.reasoning_effort if entry else None
+
+
 def pair_compatible(primary: str, fallback: str, catalogue: dict[str, ModelSettings]) -> bool:
     """Whether the fallback can answer the primary's request through the `models` list.
 

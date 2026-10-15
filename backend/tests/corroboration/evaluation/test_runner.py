@@ -175,3 +175,25 @@ def test_no_reviewed_cases_exits_1_and_names_the_flag(tmp_path):
 
 def test_a_bad_split_exits_1(tmp_path):
     assert _invoke(tmp_path, _deps(), "--split", "prod").exit_code == 1
+
+
+def test_evaluate_writes_header_and_guard_refuses(tmp_path):
+    set_dir = tmp_path / "v1"
+    set_dir.mkdir()
+    write_cases(set_dir / "cases.jsonl", _cases())
+    output = tmp_path / "result.json"
+    args = ["evaluate", "--cases", str(set_dir / "cases.jsonl"), "--output", str(output)]
+    first = CliRunner().invoke(app, args, obj=_deps())
+    assert first.exit_code == 0, first.output
+    header = json.loads(output.read_text())["header"]
+    assert header["set_version"] == "v1"
+    assert header["model"] == DEFAULT_MODEL
+    assert header["prompt_version"] == PROMPT_VERSION
+    assert header["date"] == NOW.isoformat()
+    assert header["judge"] is None
+
+    again = CliRunner().invoke(app, args, obj=_deps())
+    assert again.exit_code == 1
+    assert str(output) in again.output
+    forced = CliRunner().invoke(app, [*args, "--force"], obj=_deps())
+    assert forced.exit_code == 0, forced.output

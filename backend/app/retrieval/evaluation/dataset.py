@@ -1,4 +1,3 @@
-import os
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -8,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import Engine, func
 from sqlmodel import Session, select
 
+from app.core.eval_results import write_lines_atomic
 from app.tweets.models import Tweet
 
 EVALS_DIR = Path(__file__).resolve().parents[3] / "evals" / "retrieval"
@@ -56,19 +56,6 @@ class Query(BaseModel):
     judgements: list[Judgement]
 
 
-def _write_lines(path: Path, lines: Sequence[str]) -> None:
-    # Atomic: a temporary file next to the target, then os.replace, so an interrupted
-    # write never leaves a half-written set behind.
-    path = Path(path)
-    tmp = path.with_name(f".{path.name}.tmp")
-    try:
-        tmp.write_text("\n".join(lines) + ("\n" if lines else ""))
-        os.replace(tmp, path)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
-
-
 def load_corpus(path: Path) -> list[CorpusPost]:
     return [
         CorpusPost.model_validate_json(line)
@@ -78,7 +65,7 @@ def load_corpus(path: Path) -> list[CorpusPost]:
 
 
 def write_corpus(path: Path, posts: Sequence[CorpusPost]) -> None:
-    _write_lines(path, [post.model_dump_json() for post in posts])
+    write_lines_atomic(path, [post.model_dump_json() for post in posts])
 
 
 def load_queries(path: Path) -> list[Query]:
@@ -90,7 +77,7 @@ def load_queries(path: Path) -> list[Query]:
 
 
 def write_queries(path: Path, queries: Sequence[Query]) -> None:
-    _write_lines(path, [query.model_dump_json() for query in queries])
+    write_lines_atomic(path, [query.model_dump_json() for query in queries])
 
 
 # The project's own test account (the tweet-source latency test posts) is noise for retrieval.

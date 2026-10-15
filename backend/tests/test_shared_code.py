@@ -98,3 +98,13 @@ def test_schedules_use_fpl_deadline_helpers():
     assert "upcoming_deadlines" not in {
         node.name for node in ast.walk(store) if isinstance(node, ast.FunctionDef)
     }
+
+
+def test_atomic_write_lives_once():
+    offenders = []
+    for path in sorted(APP.rglob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.Attribute) and node.attr == "replace":
+                if isinstance(node.value, ast.Name) and node.value.id == "os":
+                    offenders.append(str(path.relative_to(APP)))
+    assert offenders == ["core/eval_results.py"]

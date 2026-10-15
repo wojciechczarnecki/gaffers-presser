@@ -112,7 +112,7 @@ def test_failed_write_keeps_the_old_file(tmp_path, monkeypatch):
     def boom(*args):
         raise OSError("disk full")
 
-    monkeypatch.setattr("app.retrieval.evaluation.dataset.os.replace", boom)
+    monkeypatch.setattr("app.core.eval_results.os.replace", boom)
     with pytest.raises(OSError):
         write_queries(path, [_query(id="q-post-en-002")])
     assert path.read_text() == before

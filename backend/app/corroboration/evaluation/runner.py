@@ -1,10 +1,9 @@
-import json
-import os
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from app.core.eval_results import write_json_atomic
 from app.corroboration.evaluation.cases import DEFAULT_RESULTS_DIR, JudgeCase
 from app.corroboration.evaluation.metrics import Outcome, compute_metrics
 from app.corroboration.judge import Judge, JudgeInput
@@ -106,14 +105,7 @@ def run_evaluation(
 
 
 def write_result(path: Path, data: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.tmp")
-    try:
-        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
-        os.replace(tmp, path)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
+    write_json_atomic(path, data)
 
 
 def format_metrics(data: dict[str, Any]) -> str:

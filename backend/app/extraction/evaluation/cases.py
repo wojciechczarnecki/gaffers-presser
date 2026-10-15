@@ -1,4 +1,3 @@
-import os
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -6,6 +5,7 @@ from typing import Literal, get_args
 
 from pydantic import BaseModel, ConfigDict
 
+from app.core.eval_results import write_lines_atomic
 from app.extraction.linking import PlayerRecord
 from app.extraction.schemas import Certainty, EventType
 
@@ -55,17 +55,7 @@ def load_cases(path: Path) -> list[EvalCase]:
 
 
 def write_cases(path: Path, cases: Sequence[EvalCase]) -> None:
-    # Atomic: a temporary file next to the target, then os.replace, so an interrupted
-    # write never leaves a half-written set behind.
-    path = Path(path)
-    lines = [case.model_dump_json() for case in cases]
-    tmp = path.with_name(f".{path.name}.tmp")
-    try:
-        tmp.write_text("\n".join(lines) + ("\n" if lines else ""))
-        os.replace(tmp, path)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
+    write_lines_atomic(path, [case.model_dump_json() for case in cases])
 
 
 MIN_REAL = 100

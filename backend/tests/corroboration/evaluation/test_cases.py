@@ -86,7 +86,7 @@ def test_a_failed_write_keeps_the_old_file(tmp_path, monkeypatch):
     def boom(*args, **kwargs):
         raise OSError("disk")
 
-    monkeypatch.setattr("app.corroboration.evaluation.cases.os.replace", boom)
+    monkeypatch.setattr("app.core.eval_results.os.replace", boom)
     with pytest.raises(OSError):
         write_cases(path, valid_set(5))
     assert path.read_text() == before

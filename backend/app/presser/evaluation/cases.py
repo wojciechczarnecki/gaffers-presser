@@ -1,4 +1,3 @@
-import os
 from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
@@ -6,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.eval_results import write_lines_atomic
 from app.presser.facts import FactSheet, check_fact_sheet
 from app.presser.writer import PreviousPresser
 
@@ -90,21 +90,8 @@ def load_cases(path: Path) -> list[PresserCase]:
     return parse_cases(Path(path).read_text(encoding="utf-8"))
 
 
-def _write_lines(path: Path, lines: list[str]) -> None:
-    # Atomic: a temporary file next to the target, then os.replace, so an interrupted
-    # write never leaves a half-written set behind.
-    path = Path(path)
-    tmp = path.with_name(f".{path.name}.tmp")
-    try:
-        tmp.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
-        os.replace(tmp, path)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
-
-
 def write_cases(path: Path, cases: Sequence[PresserCase]) -> None:
-    _write_lines(path, [case.model_dump_json() for case in cases])
+    write_lines_atomic(path, [case.model_dump_json() for case in cases])
 
 
 def load_history(path: Path = HISTORY_PATH) -> list[HistoryEntry]:

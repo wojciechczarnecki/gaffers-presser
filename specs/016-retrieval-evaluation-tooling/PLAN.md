@@ -491,7 +491,7 @@ watches them fail for the expected reason, and then writes the code.
       Automatic verification: `uv run pytest -q tests/core/test_eval_results.py` and lint.
       `iterations: 0`
 
-- [ ] 2. **All seven atomic writes go through the module, and corroboration and extraction
+- [x] 2. **All seven atomic writes go through the module, and corroboration and extraction
       get the header and the guard (AC16).** Files:
       - `backend/app/presser/evaluation/cases.py` and `runner.py`;
       - `backend/app/corroboration/evaluation/cases.py`, `runner.py` and `cli.py`;
@@ -525,6 +525,7 @@ watches them fail for the expected reason, and then writes the code.
       Automatic verification:
       `uv run pytest -q tests/test_shared_code.py tests/corroboration tests/extraction tests/presser/evaluation tests/retrieval/evaluation`
       and lint.
+      `iterations: 0`
 
 - [ ] 3. **Presser header, and `summary` grouped by set and prompt version (AC16, AC17).**
       Files: `backend/app/presser/evaluation/runner.py`, `summary.py` and `cli.py`, plus
@@ -1078,6 +1079,8 @@ Decision: the plan is ready for implementation — it covers every AC with test-
 ## Deviations
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+
+- `minor` — step 2: three existing tests monkeypatched `os.replace` in the module that held its own copy (`...cases.os.replace`, `...dataset.os.replace`); they now patch `app.core.eval_results.os.replace`, the same atomic-write behaviour tested at its new home. Also added `reasoning_effort_of(model)` to `app/llm/models.py` so the four evaluations read a model's effort the same way.
 
 ## Final review
 

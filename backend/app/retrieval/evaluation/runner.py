@@ -1,5 +1,3 @@
-import json
-import os
 import threading
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -11,6 +9,7 @@ from sqlalchemy import Engine
 
 from app.core.clock import Clock
 from app.core.errors import AppError
+from app.core.eval_results import write_json_atomic
 from app.core.retry import with_retries
 from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder, EmbeddingResult
@@ -234,11 +233,4 @@ def format_table(result: Aggregate) -> str:
 
 
 def write_result(path: Path, data: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.tmp")
-    try:
-        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
-        os.replace(tmp, path)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
+    write_json_atomic(path, data)

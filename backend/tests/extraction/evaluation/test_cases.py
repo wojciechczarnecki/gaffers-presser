@@ -149,7 +149,7 @@ def test_write_is_atomic(tmp_path, monkeypatch):
     def interrupted(src, dst):
         raise KeyboardInterrupt
 
-    monkeypatch.setattr("app.extraction.evaluation.cases.os.replace", interrupted)
+    monkeypatch.setattr("app.core.eval_results.os.replace", interrupted)
     with pytest.raises(KeyboardInterrupt):
         write_cases(path, [_case("1", reviewed=True), _case("2")])
     assert path.read_text() == before

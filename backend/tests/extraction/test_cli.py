@@ -769,6 +769,35 @@ def test_evaluate_writes_results(tmp_path, monkeypatch):
     assert "f1" in result.stdout
 
 
+def test_evaluate_writes_header_and_guard_refuses(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "app.extraction.evaluation.runner.load_prices",
+        lambda: {"m": Price(input_per_million=1.0, output_per_million=2.0, checked="x")},
+    )
+    set_dir = tmp_path / "v1"
+    set_dir.mkdir()
+    files = _Files(set_dir, [_eval_case("1", "test")])
+    build_spec, _ = _build_spec(_haaland_out(), model="m", response_model="m")
+
+    first = CliRunner().invoke(app, files.args("--run-name", "run-h"), obj=_no_db_deps(build_spec))
+    assert first.exit_code == 0, first.output
+    path = files.results / "run-h.json"
+    header = json.loads(path.read_text())["header"]
+    assert header["set_version"] == "v1"
+    assert header["model"] == "m"
+    assert header["prompt_version"].startswith("extraction@")
+    assert header["reasoning_effort"] == "none"
+    assert header["date"] == NOW.isoformat()
+
+    again = CliRunner().invoke(app, files.args("--run-name", "run-h"), obj=_no_db_deps(build_spec))
+    assert again.exit_code == 1
+    assert str(path) in again.output
+    forced = CliRunner().invoke(
+        app, files.args("--run-name", "run-h", "--force"), obj=_no_db_deps(build_spec)
+    )
+    assert forced.exit_code == 0, forced.output
+
+
 def test_evaluate_only_selected_split(tmp_path):
     files = _Files(
         tmp_path,
