@@ -1084,6 +1084,8 @@ two owner entries beside the model's and showed no judge label).
 
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
+- 2026-10-15 — final-review — `gate` — Which final-review findings does the owner accept? — `accepted`: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16; `rejected`: none
+
 ## Review log
 
 2026-10-15 — plan review (fresh context, under `/pipeline:ship`).
