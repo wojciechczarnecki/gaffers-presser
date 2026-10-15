@@ -9,7 +9,7 @@ from app.alerts.config import AlertConfig
 from app.alerts.schedule import alert_deadlines, next_alert_deadline, resolve_slots
 from app.alerts.schemas import AlertDeadline
 from app.alerts.store import AlertRow, done_slots, status_rows, with_sent_digest
-from app.worker.store import load_state
+from app.fpl.calendar import load_calendar
 
 
 @dataclass(frozen=True)
@@ -23,8 +23,8 @@ class AlertStatus:
 
 
 def alert_status(engine: Engine, config: AlertConfig, now: datetime) -> AlertStatus:
-    state = load_state(engine)
-    deadlines = alert_deadlines(state.season, state.gameweeks, config.rehearsal_deadline)
+    calendar = load_calendar(engine)
+    deadlines = alert_deadlines(calendar.season, calendar.gameweeks, config.rehearsal_deadline)
     deadline = next_alert_deadline(deadlines, now)
     if deadline is None:
         return AlertStatus(None, None, None, None, None, 0)

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import Engine
 from sqlmodel import Session, select
 
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 from app.tweets.models import ListMembership
 from app.tweets.sources.base import MembershipNotSupportedError, SourcePayloadError, TweetSource
 
@@ -23,7 +23,7 @@ class MembershipSnapshot:
     handles: frozenset[str] | None
 
 
-class MembershipShrunkError(CollectorError):
+class MembershipShrunkError(AppError):
     def __init__(self, previous: int, current: int) -> None:
         super().__init__(f"list membership shrank from {previous} to {current} members")
         self.previous = previous

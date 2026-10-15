@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
+from app.fpl.calendar import GameweekState
 from app.worker.schedule import (
-    GameweekState,
     Job,
     PlannedAction,
     RunRecord,

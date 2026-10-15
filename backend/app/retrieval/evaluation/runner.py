@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import Engine
 
 from app.core.clock import Clock
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 from app.core.retry import with_retries
 from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder, EmbeddingResult
@@ -28,7 +28,7 @@ from app.retrieval.search import SearchError, search
 from app.retrieval.tracing import RetrievalTracer
 
 
-class EvaluationError(CollectorError):
+class EvaluationError(AppError):
     pass
 
 

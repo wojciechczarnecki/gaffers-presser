@@ -6,9 +6,10 @@ import httpx
 from sqlalchemy import text
 from sqlmodel import Session, SQLModel, select
 
+from app.core.shutdown import Shutdown
 from app.db.locks import JOB_LOCK_KEY
 from app.fpl.models import DeadlineSnapshotPlayer, Gameweek
-from app.worker.jobs import Shutdown, run_job
+from app.worker.jobs import run_job
 from app.worker.models import JobRun
 from app.worker.schedule import Job, PlannedAction
 from tests.conftest import held_advisory_lock, wait_for_lock_waiter

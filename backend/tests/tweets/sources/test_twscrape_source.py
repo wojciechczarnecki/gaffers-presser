@@ -7,7 +7,7 @@ import httpx
 import pytest
 from twscrape import API, NoAccountError
 
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 from app.tweets.sources.base import (
     SourcePayloadError,
     SourceRateLimitedError,
@@ -280,7 +280,7 @@ def test_error_paths_never_carry_the_cookies(caplog, capfd, script, pool):
     source = _source(FakeApi([script], pool=pool))
     try:
         with caplog.at_level("DEBUG"):
-            with pytest.raises(CollectorError) as exc:
+            with pytest.raises(AppError) as exc:
                 next(source.pages(1))
     finally:
         source.close()

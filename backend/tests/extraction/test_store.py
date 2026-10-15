@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from app.extraction.schemas import LinkedEvent
 from app.extraction.store import (
     ExtractionRecord,
-    current_extraction,
+    current_extractions,
     extraction_status,
     next_pending,
     posts_for_reextract,
@@ -98,8 +98,7 @@ def test_save_extraction_roundtrip(db_session):
 
     extraction_id = save_extraction(db_session, record, [linked, unlinked])
 
-    current = current_extraction(db_session, 1)
-    assert current is not None
+    [current] = current_extractions(db_session, x_ids=[1])
     assert current.extraction_id == extraction_id
     assert current.provider == "fake"
     assert current.model == "fake-model"
@@ -122,8 +121,7 @@ def test_reextraction_keeps_history_current_is_latest_extracted(db_session):
         db_session, _record(1, "extracted", finished_at=NOW + timedelta(seconds=20)), []
     )
 
-    current = current_extraction(db_session, 1)
-    assert current is not None
+    [current] = current_extractions(db_session, x_ids=[1])
     assert current.extraction_id == third_id
 
 
@@ -132,9 +130,8 @@ def test_current_extraction_exposes_post_flags(db_session):
     db_session.commit()
     save_extraction(db_session, _record(1), [])
 
-    current = current_extraction(db_session, 1)
+    [current] = current_extractions(db_session, x_ids=[1])
 
-    assert current is not None
     assert current.is_repost is True
     assert current.is_reply is False
     assert current.author_handle == "reporter"

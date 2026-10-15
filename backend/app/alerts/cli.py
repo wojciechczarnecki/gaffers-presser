@@ -15,11 +15,11 @@ from app.alerts.schedule import (
     next_alert_deadline,
     resolve_slots,
 )
-from app.alerts.service import AlertsRuntime, build_slot_alert, current_season
+from app.alerts.service import AlertsRuntime, build_slot_alert
 from app.alerts.status import alert_status
 from app.alerts.store import included_origins, last_alert_as_of
 from app.core.clock import Clock, SystemClock
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 from app.core.local_time import format_local, format_local_day, parse_local
 from app.core.settings import load_settings, parse_league_ids
 from app.corroboration.config import CorroborationSettings
@@ -27,8 +27,8 @@ from app.corroboration.runtime import build_runtime
 from app.corroboration.service import CorroborationRuntime
 from app.db.engine import make_engine
 from app.delivery.service import DeliveryService
+from app.fpl.calendar import current_season, load_calendar
 from app.llm.settings import load_llm_settings
-from app.worker.store import load_state
 
 app = typer.Typer(
     add_completion=False,
@@ -68,7 +68,7 @@ def _deps_from_settings() -> AlertsCliDeps:
         config = parse_alert_config(AlertSettings())
         corroboration_settings = load_llm_settings(CorroborationSettings)
         settings = load_settings()
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     clock = SystemClock()
     return AlertsCliDeps(
@@ -156,10 +156,10 @@ def preview(
         raise fail("--at must be a Europe/Warsaw time like 2026-10-04T18:00") from None
     try:
         league_ids = parse_league_ids(deps.league_ids_raw)
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
-    state = load_state(engine)
-    deadlines = alert_deadlines(state.season, state.gameweeks, deps.config.rehearsal_deadline)
+    calendar = load_calendar(engine)
+    deadlines = alert_deadlines(calendar.season, calendar.gameweeks, deps.config.rehearsal_deadline)
     deadline = next_alert_deadline(deadlines, moment)
     if deadline is None:
         raise fail("no deadline after that time")
@@ -175,7 +175,7 @@ def preview(
         )
     try:
         corroboration = deps.make_runtime()
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     runtime = AlertsRuntime(
         deps.config, league_ids, DeliveryService(engine, None, deps.clock), corroboration

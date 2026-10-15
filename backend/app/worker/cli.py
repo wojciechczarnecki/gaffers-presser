@@ -22,13 +22,14 @@ from app.alerts.schedule import check_rehearsal, polling_window, slot_moments
 from app.alerts.service import AlertsRuntime
 from app.alerts.status import alert_status, status_line
 from app.core.clock import Clock, StopAwareClock, SystemClock
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 from app.core.local_time import format_local_day
 from app.core.settings import (
     TweetSettings,
     load_settings,
     parse_league_ids,
 )
+from app.core.shutdown import Shutdown
 from app.corroboration.config import CorroborationSettings
 from app.corroboration.runtime import build_runtime
 from app.corroboration.service import CorroborationRuntime
@@ -43,6 +44,7 @@ from app.extraction.config import load_extraction_settings
 from app.extraction.loop import start_extractor
 from app.extraction.service import ExtractionRuntime, load_reference_files
 from app.extraction.store import extraction_status
+from app.fpl.calendar import current_season
 from app.fpl.client import FplClient
 from app.fpl.deadlines import DEFAULT_MAX_LOOKBACK, upcoming_deadlines
 from app.llm.chat import PROVIDER, build_chat_model, resolve_llm
@@ -58,7 +60,7 @@ from app.presser.config import (
     writer_chat_model,
 )
 from app.presser.service import PresserRuntime, run_after_league_sync
-from app.presser.store import current_season, presser_status
+from app.presser.store import presser_status
 from app.presser.tracing import make_presser_tracer
 from app.presser.writer import build_writer
 from app.retrieval.config import load_retrieval_settings, resolve_embedding
@@ -71,7 +73,6 @@ from app.tweets.schedule import WINDOW, mode, next_poll_at
 from app.tweets.sources import build_source
 from app.tweets.sources.base import TweetSource
 from app.tweets.store import latest_poll, latest_success_by_source
-from app.worker.jobs import Shutdown
 from app.worker.loop import Worker
 from app.worker.schedule import Job, outlook
 from app.worker.store import latest_runs_by_job, load_state
@@ -188,7 +189,7 @@ def _deps_from_settings() -> WorkerDeps:
         )
         presser_llm = resolve_presser_llm(presser_settings) if presser_reason is None else None
         settings = load_settings()
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     tweet_ingest = None
     if ingest_config is not None:
@@ -313,7 +314,7 @@ def run(ctx: typer.Context) -> None:
     deps = get_deps(ctx)
     try:
         league_ids = parse_league_ids(deps.league_ids_raw)
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
 
     stop_event = threading.Event()
@@ -327,7 +328,7 @@ def run(ctx: typer.Context) -> None:
             alerts_runtime, alerts_channel = _alerts_runtime(
                 deps, deps.alerts, league_ids, stop_event
             )
-        except CollectorError as exc:
+        except AppError as exc:
             raise fail(str(exc)) from None
         except Exception as exc:
             logger.error("worker failed: %s", type(exc).__name__)
@@ -338,7 +339,7 @@ def run(ctx: typer.Context) -> None:
             presser_runtime, presser_channel = deps.presser.make_runtime(
                 deps.engine, stop_event, league_ids
             )
-        except CollectorError as exc:
+        except AppError as exc:
             raise fail(str(exc)) from None
         except Exception as exc:
             logger.error("worker failed: %s", type(exc).__name__)
@@ -554,7 +555,7 @@ def _presser_line(deps: WorkerDeps) -> str:
         return f"Presser: disabled ({deps.presser_disabled_reason or 'not configured'})"
     try:
         league_ids = parse_league_ids(deps.league_ids_raw)
-    except CollectorError:
+    except AppError:
         league_ids = []
     with Session(deps.engine) as session:
         season = current_season(session)

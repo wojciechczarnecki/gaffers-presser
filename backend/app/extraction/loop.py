@@ -5,10 +5,10 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.clock import Clock, StopAwareClock
+from app.core.shutdown import Shutdown
 from app.extraction.service import ExtractionRuntime, extract_post
 from app.extraction.store import next_pending
 from app.llm.tracing import flush, make_handler
-from app.worker.jobs import Shutdown
 
 logger = logging.getLogger(__name__)
 

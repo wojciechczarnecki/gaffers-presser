@@ -8,7 +8,7 @@ from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import Engine, bindparam, select, text
 from sqlmodel import Session
 
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder
 from app.retrieval.indexing import traced_embed
@@ -22,7 +22,7 @@ Mode = Literal["fulltext", "vector", "hybrid"]
 LEGS = ("fulltext", "vector")
 
 
-class SearchError(CollectorError):
+class SearchError(AppError):
     pass
 
 

@@ -1,6 +1,6 @@
-class CollectorError(Exception):
+class AppError(Exception):
     pass
 
 
-class ConfigError(CollectorError):
+class ConfigError(AppError):
     pass

@@ -7,7 +7,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session, func, select
 
 from app.core.clock import Clock, SystemClock
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 from app.delivery.service import DeliveryService
 from app.fpl.models import Gameweek
 from app.llm.structured import Usage
@@ -27,11 +27,11 @@ from app.presser.writer import PROMPT_VERSION, Writer, WriterInput, human_messag
 logger = logging.getLogger(__name__)
 
 
-class PresserFailed(CollectorError):  # noqa: N818
+class PresserFailed(AppError):  # noqa: N818
     pass
 
 
-class PresserStopped(CollectorError):  # noqa: N818
+class PresserStopped(AppError):  # noqa: N818
     pass
 
 

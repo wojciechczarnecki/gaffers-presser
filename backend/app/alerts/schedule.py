@@ -5,8 +5,8 @@ from app.alerts.config import AlertConfig, Slot, WallClockSlot
 from app.alerts.schemas import AlertDeadline
 from app.core.errors import ConfigError
 from app.core.local_time import WARSAW
+from app.fpl.calendar import GameweekState
 from app.fpl.deadlines import next_deadline_after
-from app.worker.schedule import GameweekState
 
 POLLING_MARGIN = timedelta(minutes=10)
 MIN_POLLING_WINDOW = timedelta(minutes=90)

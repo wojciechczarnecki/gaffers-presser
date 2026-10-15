@@ -8,9 +8,10 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.clock import Clock, SystemClock
-from app.core.errors import CollectorError, ConfigError
+from app.core.errors import AppError, ConfigError
 from app.core.settings import load_settings
 from app.db.engine import make_engine
+from app.fpl.calendar import current_season
 from app.llm.chat import build_chat_model, single_model_config
 from app.llm.pricing import load_prices
 from app.llm.settings import load_llm_settings
@@ -45,7 +46,6 @@ from app.presser.evaluation.runner import (
     write_result,
 )
 from app.presser.evaluation.summary import choose, format_run, summarise
-from app.presser.store import current_season
 from app.presser.writer import Writer, build_writer
 
 SEED = 20261009
@@ -153,7 +153,7 @@ def build_cases_command(
         )
     except PseudonymisationError as exc:
         raise fail(f"pseudonymisation failed: {exc}") from None
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     synthetic = [case for case in existing if case.source == "synthetic"]
     write_cases(output, [*built.cases, *synthetic])
@@ -195,7 +195,7 @@ def evaluate(
     try:
         writer = deps.make_writer(model)
         judge = None if no_judge else deps.make_judge(judge_model)
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     try:
         data = run_evaluation(

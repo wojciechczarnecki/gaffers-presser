@@ -7,6 +7,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.clock import Clock, StopAwareClock
+from app.core.shutdown import Shutdown
 from app.fpl.deadlines import (
     DEFAULT_MAX_LOOKBACK,
     deadline_at_or_before,
@@ -25,7 +26,6 @@ from app.tweets.membership import (
 from app.tweets.schedule import MAX_SLEEP, WINDOW, next_poll_at
 from app.tweets.sources.base import TweetSource
 from app.tweets.store import PollRecord, latest_poll
-from app.worker.jobs import Shutdown
 
 logger = logging.getLogger(__name__)
 

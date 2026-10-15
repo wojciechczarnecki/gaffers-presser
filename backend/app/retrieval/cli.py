@@ -10,7 +10,7 @@ from langchain_core.language_models import BaseChatModel
 from sqlalchemy import Engine
 
 from app.core.clock import Clock, SystemClock
-from app.core.errors import CollectorError, ConfigError
+from app.core.errors import AppError, ConfigError
 from app.core.local_time import format_local, parse_local
 from app.core.settings import load_settings
 from app.db.engine import make_engine
@@ -154,7 +154,7 @@ def index(
     try:
         embedder = deps.make_embedder(model)
         prices = deps.prices if deps.prices is not None else load_prices()
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     engine = db_engine(deps)
     runtime = IndexingRuntime(
@@ -243,7 +243,7 @@ def search_command(
         prices = deps.prices if deps.prices is not None else load_prices()
         if mode != "fulltext":
             embedder = deps.make_embedder(model)
-    except CollectorError as exc:
+    except AppError as exc:
         message = str(exc)
         raise fail(KEY_HINT if "OPENROUTER_API_KEY is not set" in message else message) from None
     engine = db_engine(deps)
@@ -305,7 +305,7 @@ def _chat_model(deps: RetrievalCliDeps, model: str) -> BaseChatModel:
         raise fail("OPENROUTER_API_KEY is not set")
     try:
         return deps.make_chat_model(model)
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
 
 
@@ -330,7 +330,7 @@ def build_queries_command(
     try:
         prices = deps.prices if deps.prices is not None else load_prices()
         posts = load_corpus(corpus)
-    except (CollectorError, OSError, ValueError) as exc:
+    except (AppError, OSError, ValueError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
     events = current_events(db_engine(deps), [post.x_id for post in posts])
     caller = StructuredCaller(
@@ -376,7 +376,7 @@ def prelabel_command(
         prices = deps.prices if deps.prices is not None else load_prices()
         posts = load_corpus(corpus)
         query_set = load_queries(queries)
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     except (OSError, ValueError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
@@ -437,7 +437,7 @@ def evaluate_command(
         prices = deps.prices if deps.prices is not None else load_prices()
         posts = load_corpus(corpus)
         query_set = load_queries(queries)
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     except (OSError, ValueError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None

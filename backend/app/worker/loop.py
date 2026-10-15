@@ -6,8 +6,9 @@ from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.clock import Clock
+from app.core.shutdown import Shutdown
 from app.fpl.client import FplClient
-from app.worker.jobs import Shutdown, run_job
+from app.worker.jobs import run_job
 from app.worker.schedule import (
     Job,
     PlannedAction,

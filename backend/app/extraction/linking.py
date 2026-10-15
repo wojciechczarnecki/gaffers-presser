@@ -5,8 +5,9 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from sqlmodel import Session, func, select
+from sqlmodel import Session, select
 
+from app.fpl.calendar import current_season
 from app.fpl.models.reference import Player, Team
 
 logger = logging.getLogger(__name__)
@@ -81,7 +82,7 @@ def load_aliases(path: Path = DEFAULT_ALIASES_PATH) -> tuple[list[PlayerAlias], 
 
 
 def load_players(session: Session) -> tuple[list[PlayerRecord], list[TeamRecord]]:
-    season = session.exec(select(func.max(Player.season))).one_or_none()
+    season = current_season(session)
     if season is None:
         return [], []
     players = [

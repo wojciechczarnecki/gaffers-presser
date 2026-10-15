@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
 
+from app.fpl.calendar import GameweekState
 from app.fpl.deadlines import latest_deadline_at_or_before, next_deadline_after
 
 
@@ -21,14 +22,6 @@ SNAPSHOT_SLOT_T30 = timedelta(minutes=30)
 SNAPSHOT_SLOT_T5 = timedelta(minutes=5)
 SNAPSHOT_RETRY = timedelta(minutes=1)
 GAMEWEEK_JOB_RETRY = timedelta(minutes=15)
-
-
-@dataclass(frozen=True)
-class GameweekState:
-    fpl_id: int
-    deadline_at: datetime
-    finished: bool
-    data_checked: bool
 
 
 @dataclass(frozen=True)

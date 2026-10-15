@@ -3,7 +3,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Protocol
 
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 
 
 @dataclass(frozen=True)
@@ -42,19 +42,19 @@ class TweetSource(Protocol):
     def close(self) -> None: ...
 
 
-class SourceUnavailableError(CollectorError):
+class SourceUnavailableError(AppError):
     pass
 
 
-class SourcePayloadError(CollectorError):
+class SourcePayloadError(AppError):
     pass
 
 
-class SourceRateLimitedError(CollectorError):
+class SourceRateLimitedError(AppError):
     def __init__(self, message: str, retry_after: float | None = None) -> None:
         super().__init__(message)
         self.retry_after = retry_after
 
 
-class MembershipNotSupportedError(CollectorError):
+class MembershipNotSupportedError(AppError):
     pass

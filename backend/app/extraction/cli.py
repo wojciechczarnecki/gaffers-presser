@@ -13,7 +13,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.clock import Clock, SystemClock
-from app.core.errors import CollectorError, ConfigError
+from app.core.errors import AppError, ConfigError
 from app.core.settings import load_settings
 from app.db.engine import make_engine
 from app.extraction.config import ExtractionSettings, load_extraction_settings
@@ -159,7 +159,7 @@ def reextract(
     try:
         spec = deps.build_spec(model, fallback=True)
         prices, aliases = load_reference_files()
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
 
     since_dt = _parse_iso(since) if since is not None else None
@@ -250,7 +250,7 @@ def prelabel(
     deps = get_deps(ctx)
     try:
         spec = deps.build_spec(model, fallback=False)
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
 
     existing = load_cases(output) if output.exists() else []
@@ -353,7 +353,7 @@ def evaluate(
 
     try:
         spec = deps.build_spec(model, fallback=False)
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
 
     name = run_name or _default_run_name(split, spec, deps.clock.now())

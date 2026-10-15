@@ -7,6 +7,7 @@ from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
+from app.core.shutdown import Shutdown
 from app.db.locks import acquire_job_lock
 from app.fpl.client import FplClient
 from app.fpl.leagues import sync_leagues
@@ -17,10 +18,6 @@ from app.worker.models import JobRun
 from app.worker.schedule import Job, PlannedAction, RunRecord
 
 logger = logging.getLogger(__name__)
-
-
-class Shutdown(BaseException):
-    pass
 
 
 def _dispatch(

@@ -1,28 +1,9 @@
 from sqlalchemy import Engine, text
-from sqlmodel import Session, select
+from sqlmodel import Session
 
-from app.fpl.models import Gameweek, Season
+from app.fpl.calendar import current_season, season_gameweeks
 from app.worker.models import JobRun
-from app.worker.schedule import GameweekState, Job, RunRecord, ScheduleState
-
-
-def _current_season(session: Session) -> str | None:
-    return session.exec(select(Season.label).order_by(Season.label.desc())).first()
-
-
-def _gameweeks(session: Session, season: str) -> list[GameweekState]:
-    rows = session.exec(
-        select(Gameweek).where(Gameweek.season == season).order_by(Gameweek.fpl_id)
-    ).all()
-    return [
-        GameweekState(
-            fpl_id=row.fpl_id,
-            deadline_at=row.deadline_at,
-            finished=row.finished,
-            data_checked=row.data_checked,
-        )
-        for row in rows
-    ]
+from app.worker.schedule import Job, RunRecord, ScheduleState
 
 
 def _run_records(
@@ -53,8 +34,8 @@ def _run_records(
 
 def load_state(engine: Engine) -> ScheduleState:
     with Session(engine) as session:
-        season = _current_season(session)
-        gameweeks = _gameweeks(session, season) if season is not None else []
+        season = current_season(session)
+        gameweeks = season_gameweeks(session, season) if season is not None else []
         latest = _run_records(session, season, only_success=False)
         latest_success = _run_records(session, season, only_success=True)
     return ScheduleState(

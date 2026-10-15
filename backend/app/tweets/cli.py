@@ -8,7 +8,7 @@ from typing import Annotated, Protocol, TextIO
 import typer
 from sqlalchemy import Engine
 
-from app.core.errors import CollectorError, ConfigError
+from app.core.errors import AppError, ConfigError
 from app.core.settings import TweetSettings, load_settings
 from app.db.engine import make_engine
 from app.tweets.config import check_source, resolve_ingest
@@ -132,7 +132,7 @@ def _measure_one(
                         member_handles = {h.lower() for h in source.members(list_id)}
                     except MembershipNotSupportedError:
                         member_handles = None
-                    except CollectorError as exc:
+                    except AppError as exc:
                         member_handles = None
                         typer.echo(
                             f"{name}: list members unavailable, counting every timeline post:"

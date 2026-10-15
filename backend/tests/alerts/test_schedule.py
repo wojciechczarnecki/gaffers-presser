@@ -20,7 +20,7 @@ from app.alerts.schedule import (
 )
 from app.core.errors import ConfigError
 from app.core.local_time import parse_local
-from app.worker.schedule import GameweekState
+from app.fpl.calendar import GameweekState
 
 DEADLINE = datetime(2026, 10, 4, 16, 0, tzinfo=UTC)
 SEASON = "2026/27"

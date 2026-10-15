@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import httpx
 from sqlalchemy import Engine
 
-from app.worker.jobs import Shutdown
+from app.core.shutdown import Shutdown
 from app.worker.models import JobRun
 from app.worker.schedule import Job
 from tests.fpl.fakes import FakeFpl, synthetic_league

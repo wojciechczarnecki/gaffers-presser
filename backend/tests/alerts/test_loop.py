@@ -13,8 +13,8 @@ from app.alerts.loop import AlertLoop, start_alerts
 from app.alerts.models import Alert
 from app.alerts.schedule import resolve_slots
 from app.alerts.status import alert_status
+from app.core.shutdown import Shutdown
 from app.delivery.models import DeliveryLog
-from app.worker.jobs import Shutdown
 from tests.alerts.helpers import alerts_runtime
 from tests.alerts.test_slots import DEADLINE_AT, seed
 from tests.corroboration.helpers import NOW, SAKA, add_claim

@@ -8,7 +8,7 @@ from pathlib import Path
 from sqlalchemy import Engine
 from sqlmodel import Session, col, select
 
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 from app.fpl.models import League, LeagueMembership, Manager
 from app.presser.evaluation.cases import HistoryEntry, PresserCase
 from app.presser.facts import FactSheet, NoFactsError, build_fact_sheet
@@ -18,7 +18,7 @@ from app.presser.writer import PreviousPresser
 MIN_WORD_LENGTH = 3
 
 
-class PseudonymisationError(CollectorError):
+class PseudonymisationError(AppError):
     pass
 
 

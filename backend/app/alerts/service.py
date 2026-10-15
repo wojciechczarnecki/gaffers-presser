@@ -7,7 +7,7 @@ from functools import partial
 from typing import Literal
 
 from sqlalchemy import Engine
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app.alerts.config import AlertConfig
 from app.alerts.players import listed_players
@@ -23,15 +23,15 @@ from app.alerts.store import (
     record_alert,
 )
 from app.core.clock import Clock
+from app.core.shutdown import Shutdown
 from app.corroboration.runtime import sql_only_runtime
 from app.corroboration.schemas import Corroboration
 from app.corroboration.service import CorroborationRuntime, corroborate
 from app.corroboration.sources import window_start
 from app.delivery.channels.base import Message
 from app.delivery.service import DeliveryService
+from app.fpl.calendar import current_season
 from app.fpl.deadlines import window_floor
-from app.fpl.models.reference import Season
-from app.worker.jobs import Shutdown
 
 logger = logging.getLogger(__name__)
 
@@ -67,10 +67,6 @@ class SlotDraft:
 
 def alert_key(deadline: AlertDeadline, kind: str, suffix: int | str) -> str:
     return f"alert:{deadline.key}:{kind}:{suffix}"
-
-
-def current_season(session: Session) -> str | None:
-    return session.exec(select(Season.label).order_by(Season.label.desc())).first()
 
 
 def alert_window_start(
