@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-15"
   - "spec-ready — 2026-10-15"
   - "plan-draft — 2026-10-15"
   - "plan-approved — 2026-10-15"
   - "implemented — 2026-10-15"
+  - "done — 2026-10-15"
 metrics:
   started_at: 2026-10-15T18:36
   plan_steps: 20
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 5
   findings_accepted: 16
   findings_rejected: 0
+  cost_plan_cents: 323
+  cost_plan_review_cents: 128
+  cost_implement_cents: 866
+  cost_final_review_cents: 1070
+  finished_at: 2026-10-15T19:55
 ---
 
 # SPEC 016 — Retrieval evaluation tooling: the production-shaped slice and the session judge
