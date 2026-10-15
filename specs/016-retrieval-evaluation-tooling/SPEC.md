@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-15"
   - "spec-ready — 2026-10-15"
+metrics:
+  started_at: 2026-10-15T18:36
 ---
 
 # SPEC 016 — Retrieval evaluation tooling: the production-shaped slice and the session judge
