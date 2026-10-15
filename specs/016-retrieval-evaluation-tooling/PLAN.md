@@ -758,7 +758,7 @@ watches them fail for the expected reason, and then writes the code.
       `uv run pytest -q tests/retrieval/evaluation/test_players.py` and lint.
       `iterations: 0`
 
-- [ ] 12. **Player-slice and reference-label metrics (AC7, the numbers; the AC14 label
+- [x] 12. **Player-slice and reference-label metrics (AC7, the numbers; the AC14 label
       rule).** Files: new `backend/app/retrieval/evaluation/player_metrics.py` (the cut,
       per-query numbers, aggregates, the five counts, `JUDGE_CUT` and `DEFAULT_DEPTHS`),
       new `backend/app/retrieval/evaluation/labels.py` (`reference_labels(query,
@@ -785,6 +785,7 @@ watches them fail for the expected reason, and then writes the code.
       Automatic verification:
       `uv run pytest -q tests/retrieval/evaluation/test_player_metrics.py tests/retrieval/evaluation/test_labels.py tests/corroboration/test_sources.py`
       and lint.
+      `iterations: 0`
 
 - [ ] 13. **The v2 runner and `evaluate` (AC7 searches, AC8, AC9, the AC14 header, the AC16
       retrieval header).** Files: `backend/app/retrieval/evaluation/runner.py` (rewritten

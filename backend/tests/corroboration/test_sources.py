@@ -379,3 +379,11 @@ def test_a_missing_player_row_falls_back_to_the_web_name(db, monkeypatch):
     queries = _recording_search(monkeypatch)
     retrieval_candidates(db, SAKA_REF, DEADLINE, NOW, embedder=FakeEmbedder(), variant="names")
     assert queries == ["Saka"]
+
+
+def test_judge_cut_constants_match_the_evaluation():
+    from app.corroboration import sources
+    from app.retrieval.evaluation.player_metrics import DEFAULT_DEPTHS, JUDGE_CUT
+
+    assert JUDGE_CUT == sources.MAX_JUDGED
+    assert sources.SEARCH_LIMIT in DEFAULT_DEPTHS
