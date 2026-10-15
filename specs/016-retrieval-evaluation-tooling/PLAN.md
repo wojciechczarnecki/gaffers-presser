@@ -1125,4 +1125,60 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 
 ## Final review
 
-_(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
+2026-10-15 — final review (report mode, under `/pipeline:ship`). Three independent perspectives
+(SPEC/PLAN compliance, quality, tests) ran as separate subagents; every finding below was checked
+in the code. The full suites of the touched modules are green (compliance: 588 + 428 passed;
+tests: 504 passed, 31 of 40 mutations killed). As planned (Risks), the presser `summary` now
+lists the nine committed header-less runs under "no header" with no winner.
+
+**AC → evidence**
+
+| AC | Evidence (code → test) |
+|----|------------------------|
+| AC1 | `dataset.py` `source_flags`, `schema.py` `load_eval_corpus`/`check_source_flags` → `test_sources.py::test_sources_only_search_returns_exactly_the_marked_posts`, `::test_load_refuses_a_corpus_whose_flags_disagree_with_the_sql_rule` |
+| AC2 | `dataset.py` `PlayerQuery`, `ClaimedPost`, free-default discriminator, `carry_v1` → `test_dataset_v2.py` (round trip, v1 unchanged, carry-v1) |
+| AC3 | `players.py` (both window rules, stale flag) + `cli.py` `build-player-slice` → `test_players.py` (six AC cases, `test_claimed_ids_equal_sql_claims`, read-only connection) |
+| AC4 | `dataset.py` `export_corpus`, `cli.py` `export-corpus` → `test_export.py` |
+| AC5 | `retrieval/variants.py` → `test_variants.py::test_initial_player_found_by_full_name_and_names_not_by_web_name` |
+| AC6 | `corroboration/sources.py` `QUERY_VARIANT` → `tests/corroboration/test_sources.py` (default, other variant, no lookup by default); `tests/alerts` unchanged |
+| AC7 | `player_metrics.py`, `runner.py` player searches → `test_player_metrics.py` (incl. more than 20 claimed), `test_runner_v2.py::test_player_slice_searches_window_and_sources` |
+| AC8 | `runner.py` rows and per-query details → `test_runner_v2.py::test_run_reports_every_mode_variant_and_depth_and_free_slices`, `::test_result_holds_cut_ids_and_labels_per_configuration` |
+| AC9 | `runner.py` `estimate_embedding`/`check_cost` → `test_runner_v2.py` (estimate and cap before embedding, no price row, CLI cap) |
+| AC10 | `compare.py` → `test_compare.py` (see F3) |
+| AC11 | `pooling.py` → `test_pooling.py` (see F2, F6) |
+| AC12 | `judging.py` `render_input`/`export_inputs`, both prompts in `app/content/prompts/` → `test_judging.py` (see F5) |
+| AC13 | `judging.py` `import_verdicts`/`agreement`/`estimate_export` → `test_import.py`, `test_judging.py::test_estimate_counts_calls_and_tokens` |
+| AC14 | `review.py`, `labels.py`, runner header extras and refusal → `test_review.py`, `test_labels.py`, `test_runner_v2.py` header and refusal tests |
+| AC15 | `scripts/session_judge.sh` → `tests/test_session_judge.py` (see F11) |
+| AC16 | `core/eval_results.py` → `test_eval_results.py`, `test_shared_code.py::test_atomic_write_lives_once`, the guard test in each of the four evaluations (see F4) |
+| AC17 | `presser/evaluation/summary.py` `group_runs` + `summary` command → `test_summary.py` (grouping, header-less apart) |
+| AC18 | `retrieval/evaluation/cli.py`, `__main__.py` → `test_cli_entry.py`; `test_module_boundaries.py` unchanged (but see F1: `prelabel` fails on a flagged v2 set) |
+| AC19 | `docs/EVALUATION.md`, DECISIONS rows 106–107, BACKLOG #53 and renumbering, ROADMAP → `tests/test_docs.py` |
+
+All 20 plan steps are ticked with good reason; the four `minor` deviations are justified and
+change no scope, architecture or schema; nothing outside the scope is in the branch.
+
+**Findings**
+
+- **F1** `worth-fixing` — `backend/app/retrieval/evaluation/labelling.py:107`, `cli.py:272` — `prelabel --set <v2 set>` with a non-null list snapshot loads the corpus with `load_corpus` and calls `load_eval_corpus(engine, corpus)` without `list_handles`, so the SQL rule marks every post a source while the corpus flags mark only some → `check_source_flags` raises before any labelling; an AC18 command cannot run on the sets it serves — load with `load_set` and pass `manifest.list_handles`, with a test on a flagged corpus.
+- **F2** `worth-fixing` — `backend/app/retrieval/evaluation/pooling.py:81-92,113` — with `--depths 20,30,100` pooling searches once at leg depth 100 and pools the cut at 100, while `evaluate` measures 20 and 30 on a separate leg-depth-50 ranking (`runner.leg_groups`) → their cuts can hold posts never pooled, shown as unjudged; AC11's "union of what the configured runs would show" fails for depths above 50 — pool per `leg_groups(depths)` group, taking each group's largest-depth cut.
+- **F3** `worth-fixing` — `backend/app/retrieval/evaluation/compare.py:25-31` — `load_runs` checks only `set_version` and `split` → two runs with a different `reference_judge`, `k` or `depths` land in one table although their recall was measured against different labels or settings — also refuse a mismatch of `reference_judge` and `k` (and print the depths per file).
+- **F4** `worth-fixing` — `backend/tests/core/test_eval_results.py:97-102` — `test_repository_result_files_load_as_no_header` globs `evals/*/results/**/*.json`, which includes the gitignored `results/dev/`, and asserts no header → the first local `evaluate --split dev` in spec 017, or any newly committed headed result, breaks the test for every developer or in CI — check only the legacy files (an explicit list or `git ls-files`), or assert that each file loads and `read_header` gives `None` or a dict.
+- **F5** `worth-fixing` — `backend/tests/retrieval/evaluation/test_judging.py:120` — the blind-input check searches for `str(BASE)` = `9000000000`, which no post ID (`9000000001…`) contains → printing every X ID in the inputs (mutation) stays green, so AC12's blind inputs are unproven (the code itself prints no X ID) — assert that no corpus or mapping `str(x_id)` appears in any input file.
+- **F6** `worth-fixing` — `backend/tests/retrieval/evaluation/test_pooling.py:150` — no test has claimed posts push an unclaimed post past the smaller depth → pooling at `min(depths)` (mutation) stays green — claim ~15 top posts, pool with `[20, 30]`, assert a post at rank 21–30 is pooled.
+- **F7** `worth-fixing` — `backend/tests/retrieval/evaluation/test_runner_v2.py:237` — `test_depths_above_fifty_run_their_own_search` checks only the rows' depths → collapsing every depth into one leg group (mutation) stays green — assert the number of searches and the leg depth passed to each.
+- **F8** `worth-fixing` — `backend/tests/retrieval/evaluation/test_runner_v2.py:185` — nothing proves the free slice is searched without filters → adding `sources_only` to the free search (mutation) stays green — give a free query a relevant off-list post and assert it reaches the free top 10.
+- **F9** `worth-fixing` — `backend/tests/retrieval/evaluation/test_players.py:203` — `test_splits_are_seeded_and_cover_both_slices` builds one player, so `round(0.3 × 1) = 0` and it is always `test` → an unseeded split (mutation) stays green and both slices are never shown — seed ~10 players, assert a fixed assignment for the seed and both splits present.
+- **F10** `worth-fixing` — `backend/tests/retrieval/evaluation/test_judging.py:307` — the `--query-sample` test checks only the count → an unseeded sample (mutation) stays green, though spec 017's pilot needs a reproducible sample — export twice with one seed and compare the sampled IDs, once with another seed.
+- **F11** `worth-fixing` — `backend/tests/test_session_judge.py:100` — the retrieval tests never check the system prompt's reply format → a retrieval run sent the presser format (mutation) stays green — assert the retrieval `REPLY_FORMAT` (`labels`) is in the `--system-prompt` argument and `claims` is not.
+- **F12** `nit` — `backend/app/retrieval/evaluation/runner.py:424-426` — the header's `relevance_prompts` reads the current prompt files, not the versions the labels were made with (recorded only in `mapping.json`) → a prompt bumped between `import-judge` and `evaluate` misstates what produced the labels — record the export's prompt versions with the imported labels and copy them into the header, or rename the field.
+- **F13** `nit` — `backend/app/retrieval/evaluation/judging.py:70-71` — only continuation lines of a post body are indented → a post whose text starts with `[P31]` matches the script's `^\[(P\d+)\]` and adds a phantom ID, so the verdict is rejected on every run — indent the whole body.
+- **F14** `nit` — `backend/app/retrieval/evaluation/cli.py:512-527` — `import-judge` ignores `mapping.json`'s `for_judge` and accepts `--judge-model owner` → labels stored under the wrong judge, or a judge named `owner` whose entries a later `review` answer drops — refuse a `for_judge` mismatch and the name `owner`.
+- **F15** `nit` — `backend/app/retrieval/evaluation/dataset.py:189` — `load_manifest` runs outside the `try` that turns errors into `SetError` → a malformed `set.json` crashes `review`/`carry-v1` with a traceback — move it inside the `try`.
+- **F16** `nit` — `backend/app/retrieval/evaluation/compare.py:36-55` — a headed result file of another evaluation (presser, corroboration) passes `load_runs` → `KeyError` traceback instead of `error:` — refuse a header without `split` or a file without the `free` key, naming the file.
+
+Rejected:
+
+- "AC6 says existing corroboration tests pass unchanged, but `evaluation/test_cases.py` changed its monkeypatch target" — it is recorded in the step 2 deviation and changes no behaviour; it is not a defect.
+
+Left out: 37 nit findings
