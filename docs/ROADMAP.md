@@ -63,21 +63,25 @@ and each LLM step that produces data has an evaluation set with recorded results
       path, a trial of a parallel test run; one PR each, in this order, fast path except the
       test-run trial (a development dependency, approved by the owner)
       (BACKLOG #38–#42; [audit](reports/code-audit-2026-10.md))
-- [ ] Retrieval evaluation report on the GW6 window: the owner's review of set v1 extended
-      with queries from the GW6 deadline window, the comparison of modes (full-text, vector,
-      hybrid) and embedding models, the default-model ADR, a decision on reranking
-      (BACKLOG #16), a results section in the README (tooling and set v1 come with spec 006);
-      a slice shaped like the production query, full-text for names with an initial, pooling
-      that follows new models and posts, self-describing result files and the retrieval
-      evaluation's own entry point (BACKLOG #43–#46); before the next item, because the
-      corroboration judge reads retrieval's output (spec: [016](../specs/016-retrieval-evaluation-tooling/SPEC.md)) — **portfolio MVP**
+- [ ] Retrieval evaluation report on the GW6 window, in two specs. Spec 016 (tooling, done):
+      set v2 with a slice shaped like the production query, query variants for names with an
+      initial, recall at the judge's cut, pooling that follows new models and posts, the
+      session judge for relevance with the owner's blind review, self-describing result files
+      and the evaluation's own entry point (BACKLOG #43–#45, #48 and the header of #46)
+      (spec: [016](../specs/016-retrieval-evaluation-tooling/SPEC.md)). Spec 017 (the run, open):
+      the GW6 corpus and queries, the judge pilot and the owner's review, the comparison of
+      modes (full-text, vector, hybrid), embedding models, query variants and depths, the
+      default-model ADR, a decision on reranking (BACKLOG #16), the production query and the
+      alert window (BACKLOG #53) and a results section in the README (spec: TBD, number
+      017); before the next item, because the corroboration judge reads retrieval's output —
+      **portfolio MVP**
 - [ ] Extraction and corroboration evaluation v2 on the GW6 window: real pre-deadline leaks
       in the extraction set, the rehearsal e-mail cases added before the prompt fixes, the
       model comparison re-run and the default model revisited (ADR 0006); the owner's review of
       the corroboration judge set v1 and a pass threshold for the judge, `contradicts` cases in
       the judge set and the judge evaluation re-run on the retrieval chosen above; the
       extraction evaluation's own entry point and the session judge for other schemas
-      (BACKLOG #12, #23, #46, #47, #48) (spec: TBD, planned as 017)
+      (BACKLOG #12, #23, #46 (the extraction entry point), #47) (spec: TBD, planned as 018)
 - [ ] README rewritten for the portfolio once the two evaluations above have results: what
       it does and why, an architecture diagram, a results table linking the reports, the
       engineering process (specs, ADRs, evaluation, tracing), a sample presser on made-up

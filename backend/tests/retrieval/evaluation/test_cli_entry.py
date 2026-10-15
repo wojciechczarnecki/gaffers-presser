@@ -16,6 +16,23 @@ def test_main_cli_keeps_index_status_search_only():
     assert names(main_app) == {"index", "status", "search"}
 
 
+def test_evaluation_cli_has_exactly_the_commands():
+    assert names(evaluation_app) == {
+        "export-corpus",
+        "build-queries",
+        "build-player-slice",
+        "carry-v1",
+        "prelabel",
+        "export-judge-inputs",
+        "import-judge",
+        "agreement",
+        "estimate",
+        "review",
+        "evaluate",
+        "compare",
+    }
+
+
 def test_evaluation_cli_help_exits_0():
     result = CliRunner().invoke(evaluation_app, ["--help"])
     assert result.exit_code == 0

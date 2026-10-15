@@ -86,6 +86,91 @@ made it expensive, and what to do instead:
    judge a handful of items with Sonnet (or Opus at a lower `--effort`) as well and compare
    with the owner's `judge-review`; switch when the agreement holds.
 
+## The retrieval procedure
+
+Retrieval's labels come from the session judge too (spec 016; DECISIONS 2026-10-15): the judge
+labels, the owner reviews every disagreement between two judges plus a seeded sample, and every
+run records how far the judge agrees with the owner. The same rules as above apply (the
+versioned prompt, a fresh context per call, blind inputs, a validated schema, the judge named),
+with one change in the unit of a call: **one call per query** (see below). Commands run from
+`backend/` as `python -m app.retrieval.evaluation <command>`; a set lives in a directory
+(`--set`, default `evals/retrieval/v2`) with `corpus.jsonl`, `queries.jsonl` and `set.json`.
+
+**Run the commands that load a corpus against a scratch database.** `evaluate` and
+`export-judge-inputs` drop and recreate the `retrieval_eval` schema in the database
+`DATABASE_URL` names. The Compose database is production (DECISIONS 2026-10-15): only
+`export-corpus` and `build-player-slice` read it, and both are read-only.
+
+```bash
+# 1. Build the set (read-only on the Compose database)
+uv run python -m app.retrieval.evaluation export-corpus --until 2026-10-10T18:30
+uv run python -m app.retrieval.evaluation build-player-slice --gameweek 6 [--window after-last-match]
+uv run python -m app.retrieval.evaluation carry-v1          # v1's queries and labels as the free slice
+
+# 2. Pool and export: the posts nobody has judged yet, for every model, mode and variant
+uv run python -m app.retrieval.evaluation export-judge-inputs --out $SCRATCH/judge \
+    --embedding-model openai/text-embedding-3-small --embedding-model OTHER/MODEL \
+    [--query-sample 20 --seed 1] [--for-judge NAME]
+
+# 3. Estimate, then judge, one headless call per input
+uv run python -m app.retrieval.evaluation estimate --export $SCRATCH/judge
+../scripts/session_judge.sh $SCRATCH/judge/player 6 sonnet retrieval medium
+../scripts/session_judge.sh $SCRATCH/judge/free 6 sonnet retrieval medium
+
+# 4. Import, compare two judges, review blind
+uv run python -m app.retrieval.evaluation import-judge --export $SCRATCH/judge \
+    --judge-model "claude-sonnet-5-5 (Claude Code session)"
+uv run python -m app.retrieval.evaluation agreement --judge NAME_A --judge NAME_B
+uv run python -m app.retrieval.evaluation review --sample 30 --seed 1
+
+# 5. One run per embedding model, then one table
+uv run python -m app.retrieval.evaluation evaluate --split test --reference-judge NAME \
+    --embedding-model MODEL
+uv run python -m app.retrieval.evaluation compare evals/retrieval/results/test-v2-*.json
+```
+
+- **Pooling extends, it never restarts.** `export-judge-inputs` pools what the configured runs
+  would show: for the `player` slice the judge's cut at the largest depth, for every mode,
+  variant and model given; for the `free` slice the top 10 per mode and model. It exports only
+  the posts a query has no judgement for, so a new model costs only its unseen posts. Run it
+  again with `--for-judge NAME` for a second judge: it exports the posts that judge has not
+  labelled, the first judge's included. The cost of embedding the corpus is estimated and
+  summed over the models before any call, and the command stops above `--max-cost-usd`
+  (default 1.00).
+- **One call per query, not per pair.** An input holds one query (the player, the club, the
+  gameweek and its deadline, or the free query) and its unjudged posts under neutral IDs
+  `P1`, `P2`, … in a seeded random order, each with its author and time; the judge labels each
+  post on its own and replies with `{"labels": {"P1": true, ...}}`. A query with more than
+  `--max-posts` (default 30) posts is split into several inputs. This is lesson 5 above: several
+  times fewer tokens than a call per pair and one reading of the player per query; the cost is
+  that the labels of one query are not independent, which the shuffle limits and the report must
+  state. The mapping from neutral IDs to X IDs is `mapping.json` in the export directory, outside
+  every `inputs/` directory.
+- **Estimate before every run** (lesson 1): `estimate` prints the calls and the tokens of an
+  export, characters / 4 plus 3000 tokens of overhead per call, before one call is made.
+  `scripts/session_judge.sh DIR PARALLEL MODEL retrieval [EFFORT]` judges only the inputs
+  without a verdict; a reply that misses a label moves to `raw/<id>.invalid.json` and the next
+  run calls the judge again for that input only.
+- **The pilot.** `--query-sample N --seed S` exports a seeded subset of queries. Judge it with
+  Sonnet at medium effort and with Opus, run `agreement`, and let the owner `review` it: switch
+  to the cheaper judge when its agreement with the owner holds (lesson 6).
+- **The review is blind.** `review` shows every pair the judges disagree on, then a seeded
+  sample of the other pairs, with the player or the query and the post but no judge's label,
+  and stores the owner's answer as a reviewed label beside the judges'. The reference label of
+  a pair is the owner's if there is one, otherwise `--reference-judge`'s; each run's header
+  records the reference judge, the counts of owner-reviewed and judge-only labels and the
+  judge's agreement with the owner on the reviewed pairs. An evaluation with no label from the
+  reference judge or the owner refuses to run.
+- **Read the unjudged share.** Every table reports the share of the shown posts (the judge's
+  cut, or the top 10) with no reference label; a configuration with a high share is measured
+  on a pool that never contained its results.
+- **Corpus bound.** `carry-v1` needs v1's judged posts in the v2 corpus, so export it without
+  `--since`, or with one no later than v1's earliest post; only `--until` ends it at the deadline.
+- **Windows.** `build-player-slice --window alerts` (default) measures production as it is;
+  `after-last-match` starts after the previous gameweek's last match (its latest kickoff plus
+  two hours). Under either rule a claimed post published before that end is flagged stale, and
+  the run reports stale claims and stale anchors.
+
 ## Other evaluations
 
 The corroboration judge (`app/corroboration/evaluation/`) and extraction have no
@@ -94,3 +179,6 @@ with the owner's reviewed labels, so a judge is only needed where a model pre-la
 To judge in the session there, add the same three pieces to that evaluation's CLI: a flag
 that skips the API judge, an export of the prompt and the exact rendered input per item,
 and an import that validates the verdicts with the judge's schema and recomputes the totals.
+
+`scripts/session_judge.sh` takes the verdict schema as its fourth argument (`presser`, the
+default, or `retrieval`), so another evaluation adds a schema there instead of a script.

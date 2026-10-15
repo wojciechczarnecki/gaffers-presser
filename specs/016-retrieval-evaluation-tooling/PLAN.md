@@ -919,7 +919,7 @@ watches them fail for the expected reason, and then writes the code.
       and lint.
       `iterations: 0`
 
-- [ ] 19. **The command list and the documents (AC18, AC19).** Files:
+- [x] 19. **The command list and the documents (AC18, AC19).** Files:
       - `backend/tests/retrieval/evaluation/test_cli_entry.py`;
       - `docs/EVALUATION.md`, a new section "The retrieval procedure". It covers:
         - the command sequence: build (`export-corpus`, `build-player-slice`, `carry-v1`),
@@ -972,6 +972,7 @@ watches them fail for the expected reason, and then writes the code.
       `uv run pytest -q tests/test_docs.py tests/test_readme.py tests/retrieval/evaluation/test_cli_entry.py tests/test_module_boundaries.py`
       and lint. Then `git diff main -- backend/tests/test_module_boundaries.py` must be
       empty, so AC18 adds no new edge.
+      `iterations: 0`
 
 - [ ] 20. **Full verification and the roadmap tick.** Files: `docs/ROADMAP.md`. Spec 016's
       tooling part is noted as done in the retrieval item, and the item stays open because
