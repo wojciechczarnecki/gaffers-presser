@@ -122,7 +122,8 @@ fallback `google/gemini-3.1-flash-lite`; a model needs a row in `backend/app/llm
 the optional Langfuse Cloud keys `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST`
 (without them extraction runs untraced) and `USD_PLN_RATE` (only `evaluate` reads it).
 `uv run python -m app.worker status` then also shows the model, the fallback, the posts waiting,
-the failed posts and the latest extraction.
+the failed posts (those the loop still retries apart from those it gave up on) and the latest
+extraction.
 
 ```bash
 uv run python -m app.extraction --help

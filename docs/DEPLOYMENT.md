@@ -82,9 +82,10 @@ below; agents never touch production.
      Without both keys extraction still runs, untraced, and the worker logs one warning.
    - `USD_PLN_RATE` — only the evaluation command needs it; the worker does not.
    `python -m app.worker status` then prints `Extraction:` with the model, the fallback, the
-   posts waiting, the failed posts and the latest extraction. New posts are extracted oldest
-   first within seconds of being stored, in their own thread, so a slow provider never delays
-   tweet polls or FPL jobs; a failed post is stored as `failed` and never blocks the rest.
+   posts waiting, the failed posts (still retried, given up) and the latest extraction. New
+   posts are extracted newest first within seconds of being stored, in their own thread, so a
+   slow provider never delays tweet polls or FPL jobs; a failed post is stored as `failed`,
+   never blocks the rest and is retried after 10 minutes, up to 5 extractions in total.
    Re-extraction and evaluation run from a shell with the production variables, or locally:
    `python -m app.extraction reextract --failed`, `python -m app.extraction prelabel`,
    `python -m app.extraction evaluate --split dev --model <OpenRouter model ID>`,
