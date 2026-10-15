@@ -668,7 +668,7 @@ watches them fail for the expected reason, and then writes the code.
       `uv run pytest -q tests/retrieval/evaluation tests/retrieval/test_search.py` and lint.
       `iterations: 0`
 
-- [ ] 8. **Query variants (AC5).** Files: new `backend/app/retrieval/variants.py` and new
+- [x] 8. **Query variants (AC5).** Files: new `backend/app/retrieval/variants.py` and new
       `backend/tests/retrieval/test_variants.py`.
 
       Tests:
@@ -683,6 +683,7 @@ watches them fail for the expected reason, and then writes the code.
         `(season, fpl_id)`, and gives `None` for an unknown player.
 
       Automatic verification: `uv run pytest -q tests/retrieval/test_variants.py` and lint.
+      `iterations: 0`
 
 - [ ] 9. **Corroboration builds its query through the variant constant (AC6).** Files:
       `backend/app/corroboration/sources.py` and
