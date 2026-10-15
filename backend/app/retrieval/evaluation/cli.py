@@ -4,10 +4,12 @@ from typing import Annotated
 
 import typer
 from langchain_core.language_models import BaseChatModel
+from sqlmodel import Session
 
 from app.core.errors import AppError
 from app.core.eval_results import ResultExistsError, check_new_result
 from app.core.local_time import format_local, parse_local
+from app.fpl.calendar import current_season
 from app.llm.chat import structured_kwargs_for
 from app.llm.pricing import load_prices
 from app.llm.structured import StructuredCaller
@@ -23,6 +25,7 @@ from app.retrieval.evaluation.dataset import (
     CorpusPost,
     FreeQuery,
     Judgement,
+    PlayerQuery,
     Query,
     SetError,
     SetManifest,
@@ -37,6 +40,7 @@ from app.retrieval.evaluation.dataset import (
 )
 from app.retrieval.evaluation.labelling import prelabel
 from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL
+from app.retrieval.evaluation.players import build_player_slice
 from app.retrieval.evaluation.queries import (
     QueryCounts,
     build_queries,
@@ -50,6 +54,7 @@ from app.retrieval.evaluation.runner import (
     run_evaluation,
     write_result,
 )
+from app.retrieval.variants import has_initial
 
 app = typer.Typer(
     add_completion=False,
@@ -160,6 +165,50 @@ def build_queries_command(
             typer.echo(f"  {origin} {language}: {count}")
     typer.echo(f"skipped posts: {result.skipped_posts}")
     typer.echo(f"total cost: {_cost(caller.cost_usd)}")
+
+
+@app.command(name="build-player-slice", help="Build the player queries for a gameweek deadline.")
+def build_player_slice_command(
+    ctx: typer.Context,
+    gameweek: Annotated[int, typer.Option("--gameweek", min=1, help="The deadline's gameweek.")],
+    season: Annotated[str | None, typer.Option("--season")] = None,
+    window: Annotated[
+        str, typer.Option("--window", help="alerts (default) or after-last-match.")
+    ] = "alerts",
+    seed: Annotated[int, typer.Option("--seed")] = 6,
+    set_dir: Annotated[Path, typer.Option("--set", help="The set directory.")] = DEFAULT_SET_DIR,
+    force: Annotated[bool, typer.Option("--force", help="Replace the player queries.")] = False,
+) -> None:
+    if window not in ("alerts", "after-last-match"):
+        raise fail("--window must be alerts or after-last-match")
+    deps = get_deps(ctx)
+    engine = db_engine(deps)
+    queries_path = set_dir / QUERIES_FILE
+    existing = load_queries(queries_path) if queries_path.exists() else []
+    if any(isinstance(query, PlayerQuery) for query in existing) and not force:
+        raise fail(f"{queries_path} already holds player queries; pass --force to replace them")
+    try:
+        chosen = season
+        if chosen is None:
+            with Session(engine) as session:
+                chosen = current_season(session)
+        if chosen is None:
+            raise fail("the database has no season")
+        built = build_player_slice(engine, chosen, gameweek, window, seed)
+    except EvaluationError as exc:
+        raise fail(str(exc)) from None
+    kept = [query for query in existing if not isinstance(query, PlayerQuery)]
+    write_queries(queries_path, [*built, *kept])
+    claimed = [post for query in built for post in query.claimed]
+    typer.echo(f"player queries: {len(built)} written to {queries_path}")
+    typer.echo(f"claimed posts: {len(claimed)}  stale: {sum(post.stale for post in claimed)}")
+    typer.echo(f"players with an initial: {sum(has_initial(q.player.web_name) for q in built)}")
+    corpus_path = set_dir / CORPUS_FILE
+    if corpus_path.exists():
+        sources = {post.x_id for post in load_corpus(corpus_path) if post.is_source}
+        outside = sum(1 for post in claimed if post.x_id not in sources)
+        if outside:
+            typer.echo(f"warning: {outside} claimed posts are not source posts of the corpus")
 
 
 @app.command(

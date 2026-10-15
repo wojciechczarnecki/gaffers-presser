@@ -1,12 +1,29 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import create_engine
 from sqlmodel import Session
+from typer.testing import CliRunner
 
+from app.corroboration.schemas import PlayerRef
+from app.corroboration.sources import sql_claims
 from app.fpl.models.reference import Fixture
-from app.retrieval.evaluation.dataset import EvaluationError
-from app.retrieval.evaluation.players import gameweek_window
-from tests.corroboration.helpers import SEASON, seed_reference
+from app.retrieval.evaluation.cli import app
+from app.retrieval.evaluation.dataset import (
+    CorpusPost,
+    EvaluationError,
+    FreeQuery,
+    Judgement,
+    PlayerQuery,
+    load_queries,
+    write_corpus,
+    write_queries,
+)
+from app.retrieval.evaluation.players import build_player_slice, gameweek_window
+from tests.corroboration.helpers import ISAK, SAKA, SEASON, add_extraction, seed_reference
+from tests.retrieval.helpers import add_tweet
+from tests.retrieval.test_cli import _deps
+from tests.tweets.membership_helpers import set_members
 
 D5 = datetime(2026, 9, 26, 17, 30, tzinfo=UTC)
 D6 = datetime(2026, 10, 3, 17, 30, tzinfo=UTC)
@@ -75,3 +92,173 @@ def test_an_unknown_gameweek_is_an_error(db):
     seed_reference(db, {6: D6})
     with pytest.raises(EvaluationError, match="gameweek 9"):
         window(db, "alerts", gameweek=9)
+
+
+LAST_KICKOFF = datetime(2026, 9, 29, 19, 0, tzinfo=UTC)
+LAST_END = LAST_KICKOFF + timedelta(hours=2)
+LINEUP_AT = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
+IN_WINDOW = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
+
+
+def world(db, deadlines=None):
+    seed_reference(db, deadlines or {5: D5, 6: D6})
+    add_fixture(db, 1, 5, datetime(2026, 9, 27, 14, 0, tzinfo=UTC))
+    add_fixture(db, 2, 5, LAST_KICKOFF)
+    set_members(db, ["listed"])
+
+
+def claim(db, x_id, when, player=SAKA, author="listed"):
+    add_tweet(db, x_id, f"post {x_id}", created_at=when, author=author)
+    add_extraction(db, x_id, player)
+
+
+def build(db, rule="alerts"):
+    return build_player_slice(db, SEASON, 6, rule, seed=1)
+
+
+def test_a_player_claimed_twice_gives_one_query_with_two_claimed_ids(db):
+    world(db)
+    claim(db, 1, IN_WINDOW)
+    claim(db, 2, IN_WINDOW + timedelta(hours=1))
+    queries = build(db)
+    assert [q.id for q in queries] == ["p-gw6-1"]
+    assert [c.x_id for c in queries[0].claimed] == [1, 2]
+    assert queries[0].player.web_name == "Saka"
+    assert queries[0].player.team == "Arsenal"
+    assert (queries[0].gameweek, queries[0].window_end) == (6, D6)
+
+
+def test_a_post_outside_the_window_is_not_claimed(db):
+    world(db)
+    claim(db, 1, IN_WINDOW)
+    claim(db, 2, D6 + timedelta(hours=1))
+    claim(db, 3, D5 - timedelta(hours=1))
+    assert [c.x_id for c in build(db)[0].claimed] == [1]
+
+
+def test_an_off_list_post_is_not_a_source(db):
+    world(db)
+    claim(db, 1, IN_WINDOW)
+    claim(db, 2, IN_WINDOW, author="other")
+    assert [c.x_id for c in build(db)[0].claimed] == [1]
+
+
+def test_a_player_with_no_event_gets_no_query(db):
+    world(db)
+    claim(db, 1, IN_WINDOW)
+    add_tweet(db, 2, "no player here", created_at=IN_WINDOW, author="listed")
+    add_extraction(db, 2, None)
+    claim(db, 3, IN_WINDOW, player=None)
+    assert [q.player.fpl_id for q in build(db)] == [SAKA]
+
+
+def test_a_lineup_before_the_last_match_is_stale_under_alerts_and_outside_after_last_match(db):
+    world(db)
+    claim(db, 1, LINEUP_AT)
+    claim(db, 2, IN_WINDOW)
+    alerts = build(db, "alerts")[0]
+    assert [(c.x_id, c.stale) for c in alerts.claimed] == [(1, True), (2, False)]
+    after = build(db, "after-last-match")[0]
+    assert [(c.x_id, c.stale) for c in after.claimed] == [(2, False)]
+    assert after.window_start == LAST_END
+    assert after.window_rule == "after-last-match"
+
+
+def test_a_window_longer_than_the_lookback_starts_at_the_deadline_minus_the_lookback(db):
+    world(db, {5: D6 - timedelta(days=14), 6: D6})
+    claim(db, 1, D6 - timedelta(days=10))
+    claim(db, 2, D6 - timedelta(days=6))
+    queries = build(db)
+    assert queries[0].window_start == D6 - timedelta(days=7)
+    assert [c.x_id for c in queries[0].claimed] == [2]
+
+
+def test_claimed_ids_equal_sql_claims(db):
+    world(db)
+    claim(db, 1, LINEUP_AT)
+    claim(db, 2, IN_WINDOW)
+    claim(db, 3, IN_WINDOW, player=ISAK)
+    claim(db, 4, IN_WINDOW, author="other")
+    queries = build(db)
+    assert len(queries) == 2
+    for query in queries:
+        ref = PlayerRef(SEASON, query.player.fpl_id, query.player.web_name, query.player.team)
+        with Session(db) as session:
+            expected = {c.post.x_id for c in sql_claims(session, ref, D5, D6)}
+        assert {c.x_id for c in query.claimed} == expected
+
+
+def test_builder_runs_on_a_read_only_connection(db):
+    world(db)
+    claim(db, 1, IN_WINDOW)
+    read_only = create_engine(
+        db.url, connect_args={"options": "-c default_transaction_read_only=on"}
+    )
+    try:
+        assert len(build_player_slice(read_only, SEASON, 6, "alerts", seed=1)) == 1
+    finally:
+        read_only.dispose()
+
+
+def test_splits_are_seeded_and_cover_both_slices(db):
+    world(db)
+    for n in range(10):
+        add_tweet(db, 100 + n, f"post {n}", created_at=IN_WINDOW, author="listed")
+        add_extraction(db, 100 + n, SAKA if n == 0 else None)
+    seed_players = build(db)
+    assert seed_players[0].split in ("dev", "test")
+    again = build_player_slice(db, SEASON, 6, "alerts", seed=1)
+    assert [q.split for q in again] == [q.split for q in seed_players]
+
+
+def test_the_cli_writes_player_queries_keeps_free_ones_and_refuses_existing(db, tmp_path):
+    world(db)
+    claim(db, 1, LINEUP_AT)
+    claim(db, 2, IN_WINDOW)
+    free = FreeQuery(
+        id="q-1",
+        text="x",
+        language="en",
+        origin="post",
+        source_x_id=None,
+        event=None,
+        split="test",
+        judgements=[Judgement(x_id=1, relevant=True, reviewed=False, labelled_by="m")],
+    )
+    write_queries(tmp_path / "queries.jsonl", [free])
+    write_corpus(
+        tmp_path / "corpus.jsonl",
+        [
+            CorpusPost(
+                x_id=1,
+                author_handle="listed",
+                text="t",
+                created_at=LINEUP_AT,
+                is_repost=False,
+                is_reply=False,
+                is_source=True,
+            )
+        ],
+    )
+    args = ["build-player-slice", "--gameweek", "6", "--set", str(tmp_path)]
+    result = CliRunner().invoke(app, args, obj=_deps(db))
+    assert result.exit_code == 0, result.output
+    assert "player queries: 1" in result.stdout
+    assert "claimed posts: 2  stale: 1" in result.stdout
+    assert "players with an initial: 0" in result.stdout
+    assert "1 claimed posts are not source posts" in result.stdout
+    loaded = load_queries(tmp_path / "queries.jsonl")
+    assert [type(q) for q in loaded] == [PlayerQuery, FreeQuery]
+    assert loaded[1] == free
+
+    again = CliRunner().invoke(app, args, obj=_deps(db))
+    assert again.exit_code == 1
+    assert "--force" in again.stderr
+    forced = CliRunner().invoke(
+        app, [*args, "--force", "--window", "after-last-match"], obj=_deps(db)
+    )
+    assert forced.exit_code == 0, forced.output
+    assert [c.x_id for c in load_queries(tmp_path / "queries.jsonl")[0].claimed] == [2]
+
+    bad = CliRunner().invoke(app, [*args, "--window", "nonsense"], obj=_deps(db))
+    assert bad.exit_code == 1

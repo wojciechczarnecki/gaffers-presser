@@ -727,7 +727,7 @@ watches them fail for the expected reason, and then writes the code.
       `uv run pytest -q tests/retrieval/evaluation/test_players.py` and lint.
       `iterations: 0`
 
-- [ ] 11. **The player-slice builder and `build-player-slice` (AC3).** Files:
+- [x] 11. **The player-slice builder and `build-player-slice` (AC3).** Files:
       `backend/app/retrieval/evaluation/players.py` (`build_player_slice(engine, season,
       gameweek, rule, seed) -> list[PlayerQuery]`), `backend/app/retrieval/evaluation/cli.py`
       (`build-player-slice --gameweek N [--season] [--window alerts|after-last-match]
@@ -756,6 +756,7 @@ watches them fail for the expected reason, and then writes the code.
 
       Automatic verification:
       `uv run pytest -q tests/retrieval/evaluation/test_players.py` and lint.
+      `iterations: 0`
 
 - [ ] 12. **Player-slice and reference-label metrics (AC7, the numbers; the AC14 label
       rule).** Files: new `backend/app/retrieval/evaluation/player_metrics.py` (the cut,
