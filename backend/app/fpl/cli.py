@@ -10,7 +10,7 @@ from sqlalchemy import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 from app.core.settings import load_settings, parse_league_ids
 from app.db.engine import make_engine
 from app.db.locks import acquire_job_lock
@@ -56,7 +56,7 @@ def _deps_from_settings() -> Deps:
     logging.basicConfig(level=logging.INFO)
     try:
         settings = load_settings()
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     return Deps(
         engine=make_engine(settings.database_url),
@@ -75,7 +75,7 @@ def transaction(deps: Deps) -> Iterator[Session]:
         with Session(deps.engine) as session, session.begin():
             acquire_job_lock(session)
             yield session
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     except SQLAlchemyError as exc:
         raise fail(f"database error ({type(exc).__name__})") from None

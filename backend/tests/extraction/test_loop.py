@@ -8,7 +8,7 @@ from app.extraction.loop import ExtractionLoop
 from app.extraction.models import Extraction
 from app.extraction.schemas import ExtractionOutput
 from app.extraction.service import ExtractionRuntime
-from app.extraction.store import RETRY_AFTER, current_extraction
+from app.extraction.store import RETRY_AFTER, current_extractions
 from app.llm.chat import ChatModelSpec
 from app.tweets.models import Tweet
 from tests.extraction.fakes import FakeChatModel
@@ -215,7 +215,7 @@ def test_failed_post_is_retried_after_ten_minutes_and_becomes_current(db):
     assert [row.status for row in rows] == ["failed", "extracted"]
     assert rows[1].started_at - rows[0].finished_at >= timedelta(minutes=10)
     with Session(db) as session:
-        assert current_extraction(session, 1).extraction_id == rows[1].id
+        assert [c.extraction_id for c in current_extractions(session, x_ids=[1])] == [rows[1].id]
 
 
 def test_db_error_survives_iteration(db, monkeypatch, caplog):

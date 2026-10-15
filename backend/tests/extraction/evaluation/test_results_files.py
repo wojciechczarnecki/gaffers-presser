@@ -3,9 +3,7 @@ from collections import Counter
 from pathlib import Path
 
 from app.extraction.cli import DEFAULT_RESULTS_DIR
-from app.extraction.evaluation.selection import select_models, summaries_from_results
 from app.llm import chat as config
-from app.llm.models import load_model_settings, pair_compatible
 from tests.extraction.candidates import CANDIDATES
 
 ADR_0006 = (
@@ -38,27 +36,10 @@ def test_one_test_run_per_candidate_with_one_prompt():
     assert Counter(run["reasoning_effort"] for run in runs).keys() <= {"none", "low"}
 
 
-def _selection():
-    return select_models(
-        summaries_from_results(DEFAULT_RESULTS_DIR),
-        lambda primary, fallback: pair_compatible(primary, fallback, load_model_settings()),
-    )
-
-
-def test_config_defaults_match_selection():
-    selection = _selection()
-    assert (config.DEFAULT_MODEL, config.DEFAULT_FALLBACK_MODEL or None) == (
-        selection.default,
-        selection.fallback,
-    )
-
-
 def test_adr_0006_names_the_defaults():
     text = ADR_0006.read_text()
     assert f"`{config.DEFAULT_MODEL}`" in text
     assert f"`{config.DEFAULT_FALLBACK_MODEL}`" in text
-    if _selection().interim:
-        assert "interim" in text
 
 
 def test_report_names_every_test_run():

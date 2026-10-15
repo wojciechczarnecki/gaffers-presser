@@ -1,9 +1,9 @@
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 
 
-class NoFactsError(CollectorError):
+class NoFactsError(AppError):
     pass
 
 
-class FactSheetError(CollectorError):
+class FactSheetError(AppError):
     pass

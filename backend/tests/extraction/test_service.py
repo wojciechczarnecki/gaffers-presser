@@ -14,7 +14,7 @@ from app.extraction.service import (
     extract_post,
     load_reference_files,
 )
-from app.extraction.store import current_extraction
+from app.extraction.store import current_extractions
 from app.llm.chat import ChatModelSpec
 from app.llm.pricing import Price, load_prices
 from app.tweets.models import Tweet
@@ -134,8 +134,7 @@ def test_retries_exhausted_stores_failed(db_session):
     assert outcome.status == "failed"
     assert clock.sleeps == list(RETRY_BACKOFF_SECONDS)
 
-    current = current_extraction(db_session, 1)
-    assert current is None  # only "extracted" counts as current
+    assert current_extractions(db_session, x_ids=[1]) == []  # only "extracted" counts as current
 
 
 def test_stop_between_attempts_stores_nothing(db_session):
@@ -155,7 +154,7 @@ def test_stop_between_attempts_stores_nothing(db_session):
     )
 
     assert outcome is None
-    assert current_extraction(db_session, 1) is None
+    assert current_extractions(db_session, x_ids=[1]) == []
 
 
 def test_cost_null_without_price(db_session):
@@ -203,8 +202,7 @@ def test_worker_extraction_records_latency(db_session):
     )
 
     assert outcome is not None
-    current = current_extraction(db_session, 1)
-    assert current is not None
+    [current] = current_extractions(db_session, x_ids=[1])
     # latency is on the stored extraction row; re-read it through the engine directly.
     with Session(db_session.get_bind()) as session:
         row = session.exec(select(Extraction).where(Extraction.id == current.extraction_id)).one()

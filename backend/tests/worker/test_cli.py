@@ -18,6 +18,7 @@ from sqlmodel import Session, select
 from typer.testing import CliRunner
 
 from app.alerts.config import WallClockSlot
+from app.core.shutdown import Shutdown
 from app.db.engine import make_engine
 from app.db.locks import SCHEDULE_LOCK_KEY
 from app.extraction.schemas import ExtractionOutput
@@ -26,7 +27,6 @@ from app.fpl.models import Gameweek, Season
 from app.llm.chat import ChatModelSpec
 from app.tweets.models import TweetPoll
 from app.worker.cli import AlertsSetup, TweetIngest, WorkerDeps, app
-from app.worker.jobs import Shutdown
 from app.worker.models import JobRun
 from app.worker.schedule import Job
 from tests.conftest import BACKEND_DIR, held_advisory_lock

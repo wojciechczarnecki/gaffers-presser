@@ -5,11 +5,11 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.clock import Clock, StopAwareClock
+from app.core.shutdown import Shutdown
 from app.retrieval.embedder import Embedder
 from app.retrieval.indexing import IndexingRuntime, embed_post
 from app.retrieval.store import next_unembedded
 from app.retrieval.tracing import make_tracer
-from app.worker.jobs import Shutdown
 
 logger = logging.getLogger(__name__)
 

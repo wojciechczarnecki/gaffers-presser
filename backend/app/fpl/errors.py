@@ -1,19 +1,19 @@
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 
 
-class FplUnavailableError(CollectorError):
+class FplUnavailableError(AppError):
     pass
 
 
-class FplNotFoundError(CollectorError):
+class FplNotFoundError(AppError):
     pass
 
 
-class JobError(CollectorError):
+class JobError(AppError):
     pass
 
 
-class PayloadError(CollectorError):
+class PayloadError(AppError):
     def __init__(self, endpoint: str, field: str) -> None:
         self.endpoint = endpoint
         self.field = field

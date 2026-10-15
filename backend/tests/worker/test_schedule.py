@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
+from app.fpl.calendar import Calendar, GameweekState
 from app.worker.schedule import (
-    GameweekState,
     Job,
     PlannedAction,
     RunRecord,
@@ -23,8 +23,7 @@ def _state(
     latest_success: dict | None = None,
 ) -> ScheduleState:
     return ScheduleState(
-        season=SEASON,
-        gameweeks=gameweeks,
+        calendar=Calendar(season=SEASON, gameweeks=gameweeks),
         latest=latest or {},
         latest_success=latest_success or {},
     )

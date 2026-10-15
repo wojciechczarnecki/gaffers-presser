@@ -201,11 +201,6 @@ def posts_for_reextract(
     return []
 
 
-def current_extraction(session: Session, x_id: int) -> CurrentExtraction | None:
-    rows = current_extractions(session, x_ids=[x_id])
-    return rows[0] if rows else None
-
-
 def current_extractions(
     session: Session,
     *,

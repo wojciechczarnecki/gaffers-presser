@@ -112,10 +112,6 @@ def load_history(path: Path = HISTORY_PATH) -> list[HistoryEntry]:
     return [HistoryEntry.model_validate_json(line) for line in lines if line.strip()]
 
 
-def write_history(path: Path, entries: Sequence[HistoryEntry]) -> None:
-    _write_lines(path, [entry.model_dump_json() for entry in entries])
-
-
 def composition_problems(cases: Sequence[PresserCase]) -> list[str]:
     problems: list[str] = []
     if not MIN_CASES <= len(cases) <= MAX_CASES:

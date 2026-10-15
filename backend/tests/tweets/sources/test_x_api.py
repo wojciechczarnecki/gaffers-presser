@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import pytest
 
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 from app.tweets.sources.base import (
     MembershipNotSupportedError,
     SourcePayloadError,
@@ -197,7 +197,7 @@ def test_error_paths_never_carry_the_token(caplog, response):
     source = _source(fake)
     try:
         with caplog.at_level("DEBUG"):
-            with pytest.raises(CollectorError) as exc_info:
+            with pytest.raises(AppError) as exc_info:
                 next(source.pages(42))
     finally:
         source.close()

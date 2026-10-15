@@ -11,9 +11,9 @@ from app.alerts.models import Alert, AlertPost
 from app.alerts.render import load_template
 from app.alerts.schemas import AlertDeadline
 from app.alerts.service import build_slot_alert, run_slot
+from app.core.shutdown import Shutdown
 from app.delivery.channels.base import ChannelRejectedError
 from app.delivery.models import DeliveryLog
-from app.worker.jobs import Shutdown
 from tests.alerts.helpers import (
     SEASON,
     alerts_runtime,

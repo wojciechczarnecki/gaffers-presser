@@ -8,7 +8,7 @@ import typer
 from sqlalchemy import Engine
 
 from app.core.clock import Clock, SystemClock
-from app.core.errors import CollectorError, ConfigError
+from app.core.errors import AppError, ConfigError
 from app.core.settings import load_settings
 from app.corroboration.config import CorroborationSettings
 from app.corroboration.evaluation.building import TARGET_SIZE, build_cases
@@ -134,7 +134,7 @@ def build_cases_command(
         judge = deps.make_judge(model)
         embedder = deps.make_embedder()
         prices = deps.prices if deps.prices is not None else load_prices()
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     built = build_cases(deps.engine, embedder, judge, size=size, seed=seed, prices=prices)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -256,7 +256,7 @@ def evaluate(
     cases = load_cases(cases_path)
     try:
         judge = deps.make_judge(chosen_model)
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     try:
         data = run_evaluation(

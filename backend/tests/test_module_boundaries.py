@@ -45,19 +45,105 @@ def test_shared_layer_lives_in_app_llm_and_core():
     }
 
 
-def test_retrieval_imports_nothing_from_extraction():
-    files = list((APP / "retrieval").rglob("*.py"))
-    assert files
-    evaluation = APP / "retrieval" / "evaluation"
-    offenders = []
-    for path, node in _imports("retrieval"):
-        names = (
-            [node.module or ""]
-            if isinstance(node, ast.ImportFrom)
-            else [alias.name for alias in node.names]
-        )
-        if evaluation in path.parents and names == ["app.extraction.store"]:
-            continue
-        if any(name == "app.extraction" or name.startswith("app.extraction.") for name in names):
-            offenders.append(f"{path.relative_to(APP)}:{node.lineno}")
+# The edges each top-level module may import, along the data flow; worker/cli.py is the
+# composition root and may import every module.
+ALLOWED = {
+    "content": set(),
+    "core": set(),
+    "db": set(),
+    "llm": {"core"},
+    "fpl": {"core", "db"},
+    "delivery": {"core", "db", "fpl"},
+    "tweets": {"core", "db", "fpl"},
+    "extraction": {"content", "core", "db", "fpl", "llm", "tweets"},
+    "retrieval": {"content", "core", "db", "extraction", "fpl", "llm", "tweets"},
+    "corroboration": {"content", "core", "db", "extraction", "fpl", "llm", "retrieval", "tweets"},
+    "alerts": {"core", "corroboration", "db", "delivery", "extraction", "fpl", "llm", "tweets"},
+    "presser": {"content", "core", "db", "delivery", "fpl", "llm"},
+    "worker": {"core", "db", "fpl"},
+}
+COMPOSITION_ROOT = APP / "worker" / "cli.py"
+
+
+def _imported_modules(path: Path, node: ast.ImportFrom | ast.Import) -> list[str]:
+    if isinstance(node, ast.Import):
+        return [alias.name for alias in node.names]
+    module = node.module or ""
+    if node.level > 0:
+        package = list(path.relative_to(APP.parent).parent.parts)
+        base = package[: len(package) - node.level + 1]
+        module = ".".join([*base, module] if module else base)
+    if module == "app":
+        return [f"app.{alias.name}" for alias in node.names]
+    return [module]
+
+
+def _edges() -> dict[str, set[tuple[str, str]]]:
+    edges: dict[str, set[tuple[str, str]]] = {}
+    for package in sorted(p.name for p in APP.iterdir() if (p / "__init__.py").exists()):
+        found = edges.setdefault(package, set())
+        for path, node in _imports(package):
+            if path == COMPOSITION_ROOT:
+                continue
+            for name in _imported_modules(path, node):
+                parts = name.split(".")
+                if parts[0] == "app" and len(parts) > 1 and parts[1] != package:
+                    found.add((parts[1], f"{path.relative_to(APP)}:{node.lineno}"))
+    return edges
+
+
+def test_every_module_has_its_allowed_edges():
+    assert set(_edges()) == set(ALLOWED)
+
+
+def test_modules_import_only_allowed_edges():
+    offenders = [
+        f"{where} imports app.{target}"
+        for package, found in _edges().items()
+        for target, where in sorted(found)
+        if target not in ALLOWED.get(package, set())
+    ]
     assert offenders == []
+
+
+def test_allowed_edges_have_no_cycle():
+    visiting: set[str] = set()
+    done: set[str] = set()
+
+    def visit(module: str, path: list[str]) -> None:
+        assert module not in visiting, " -> ".join([*path, module])
+        if module in done:
+            return
+        visiting.add(module)
+        for target in sorted(ALLOWED[module]):
+            visit(target, [*path, module])
+        visiting.remove(module)
+        done.add(module)
+
+    for module in sorted(ALLOWED):
+        visit(module, [])
+
+
+def test_relative_and_package_imports_are_edges():
+    path = APP / "alerts" / "loop.py"
+    found = [
+        _imported_modules(path, ast.parse(source).body[0])
+        for source in (
+            "from app import worker",
+            "from ..worker.jobs import run_job",
+            "from .. import worker",
+            "from .schedule import alert_deadlines",
+        )
+    ]
+    assert found == [["app.worker"], ["app.worker.jobs"], ["app.worker"], ["app.alerts.schedule"]]
+
+
+def test_the_composition_root_imports_the_loops():
+    targets = {
+        name.split(".")[1]
+        for path, node in _imports("worker")
+        if path == COMPOSITION_ROOT
+        for name in _imported_modules(path, node)
+        if name.startswith("app.")
+    }
+    assert {"alerts", "extraction", "presser", "retrieval", "tweets"} <= targets

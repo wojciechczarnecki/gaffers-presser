@@ -11,7 +11,6 @@ from app.alerts.service import (
     AlertsRuntime,
     alert_key,
     alert_window_start,
-    current_season,
     shown_x_ids,
 )
 from app.alerts.store import (
@@ -26,6 +25,7 @@ from app.core.clock import Clock
 from app.corroboration.runtime import sql_only_runtime
 from app.corroboration.service import corroborate
 from app.extraction.store import CurrentExtraction, current_extractions
+from app.fpl.calendar import current_season
 
 logger = logging.getLogger(__name__)
 

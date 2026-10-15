@@ -18,8 +18,8 @@ from app.alerts.schedule import (
 from app.alerts.service import AlertsRuntime, run_slot
 from app.alerts.store import done_slots, with_sent_digest
 from app.core.clock import Clock, StopAwareClock
-from app.worker.jobs import Shutdown
-from app.worker.store import load_state
+from app.core.shutdown import Shutdown
+from app.fpl.calendar import load_calendar
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +43,9 @@ class AlertLoop:
         self._warned: set[tuple[str, str]] = set()
 
     def tick(self) -> float:
-        state = load_state(self._engine)
+        calendar = load_calendar(self._engine)
         deadlines = alert_deadlines(
-            state.season, state.gameweeks, self._runtime.config.rehearsal_deadline
+            calendar.season, calendar.gameweeks, self._runtime.config.rehearsal_deadline
         )
         deadline = next_alert_deadline(deadlines, self._clock.now())
         if deadline is None:

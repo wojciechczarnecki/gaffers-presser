@@ -7,7 +7,6 @@ from app.presser.evaluation.cases import (
     load_cases,
     load_history,
     write_cases,
-    write_history,
 )
 from app.presser.writer import PreviousPresser
 from tests.presser.evaluation.factories import case, valid_set
@@ -26,10 +25,11 @@ def test_round_trip(tmp_path):
     assert not list(tmp_path.glob(".*.tmp"))
 
 
-def test_history_round_trip(tmp_path):
+def test_load_history_skips_blank_lines(tmp_path):
     entries = [HistoryEntry(league="l1", gameweek=2, text="tekst")]
-    write_history(tmp_path / "history.jsonl", entries)
-    assert load_history(tmp_path / "history.jsonl") == entries
+    path = tmp_path / "history.jsonl"
+    path.write_text("".join(entry.model_dump_json() + "\n" for entry in entries) + "\n")
+    assert load_history(path) == entries
 
 
 def test_unknown_field_is_rejected():

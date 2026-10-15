@@ -8,6 +8,7 @@ from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
 from app.core.clock import StopAwareClock
+from app.core.shutdown import Shutdown
 from app.fpl.models import Gameweek, Season
 from app.tweets.loop import TweetPoller, start_poller
 from app.tweets.membership import latest_snapshot
@@ -17,7 +18,6 @@ from app.tweets.sources.base import (
     SourceRateLimitedError,
     SourceUnavailableError,
 )
-from app.worker.jobs import Shutdown
 from tests.tweets.fakes import FakeSource
 from tests.tweets.membership_helpers import set_members
 from tests.tweets.payloads import load

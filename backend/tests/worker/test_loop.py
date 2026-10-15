@@ -7,13 +7,13 @@ from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
 import app.worker.loop as loop_module
+from app.core.shutdown import Shutdown
 from app.fpl.models import (
     DeadlineSnapshotPlayer,
     LeagueStanding,
     ManagerPick,
     PlayerGameweekResult,
 )
-from app.worker.jobs import Shutdown
 from app.worker.loop import Worker
 from app.worker.models import JobRun
 from app.worker.schedule import Job

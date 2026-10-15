@@ -7,13 +7,14 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from app.core.clock import Clock, SystemClock
-from app.core.errors import CollectorError
+from app.core.errors import AppError
 from app.core.local_time import format_local
 from app.core.settings import load_settings, parse_league_ids
 from app.db.engine import make_engine
 from app.delivery.channels import build_channel
 from app.delivery.config import DeliverySettings, resolve_delivery
 from app.delivery.service import DeliveryService
+from app.fpl.calendar import current_season
 from app.llm.pricing import load_prices
 from app.llm.settings import load_llm_settings
 from app.llm.structured import StructuredCaller
@@ -32,7 +33,7 @@ from app.presser.service import (
     generate_presser,
     send_presser,
 )
-from app.presser.store import current_season, presser_status
+from app.presser.store import presser_status
 from app.presser.tracing import make_presser_tracer
 from app.presser.writer import build_writer
 
@@ -81,7 +82,7 @@ def _deps_from_settings() -> PresserCliDeps:
         nicknames = parse_nicknames(settings)
         delivery_config = resolve_delivery(DeliverySettings())
         app_settings = load_settings()
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     engine = make_engine(app_settings.database_url)
     clock = SystemClock()
@@ -96,7 +97,7 @@ def _deps_from_settings() -> PresserCliDeps:
             delivery = DeliveryService(engine, build_channel(delivery_config), clock)
         try:
             league_ids = parse_league_ids(app_settings.fpl_league_ids)
-        except CollectorError:
+        except AppError:
             league_ids = []
         return PresserRuntime(
             writer=build_writer(caller),
@@ -143,7 +144,7 @@ def facts(ctx: typer.Context, league: LeagueOption, gameweek: GameweekOption) ->
     try:
         with Session(deps.engine) as session:
             sheet = build_fact_sheet(session, season, league, gameweek, deps.nicknames)
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(type(exc).__name__ + ": " + str(exc)) from None
     typer.echo(sheet.model_dump_json(indent=2))
 
@@ -160,7 +161,7 @@ def preview(ctx: typer.Context, league: LeagueOption, gameweek: GameweekOption) 
         raise fail(f"no facts: {exc}") from None
     except PresserFailed as exc:
         raise fail(f"the writer failed: {exc}") from None
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(type(exc).__name__ + ": " + str(exc)) from None
     typer.echo(generated.text)
     cost = "unknown" if generated.cost_usd is None else f"${generated.cost_usd:.4f}"
@@ -181,7 +182,7 @@ def send(ctx: typer.Context, league: LeagueOption, gameweek: GameweekOption) -> 
         raise fail(f"no facts: {exc}") from None
     except PresserFailed as exc:
         raise fail(f"the writer failed: {exc}") from None
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(type(exc).__name__ + ": " + str(exc)) from None
     typer.echo("already_sent" if result == "skipped" else result)
     if result == "failed":
@@ -193,7 +194,7 @@ def status(ctx: typer.Context) -> None:
     deps = get_deps(ctx)
     try:
         reason = presser_disabled_reason(deps.settings, delivery=deps.delivery_enabled)
-    except CollectorError as exc:
+    except AppError as exc:
         raise fail(str(exc)) from None
     if reason is None:
         typer.echo(f"Presser: enabled (model={deps.settings.presser_model})")
@@ -201,7 +202,7 @@ def status(ctx: typer.Context) -> None:
         typer.echo(f"Presser: disabled ({reason})")
     try:
         league_ids = parse_league_ids(deps.league_ids_raw)
-    except CollectorError:
+    except AppError:
         league_ids = []
     with Session(deps.engine) as session:
         season = current_season(session)
