@@ -1,3 +1,4 @@
+import random
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
@@ -39,10 +40,17 @@ from app.retrieval.evaluation.dataset import (
     write_manifest,
     write_queries,
 )
+from app.retrieval.evaluation.judging import (
+    DEFAULT_MAX_POSTS,
+    ExportEstimate,
+    estimate_export,
+    export_inputs,
+)
 from app.retrieval.evaluation.labelling import prelabel
 from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL
 from app.retrieval.evaluation.player_metrics import DEFAULT_DEPTHS
 from app.retrieval.evaluation.players import build_player_slice
+from app.retrieval.evaluation.pooling import pool_set
 from app.retrieval.evaluation.queries import (
     QueryCounts,
     build_queries,
@@ -296,6 +304,16 @@ def prelabel_command(
     typer.echo(f"total cost: {_cost(summary.cost_usd)}")
 
 
+def _parse_depths(value: str) -> list[int]:
+    try:
+        depths = [int(part) for part in value.split(",") if part.strip()]
+        if not depths or min(depths) < 1:
+            raise ValueError
+    except ValueError:
+        raise fail("--depths must be positive whole numbers separated by commas") from None
+    return depths
+
+
 @app.command(name="evaluate", help="Report the player slice at the judge's cut and the free slice.")
 def evaluate_command(
     ctx: typer.Context,
@@ -317,12 +335,7 @@ def evaluate_command(
 ) -> None:
     if split not in ("dev", "test"):
         raise fail("--split must be dev or test")
-    try:
-        chosen_depths = [int(part) for part in depths.split(",") if part.strip()]
-        if not chosen_depths or min(chosen_depths) < 1:
-            raise ValueError
-    except ValueError:
-        raise fail("--depths must be positive whole numbers separated by commas") from None
+    chosen_depths = _parse_depths(depths)
     deps = get_deps(ctx)
     try:
         embedder = deps.make_embedder(embedding_model)
@@ -382,6 +395,112 @@ def compare(
     except EvaluationError as exc:
         raise fail(str(exc)) from None
     typer.echo(text)
+
+
+@app.command(
+    name="export-judge-inputs",
+    help="Pool the posts to judge and write one input per query for the session judge.",
+)
+def export_judge_inputs_command(
+    ctx: typer.Context,
+    out: Annotated[Path, typer.Option("--out", help="An empty or new directory.")],
+    embedding_model: Annotated[
+        list[str] | None,
+        typer.Option("--embedding-model", help="Embedding model ID; repeat for several."),
+    ] = None,
+    depths: Annotated[str, typer.Option("--depths", help="Search depths.")] = DEFAULT_DEPTHS_TEXT,
+    max_posts: Annotated[int, typer.Option("--max-posts", min=1)] = DEFAULT_MAX_POSTS,
+    seed: Annotated[int, typer.Option("--seed")] = 6,
+    query_sample: Annotated[
+        int | None, typer.Option("--query-sample", min=1, help="A seeded sample of N queries.")
+    ] = None,
+    split: Annotated[str | None, typer.Option("--split", help="dev or test; default both.")] = None,
+    for_judge: Annotated[
+        str | None,
+        typer.Option("--for-judge", help="Export what this judge has not labelled yet."),
+    ] = None,
+    k: Annotated[int, typer.Option("--k", min=0)] = 60,
+    max_cost_usd: Annotated[float, typer.Option("--max-cost-usd", min=0)] = DEFAULT_MAX_COST_USD,
+    set_dir: Annotated[Path, typer.Option("--set", help="The set directory.")] = DEFAULT_SET_DIR,
+) -> None:
+    if split not in (None, "dev", "test"):
+        raise fail("--split must be dev or test")
+    if out.exists() and any(out.iterdir()):
+        raise fail(f"{out} is not empty")
+    chosen_depths = _parse_depths(depths)
+    deps = get_deps(ctx)
+    try:
+        embedders = [deps.make_embedder(model) for model in (embedding_model or [None])]
+        prices = deps.prices if deps.prices is not None else load_prices()
+        eval_set = load_set(set_dir)
+    except AppError as exc:
+        raise fail(str(exc)) from None
+    except (OSError, ValueError) as exc:
+        raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
+    queries = [q for q in eval_set.queries if split in (None, q.split)]
+    if query_sample is not None and query_sample < len(queries):
+        keep = set(random.Random(seed).sample(range(len(queries)), query_sample))
+        queries = [q for i, q in enumerate(queries) if i in keep]
+    if not queries:
+        raise fail("the set has no queries to export")
+
+    def show_estimate(model: str, estimate: Estimate) -> None:
+        typer.echo(
+            f"estimated embedding {model}: {estimate.tokens} tokens, ${estimate.cost_usd:.6f}"
+        )
+
+    tracer = deps.make_tracer()
+    try:
+        pooled = pool_set(
+            db_engine(deps),
+            eval_set,
+            queries,
+            embedders,
+            depths=chosen_depths,
+            k=k,
+            prices=prices,
+            tracer=tracer,
+            clock=deps.clock,
+            max_cost_usd=max_cost_usd,
+            on_estimate=show_estimate,
+        )
+        summary = export_inputs(
+            queries,
+            pooled,
+            {post.x_id: post for post in eval_set.corpus},
+            out,
+            seed=seed,
+            max_posts=max_posts,
+            for_judge=for_judge,
+            set_dir=set_dir,
+        )
+    except EvaluationError as exc:
+        raise fail(str(exc)) from None
+    finally:
+        tracer.flush()
+    typer.echo(
+        f"inputs: {len(summary.inputs)}  posts: {summary.posts}"
+        f"  queries without new posts: {summary.queries_without_new_posts}"
+    )
+    typer.echo(f"export: {out}")
+    _echo_estimate(estimate_export(out))
+
+
+def _echo_estimate(estimate: ExportEstimate) -> None:
+    for name, item in estimate.slices.items():
+        typer.echo(f"{name}: {item.calls} calls, about {item.tokens} tokens")
+    typer.echo(f"total: {estimate.calls} calls, about {estimate.tokens} tokens")
+
+
+@app.command(name="estimate", help="Print the calls and tokens of an export before judging it.")
+def estimate_command(
+    export: Annotated[Path, typer.Option("--export", help="The export directory.")],
+) -> None:
+    try:
+        estimate = estimate_export(export)
+    except EvaluationError as exc:
+        raise fail(str(exc)) from None
+    _echo_estimate(estimate)
 
 
 REVIEW_ACTIONS = "[a]ccept  [f]lip  [s]kip  [+] add post  [n]ext query  [q]uit"

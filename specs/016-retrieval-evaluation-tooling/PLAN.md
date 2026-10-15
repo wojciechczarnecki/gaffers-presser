@@ -851,7 +851,7 @@ watches them fail for the expected reason, and then writes the code.
       `uv run pytest -q tests/retrieval/evaluation/test_pooling.py` and lint.
       `iterations: 0`
 
-- [ ] 16. **Prompts, `export-judge-inputs` and `estimate` (AC12, the AC13 estimate).** Files:
+- [x] 16. **Prompts, `export-judge-inputs` and `estimate` (AC12, the AC13 estimate).** Files:
       - new `backend/app/content/prompts/retrieval_relevance_player.md` and
         `retrieval_relevance_free.md`;
       - new `backend/app/retrieval/evaluation/judging.py` (`render_input`, `export_inputs`,
@@ -878,6 +878,7 @@ watches them fail for the expected reason, and then writes the code.
 
       Automatic verification: `uv run pytest -q tests/retrieval/evaluation/test_judging.py tests/content`
       and lint.
+      `iterations: 0`
 
 - [ ] 17. **`import-judge` and `agreement` (AC13).** Files: `judging.py` (`import_verdicts`,
       `agreement`), `cli.py` and new `backend/tests/retrieval/evaluation/test_import.py`.
