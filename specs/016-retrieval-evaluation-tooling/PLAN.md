@@ -466,7 +466,7 @@ Every step runs from `backend/`. "Lint" means
 `uv run ruff check . && uv run ruff format --check .`. Each step writes its tests first,
 watches them fail for the expected reason, and then writes the code.
 
-- [ ] 1. **The shared result module (AC16, the module).** Files: new
+- [x] 1. **The shared result module (AC16, the module).** Files: new
       `backend/app/core/eval_results.py` and `backend/tests/core/test_eval_results.py`.
       - Tests:
         - `make_header` holds exactly the eight keys plus the `extra` keys, with `null` for
@@ -489,6 +489,7 @@ watches them fail for the expected reason, and then writes the code.
         through `subprocess.run([...], capture_output=True, text=True, check=False)`, and
         an `OSError` gives `(None, None)`.
       Automatic verification: `uv run pytest -q tests/core/test_eval_results.py` and lint.
+      `iterations: 0`
 
 - [ ] 2. **All seven atomic writes go through the module, and corroboration and extraction
       get the header and the guard (AC16).** Files:
