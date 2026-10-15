@@ -14,6 +14,7 @@ from app.llm.chat import structured_kwargs_for
 from app.llm.pricing import load_prices
 from app.llm.structured import StructuredCaller
 from app.retrieval.cli import RetrievalCliDeps, _cost, db_engine, fail, get_deps
+from app.retrieval.evaluation.compare import format_compare, load_runs
 from app.retrieval.evaluation.dataset import (
     CORPUS_FILE,
     DEFAULT_CORPUS_PATH,
@@ -370,6 +371,17 @@ def evaluate_command(
     typer.echo(format_table(result.free))
     write_result(path, result.data)
     typer.echo(f"result written to {path}")
+
+
+@app.command(help="Print one table from several result files of the same set and split.")
+def compare(
+    files: Annotated[list[Path], typer.Argument(help="Result files written by evaluate.")],
+) -> None:
+    try:
+        text = format_compare(load_runs(files))
+    except EvaluationError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(text)
 
 
 REVIEW_ACTIONS = "[a]ccept  [f]lip  [s]kip  [+] add post  [n]ext query  [q]uit"

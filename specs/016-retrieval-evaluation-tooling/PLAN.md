@@ -815,7 +815,7 @@ watches them fail for the expected reason, and then writes the code.
       Automatic verification: `uv run pytest -q tests/retrieval/evaluation` and lint.
       `iterations: 0`
 
-- [ ] 14. **`compare` (AC10).** Files: new `backend/app/retrieval/evaluation/compare.py`,
+- [x] 14. **`compare` (AC10).** Files: new `backend/app/retrieval/evaluation/compare.py`,
       `cli.py` (`compare FILE...`), and new
       `backend/tests/retrieval/evaluation/test_compare.py`.
 
@@ -830,6 +830,7 @@ watches them fail for the expected reason, and then writes the code.
 
       Automatic verification:
       `uv run pytest -q tests/retrieval/evaluation/test_compare.py` and lint.
+      `iterations: 0`
 
 - [ ] 15. **Pooling (AC11).** Files: new `backend/app/retrieval/evaluation/pooling.py`
       (`pool_ids`, `new_posts`, and `pool_set(engine, eval_set, embedders, depths,
