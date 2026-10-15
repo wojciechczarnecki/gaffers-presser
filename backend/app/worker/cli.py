@@ -511,7 +511,8 @@ def status(ctx: typer.Context) -> None:
         typer.echo(f"  model: {deps.extraction.provider}:{deps.extraction.model}")
         typer.echo(f"  fallback: {deps.extraction.fallback_model or 'none'}")
         typer.echo(f"  posts waiting: {extraction_state.waiting}")
-        typer.echo(f"  failed posts: {extraction_state.failed_posts}")
+        typer.echo(f"  failed posts, retrying: {extraction_state.retrying}")
+        typer.echo(f"  failed posts, given up: {extraction_state.failed_posts}")
         if extraction_state.latest is None:
             typer.echo("  latest extraction: never")
         else:

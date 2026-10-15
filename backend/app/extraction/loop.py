@@ -41,7 +41,7 @@ class ExtractionLoop:
             while not self._stop_event.is_set():
                 try:
                     with Session(self._engine) as session:
-                        post = next_pending(session)
+                        post = next_pending(session, self._clock.now())
                     if post is None:
                         self._clock.sleep(IDLE_POLL_SECONDS)
                         continue

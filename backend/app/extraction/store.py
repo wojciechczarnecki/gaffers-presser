@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy import Engine, and_, text
+from sqlalchemy import Engine, and_, func, or_, text
 from sqlmodel import Session, select
 
 from app.extraction.models import Extraction, ExtractionEvent
@@ -10,6 +10,11 @@ from app.extraction.schemas import LinkedEvent, PostInput
 from app.fpl.models.reference import Player
 from app.tweets.classes import source_post_sql
 from app.tweets.models import Tweet
+
+RETRY_AFTER = timedelta(minutes=10)
+# 5 passes of up to 3 model calls: a post that still fails is left failed until
+# `reextract --failed` is run by hand.
+MAX_EXTRACTIONS = 5
 
 
 @dataclass(frozen=True)
@@ -69,7 +74,8 @@ class LatestExtraction:
 @dataclass(frozen=True)
 class ExtractionStatus:
     waiting: int
-    failed_posts: int
+    failed_posts: int  # given up by the loop; `reextract --failed` takes them
+    retrying: int  # failed so far; the loop takes them back after RETRY_AFTER
     latest: LatestExtraction | None
 
 
@@ -125,13 +131,37 @@ def save_extraction(session: Session, record: ExtractionRecord, events: list[Lin
     return row.id
 
 
-def next_pending(session: Session) -> PostInput | None:
-    extracted_ids = select(Extraction.tweet_x_id).distinct()
+def next_pending(
+    session: Session,
+    now: datetime,
+    retry_after: timedelta = RETRY_AFTER,
+    max_extractions: int = MAX_EXTRACTIONS,
+) -> PostInput | None:
+    history = (
+        select(
+            Extraction.tweet_x_id,
+            func.count().label("extractions"),
+            func.bool_and(Extraction.status == "failed").label("never_extracted"),
+            func.max(Extraction.finished_at).label("last_finished_at"),
+        )
+        .group_by(Extraction.tweet_x_id)
+        .subquery()
+    )
+    # Never-attempted posts go first and newest first, so neither old failures nor a catch-up
+    # backlog delay a fresh leak; a post that never succeeded comes back after `retry_after`.
     tweet = session.exec(
         select(Tweet)
-        .where(Tweet.x_id.not_in(extracted_ids))
+        .outerjoin(history, history.c.tweet_x_id == Tweet.x_id)
+        .where(
+            or_(
+                history.c.tweet_x_id.is_(None),
+                history.c.never_extracted
+                & (history.c.extractions < max_extractions)
+                & (history.c.last_finished_at <= now - retry_after),
+            )
+        )
         .where(text(source_post_sql("tweet")))
-        .order_by(Tweet.created_at, Tweet.x_id)
+        .order_by(history.c.tweet_x_id.is_not(None), Tweet.created_at.desc(), Tweet.x_id.desc())
         .limit(1)
     ).first()
     return _post_from_tweet(tweet) if tweet is not None else None
@@ -294,6 +324,14 @@ def extraction_status(engine: Engine) -> ExtractionStatus:
                 + ") latest WHERE latest.status = 'failed'"
             )
         ).scalar_one()
+        retrying = conn.execute(
+            text(
+                "SELECT count(*) FROM tweet t JOIN (SELECT tweet_x_id FROM extraction"
+                " GROUP BY tweet_x_id HAVING bool_and(status = 'failed') AND count(*) < :max)"
+                f" history ON history.tweet_x_id = t.x_id WHERE {source_post_sql('t')}"
+            ),
+            {"max": MAX_EXTRACTIONS},
+        ).scalar_one()
         latest_row = (
             conn.execute(
                 text(
@@ -314,4 +352,6 @@ def extraction_status(engine: Engine) -> ExtractionStatus:
         if latest_row is not None
         else None
     )
-    return ExtractionStatus(waiting=waiting, failed_posts=failed_posts, latest=latest)
+    return ExtractionStatus(
+        waiting=waiting, failed_posts=failed_posts - retrying, retrying=retrying, latest=latest
+    )
