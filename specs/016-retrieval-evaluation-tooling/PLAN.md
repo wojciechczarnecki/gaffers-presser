@@ -554,7 +554,7 @@ watches them fail for the expected reason, and then writes the code.
       Automatic verification: `uv run pytest -q tests/presser/evaluation` and lint.
       `iterations: 0`
 
-- [ ] 4. **`session_judge.sh` takes the verdict schema (AC15, closes BACKLOG #48).** Files:
+- [x] 4. **`session_judge.sh` takes the verdict schema (AC15, closes BACKLOG #48).** Files:
       `scripts/session_judge.sh` and new `backend/tests/test_session_judge.py`.
 
       Tests, which run the script through `subprocess` with a stub `claude` placed first on
@@ -577,6 +577,7 @@ watches them fail for the expected reason, and then writes the code.
 
       Automatic verification: `uv run pytest -q tests/test_session_judge.py`, lint, and
       `bash -n ../scripts/session_judge.sh`.
+      `iterations: 0`
 
 - [ ] 5. **The evaluation's own entry point, as a move with no behaviour change (AC18, the
       move).** Files:
