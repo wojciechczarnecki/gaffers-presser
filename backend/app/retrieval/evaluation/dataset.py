@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Discriminator, Tag, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, TypeAdapter
 from sqlalchemy import Engine, func
 from sqlmodel import Session, select
 
@@ -51,6 +51,8 @@ class Judgement(BaseModel):
     relevant: bool
     reviewed: bool
     labelled_by: str
+    # The relevance prompt version a session judge's export used; absent from older lines.
+    prompt_version: int | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class QueryEvent(BaseModel):
@@ -186,8 +188,8 @@ def write_manifest(directory: Path, manifest: SetManifest) -> None:
 
 def load_set(directory: Path) -> EvalSet:
     directory = Path(directory)
-    manifest = load_manifest(directory)
     try:
+        manifest = load_manifest(directory)
         corpus = load_corpus(directory / CORPUS_FILE)
         queries = (
             load_queries(directory / QUERIES_FILE) if (directory / QUERIES_FILE).exists() else []

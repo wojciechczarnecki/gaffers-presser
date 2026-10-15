@@ -18,6 +18,23 @@ def judge_entry(judgements: Sequence[Judgement], x_id: int, judge: str) -> Judge
     return found[-1] if found else None
 
 
+def label_prompt_versions(
+    queries: Sequence[AnyQuery], reference_judge: str
+) -> dict[str, list[int]]:
+    # The relevance prompt versions behind the judge labels a run measures against; labels
+    # the owner reviewed carry no prompt.
+    versions: dict[str, set[int]] = {"player": set(), "free": set()}
+    for query in queries:
+        name = "player" if isinstance(query, PlayerQuery) else "free"
+        for x_id in dict.fromkeys(j.x_id for j in query.judgements):
+            if reviewed_entry(query.judgements, x_id) is not None:
+                continue
+            entry = judge_entry(query.judgements, x_id, reference_judge)
+            if entry is not None and entry.prompt_version is not None:
+                versions[name].add(entry.prompt_version)
+    return {name: sorted(found) for name, found in versions.items()}
+
+
 def reference_labels(query: AnyQuery, reference_judge: str) -> dict[int, bool]:
     labels: dict[int, bool] = {}
     for x_id in dict.fromkeys(j.x_id for j in query.judgements):

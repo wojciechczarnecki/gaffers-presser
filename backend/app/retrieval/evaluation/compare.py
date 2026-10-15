@@ -5,6 +5,9 @@ from typing import Any
 from app.core.eval_results import NO_HEADER, read_header
 from app.retrieval.evaluation.dataset import EvaluationError
 
+# Recall is only comparable when measured on the same set, split, labels and fusion constant.
+MATCHING_KEYS = ("set_version", "split", "reference_judge", "k")
+
 
 def _fmt(value: float | None) -> str:
     return "-" if value is None else f"{value:.3f}"
@@ -20,14 +23,17 @@ def load_runs(paths: list[Path]) -> list[tuple[Path, dict[str, Any], dict[str, A
         header = read_header(data)
         if header is None:
             raise EvaluationError(f"{path}: {NO_HEADER}; it cannot be compared")
+        if "split" not in header or not isinstance(data.get("free"), dict):
+            raise EvaluationError(f"{path}: not a result of the retrieval evaluation")
         runs.append((Path(path), data, header))
     first = runs[0][2]
     for path, _, header in runs[1:]:
-        for key in ("set_version", "split"):
+        for key in MATCHING_KEYS:
             if header.get(key) != first.get(key):
                 raise EvaluationError(
                     f"{path}: {key} {header.get(key)!r} differs from {first.get(key)!r}"
-                    f" of {runs[0][0]}; results of different sets or splits are never mixed"
+                    f" of {runs[0][0]}; results measured against different sets, splits,"
+                    " labels or fusion settings are never mixed"
                 )
     return runs
 
@@ -35,6 +41,9 @@ def load_runs(paths: list[Path]) -> list[tuple[Path, dict[str, Any], dict[str, A
 def format_compare(runs: list[tuple[Path, dict[str, Any], dict[str, Any]]]) -> str:
     first = runs[0][2]
     lines = [f"set {first['set_version']}  split {first['split']}  files {len(runs)}"]
+    for path, _, header in runs:
+        depths = ",".join(str(depth) for depth in header.get("depths") or []) or "-"
+        lines.append(f"  {path.name}  model {header['model']}  depths {depths}")
     player = [(h["model"], d["player"]["rows"]) for _, d, h in runs if d.get("player")]
     if any(rows for _, rows in player):
         lines.append("")

@@ -6,7 +6,6 @@ from typing import Any
 
 from sqlalchemy import Engine
 
-from app.content import load_prompt
 from app.core.clock import Clock
 from app.core.eval_results import make_header, write_json_atomic
 from app.core.retry import with_retries
@@ -19,7 +18,12 @@ from app.retrieval.evaluation.dataset import (
     FreeQuery,
     PlayerQuery,
 )
-from app.retrieval.evaluation.labels import AnyQuery, label_counts, reference_labels
+from app.retrieval.evaluation.labels import (
+    AnyQuery,
+    label_counts,
+    label_prompt_versions,
+    reference_labels,
+)
 from app.retrieval.evaluation.metrics import (
     MODES,
     SLICES,
@@ -421,9 +425,7 @@ def run_evaluation(
             "k": k,
             "depths": sorted(set(depths)),
             "reference_judge": reference_judge,
-            "relevance_prompts": {
-                name: load_prompt(file).version for name, file in RELEVANCE_PROMPTS.items()
-            },
+            "relevance_prompts": label_prompt_versions(chosen, reference_judge),
             "owner_reviewed_labels": counts.owner_reviewed,
             "judge_only_labels": counts.judge_only,
             "judge_owner_agreement": counts.judge_owner_agreement,

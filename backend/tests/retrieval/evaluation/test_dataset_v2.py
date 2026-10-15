@@ -114,6 +114,17 @@ def test_set_version_comes_from_the_manifest_when_present(tmp_path):
     assert loaded.queries == []
 
 
+def test_a_malformed_manifest_is_a_set_error_and_review_prints_it(tmp_path):
+    write_corpus(tmp_path / "corpus.jsonl", [post(1)])
+    (tmp_path / "set.json").write_text('{"version": ')
+    with pytest.raises(SetError, match="cannot read the set"):
+        load_set(tmp_path)
+    result = CliRunner().invoke(app, ["review", "--set", str(tmp_path)])
+    assert result.exit_code == 1
+    assert "cannot read the set" in result.stderr
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+
+
 def test_unknown_kind_is_rejected(tmp_path):
     path = tmp_path / "queries.jsonl"
     path.write_text(json.dumps({"kind": "other", "id": "x"}) + "\n")

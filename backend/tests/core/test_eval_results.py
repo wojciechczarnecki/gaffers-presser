@@ -94,9 +94,16 @@ def test_check_new_result_refuses_existing_unless_forced(tmp_path):
     check_new_result(path, True)
 
 
-def test_repository_result_files_load_as_no_header():
-    files = sorted(BACKEND.glob("evals/*/results/**/*.json"))
-    assert files
-    for file in files:
-        data = json.loads(file.read_text())
-        assert read_header(data) is None, file
+def test_committed_result_files_load_with_or_without_a_header():
+    # Only committed files: a local `--split dev` run lands in a gitignored directory.
+    listed = subprocess.run(
+        ["git", "ls-files", "evals/*/results/*.json", "evals/*/results/**/*.json"],
+        cwd=BACKEND,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    assert listed
+    for name in listed:
+        header = read_header(json.loads((BACKEND / name).read_text()))
+        assert header is None or isinstance(header, dict), name

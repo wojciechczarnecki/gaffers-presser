@@ -92,6 +92,47 @@ def test_a_valid_verdict_stores_one_judgement_per_pair(world):
     assert len(labels_of(set_dir, "q-post-en-001")) == 2
 
 
+def test_imported_labels_carry_the_exports_prompt_versions(world):
+    set_dir, out = world
+    mapping = json.loads((out / "mapping.json").read_text())
+    mapping["prompts"] = {"player": 7, "free": 3}
+    (out / "mapping.json").write_text(json.dumps(mapping))
+    all_true(out, "p-gw6-1")
+    all_true(out, "q-post-en-001")
+    assert run_import(world).exit_code == 0
+    assert {j.prompt_version for j in labels_of(set_dir, "p-gw6-1")} == {7}
+    assert {j.prompt_version for j in labels_of(set_dir, "q-post-en-001")} == {3}
+
+
+def test_the_owner_is_not_a_judge_name(world):
+    set_dir, out = world
+    all_true(out, "p-gw6-1")
+    result = run_import(world, judge="owner")
+    assert result.exit_code == 1
+    assert "not a judge name" in result.stderr
+    assert labels_of(set_dir, "p-gw6-1") == []
+
+
+def test_an_export_for_another_judge_is_refused(world, tmp_path):
+    set_dir, out = world
+    mapping = json.loads((out / "mapping.json").read_text())
+    mapping["for_judge"] = "judge-b"
+    (out / "mapping.json").write_text(json.dumps(mapping))
+    all_true(out, "p-gw6-1")
+    refused = run_import(world, judge="judge-a")
+    assert refused.exit_code == 1
+    assert "made for judge-b" in refused.stderr
+    assert labels_of(set_dir, "p-gw6-1") == []
+    stored = run_import(world, judge="judge-b")
+    assert "labels stored: 3" in stored.stdout
+
+
+def test_a_label_without_a_prompt_version_keeps_the_v1_line_format():
+    plain = Judgement(x_id=1, relevant=True, reviewed=False, labelled_by="m")
+    assert "prompt_version" not in plain.model_dump_json()
+    assert Judgement.model_validate_json(plain.model_dump_json()) == plain
+
+
 @pytest.mark.parametrize(
     ("change", "expected"),
     [

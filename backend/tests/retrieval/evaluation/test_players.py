@@ -19,7 +19,7 @@ from app.retrieval.evaluation.dataset import (
     write_corpus,
     write_queries,
 )
-from app.retrieval.evaluation.players import build_player_slice, gameweek_window
+from app.retrieval.evaluation.players import assign_splits, build_player_slice, gameweek_window
 from tests.corroboration.helpers import ISAK, SAKA, SEASON, add_extraction, seed_reference
 from tests.retrieval.helpers import add_tweet
 from tests.retrieval.test_cli import _deps
@@ -200,6 +200,10 @@ def test_builder_runs_on_a_read_only_connection(db):
         read_only.dispose()
 
 
+# assign_splits(10 queries, seed=1): DEV_SHARE 0.3 puts three of them in dev
+FIXED_SPLITS = ["test"] * 6 + ["dev", "test", "dev", "dev"]
+
+
 def test_splits_are_seeded_and_cover_both_slices(db):
     world(db)
     for n in range(10):
@@ -209,6 +213,13 @@ def test_splits_are_seeded_and_cover_both_slices(db):
     assert seed_players[0].split in ("dev", "test")
     again = build_player_slice(db, SEASON, 6, "alerts", seed=1)
     assert [q.split for q in again] == [q.split for q in seed_players]
+
+    many = [seed_players[0].model_copy(update={"id": f"p-gw6-{n}"}) for n in range(10)]
+    splits = [q.split for q in assign_splits(many, seed=1)]
+    assert splits == FIXED_SPLITS
+    assert splits.count("dev") == 3
+    assert [q.split for q in assign_splits(many, seed=1)] == splits
+    assert any([q.split for q in assign_splits(many, seed=s)] != splits for s in (2, 3, 4))
 
 
 def test_the_cli_writes_player_queries_keeps_free_ones_and_refuses_existing(db, tmp_path):

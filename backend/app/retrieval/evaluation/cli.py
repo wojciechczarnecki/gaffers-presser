@@ -29,6 +29,7 @@ from app.retrieval.evaluation.dataset import (
     carry_v1,
     export_corpus,
     load_corpus,
+    load_manifest,
     load_queries,
     load_set,
     write_corpus,
@@ -269,6 +270,7 @@ def prelabel_command(
     try:
         embedder = deps.make_embedder(embedding_model)
         prices = deps.prices if deps.prices is not None else load_prices()
+        manifest = load_manifest(set_dir)
         posts = load_corpus(set_dir / CORPUS_FILE)
         query_set = load_queries(set_dir / QUERIES_FILE)
     except AppError as exc:
@@ -295,6 +297,7 @@ def prelabel_command(
             prices,
             tracer,
             deps.clock,
+            list_handles=manifest.list_handles if manifest else None,
         )
     except EvaluationError as exc:
         raise fail(str(exc)) from None

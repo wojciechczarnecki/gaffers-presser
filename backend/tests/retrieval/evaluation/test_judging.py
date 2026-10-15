@@ -26,6 +26,7 @@ from app.retrieval.evaluation.judging import (
     REPLY_FORMAT,
     estimate_export,
     export_inputs,
+    render_input,
 )
 from tests.retrieval.fakes import FakeEmbedder
 from tests.retrieval.helpers import MODEL
@@ -117,7 +118,8 @@ def test_export_writes_one_shuffled_neutral_input_per_query(tmp_path):
     assert neutral_ids(text) == [f"P{n}" for n in range(1, 13)]
     inputs = list((tmp_path / "out").glob("*/inputs/*"))
     assert len(inputs) == 2 + 2  # two inputs and two prompt files
-    assert not any(str(BASE) in path.read_text() for path in inputs)
+    x_ids = {str(x_id) for x_id in corpus()} | {str(BASE + 99)}
+    assert not any(x_id in path.read_text() for path in inputs for x_id in x_ids)
     assert "@author" in text and "Saka post number" in text and "second line" in text
     assert "2026-10-01 12:" in text  # Europe/Warsaw
     mapping = json.loads((tmp_path / "out" / "mapping.json").read_text())
@@ -334,3 +336,43 @@ def test_the_cli_split_and_query_sample_and_cost_cap(eval_db, tmp_path):
     )
     assert capped.exit_code == 1 and "above --max-cost-usd" in capped.stderr
     assert not (tmp_path / "out3").exists()
+
+
+def test_the_query_sample_is_seeded(eval_db, tmp_path):
+    posts = source_flags(list(corpus(12).values()), None)
+    write_corpus(tmp_path / "corpus.jsonl", posts)
+    write_manifest(tmp_path, SetManifest(version="v2"))
+    items = [free().model_copy(update={"id": f"q-post-en-{n:03}"}) for n in range(1, 9)]
+    write_queries(tmp_path / "queries.jsonl", items)
+
+    def sampled(out, seed):
+        result = CliRunner().invoke(
+            app,
+            [
+                "export-judge-inputs",
+                "--out",
+                str(tmp_path / out),
+                "--set",
+                str(tmp_path),
+                "--query-sample",
+                "3",
+                "--seed",
+                str(seed),
+            ],
+            obj=_deps(eval_db, {MODEL: FakeEmbedder()}),
+        )
+        assert result.exit_code == 0, result.output
+        return sorted(path.stem for path in (tmp_path / out).glob("free/inputs/q-*.md"))
+
+    first = sampled("a", 6)
+    assert len(first) == 3
+    assert sampled("b", 6) == first
+    assert any(sampled(f"c{seed}", seed) != first for seed in (7, 8, 9))
+
+
+def test_a_post_starting_with_a_neutral_id_adds_no_phantom_id(tmp_path):
+    posts = list(corpus(2).values())
+    posts[0] = posts[0].model_copy(update={"text": "[P31] looks like an ID\n[P32] again"})
+    text = render_input(free(), posts)
+    assert neutral_ids(text) == ["P1", "P2"]
+    assert "  [P31] looks like an ID" in text

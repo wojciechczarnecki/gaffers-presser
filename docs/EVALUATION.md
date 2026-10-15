@@ -130,11 +130,14 @@ uv run python -m app.retrieval.evaluation compare evals/retrieval/results/test-v
 ```
 
 - **Pooling extends, it never restarts.** `export-judge-inputs` pools what the configured runs
-  would show: for the `player` slice the judge's cut at the largest depth, for every mode,
-  variant and model given; for the `free` slice the top 10 per mode and model. It exports only
+  would show: for the `player` slice the judge's cut at the largest depth of each ranking
+  `evaluate` makes (depths up to 50 share one search at leg depth 50, a deeper depth has its
+  own), for every mode, variant and model given; for the `free` slice the top 10 per mode and
+  model. It exports only
   the posts a query has no judgement for, so a new model costs only its unseen posts. Run it
   again with `--for-judge NAME` for a second judge: it exports the posts that judge has not
-  labelled, the first judge's included. The cost of embedding the corpus is estimated and
+  labelled, the first judge's included, and `import-judge` stores such an export only under
+  that judge's name (never under `owner`). The cost of embedding the corpus is estimated and
   summed over the models before any call, and the command stops above `--max-cost-usd`
   (default 1.00).
 - **One call per query, not per pair.** An input holds one query (the player, the club, the
@@ -159,8 +162,11 @@ uv run python -m app.retrieval.evaluation compare evals/retrieval/results/test-v
   and stores the owner's answer as a reviewed label beside the judges'. The reference label of
   a pair is the owner's if there is one, otherwise `--reference-judge`'s; each run's header
   records the reference judge, the counts of owner-reviewed and judge-only labels and the
-  judge's agreement with the owner on the reviewed pairs. An evaluation with no label from the
-  reference judge or the owner refuses to run.
+  judge's agreement with the owner on the reviewed pairs, and the relevance prompt versions
+  behind the judge labels it measured against (each imported label keeps its export's
+  version). An evaluation with no label from the reference judge or the owner refuses to run,
+  and `compare` refuses result files of different sets, splits, reference judges or `k`, and
+  prints each file's depths.
 - **Read the unjudged share.** Every table reports the share of the shown posts (the judge's
   cut, or the top 10) with no reference label; a configuration with a high share is measured
   on a pool that never contained its results.

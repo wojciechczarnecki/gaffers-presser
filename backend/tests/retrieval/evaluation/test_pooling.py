@@ -155,6 +155,28 @@ def test_the_player_pool_excludes_claimed_posts_and_deeper_depths_never_shrink_i
     assert not {1, 2} & set(claimed)
 
 
+def test_claimed_posts_push_the_larger_depths_cut_into_the_pool(eval_db):
+    pooled = pool(eval_db, [player(claimed=range(1, 16))], [model_a()], depths=[20, 30])
+    # with 1-15 claimed, depth 20 shows 16-20 and depth 30 shows 16-25
+    assert set(pooled["p-gw6-1"]) == set(range(16, 26))
+
+
+def test_pooling_searches_once_per_leg_depth_like_evaluate(eval_db, monkeypatch):
+    import app.retrieval.evaluation.pooling as pooling
+
+    calls = []
+    real = pooling.ranked_search
+
+    def recording(*args, limit, depth, **kwargs):
+        calls.append((limit, depth))
+        return real(*args, limit=limit, depth=depth, **kwargs)
+
+    monkeypatch.setattr(pooling, "ranked_search", recording)
+    pool(eval_db, [player(), free()], [model_a()], depths=[20, 30, 100])
+    # 3 variants x 3 modes per leg depth for the player, 3 modes for the free query
+    assert sorted(calls) == sorted([(30, 50)] * 9 + [(100, 100)] * 9 + [(10, 50)] * 3)
+
+
 def test_the_free_pool_is_each_modes_top_ten(eval_db):
     pooled = pool(eval_db, [free()], [model_a()])["q-1"]
     # full text finds 1-5, the vector leg's ten nearest posts are 1-10, hybrid draws on both

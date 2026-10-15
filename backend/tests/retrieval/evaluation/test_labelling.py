@@ -305,3 +305,37 @@ def test_prelabel_command_prints_the_summary_and_writes_labels(eval_db, tmp_path
     assert "label failures: 0" in result.stdout
     assert "total cost: $" in result.stdout
     assert len(load_queries(tmp_path / "queries.jsonl")[0].judgements) == 10
+
+
+def test_prelabel_command_runs_on_a_set_with_a_list_snapshot(eval_db, tmp_path):
+    from typer.testing import CliRunner
+
+    from app.retrieval.cli import RetrievalCliDeps
+    from app.retrieval.evaluation.cli import app
+    from app.retrieval.evaluation.dataset import (
+        SetManifest,
+        source_flags,
+        write_corpus,
+        write_manifest,
+    )
+    from tests.retrieval.test_cli import _deps
+
+    corpus = _corpus()[:12]
+    corpus = [
+        post.model_copy(update={"author_handle": "outsider"}) if post.x_id > 6 else post
+        for post in corpus
+    ]
+    flagged = source_flags(corpus, ["author"])
+    assert {post.is_source for post in flagged} == {True, False}
+    write_corpus(tmp_path / "corpus.jsonl", flagged)
+    write_manifest(tmp_path, SetManifest(version="v2", list_handles=["author"]))
+    write_queries(tmp_path / "queries.jsonl", [_query()])
+    fake = FakeChatModel(responses=[RelevanceLabel(relevant=True)] * 40)
+    base = _deps(eval_db, {MODEL: _embedder(corpus)})
+    deps = RetrievalCliDeps(**{**base.__dict__, "make_chat_model": lambda model: fake})
+
+    result = CliRunner().invoke(app, ["prelabel", "--set", str(tmp_path)], obj=deps)
+
+    assert result.exit_code == 0, result.output
+    assert "queries labelled: 1" in result.stdout
+    assert len(load_queries(tmp_path / "queries.jsonl")[0].judgements) == 10

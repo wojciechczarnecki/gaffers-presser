@@ -10,7 +10,7 @@ from app.content import load_prompt
 from app.core.eval_results import write_text_atomic
 from app.core.local_time import format_local
 from app.retrieval.evaluation.dataset import CorpusPost, EvaluationError, Judgement, PlayerQuery
-from app.retrieval.evaluation.labels import AnyQuery
+from app.retrieval.evaluation.labels import OWNER, AnyQuery
 from app.retrieval.evaluation.pooling import new_posts
 from app.retrieval.evaluation.runner import RELEVANCE_PROMPTS
 
@@ -67,7 +67,8 @@ def render_input(query: AnyQuery, posts: Sequence[CorpusPost]) -> str:
         lines = ["# Query", query.text]
     lines += ["", "# Posts"]
     for number, post in enumerate(posts, start=1):
-        body = post.text.strip().replace("\n", "\n  ")
+        # Every body line is indented, so no post text can start a line with a "[P<n>]" ID.
+        body = "  " + post.text.strip().replace("\n", "\n  ")
         lines += ["", f"[P{number}] @{post.author_handle} · {_when(post.created_at)}", body]
     return "\n".join(lines) + "\n"
 
@@ -207,7 +208,15 @@ def _check_labels(input_id: str, data: Any, expected: Mapping[str, int]) -> str 
 def import_verdicts(
     queries: list[AnyQuery], export: Path, judge: str, *, force: bool = False
 ) -> tuple[list[AnyQuery], ImportReport]:
+    if judge == OWNER:
+        raise EvaluationError(f"{OWNER!r} is the owner's review, not a judge name")
     mapping = read_mapping(export)
+    for_judge = mapping.get("for_judge")
+    if for_judge is not None and for_judge != judge:
+        raise EvaluationError(
+            f"the export was made for {for_judge}, not {judge}; import it as {for_judge}"
+        )
+    prompt_versions = mapping.get("prompts") or {}
     by_id = {query.id: index for index, query in enumerate(queries)}
     report = ImportReport()
     result = list(queries)
@@ -247,7 +256,13 @@ def import_verdicts(
                     j for j in judgements if not (j.x_id == x_id and j.labelled_by == judge)
                 ]
                 added.append(
-                    Judgement(x_id=x_id, relevant=label, reviewed=False, labelled_by=judge)
+                    Judgement(
+                        x_id=x_id,
+                        relevant=label,
+                        reviewed=False,
+                        labelled_by=judge,
+                        prompt_version=prompt_versions.get(item["slice"]),
+                    )
                 )
         if conflicts:
             report.failures.append(

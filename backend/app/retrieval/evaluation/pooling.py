@@ -17,6 +17,7 @@ from app.retrieval.evaluation.runner import (
     SearchTracer,
     check_cost,
     estimate_embedding,
+    leg_groups,
     player_texts,
     prepare_model,
     ranked_search,
@@ -78,9 +79,11 @@ def pool_set(
 
     list_handles = eval_set.manifest.list_handles if eval_set.manifest else None
     eval_engine = load_eval_corpus(engine, eval_set.corpus, list_handles)
-    deepest = max(depths)
+    # Each leg depth is its own ranking, as in evaluate; its largest depth's cut holds the
+    # smaller depths' cuts.
+    cuts = {leg: max(group) for leg, group in leg_groups(depths).items()}
     search_tracer = SearchTracer(tracer)
-    rankings: dict[str, dict[ConfigKey, list[int]]] = {query.id: {} for query in queries}
+    rankings: dict[str, dict[int, dict[ConfigKey, list[int]]]] = {query.id: {} for query in queries}
     for embedder in embedders:
         cached = prepare_model(eval_engine, embedder, queries, tracer, prices, clock, stop_event)
         for query in queries:
@@ -89,25 +92,36 @@ def pool_set(
                     since=query.window_start, until=query.window_end, sources_only=True
                 )
                 texts = list(player_texts(query).items())
-                limit, depth = deepest, max(LEG_DEPTH, deepest)
+                searches = list(cuts.items())
             else:
                 filters = SearchFilters()
                 texts = [("", query.text)]
-                limit, depth = TOP, LEG_DEPTH
-            for variant, text in texts:
-                for mode in MODES:
-                    rankings[query.id][(embedder.model, mode, variant)] = ranked_search(
-                        eval_engine,
-                        cached,
-                        text,
-                        mode,
-                        limit=limit,
-                        depth=depth,
-                        filters=filters,
-                        who=f"{query.id}/{variant}" if variant else query.id,
-                        k=k,
-                        tracer=search_tracer,
-                        prices=prices,
-                    )
+                searches = [(LEG_DEPTH, TOP)]
+            for leg, cut in searches:
+                by_config = rankings[query.id].setdefault(cut, {})
+                for variant, text in texts:
+                    for mode in MODES:
+                        by_config[(embedder.model, mode, variant)] = ranked_search(
+                            eval_engine,
+                            cached,
+                            text,
+                            mode,
+                            limit=cut,
+                            depth=leg,
+                            filters=filters,
+                            who=f"{query.id}/{variant}" if variant else query.id,
+                            k=k,
+                            tracer=search_tracer,
+                            prices=prices,
+                        )
     tracer.flush()
-    return {query.id: pool_ids(query, rankings[query.id], deepest) for query in queries}
+    return {
+        query.id: list(
+            dict.fromkeys(
+                x_id
+                for cut, by_config in rankings[query.id].items()
+                for x_id in pool_ids(query, by_config, cut)
+            )
+        )
+        for query in queries
+    }

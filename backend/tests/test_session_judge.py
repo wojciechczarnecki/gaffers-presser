@@ -118,6 +118,19 @@ def test_retrieval_rejects_a_missing_label_and_a_rerun_judges_only_that_input(ju
     assert "judge calls: 3  tokens: 45" in tokens
 
 
+def test_retrieval_sends_the_retrieval_reply_format(judge):
+    from app.retrieval.evaluation.judging import REPLY_FORMAT
+
+    judge.add_input("a", "[P1] @x\nfirst\n")
+    judge.reply(1, '{"labels": {"P1": true}}')
+    judge.run("1", "sonnet", "retrieval")
+    call = judge.calls()[0]
+    system = call[call.index("--system-prompt") + 1]
+    assert system.startswith("prompt")
+    assert REPLY_FORMAT in system
+    assert "claims" not in system
+
+
 @pytest.mark.parametrize(
     "reply",
     ['{"labels": {"P1": "yes", "P2": true}}', '{"labels": {"P1": true, "P2": true, "P3": false}}'],

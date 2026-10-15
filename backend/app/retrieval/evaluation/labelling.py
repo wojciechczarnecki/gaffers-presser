@@ -101,10 +101,11 @@ def prelabel(
     tracer: RetrievalTracer,
     clock: Clock,
     stop_event: threading.Event | None = None,
+    list_handles: Sequence[str] | None = None,
 ) -> PrelabelSummary:
     stop_event = stop_event or threading.Event()
     counting = CostTracer(tracer)
-    eval_engine = load_eval_corpus(engine, corpus)
+    eval_engine = load_eval_corpus(engine, corpus, list_handles)
     runtime = IndexingRuntime(
         model=embedder.model,
         make_embedder=lambda: embedder,

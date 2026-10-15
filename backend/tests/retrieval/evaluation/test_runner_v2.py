@@ -29,6 +29,7 @@ from app.retrieval.evaluation.runner import (
     format_table,
     run_evaluation,
 )
+from app.retrieval.search import SearchFilters
 from tests.retrieval.fakes import AlwaysFailingEmbedder, FakeEmbedder, RecordingTracer
 from tests.retrieval.helpers import MODEL, PRICES, FixedClock
 from tests.retrieval.test_cli import _deps
@@ -234,9 +235,42 @@ def test_result_holds_cut_ids_and_labels_per_configuration(eval_db):
     assert free["modes"]["fulltext"]["top10_labels"][0] is True
 
 
-def test_depths_above_fifty_run_their_own_search(eval_db):
-    result = _run(eval_db, depths=[20, 60])
-    assert {r.depth for r in result.player_rows} == {20, 60}
+def _record_searches(monkeypatch):
+    import app.retrieval.evaluation.runner as runner
+
+    calls = []
+    real = runner.search
+
+    def recording(engine, text, mode, **kwargs):
+        calls.append((text, mode, kwargs["limit"], kwargs["depth"], kwargs["filters"]))
+        return real(engine, text, mode, **kwargs)
+
+    monkeypatch.setattr(runner, "search", recording)
+    return calls
+
+
+def test_depths_above_fifty_run_their_own_search(eval_db, monkeypatch):
+    calls = _record_searches(monkeypatch)
+    result = _run(eval_db, depths=[20, 30, 60])
+    assert {r.depth for r in result.player_rows} == {20, 30, 60}
+    player = [(limit, depth) for _, _, limit, depth, filters in calls if filters.sources_only]
+    # 2 players x 3 variants x 3 modes, once per leg depth: 20 and 30 share leg depth 50
+    assert len(player) == 2 * 3 * 3 * 2
+    assert sorted(set(player)) == [(30, 50), (60, 60)]
+
+
+def test_the_free_slice_is_searched_without_filters(eval_db, monkeypatch):
+    calls = _record_searches(monkeypatch)
+    items = [
+        *queries(),
+        _free("q-post-en-002", "saka rumour stranger", "en", 4, [_j(4, True)]),
+    ]
+    data = _run(eval_db, items=items).data
+    free_calls = [call for call in calls if call[0] == "saka rumour stranger"]
+    assert len(free_calls) == 3
+    assert all(filters == SearchFilters() for *_, filters in free_calls)
+    # 4 is by an off-list author: a search with sources_only would never return it
+    assert 4 in data["queries"]["q-post-en-002"]["modes"]["fulltext"]["top10"]
 
 
 def test_header_records_reference_counts_and_agreement(eval_db):
@@ -246,7 +280,16 @@ def test_header_records_reference_counts_and_agreement(eval_db):
         _j(1, True, by="owner", reviewed=True),  # agrees with the judge
         _j(2, False, by="owner", reviewed=True),  # disagrees
     ]
-    items[0] = first.model_copy(update={"judgements": [*first.judgements, *owner]})
+    versioned = [
+        # 1 is owner-reviewed, so its judge label's prompt is not behind the run's labels
+        j.model_copy(update={"prompt_version": {1: 9, 3: 2}[j.x_id]}) if j.x_id in (1, 3) else j
+        for j in first.judgements
+    ]
+    items[0] = first.model_copy(update={"judgements": [*versioned, *owner]})
+    free = items[2]
+    items[2] = free.model_copy(
+        update={"judgements": [j.model_copy(update={"prompt_version": 1}) for j in free.judgements]}
+    )
     header = _run(eval_db, items=items).data["header"]
     assert header["set_version"] == "v2"
     assert header["model"] == MODEL
@@ -256,7 +299,7 @@ def test_header_records_reference_counts_and_agreement(eval_db):
     assert header["judge_only_labels"] == 9
     assert header["judge_owner_agreement"] == pytest.approx(0.5)
     assert header["split"] == "dev" and header["depths"] == [20, 30, 50]
-    assert header["relevance_prompts"] == {"player": 1, "free": 1}
+    assert header["relevance_prompts"] == {"player": [2], "free": [1]}
     assert header["estimated_embedding_tokens"] > 0
     # the owner's label beats the judge's: post 2 is no longer relevant
     data = _run(eval_db, items=items).data

@@ -1184,3 +1184,26 @@ Rejected:
 - "AC6 says existing corroboration tests pass unchanged, but `evaluation/test_cases.py` changed its monkeypatch target" — it is recorded in the step 2 deviation and changes no behaviour; it is not a defect.
 
 Left out: 37 nit findings
+
+**Fixed** (apply mode, 2026-10-15; owner gate: all 16 accepted). Each new or tightened test
+was checked against the mutation that motivated it and fails on it.
+
+- **F1** — `prelabel` takes the set's `list_handles`, read from `set.json` by the CLI, and loads the corpus with them; `test_labelling.py::test_prelabel_command_runs_on_a_set_with_a_list_snapshot`.
+- **F2** — `pool_set` searches once per `leg_groups(depths)` group with that group's largest depth, as `evaluate` does, and pools the union of the cuts; `test_pooling.py::test_pooling_searches_once_per_leg_depth_like_evaluate`. `docs/EVALUATION.md` says so.
+- **F3** — `compare` also refuses a different `reference_judge` or `k` (`MATCHING_KEYS`) and prints each file's model and depths; `test_compare.py::test_a_file_with_another_reference_judge_or_k_is_refused_by_name`, `::test_the_depths_of_every_file_are_printed`.
+- **F4** — the repository result test reads only the committed files (`git ls-files`) and accepts a header or none; `test_eval_results.py::test_committed_result_files_load_with_or_without_a_header`.
+- **F5** — the blind-input check looks for every corpus and claimed X ID in every input file.
+- **F6** — `test_pooling.py::test_claimed_posts_push_the_larger_depths_cut_into_the_pool` (1–15 claimed, depths 20 and 30 → 16–25 pooled).
+- **F7** — `test_depths_above_fifty_run_their_own_search` counts the searches and asserts the `(limit, leg depth)` pairs `(30, 50)` and `(60, 60)`.
+- **F8** — `test_runner_v2.py::test_the_free_slice_is_searched_without_filters` (an off-list relevant post reaches the free top 10; the free searches get `SearchFilters()`).
+- **F9** — the split test also assigns ten queries with seed 1, asserts the fixed assignment (three `dev`) and that another seed changes it.
+- **F10** — `test_judging.py::test_the_query_sample_is_seeded` (same seed, same three queries; another seed, another sample).
+- **F11** — `test_session_judge.py::test_retrieval_sends_the_retrieval_reply_format`.
+- **F12** — a judge label keeps the export's prompt version (`Judgement.prompt_version`, left out of the line when absent, so v1 lines are unchanged); the header's `relevance_prompts` lists, per slice, the versions behind the judge labels the run measures against (`labels.label_prompt_versions`); `test_import.py::test_imported_labels_carry_the_exports_prompt_versions`, `::test_a_label_without_a_prompt_version_keeps_the_v1_line_format`, the header test.
+- **F13** — every line of a post body is indented in a judge input; `test_judging.py::test_a_post_starting_with_a_neutral_id_adds_no_phantom_id`.
+- **F14** — `import-judge` refuses the name `owner` and an export made `--for-judge` another judge; `test_import.py::test_the_owner_is_not_a_judge_name`, `::test_an_export_for_another_judge_is_refused`.
+- **F15** — `load_set` reads `set.json` inside the `try`, so a malformed manifest is a `SetError`; `test_dataset_v2.py::test_a_malformed_manifest_is_a_set_error_and_review_prints_it`.
+- **F16** — `compare` refuses a header without `split` or a file without a `free` object as "not a result of the retrieval evaluation"; `test_compare.py::test_a_headed_result_of_another_evaluation_is_refused_without_a_traceback`.
+
+Verification after the fixes: `ruff check`, `ruff format --check` and `pytest -q -n auto` —
+2124 passed. BACKLOG: no item delivered or newly triggered by this review.
