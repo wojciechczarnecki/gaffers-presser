@@ -708,7 +708,7 @@ watches them fail for the expected reason, and then writes the code.
       differ only by the added tests.
       `iterations: 0`
 
-- [ ] 10. **Player-slice windows (AC3, the window rules).** Files: new
+- [x] 10. **Player-slice windows (AC3, the window rules).** Files: new
       `backend/app/retrieval/evaluation/players.py` (`GameweekWindow`,
       `gameweek_window(session, season, gameweek, rule)`) and new
       `backend/tests/retrieval/evaluation/test_players.py`.
@@ -725,6 +725,7 @@ watches them fail for the expected reason, and then writes the code.
 
       Automatic verification:
       `uv run pytest -q tests/retrieval/evaluation/test_players.py` and lint.
+      `iterations: 0`
 
 - [ ] 11. **The player-slice builder and `build-player-slice` (AC3).** Files:
       `backend/app/retrieval/evaluation/players.py` (`build_player_slice(engine, season,
