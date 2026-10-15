@@ -1,19 +1,34 @@
-import os
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, TypeAdapter
 from sqlalchemy import Engine, func
 from sqlmodel import Session, select
 
-from app.tweets.models import Tweet
+from app.core.errors import AppError
+from app.core.eval_results import write_json_atomic, write_lines_atomic
+from app.tweets.models import ListMembership, Tweet
 
 EVALS_DIR = Path(__file__).resolve().parents[3] / "evals" / "retrieval"
-DEFAULT_CORPUS_PATH = EVALS_DIR / "v1" / "corpus.jsonl"
-DEFAULT_QUERIES_PATH = EVALS_DIR / "v1" / "queries.jsonl"
+V1_DIR = EVALS_DIR / "v1"
+DEFAULT_SET_DIR = EVALS_DIR / "v2"
+DEFAULT_CORPUS_PATH = V1_DIR / "corpus.jsonl"
+DEFAULT_QUERIES_PATH = V1_DIR / "queries.jsonl"
 DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
+CORPUS_FILE = "corpus.jsonl"
+QUERIES_FILE = "queries.jsonl"
+MANIFEST_FILE = "set.json"
+
+
+class EvaluationError(AppError):
+    pass
+
+
+class SetError(EvaluationError):
+    pass
 
 
 class CorpusPost(BaseModel):
@@ -25,6 +40,8 @@ class CorpusPost(BaseModel):
     created_at: datetime
     is_repost: bool
     is_reply: bool
+    quoted_x_id: int | None = None
+    is_source: bool | None = None
 
 
 class Judgement(BaseModel):
@@ -34,6 +51,8 @@ class Judgement(BaseModel):
     relevant: bool
     reviewed: bool
     labelled_by: str
+    # The relevance prompt version a session judge's export used; absent from older lines.
+    prompt_version: int | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class QueryEvent(BaseModel):
@@ -43,9 +62,10 @@ class QueryEvent(BaseModel):
     event_type: str
 
 
-class Query(BaseModel):
+class FreeQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    kind: Literal["free"] = "free"
     id: str
     text: str
     language: Literal["en", "pl"]
@@ -56,17 +76,79 @@ class Query(BaseModel):
     judgements: list[Judgement]
 
 
-def _write_lines(path: Path, lines: Sequence[str]) -> None:
-    # Atomic: a temporary file next to the target, then os.replace, so an interrupted
-    # write never leaves a half-written set behind.
-    path = Path(path)
-    tmp = path.with_name(f".{path.name}.tmp")
-    try:
-        tmp.write_text("\n".join(lines) + ("\n" if lines else ""))
-        os.replace(tmp, path)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
+Query = FreeQuery
+
+
+class PlayerInfo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    season: str
+    fpl_id: int
+    web_name: str
+    first_name: str
+    second_name: str
+    team: str
+    aliases: list[str]
+
+
+class ClaimedPost(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    x_id: int
+    created_at: datetime
+    stale: bool
+
+
+WindowRule = Literal["alerts", "after-last-match"]
+
+
+class PlayerQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["player"] = "player"
+    id: str
+    split: Literal["dev", "test"]
+    player: PlayerInfo
+    gameweek: int
+    deadline_at: datetime
+    window_start: datetime
+    window_end: datetime
+    window_rule: WindowRule
+    previous_last_match_end: datetime | None
+    claimed: list[ClaimedPost]
+    judgements: list[Judgement]
+
+
+def _kind(value: Any) -> str:
+    if isinstance(value, dict):
+        return value.get("kind", "free")
+    return getattr(value, "kind", "free")
+
+
+AnyQuery = Annotated[
+    Annotated[FreeQuery, Tag("free")] | Annotated[PlayerQuery, Tag("player")],
+    Discriminator(_kind),
+]
+_QUERY_ADAPTER: TypeAdapter[FreeQuery | PlayerQuery] = TypeAdapter(AnyQuery)
+
+
+class SetManifest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version: str
+    list_handles: list[str] | None = None
+    corpus_since: datetime | None = None
+    corpus_until: datetime | None = None
+    exported_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class EvalSet:
+    version: str
+    manifest: SetManifest | None
+    corpus: list[CorpusPost]
+    queries: list[FreeQuery | PlayerQuery]
+    directory: Path
 
 
 def load_corpus(path: Path) -> list[CorpusPost]:
@@ -78,33 +160,113 @@ def load_corpus(path: Path) -> list[CorpusPost]:
 
 
 def write_corpus(path: Path, posts: Sequence[CorpusPost]) -> None:
-    _write_lines(path, [post.model_dump_json() for post in posts])
+    write_lines_atomic(path, [post.model_dump_json(exclude_none=True) for post in posts])
 
 
-def load_queries(path: Path) -> list[Query]:
+def load_queries(path: Path) -> list[FreeQuery | PlayerQuery]:
     return [
-        Query.model_validate_json(line)
+        _QUERY_ADAPTER.validate_json(line)
         for line in Path(path).read_text().splitlines()
         if line.strip()
     ]
 
 
-def write_queries(path: Path, queries: Sequence[Query]) -> None:
-    _write_lines(path, [query.model_dump_json() for query in queries])
+def write_queries(path: Path, queries: Sequence[FreeQuery | PlayerQuery]) -> None:
+    write_lines_atomic(path, [query.model_dump_json() for query in queries])
+
+
+def load_manifest(directory: Path) -> SetManifest | None:
+    path = Path(directory) / MANIFEST_FILE
+    if not path.exists():
+        return None
+    return SetManifest.model_validate_json(path.read_text())
+
+
+def write_manifest(directory: Path, manifest: SetManifest) -> None:
+    write_json_atomic(Path(directory) / MANIFEST_FILE, manifest.model_dump(mode="json"))
+
+
+def load_set(directory: Path) -> EvalSet:
+    directory = Path(directory)
+    try:
+        manifest = load_manifest(directory)
+        corpus = load_corpus(directory / CORPUS_FILE)
+        queries = (
+            load_queries(directory / QUERIES_FILE) if (directory / QUERIES_FILE).exists() else []
+        )
+    except (OSError, ValueError) as exc:
+        raise SetError(f"cannot read the set in {directory}: {type(exc).__name__}") from None
+    version = manifest.version if manifest else directory.name
+    return EvalSet(version, manifest, corpus, queries, directory)
+
+
+def carry_v1(
+    v1_queries: Sequence[FreeQuery | PlayerQuery],
+    v2_queries: Sequence[FreeQuery | PlayerQuery],
+    corpus_ids: set[int],
+) -> list[FreeQuery | PlayerQuery]:
+    free = [query for query in v1_queries if isinstance(query, FreeQuery)]
+    if any(isinstance(query, FreeQuery) for query in v2_queries):
+        raise SetError("the set already holds free queries; pass --force to replace them")
+    wanted = {j.x_id for query in free for j in query.judgements}
+    missing = wanted - corpus_ids
+    if missing:
+        raise SetError(
+            f"{len(missing)} posts of the v1 queries are missing from the v2 corpus;"
+            " export the corpus without --since or from v1's first post"
+        )
+    return [*v2_queries, *free]
 
 
 # The project's own test account (the tweet-source latency test posts) is noise for retrieval.
 EXCLUDED_AUTHORS = frozenset({"gafferpresser"})
 
 
-def export_corpus(engine: Engine) -> list[CorpusPost]:
+def source_flags(
+    posts: Sequence[CorpusPost], list_handles: Sequence[str] | None
+) -> list[CorpusPost]:
+    # The Python copy of app.tweets.classes.source_post_sql over the corpus: load_eval_corpus
+    # checks it against the SQL rule.
+    if list_handles is None:
+        return [post.model_copy(update={"is_source": True}) for post in posts]
+    handles = set(list_handles)
+    listed = {post.x_id for post in posts if post.author_handle.lower() in handles}
+    quoted_by_listed = {
+        post.quoted_x_id
+        for post in posts
+        if post.quoted_x_id is not None and post.author_handle.lower() in handles
+    }
+    return [
+        post.model_copy(update={"is_source": post.x_id in listed or post.x_id in quoted_by_listed})
+        for post in posts
+    ]
+
+
+@dataclass(frozen=True)
+class Export:
+    posts: list[CorpusPost]
+    list_handles: list[str] | None
+
+
+def export_corpus(
+    engine: Engine, since: datetime | None = None, until: datetime | None = None
+) -> Export:
     with Session(engine) as session:
-        tweets = session.exec(
-            select(Tweet)
-            .where(func.lower(Tweet.author_handle).not_in(EXCLUDED_AUTHORS))
-            .order_by(Tweet.created_at, Tweet.x_id)
-        ).all()
-        return [
+        statement = select(Tweet).where(func.lower(Tweet.author_handle).not_in(EXCLUDED_AUTHORS))
+        if since is not None:
+            statement = statement.where(Tweet.created_at >= since)
+        if until is not None:
+            statement = statement.where(Tweet.created_at < until)
+        tweets = session.exec(statement.order_by(Tweet.created_at, Tweet.x_id)).all()
+        latest = session.exec(
+            select(ListMembership).order_by(
+                ListMembership.fetched_at.desc(), ListMembership.id.desc()
+            )
+        ).first()
+        handles = (
+            list(latest.handles) if latest is not None and latest.handles is not None else None
+        )
+        posts = [
             CorpusPost(
                 x_id=tweet.x_id,
                 author_handle=tweet.author_handle,
@@ -112,6 +274,8 @@ def export_corpus(engine: Engine) -> list[CorpusPost]:
                 created_at=tweet.created_at,
                 is_repost=tweet.is_repost,
                 is_reply=tweet.is_reply,
+                quoted_x_id=tweet.quoted_x_id,
             )
             for tweet in tweets
         ]
+    return Export(source_flags(posts, handles), handles)

@@ -72,6 +72,31 @@ def test_evaluate_writes_result(cases_path, tmp_path):
     assert f"result: {output}" in result.stdout
 
 
+def test_evaluate_writes_header_and_guard_refuses(tmp_path):
+    set_dir = tmp_path / "v7"
+    set_dir.mkdir()
+    path = set_dir / "cases.jsonl"
+    write_cases(path, [case("c1", "dev")])
+    output = tmp_path / "run.json"
+    built, _, _ = deps([PresserDraft(text="Pierwszy")], [verdict("supported")])
+    args = ("evaluate", "--split", "dev", "--cases", str(path), "--output", str(output))
+    assert invoke(built, *args).exit_code == 0
+    header = read(output)["header"]
+    assert header["set_version"] == "v7"
+    assert header["model"] == "openai/gpt-6-sol"
+    assert header["prompt_version"].startswith("presser_writer@")
+    assert header["judge"] == "openai/gpt-6.1-sol"
+    assert header["date"] == "2026-10-09T12:00:00+00:00"
+    refused = invoke(built, *args)
+    assert refused.exit_code == 1
+    assert str(output) in refused.stderr and "--force" in refused.stderr
+
+    built, _, _ = deps([PresserDraft(text="Drugi")])
+    forced = invoke(built, *args, "--no-judge", "--force")
+    assert forced.exit_code == 0, forced.output
+    assert read(output)["header"]["judge"] is None
+
+
 def test_evaluate_never_overwrites_a_run_without_force(cases_path, tmp_path):
     output = tmp_path / "run.json"
     output.write_text('{"reviews": "kept"}', encoding="utf-8")
@@ -253,10 +278,12 @@ def test_judge_review_limit_skip_and_quit(tmp_path):
 
 
 def test_summary_reports_and_applies_thresholds(tmp_path):
-    from tests.presser.evaluation.test_summary import presser, run, write
+    from tests.presser.evaluation.test_summary import headed, presser, run, write
 
-    write(tmp_path, run("cheap/model", [presser(n, rating=3, cost=0.0001) for n in range(4)]))
-    write(tmp_path, run("mid/model", [presser(n, cost=0.002) for n in range(4)]))
+    write(
+        tmp_path, headed(run("cheap/model", [presser(n, rating=3, cost=0.0001) for n in range(4)]))
+    )
+    write(tmp_path, headed(run("mid/model", [presser(n, cost=0.002) for n in range(4)])))
     result = invoke(None, "summary", "--results-dir", str(tmp_path))
     assert result.exit_code == 0
     lines = result.stdout.splitlines()
@@ -266,11 +293,11 @@ def test_summary_reports_and_applies_thresholds(tmp_path):
 
 
 def test_summary_without_runs_or_winner(tmp_path):
-    from tests.presser.evaluation.test_summary import presser, run, write
+    from tests.presser.evaluation.test_summary import headed, presser, run, write
 
     assert "no test runs" in invoke(None, "summary", "--results-dir", str(tmp_path)).stdout
     assert "no test runs" in invoke(None, "summary", "--results-dir", str(tmp_path / "no")).stdout
-    write(tmp_path, run("a/m", [presser(n, rating=2) for n in range(2)]))
+    write(tmp_path, headed(run("a/m", [presser(n, rating=2) for n in range(2)])))
     assert invoke(None, "summary", "--results-dir", str(tmp_path)).stdout.splitlines()[-1] == (
         "no model passes"
     )
@@ -395,6 +422,7 @@ def test_import_judge_records_verdicts_and_totals(tmp_path):
     assert data["totals"]["faithfulness"] == 0.75
     assert data["judge_model"] == "claude-opus-5-5 (session)"
     assert data["judge_prompt_version"].startswith("presser_judge@")
+    assert data["header"]["judge"] == "claude-opus-5-5 (session)"
 
 
 def test_import_judge_needs_a_verdict_for_every_presser(tmp_path):

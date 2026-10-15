@@ -11,7 +11,14 @@ from app.core.clock import Clock
 from app.llm.pricing import Price
 from app.llm.structured import StructuredCaller
 from app.retrieval.embedder import Embedder
-from app.retrieval.evaluation.dataset import CorpusPost, Judgement, Query, write_queries
+from app.retrieval.evaluation.dataset import (
+    CorpusPost,
+    FreeQuery,
+    Judgement,
+    PlayerQuery,
+    Query,
+    write_queries,
+)
 from app.retrieval.evaluation.llm import RelevanceLabel
 from app.retrieval.evaluation.runner import EvaluationError
 from app.retrieval.evaluation.schema import load_eval_corpus
@@ -86,7 +93,7 @@ def label(caller: StructuredCaller, query_text: str, post: CorpusPost) -> bool:
 def prelabel(
     engine: Engine,
     corpus: Sequence[CorpusPost],
-    queries: list[Query],
+    queries: list[FreeQuery | PlayerQuery],
     queries_path: Path,
     embedder: Embedder,
     caller: StructuredCaller,
@@ -94,10 +101,11 @@ def prelabel(
     tracer: RetrievalTracer,
     clock: Clock,
     stop_event: threading.Event | None = None,
+    list_handles: Sequence[str] | None = None,
 ) -> PrelabelSummary:
     stop_event = stop_event or threading.Event()
     counting = CostTracer(tracer)
-    eval_engine = load_eval_corpus(engine, corpus)
+    eval_engine = load_eval_corpus(engine, corpus, list_handles)
     runtime = IndexingRuntime(
         model=embedder.model,
         make_embedder=lambda: embedder,
@@ -113,7 +121,7 @@ def prelabel(
     by_id = {post.x_id: post for post in corpus}
     labelled = candidates = relevant = failures = 0
     for index, query in enumerate(queries):
-        if query.judgements:
+        if not isinstance(query, FreeQuery) or query.judgements:
             continue
         judgements = []
         failed = False

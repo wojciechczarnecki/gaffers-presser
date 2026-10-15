@@ -14,7 +14,7 @@ from app.retrieval.evaluation.dataset import (
 )
 from app.retrieval.evaluation.labelling import pool, prelabel
 from app.retrieval.evaluation.llm import RelevanceLabel
-from app.retrieval.evaluation.schema import EVAL_SCHEMA, load_eval_corpus
+from app.retrieval.evaluation.schema import load_eval_corpus
 from app.retrieval.indexing import index_missing
 from app.retrieval.search import search
 from app.retrieval.tracing import NULL_TRACER
@@ -24,13 +24,6 @@ from tests.retrieval.helpers import MODEL, PRICES, FixedClock, add_tweet, runtim
 
 WHEN = datetime(2026, 9, 1, tzinfo=UTC)
 QUERY_VECTOR = [1.0, 0.0, 0.0]
-
-
-@pytest.fixture
-def eval_db(db):
-    yield db
-    with db.begin() as conn:
-        conn.execute(text(f"DROP SCHEMA IF EXISTS {EVAL_SCHEMA} CASCADE"))
 
 
 def _post(x_id: int, body: str) -> CorpusPost:
@@ -213,7 +206,8 @@ def test_failed_label_leaves_the_query_for_a_rerun(eval_db, tmp_path):
 def test_prelabel_command_reports_unembeddable_corpus_without_a_traceback(eval_db, tmp_path):
     from typer.testing import CliRunner
 
-    from app.retrieval.cli import RetrievalCliDeps, app
+    from app.retrieval.cli import RetrievalCliDeps
+    from app.retrieval.evaluation.cli import app
     from app.retrieval.evaluation.dataset import write_corpus
     from tests.retrieval.fakes import AlwaysFailingEmbedder
     from tests.retrieval.test_cli import _deps
@@ -228,10 +222,8 @@ def test_prelabel_command_reports_unembeddable_corpus_without_a_traceback(eval_d
         app,
         [
             "prelabel",
-            "--queries",
-            str(tmp_path / "queries.jsonl"),
-            "--corpus",
-            str(tmp_path / "corpus.jsonl"),
+            "--set",
+            str(tmp_path),
         ],
         obj=deps,
     )
@@ -284,7 +276,8 @@ def test_prelabel_cost_adds_chat_and_embeddings(eval_db, tmp_path):
 def test_prelabel_command_prints_the_summary_and_writes_labels(eval_db, tmp_path):
     from typer.testing import CliRunner
 
-    from app.retrieval.cli import RetrievalCliDeps, app
+    from app.retrieval.cli import RetrievalCliDeps
+    from app.retrieval.evaluation.cli import app
     from app.retrieval.evaluation.dataset import write_corpus
     from tests.retrieval.test_cli import _deps
 
@@ -299,10 +292,8 @@ def test_prelabel_command_prints_the_summary_and_writes_labels(eval_db, tmp_path
         app,
         [
             "prelabel",
-            "--queries",
-            str(tmp_path / "queries.jsonl"),
-            "--corpus",
-            str(tmp_path / "corpus.jsonl"),
+            "--set",
+            str(tmp_path),
         ],
         obj=deps,
     )
@@ -313,4 +304,38 @@ def test_prelabel_command_prints_the_summary_and_writes_labels(eval_db, tmp_path
     assert "relevant: 10" in result.stdout
     assert "label failures: 0" in result.stdout
     assert "total cost: $" in result.stdout
+    assert len(load_queries(tmp_path / "queries.jsonl")[0].judgements) == 10
+
+
+def test_prelabel_command_runs_on_a_set_with_a_list_snapshot(eval_db, tmp_path):
+    from typer.testing import CliRunner
+
+    from app.retrieval.cli import RetrievalCliDeps
+    from app.retrieval.evaluation.cli import app
+    from app.retrieval.evaluation.dataset import (
+        SetManifest,
+        source_flags,
+        write_corpus,
+        write_manifest,
+    )
+    from tests.retrieval.test_cli import _deps
+
+    corpus = _corpus()[:12]
+    corpus = [
+        post.model_copy(update={"author_handle": "outsider"}) if post.x_id > 6 else post
+        for post in corpus
+    ]
+    flagged = source_flags(corpus, ["author"])
+    assert {post.is_source for post in flagged} == {True, False}
+    write_corpus(tmp_path / "corpus.jsonl", flagged)
+    write_manifest(tmp_path, SetManifest(version="v2", list_handles=["author"]))
+    write_queries(tmp_path / "queries.jsonl", [_query()])
+    fake = FakeChatModel(responses=[RelevanceLabel(relevant=True)] * 40)
+    base = _deps(eval_db, {MODEL: _embedder(corpus)})
+    deps = RetrievalCliDeps(**{**base.__dict__, "make_chat_model": lambda model: fake})
+
+    result = CliRunner().invoke(app, ["prelabel", "--set", str(tmp_path)], obj=deps)
+
+    assert result.exit_code == 0, result.output
+    assert "queries labelled: 1" in result.stdout
     assert len(load_queries(tmp_path / "queries.jsonl")[0].judgements) == 10

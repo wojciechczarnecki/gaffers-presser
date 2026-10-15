@@ -324,3 +324,66 @@ def test_quote_carries_quoted_author(db):
     ]
     assert candidate.x_id == 5
     assert candidate.quoted_author_handle == "Outsider"
+
+
+def test_query_variant_constant_defaults_to_web_name():
+    from app.corroboration import sources
+
+    assert sources.QUERY_VARIANT == "web_name"
+
+
+def _recording_search(monkeypatch):
+    from app.corroboration import sources
+    from app.retrieval.search import SearchResponse
+
+    queries: list[str] = []
+
+    def recorder(engine, query, *args, **kwargs):
+        queries.append(query)
+        return SearchResponse(mode="hybrid", model=None, results=[])
+
+    monkeypatch.setattr(sources, "search", recorder)
+    return queries
+
+
+def test_another_variant_reaches_the_search(db, monkeypatch):
+    from app.corroboration import sources
+
+    seed_reference(db)
+    queries = _recording_search(monkeypatch)
+    ref = PlayerRef(SEASON, GABRIEL_MAGALHAES, "Gabriel", "Arsenal")
+
+    monkeypatch.setattr(sources, "QUERY_VARIANT", "full_name")
+    retrieval_candidates(db, ref, DEADLINE, NOW, embedder=FakeEmbedder())
+    monkeypatch.setattr(sources, "QUERY_VARIANT", "names")
+    retrieval_candidates(db, ref, DEADLINE, NOW, embedder=FakeEmbedder())
+    retrieval_candidates(db, ref, DEADLINE, NOW, embedder=FakeEmbedder(), variant="web_name")
+
+    assert queries == ["Gabriel dos Santos Magalhaes", "Gabriel Magalhaes", "Gabriel"]
+
+
+def test_the_default_variant_searches_the_web_name_without_a_player_lookup(db, monkeypatch):
+    from app.corroboration import sources
+
+    queries = _recording_search(monkeypatch)
+
+    def no_lookup(*args, **kwargs):
+        raise AssertionError("the web_name variant must not look the player up")
+
+    monkeypatch.setattr(sources, "load_player_names", no_lookup)
+    retrieval_candidates(db, SAKA_REF, DEADLINE, NOW, embedder=FakeEmbedder())
+    assert queries == ["Saka"]
+
+
+def test_a_missing_player_row_falls_back_to_the_web_name(db, monkeypatch):
+    queries = _recording_search(monkeypatch)
+    retrieval_candidates(db, SAKA_REF, DEADLINE, NOW, embedder=FakeEmbedder(), variant="names")
+    assert queries == ["Saka"]
+
+
+def test_judge_cut_constants_match_the_evaluation():
+    from app.corroboration import sources
+    from app.retrieval.evaluation.player_metrics import DEFAULT_DEPTHS, JUDGE_CUT
+
+    assert JUDGE_CUT == sources.MAX_JUDGED
+    assert sources.SEARCH_LIMIT in DEFAULT_DEPTHS

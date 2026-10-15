@@ -166,19 +166,25 @@ every run file under `results/`, dev runs included.
 
 Retrieval — a fourth loop inside the worker embeds every stored post (`EMBEDDING_MODEL`, default
 `openai/text-embedding-3-small` through OpenRouter; it needs `OPENROUTER_API_KEY`), and search
-fuses PostgreSQL full-text and pgvector rankings with reciprocal rank fusion. The evaluation set
-in `backend/evals/retrieval/v1/` is a frozen corpus of public posts and about 40 queries (about
-10 in Polish), loaded into its own `retrieval_eval` schema and never into the live table;
-candidates are pooled from the three modes and pre-labelled by a model for the owner's review.
-`evaluate` reports recall@5, recall@10 and MRR per mode, overall and for the English and Polish
-slices; none of these commands is run by `pytest`:
+fuses PostgreSQL full-text and pgvector rankings with reciprocal rank fusion. The evaluation sets
+live in `backend/evals/retrieval/`: v1 is a frozen corpus of public posts with about 40 queries
+(the `free` slice); set v2 adds the `player` slice, one query per player with a claim in a
+gameweek's alert window, searched the way corroboration searches and scored by the recall of the
+relevant posts that extraction missed, at the judge's cut. A set is loaded into its own
+`retrieval_eval` schema and never into the live table; the labels come from the Claude Code
+session judge and the owner reviews the disagreements and a sample (`docs/EVALUATION.md`, "The
+retrieval procedure"). None of these commands is run by `pytest`:
 
 ```bash
 uv run python -m app.retrieval index [--model MODEL]       # embed what is missing for a model
 uv run python -m app.retrieval status                      # embedded, missing and failed posts
 uv run python -m app.retrieval search "Isak injury" --mode hybrid   # or fulltext / vector
-uv run python -m app.retrieval review --split test         # accept, flip or add a judgement
-uv run python -m app.retrieval evaluate --split test --embedding-model openai/text-embedding-3-small
+uv run python -m app.retrieval.evaluation build-player-slice --gameweek 6   # the player slice
+uv run python -m app.retrieval.evaluation export-judge-inputs --out DIR --embedding-model MODEL
+uv run python -m app.retrieval.evaluation import-judge --export DIR --judge-model NAME
+uv run python -m app.retrieval.evaluation review --sample 30   # blind review of the labels
+uv run python -m app.retrieval.evaluation evaluate --split test --reference-judge NAME
+uv run python -m app.retrieval.evaluation compare RESULT_FILE...   # one table, same set and split
 ```
 
 Corroboration — for a player and a moment, `python -m app.corroboration <player>` takes the

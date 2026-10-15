@@ -1,11 +1,11 @@
 import json
-import os
 import time
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from app.core.eval_results import write_json_atomic
 from app.presser.evaluation.cases import DEFAULT_RESULTS_DIR, PresserCase
 from app.presser.evaluation.judge import PROMPT_VERSION as JUDGE_PROMPT_VERSION
 from app.presser.evaluation.judge import JudgeInput, JudgeVerdict, PresserJudge, render_input
@@ -164,6 +164,8 @@ def import_verdicts(
             record["error_class"] = None  # the API judge's failure, now replaced
     data["judge_model"] = judge_model
     data["judge_prompt_version"] = JUDGE_PROMPT_VERSION
+    if isinstance(data.get("header"), dict):
+        data["header"]["judge"] = judge_model
     data["totals"] = compute_totals(data["pressers"])
     return data
 
@@ -176,15 +178,7 @@ def load_result(path: Path) -> dict[str, Any]:
 
 
 def write_result(path: Path, data: dict[str, Any]) -> None:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.tmp")
-    try:
-        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        os.replace(tmp, path)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
+    write_json_atomic(path, data)
 
 
 def format_totals(data: dict[str, Any]) -> str:

@@ -14,6 +14,12 @@ from sqlmodel import Session
 
 from app.core.clock import Clock, SystemClock
 from app.core.errors import AppError, ConfigError
+from app.core.eval_results import (
+    ResultExistsError,
+    check_new_result,
+    make_header,
+    write_json_atomic,
+)
 from app.core.settings import load_settings
 from app.db.engine import make_engine
 from app.extraction.config import ExtractionSettings, load_extraction_settings
@@ -334,6 +340,7 @@ def evaluate(
     cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
     players_path: Annotated[Path, typer.Option("--players")] = DEFAULT_PLAYERS_PATH,
     output_dir: Annotated[Path | None, typer.Option("--output-dir")] = None,
+    force: Annotated[bool, typer.Option("--force")] = False,
 ) -> None:
     deps = get_deps(ctx)
 
@@ -356,6 +363,12 @@ def evaluate(
         raise fail(str(exc)) from None
 
     name = run_name or _default_run_name(split, spec, deps.clock.now())
+    output_dir = output_dir or default_output_dir(split)
+    result_path = output_dir / f"{name}.json"
+    try:
+        check_new_result(result_path, force)
+    except ResultExistsError as exc:
+        raise fail(str(exc)) from None
     players, teams = load_snapshot(players_path)
     player_aliases, team_aliases = load_aliases()
     index = PlayerIndex(players, teams, player_aliases, team_aliases)
@@ -380,10 +393,16 @@ def evaluate(
         if close is not None:
             close()
 
-    output_dir = output_dir or default_output_dir(split)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    result_path = output_dir / f"{name}.json"
-    result_path.write_text(json.dumps(report.to_json_dict(), ensure_ascii=False, indent=1) + "\n")
+    data = report.to_json_dict()
+    data["header"] = make_header(
+        set_version=cases_path.parent.name,
+        model=report.model,
+        prompt_version=report.prompt_version,
+        reasoning_effort=report.settings.reasoning_effort if report.settings else None,
+        judge=None,
+        now=deps.clock.now(),
+    )
+    write_json_atomic(result_path, data)
 
     m = report.metrics
     typer.echo(f"run: {name} ({spec.provider}:{spec.model}, {split}, {m.cases} cases)")

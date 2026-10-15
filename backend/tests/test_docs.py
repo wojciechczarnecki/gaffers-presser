@@ -135,3 +135,52 @@ def test_deployment_lists_migration_0013():
     text = (ROOT / "docs" / "DEPLOYMENT.md").read_text(encoding="utf-8")
     for needle in ("0013", "live_stats", "player_fixture_stat", "backfill"):
         assert needle in text, needle
+
+
+def test_evaluation_md_describes_the_retrieval_procedure():
+    text = (ROOT / "docs" / "EVALUATION.md").read_text(encoding="utf-8")
+    for needle in (
+        "build-player-slice",
+        "export-judge-inputs",
+        "estimate",
+        "import-judge",
+        "agreement",
+        "review",
+        "evaluate",
+        "compare",
+        "session_judge.sh",
+        "per query",
+        "scratch database",
+    ):
+        assert needle in text, needle
+
+
+def test_backlog_window_row_and_017_018_renumbering():
+    rows = _rows()
+    for number in ("43", "44", "45", "48"):
+        assert not [row for row in rows if row.startswith(f"| {number} |")], number
+    (window,) = [row for row in rows if "last match" in row and "window_floor" in row]
+    assert " P1 " in window and "spec 017" in window
+    for number in ("46", "47"):
+        (row,) = [row for row in rows if row.startswith(f"| {number} |")]
+        assert "spec 018" in row and "spec 017" not in row, number
+    (row,) = [row for row in rows if row.startswith("| 49 |")]
+    assert "specs 016–018" in row
+    roadmap = (ROOT / "docs" / "ROADMAP.md").read_text(encoding="utf-8")
+    assert "planned as 018" in roadmap and "planned as 017" not in roadmap
+
+
+def test_decisions_cover_retrieval_set_v2_and_results_header():
+    decisions = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")
+    (v2,) = [line for line in decisions.splitlines() if "Retrieval evaluation set v2" in line]
+    for needle in ("player", "free", "session judge", "supersedes"):
+        assert needle in v2, needle
+    (header,) = [line for line in decisions.splitlines() if "eval_results.py" in line]
+    for needle in (
+        "run header",
+        "atomic",
+        "overwrite guard",
+        "app.retrieval.evaluation",
+        "summary",
+    ):
+        assert needle in header, needle

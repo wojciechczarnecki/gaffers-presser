@@ -9,10 +9,17 @@ from sqlmodel import Session
 
 from app.core.clock import Clock, SystemClock
 from app.core.errors import AppError, ConfigError
+from app.core.eval_results import (
+    NO_HEADER,
+    ResultExistsError,
+    check_new_result,
+    make_header,
+)
 from app.core.settings import load_settings
 from app.db.engine import make_engine
 from app.fpl.calendar import current_season
 from app.llm.chat import build_chat_model, single_model_config
+from app.llm.models import reasoning_effort_of
 from app.llm.pricing import load_prices
 from app.llm.settings import load_llm_settings
 from app.llm.structured import StructuredCaller
@@ -45,7 +52,14 @@ from app.presser.evaluation.runner import (
     run_evaluation,
     write_result,
 )
-from app.presser.evaluation.summary import choose, format_run, summarise
+from app.presser.evaluation.summary import (
+    choose,
+    format_group,
+    format_run,
+    group_runs,
+    headerless,
+    summarise,
+)
 from app.presser.writer import Writer, build_writer
 
 SEED = 20261009
@@ -186,10 +200,10 @@ def evaluate(
     if split not in ("dev", "test"):
         raise fail("--split must be dev or test")
     path = output or default_result_path(split, model)
-    if path.exists() and not force:
-        raise fail(
-            f"{path} exists and may hold your reviews; pass --output or --force to overwrite"
-        )
+    try:
+        check_new_result(path, force)
+    except ResultExistsError as exc:
+        raise fail(str(exc)) from None
     deps = get_deps(ctx)
     cases = load_cases(cases_path)
     try:
@@ -209,6 +223,14 @@ def evaluate(
         )
     except EvaluationError as exc:
         raise fail(str(exc)) from None
+    data["header"] = make_header(
+        set_version=cases_path.parent.name,
+        model=model,
+        prompt_version=data["prompt_version"],
+        reasoning_effort=reasoning_effort_of(model),
+        judge=None if no_judge else judge_model,
+        now=deps.clock.now(),
+    )
     write_result(path, data)
     typer.echo(format_totals(data))
     typer.echo(f"result: {path}")
@@ -442,10 +464,17 @@ def summary(
     if not runs:
         typer.echo("no test runs")
         return
-    for run in runs:
-        typer.echo(format_run(run))
-    winner = choose(runs)
-    typer.echo(f"winner: {winner}" if winner is not None else "no model passes")
+    for group, members in group_runs(runs).items():
+        typer.echo(f"== {format_group(group)}")
+        for run in members:
+            typer.echo(format_run(run))
+        winner = choose(members)
+        typer.echo(f"winner: {winner}" if winner is not None else "no model passes")
+    unheaded = headerless(runs)
+    if unheaded:
+        typer.echo(f"== {NO_HEADER}")
+        for run in unheaded:
+            typer.echo(format_run(run))
 
 
 def main() -> None:

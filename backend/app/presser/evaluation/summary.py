@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.core.eval_results import read_header
 from app.presser.evaluation.runner import compute_totals
 
 FAITHFULNESS_THRESHOLD = 0.95
@@ -24,6 +25,14 @@ class RunSummary:
     avg_latency_seconds: float | None
     judge_agreement: float | None
     passes: bool
+    group: tuple[str, str] | None = None
+
+
+def _group(data: dict) -> tuple[str, str] | None:
+    header = read_header(data)
+    if header is None or not header.get("set_version") or not header.get("prompt_version"):
+        return None
+    return header["set_version"], header["prompt_version"]
 
 
 def summarise_run(data: dict) -> RunSummary:
@@ -61,6 +70,7 @@ def summarise_run(data: dict) -> RunSummary:
         avg_latency_seconds=totals["avg_latency_seconds"],
         judge_agreement=data["totals"].get("judge_agreement"),
         passes=passes,
+        group=_group(data),
     )
 
 
@@ -71,6 +81,22 @@ def summarise(results_dir: Path) -> list[RunSummary]:
         if data.get("split") == "test":
             runs.append(summarise_run(data))
     return sorted(runs, key=lambda run: run.model)
+
+
+def group_runs(runs: Sequence[RunSummary]) -> dict[tuple[str, str], list[RunSummary]]:
+    groups: dict[tuple[str, str], list[RunSummary]] = {}
+    for run in runs:
+        if run.group is not None:
+            groups.setdefault(run.group, []).append(run)
+    return dict(sorted(groups.items()))
+
+
+def headerless(runs: Sequence[RunSummary]) -> list[RunSummary]:
+    return [run for run in runs if run.group is None]
+
+
+def format_group(group: tuple[str, str]) -> str:
+    return f"set {group[0]} · {group[1]}"
 
 
 def choose(runs: Sequence[RunSummary]) -> str | None:

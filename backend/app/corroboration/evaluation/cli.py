@@ -9,6 +9,7 @@ from sqlalchemy import Engine
 
 from app.core.clock import Clock, SystemClock
 from app.core.errors import AppError, ConfigError
+from app.core.eval_results import ResultExistsError, check_new_result, make_header
 from app.core.settings import load_settings
 from app.corroboration.config import CorroborationSettings
 from app.corroboration.evaluation.building import TARGET_SIZE, build_cases
@@ -32,6 +33,7 @@ from app.corroboration.evaluation.runner import (
 from app.corroboration.judge import PROMPT_VERSION, Judge, build_judge
 from app.db.engine import make_engine
 from app.llm.chat import DEFAULT_MODEL, build_chat_model, single_model_config
+from app.llm.models import reasoning_effort_of
 from app.llm.pricing import Price, load_prices
 from app.llm.settings import load_llm_settings
 from app.llm.structured import StructuredCaller
@@ -248,11 +250,17 @@ def evaluate(
     include_unreviewed: Annotated[bool, typer.Option("--include-unreviewed")] = False,
     cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
     output: Annotated[Path | None, typer.Option("--output")] = None,
+    force: Annotated[bool, typer.Option("--force")] = False,
 ) -> None:
     if split not in ("dev", "test"):
         raise fail("--split must be dev or test")
     deps = get_deps(ctx)
     chosen_model = model or deps.settings.llm_model or DEFAULT_MODEL
+    path = output or default_result_path(split, chosen_model)
+    try:
+        check_new_result(path, force)
+    except ResultExistsError as exc:
+        raise fail(str(exc)) from None
     cases = load_cases(cases_path)
     try:
         judge = deps.make_judge(chosen_model)
@@ -270,7 +278,14 @@ def evaluate(
         )
     except EvaluationError as exc:
         raise fail(str(exc)) from None
-    path = output or default_result_path(split, chosen_model)
+    data["header"] = make_header(
+        set_version=cases_path.parent.name,
+        model=chosen_model,
+        prompt_version=PROMPT_VERSION,
+        reasoning_effort=reasoning_effort_of(chosen_model),
+        judge=None,
+        now=deps.clock.now(),
+    )
     write_result(path, data)
     typer.echo(format_metrics(data))
     typer.echo(f"result: {path}")
