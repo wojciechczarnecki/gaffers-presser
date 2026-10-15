@@ -241,4 +241,5 @@ below; agents never touch production.
       stored as `preview_failed` and does not stop the worker's presser of that gameweek.
     - The evaluation tooling is `python -m app.presser.evaluation
       build-cases|evaluate|review|judge-review|summary`. The comparison of the candidate models
-      with the owner's ratings is BACKLOG #32.
+      with the owner's ratings is in the
+      [report](reports/presser-model-comparison.md) (ADR 0007).

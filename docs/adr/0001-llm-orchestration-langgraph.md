@@ -1,6 +1,7 @@
 # 0001 — LLM orchestration: LangGraph
 
-Status: accepted (2026-09-26)
+Status: accepted (2026-09-26); its consequence on the pipeline's graph structure superseded by
+[0008](0008-orchestration-plain-python.md) (2026-10-15)
 
 ## Context
 

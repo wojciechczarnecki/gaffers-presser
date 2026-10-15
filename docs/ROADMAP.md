@@ -48,8 +48,8 @@ and each LLM step that produces data has an evaluation set with recorded results
       players, with post → inbox latency measured; whether the alert text is LLM-generated
       from the retrieved posts (with a faithfulness evaluation) is decided in its spec.
       The owner builds and tests it locally first (a rehearsal deadline with real e-mails);
-      the production deployment (Stage 0) follows it, and BACKLOG #11 is settled after this
-      spec and before the deployment (settled by spec 010)
+      the production deployment (Stage 0) was to follow it (postponed: DECISIONS 2026-10-13,
+      BACKLOG #37), and BACKLOG #11 is settled after this spec (settled by spec 010)
       (spec: [009](../specs/009-pre-deadline-alerts/SPEC.md); slot timing:
       [011](../specs/011-alert-slot-calendar/SPEC.md)) — **first functional MVP**
 - [x] Off-list posts: the worker keeps the List's membership, posts quoted by a list member
@@ -57,17 +57,27 @@ and each LLM step that produces data has an evaluation set with recorded results
       outside the List is stored but never extracted or alerted, and a catch-up is no longer
       ended by an old quoted post; closes BACKLOG #11
       (spec: [010](../specs/010-off-list-posts/SPEC.md))
+- [ ] Hardening and cleanup before spec 016, from the code audit of October 2026: the presser
+      waits for the gameweek's results, extraction retries failed posts and serves fresh posts
+      first, module boundaries without import cycles, the Langfuse event volume and one tracing
+      path, a trial of a parallel test run; one PR each, in this order, fast path except the
+      test-run trial (a development dependency, approved by the owner)
+      (BACKLOG #38–#42; [audit](reports/code-audit-2026-10.md))
 - [ ] Retrieval evaluation report on the GW6 window: the owner's review of set v1 extended
       with queries from the GW6 deadline window, the comparison of modes (full-text, vector,
       hybrid) and embedding models, the default-model ADR, a decision on reranking
       (BACKLOG #16), a results section in the README (tooling and set v1 come with spec 006);
-      before the next item, because the corroboration judge reads retrieval's output
-      (spec: TBD, planned as 016) — **portfolio MVP**
+      a slice shaped like the production query, full-text for names with an initial, pooling
+      that follows new models and posts, self-describing result files and the retrieval
+      evaluation's own entry point (BACKLOG #43–#46); before the next item, because the
+      corroboration judge reads retrieval's output (spec: TBD, planned as 016) — **portfolio MVP**
 - [ ] Extraction and corroboration evaluation v2 on the GW6 window: real pre-deadline leaks
       in the extraction set, the rehearsal e-mail cases added before the prompt fixes, the
-      model comparison re-run and the default model revisited (ADR 0006); `contradicts` cases
-      in the corroboration judge set and the judge evaluation re-run on the retrieval chosen
-      above (BACKLOG #12, #23) (spec: TBD, planned as 017)
+      model comparison re-run and the default model revisited (ADR 0006); the owner's review of
+      the corroboration judge set v1 and a pass threshold for the judge, `contradicts` cases in
+      the judge set and the judge evaluation re-run on the retrieval chosen above; the
+      extraction evaluation's own entry point and the session judge for other schemas
+      (BACKLOG #12, #23, #46, #47, #48) (spec: TBD, planned as 017)
 - [ ] README rewritten for the portfolio once the two evaluations above have results: what
       it does and why, an architecture diagram, a results table linking the reports, the
       engineering process (specs, ADRs, evaluation, tracing), a sample presser on made-up
