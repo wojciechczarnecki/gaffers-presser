@@ -1,15 +1,19 @@
 ---
-status: plan-draft
+status: plan-approved
 stage_history:
   - "spec-draft — 2026-10-15"
   - "spec-ready — 2026-10-15"
   - "plan-draft — 2026-10-15"
+  - "plan-approved — 2026-10-15"
 metrics:
   started_at: 2026-10-15T18:36
   plan_steps: 20
+  plan_changes: 10
   escalations: 0
   escalations_permission: 0
   escalations_tooling: 0
+  plan_review_blockers: 0
+  plan_review_majors: 0
 ---
 
 # SPEC 016 — Retrieval evaluation tooling: the production-shaped slice and the session judge

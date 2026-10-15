@@ -145,8 +145,10 @@ code and its tests).**
   `is_source: bool | None = None`. Set v1's lines lack both and load unchanged.
 - `queries.jsonl` holds a discriminated union on `kind`:
   - **`FreeQuery`** is v1's `Query` plus `kind: Literal["free"] = "free"`. A v1 line has no
-    `kind` and parses as a free query. The class keeps the name `Query` as an alias, so the
-    existing imports work.
+    `kind` and parses as a free query. A plain `Field(discriminator="kind")` rejects a line
+    without the tag, so the union uses a callable `Discriminator` that returns `"free"` when
+    `kind` is missing (or a `TypeAdapter` with a before-validator that sets it). The class
+    keeps the name `Query` as an alias, so the existing imports work.
   - **`PlayerQuery`** has these fields:
     - `kind="player"`, `id` (`p-gw{N}-{fpl_id}`) and `split`;
     - `player`: `season`, `fpl_id`, `web_name`, `first_name`, `second_name`, `team`, and
@@ -283,11 +285,14 @@ embedding model:
 3. Embed the corpus with `index_missing`.
 4. Embed each distinct query text once, as the existing `_CachedQueryEmbedder` does.
 5. Run the searches:
-   - **Player queries:** one search per mode × variant with
-     `SearchFilters(since=window_start, until=window_end, sources_only=True)`,
-     `limit=max(depths)` and leg depth `max(50, max(depths))`. `fuse` sorts and then slices,
-     so the top N for every smaller N is a prefix of that ranking, the same as a separate
-     search with `limit=N`. With the default depths the leg depth is 50, production's.
+   - **Player queries:** one search per mode × variant × leg-depth group with
+     `SearchFilters(since=window_start, until=window_end, sources_only=True)`. The depths
+     are grouped by their leg depth `max(50, N)`; each group runs one search with
+     `limit=max(group)` and that leg depth. `fuse` sorts and then slices, so within a group
+     the top N for every smaller N is a prefix of that ranking, the same as a separate
+     search with `limit=N`. With the default depths there is one group with leg depth 50,
+     production's. A depth above 50 gets its own search, so it never changes the ranking
+     the smaller depths are measured on (see Risks, "Fusion prefix").
    - **Free queries:** the v1 search, with top 10 and no filters.
 
 The result file holds:
@@ -467,8 +472,11 @@ watches them fail for the expected reason, and then writes the code.
         - `make_header` holds exactly the eight keys plus the `extra` keys, with `null` for
           fields that do not apply;
         - `git_state` returns the HEAD commit and a dirty flag, tested in a `tmp_path` git
-          repository made with `git init`, one commit, then one modified file. It returns
-          `(None, None)` outside a repository;
+          repository made with `git init`, one commit, then one modified file. The test's
+          own git calls pass `-c user.name=test -c user.email=test@example.com
+          -c commit.gpgsign=false`, because CI has no git identity and a developer's
+          signing config must not reach the test. It returns `(None, None)` outside a
+          repository;
         - `read_header` returns `None` for a dict without `"header"`;
         - `write_json_atomic` leaves no `.tmp` file when the serialisation raises (pass an
           unserialisable value), and keeps the old content;
@@ -629,7 +637,8 @@ watches them fail for the expected reason, and then writes the code.
         Europe/Warsaw (`parse_local`), writing `corpus.jsonl` and `set.json`;
       - new `backend/tests/retrieval/evaluation/test_sources.py` and `test_export.py`;
       - new `backend/tests/retrieval/evaluation/conftest.py`: the `eval_db` fixture moves
-        there from `test_runner.py`, so every new container test can use it.
+        there, and its two identical copies in `test_runner.py` and `test_schema.py` are
+        removed, so every new container test can use it.
 
       Tests:
       - `test_sources_only_search_returns_exactly_the_marked_posts`. The corpus has a list
@@ -902,7 +911,9 @@ watches them fail for the expected reason, and then writes the code.
           by one;
         - the second judge for agreement (`--for-judge`);
         - the pilot (`--query-sample`);
-        - the DATABASE_URL warning (a scratch container, not the Compose database).
+        - the DATABASE_URL warning (a scratch container, not the Compose database);
+        - the corpus bound: `export-corpus` without `--since` (or one no later than v1's
+          earliest post), so `carry-v1` finds v1's judged posts.
         The "Other evaluations" paragraph gets one line: the script takes a schema.
       - `docs/DECISIONS.md`: check that the set v2 labelling row (2026-10-15) is present.
         Add a row: one shared result module in `app/core/eval_results.py` (the header, the
@@ -913,6 +924,8 @@ watches them fail for the expected reason, and then writes the code.
         - remove rows 43, 44, 45 and 48;
         - row 46 keeps only the extraction entry point, with the trigger "spec 018";
         - row 47's trigger becomes "spec 018";
+        - row 49's "a refactor during specs 016 and 017" becomes "specs 016–018", since
+          extraction v2 also measures a baseline;
         - add a new P1 row: the alert window starts after the previous gameweek's last
           match instead of at the previous deadline (`window_floor`, shared by the alerts,
           their corroboration and the ingest catch-up). Its trigger is spec 017's report
@@ -932,8 +945,9 @@ watches them fail for the expected reason, and then writes the code.
         `export-judge-inputs`, `estimate`, `import-judge`, `agreement`, `review`, `evaluate`,
         `compare`, `session_judge.sh` and "per query" appears in `docs/EVALUATION.md`;
       - `test_backlog_window_row_and_017_018_renumbering`: the window row is P1 and names
-        spec 017. No `| 43 |`, `| 44 |`, `| 45 |` or `| 48 |` row is left. The ROADMAP
-        contains "018";
+        spec 017. No `| 43 |`, `| 44 |`, `| 45 |` or `| 48 |` row is left. Rows 46 and 47
+        name spec 018 and no longer "spec 017". The ROADMAP contains "018" and no longer
+        "planned as 017";
       - `test_decisions_cover_retrieval_set_v2_and_results_header`.
 
       Automatic verification:
@@ -943,7 +957,11 @@ watches them fail for the expected reason, and then writes the code.
 
 - [ ] 20. **Full verification and the roadmap tick.** Files: `docs/ROADMAP.md`. Spec 016's
       tooling part is noted as done in the retrieval item, and the item stays open because
-      spec 017 delivers the report. Run the end-to-end checks below.
+      spec 017 delivers the report. Run the end-to-end checks below. Then prepare the
+      owner's manual scenario: in a scratch directory outside the repository
+      (`$SCRATCH/review-set`), copy `evals/retrieval/v1/corpus.jsonl`, run `carry-v1` for
+      the first two v1 queries into it, and record the exact `review` command and the
+      directory path under "Manual (performed by the owner)" in the final report.
       Automatic verification:
       `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto`.
 
@@ -964,6 +982,11 @@ watches them fail for the expected reason, and then writes the code.
   only after the deadline would be claimed but never searched. Such a post is only dropped
   from the cut anyway, so no metric changes. `build-player-slice` prints the count of
   claimed IDs missing from the corpus or not marked as sources, as a warning.
+- **`carry-v1` needs v1's posts in the v2 corpus.** `carry-v1` fails when a judged v1 post
+  is missing from the v2 corpus, and the free slice is searched with no filters over the
+  whole corpus. Spec 017 must therefore export the GW6 corpus with no `--since` (or one no
+  later than v1's earliest post), not only the alert window. `docs/EVALUATION.md` (step 19)
+  says so next to the `export-corpus` command.
 - **Time zones.** The CLI options are Europe/Warsaw (`parse_local`), and storage and
   comparisons are in UTC. The `+2 h` match end is added in UTC.
 - **Fusion prefix.** `fuse` sorts by score with a deterministic tie-break, then slices. The
@@ -1000,9 +1023,9 @@ No step reaches the Compose database or the network. Run from `backend/`:
 
 ### Manual (performed by the owner)
 
-- Try the blind review on a hand-made set of two queries. The implementer writes it with
-  `carry-v1` from the first two v1 queries into `$SCRATCH/review-set` and prints the
-  command. Then run `uv run python -m app.retrieval.evaluation review --set
+- Try the blind review on a hand-made set of two queries, prepared by the implementer in
+  step 20 (`$SCRATCH/review-set`: the v1 corpus plus the first two v1 queries carried in).
+  Run `uv run python -m app.retrieval.evaluation review --set
   $SCRATCH/review-set --sample 3 --seed 1`, answer three pairs, and quit with `q`.
   Pass when: each pair shows the query and the post's author, time and text without any
   judge's label, and `queries.jsonl` in that directory then holds three
@@ -1023,7 +1046,33 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+2026-10-15 — plan review (fresh context, under `/pipeline:ship`).
+
+Findings:
+
+- `minor` — Design §7 ran one search per mode × variant with leg depth `max(50, max(depths))`, while Risks ("Fusion prefix") grouped depths by leg depth; a depth above 50 would have changed the ranking the smaller depths are measured on. §7 now groups depths by leg depth `max(50, N)`, as Risks says.
+- `minor` — Design §2 said a v1 line without `kind` parses as a free query, but a plain pydantic `Field(discriminator="kind")` rejects a missing tag. §2 now names a callable `Discriminator` (or a before-validator) that defaults to `"free"`.
+- `minor` — Step 1's `git_state` test makes a commit in a `tmp_path` repository; CI has no git identity and a local signing config could block it. The test's git calls now pass a user, an e-mail and `commit.gpgsign=false`.
+- `minor` — Step 7 moved the `eval_db` fixture "from `test_runner.py`", but `test_schema.py` holds a second identical copy. Both copies are now removed in favour of `conftest.py`.
+- `minor` — Step 19's renumbering test only checked that the ROADMAP contains "018", which a stale "planned as 017" beside it would still pass; and BACKLOG row 49 ("specs 016 and 017") was not covered. The test now checks rows 46/47 name 018 and the ROADMAP no longer says "planned as 017"; row 49 is reworded to "specs 016–018".
+- `minor` — The manual scenario had the implementer prepare the review set, outside any step, and without the corpus `review` needs to show posts. Preparation (v1 corpus + `carry-v1` of two queries into a scratch directory) moved into step 20; the manual item now only runs the review.
+- `minor` — `carry-v1` fails when v1's judged posts are missing from the v2 corpus, so spec 017 cannot export only the GW6 alert window. Added to Risks and to step 19's `docs/EVALUATION.md` content.
+
+Checked and found correct (later stages need not repeat):
+
+- Coverage: every AC1–AC19 has steps and a named proving test; the matrix matches the steps; every step writes its tests first and has an `Automatic verification:` block with exact test paths.
+- `source_post_sql` / `list_post_sql` (`app/tweets/classes.py`): the Python copy in Design §2 (null handles → all sources; lower-cased author in handles; quoted by a listed author) matches the SQL, and the load-time consistency check plus creating `list_membership` in `retrieval_eval` closes the `search_path` fallback to `public`.
+- `current_extractions(created_from, created_until, sources_only=True)` is what `sql_claims` calls, so the claimed-ID equality of AC3 holds by construction and is still tested directly.
+- `window_floor(previous, next_, DEFAULT_MAX_LOOKBACK, now)` in `app/fpl/deadlines.py` gives the `alerts` rule as planned, including the international-break case.
+- Module boundaries: `retrieval` may import `core`, `extraction`, `fpl`; `corroboration` may import `retrieval`; `core` has no edges and `eval_results.py` takes the reasoning effort as an argument, so `ALLOWED` stays unchanged (AC18).
+- Exactly seven `os.replace` copies exist under `app/` (presser, corroboration, extraction, retrieval `cases`/`dataset`/`runner`), matching AC16 and `test_atomic_write_lives_once`.
+- `fuse` sorts the full candidate set before `[:limit]`, so the prefix argument is valid within one leg depth.
+- `claude --effort` exists in the installed CLI; the script's `raw/*.json` token glob also counts the kept `.invalid.json` replies, as Design §10 intends.
+- Every reference to the moved commands (README lines 180–181, five test modules, `app/retrieval/__main__.py`) is covered by step 5; no worker or deployment file references them.
+- DECISIONS row 106 (set v2 labelling) already exists; step 19 adds the results-module row. Owner summary: no new dependency and no data migration, consistent with SPEC → Owner decisions (`retrieval_eval` is recreated by code, not by Alembic). PLAN is in English (`language: en`).
+- AC12's "the input holds the versioned prompt" realised as a per-slice `judge-prompt.md` system prompt next to the inputs is a sound reading of the AC, recorded in Design §9.
+
+Decision: the plan is ready for implementation — it covers every AC with test-first steps and exact commands, breaks no decision, needs no new dependency or migration, and the findings were all minor and are fixed in place.
 
 ## Deviations
 
