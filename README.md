@@ -5,33 +5,41 @@
 Team-news alerts and a post-gameweek press conference for Polish Fantasy Premier League
 mini-leagues — built as a retrieval-augmented LLM system with evaluation and tracing.
 
-> Status: early development. The roadmap below says what exists and what is planned.
+> Status: in development. [docs/ROADMAP.md](docs/ROADMAP.md) says what exists and what is
+> planned.
 
 ## What it does
 
 - **Team-news alerts.** Line-up leaks and injury news appear on X minutes before the FPL
   deadline, scattered across many accounts, while the official FPL flags lag behind. The
   system ingests posts from watched accounts, extracts who is out, doubtful, benched or
-  starting, corroborates each leak against earlier posts, and e-mails an alert with cited
-  sources — targeting 60 s from post to inbox.
-- **Source credibility.** After each gameweek every leak is settled against who actually
-  played, so each account gets a measured accuracy score.
+  starting, corroborates each leak against the other posts about the player, and e-mails an
+  alert with cited sources. The target is to fetch a leak within 60 s of it being posted
+  (p95 detection latency, measured at 25.9 s); extraction and delivery come on top.
 - **League presser.** After each gameweek, a banter-filled summary of the mini-league in
   Polish FPL slang: the manager of the gameweek, the disasters and the season race.
+- **Planned: source credibility.** After each gameweek every leak is settled against who
+  actually played, so each account gets a measured accuracy score (Stage 4).
 
 ## How it works
 
 - **FPL collector** — players, fixtures, leagues, picks and post-gameweek ground truth from
   the public FPL API into PostgreSQL.
-- **LangGraph flow** — extract (typed output) → link to FPL players → retrieve → corroborate
-  → decide → notify.
+- **Extraction** — a LangGraph flow: an LLM extracts the players, the event type and the
+  author's certainty as typed output, then a deterministic lookup links the names to FPL
+  players (the LLM only chooses when the lookup is ambiguous).
 - **Hybrid retrieval** — PostgreSQL full-text search and pgvector, merged with reciprocal
   rank fusion. Facts are queried with SQL, narrative is retrieved.
-- **Evaluation and tracing** — every LLM step has an evaluation set; every call is traced in
-  Langfuse.
+- **Corroboration and alerts** — plain Python over SQL and retrieval: the extracted claims
+  about a player are labelled by fixed rules, the posts only retrieval finds by an LLM judge;
+  alerts are built at deadline-driven slots and recovered after a crash through the database
+  (the alert log and the delivery idempotency key).
+- **Evaluation and tracing** — every LLM step that produces data has an evaluation set run
+  on demand, with its results recorded; LLM calls are traced in Langfuse.
 
-Stack: Python 3.12, FastAPI, SQLModel, Alembic, PostgreSQL 16 + pgvector, LangGraph,
-Langfuse, uv; hosted on Railway.
+Stack: Python 3.12, SQLModel, Alembic, PostgreSQL 16 + pgvector, LangGraph, LangChain,
+OpenRouter, Langfuse, uv; it runs locally on Docker Compose (a Railway deployment is prepared
+and postponed).
 
 ## Documentation
 
@@ -41,7 +49,9 @@ Langfuse, uv; hosted on Railway.
 | [docs/ROADMAP.md](docs/ROADMAP.md) | stages and their status |
 | [docs/DECISIONS.md](docs/DECISIONS.md) and [docs/adr/](docs/adr/) | design decisions and their reasoning |
 | [docs/CONVENTIONS.md](docs/CONVENTIONS.md) | code, tests, git |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | deployment runbook (Railway) |
+| [docs/EVALUATION.md](docs/EVALUATION.md) | running an LLM-judged evaluation with the Claude Code session as the judge |
+| [docs/reports/](docs/reports/) | evaluation and measurement reports, the code audit |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | deployment runbook (Railway, postponed) |
 
 ## Development
 
@@ -153,6 +163,23 @@ the run is traced in Langfuse under the run name. Prices for the cost figures co
 `backend/app/llm/prices.toml`; `uv run python -m app.extraction spend` sums the cost of
 every run file under `results/`, dev runs included.
 
+Retrieval — a fourth loop inside the worker embeds every stored post (`EMBEDDING_MODEL`, default
+`openai/text-embedding-3-small` through OpenRouter; it needs `OPENROUTER_API_KEY`), and search
+fuses PostgreSQL full-text and pgvector rankings with reciprocal rank fusion. The evaluation set
+in `backend/evals/retrieval/v1/` is a frozen corpus of public posts and about 40 queries (about
+10 in Polish), loaded into its own `retrieval_eval` schema and never into the live table;
+candidates are pooled from the three modes and pre-labelled by a model for the owner's review.
+`evaluate` reports recall@5, recall@10 and MRR per mode, overall and for the English and Polish
+slices; none of these commands is run by `pytest`:
+
+```bash
+uv run python -m app.retrieval index [--model MODEL]       # embed what is missing for a model
+uv run python -m app.retrieval status                      # embedded, missing and failed posts
+uv run python -m app.retrieval search "Isak injury" --mode hybrid   # or fulltext / vector
+uv run python -m app.retrieval review --split test         # accept, flip or add a judgement
+uv run python -m app.retrieval evaluate --split test --embedding-model openai/text-embedding-3-small
+```
+
 Corroboration — for a player and a moment, `python -m app.corroboration <player>` takes the
 newest extracted claim since the latest deadline as the anchor, labels every other post about
 the player as supporting, contradicting or related, counts the independent accounts (a repost
@@ -161,8 +188,8 @@ counts as its original author), flags a reversal and grades the anchor `high`, `
 `OPENROUTER_API_KEY`; without it the result uses the extracted claims only and says so. Times
 are `Europe/Warsaw`; `--at` replays a past moment and `--new-since` marks what is new to the
 reader. Each run is one Langfuse trace when the Langfuse keys are set. The judge has its own
-evaluation set in `backend/evals/corroboration/v1/`, pre-labelled by a model and reviewed by
-the owner (`review` needs no database or key); none of these commands is run by `pytest`:
+evaluation set in `backend/evals/corroboration/v1/`, pre-labelled by a model and waiting for the
+owner's review (`review` needs no database or key); none of these commands is run by `pytest`:
 
 ```bash
 uv run python -m app.corroboration Isak --at 2026-09-29T18:00       # a name or an FPL ID
@@ -202,8 +229,8 @@ the text, and the e-mail has a "send to WhatsApp" button. It runs when delivery 
 ID to nickname, kept out of the repository). `uv run python -m app.worker status` ends with a
 `Presser:` line. The CLI works by hand, also for an older gameweek and with `PRESSER_ENABLED=false`
 (which switches off only the automatic presser), and the evaluation tooling
-measures a model's faithfulness to the facts and the owner's rating of its style (the comparison
-run is BACKLOG #32); none of it is run by `pytest`:
+measures a model's faithfulness to the facts and the owner's rating of its style (the model
+comparison: [report](docs/reports/presser-model-comparison.md)); none of it is run by `pytest`:
 
 ```bash
 uv run python -m app.presser facts --league ID --gameweek N     # the fact sheet as JSON
@@ -224,9 +251,10 @@ goes from an approved spec through a reviewed plan and implementation to a pull 
 
 ## Deployment
 
-The worker runs on Railway: the Docker image from `backend/Dockerfile`, with `railway.json`
-at the repository root. The owner deploys by merging to `main`; the step-by-step runbook
-is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+The worker and PostgreSQL run locally on Docker Compose. A Railway deployment is prepared —
+the Docker image from `backend/Dockerfile`, `railway.json` at the repository root, both built
+in CI — and postponed until the system has to run without the owner's computer; the
+step-by-step runbook is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## License
 

@@ -6,9 +6,11 @@ Instructions for agents working in this repository.
 
 - **The Gaffer's Presser** — a post-gameweek press conference for your FPL mini-league: banter, team news and league history, in Polish FPL slang
 - Owner: Wojciech Czarnecki (wczarnecky@gmail.com)
-- Stack: Python 3.12 (uv, ruff, pytest) + FastAPI + SQLModel + Alembic + PostgreSQL 16 with pgvector
-  · LangGraph (LLM flows) · Langfuse (tracing) · React 19 + TypeScript + Vite only when a web UI
-  is needed · CI on GitHub Actions · hosting on Railway
+- Stack: Python 3.12 (uv, ruff, pytest) + SQLModel + Alembic + PostgreSQL 16 with pgvector
+  · LangGraph (LLM steps) · OpenRouter (the only LLM provider) · Langfuse (tracing) · FastAPI
+  only once an HTTP API is needed, React 19 + TypeScript + Vite only once a web UI is needed
+  · CI on GitHub Actions · runs locally on Docker Compose; the Railway deployment is postponed
+  (DECISIONS 2026-10-13)
 
 ## Document map — what to read when
 
@@ -22,6 +24,7 @@ Instructions for agents working in this repository.
 | `docs/CONVENTIONS.md` | code style, tests, git — when writing code |
 | `docs/EVALUATION.md` | running an LLM-judged evaluation with the session as the judge |
 | `docs/DEPLOYMENT.md` | the Railway deployment runbook — when changing the image, `railway.json` or environment variables |
+| `docs/reports/` | evaluation and measurement reports; `code-audit-2026-10.md` holds the accepted mini-plans of BACKLOG #38–#42 and the notes for specs 016 and 017 (#43–#48) — when picking up one of them |
 | `specs/` | SPEC + PLAN per feature — see the workflow below |
 
 ## Agentic workflow
@@ -46,7 +49,8 @@ or dependencies): mini plan in the conversation → implementation → full veri
 
 - `plan-approved` = approval of every edit within the plan's scope.
 - Outside the plan and on the fast path: present the intent and get approval before editing.
-- ALWAYS ask before: a migration on a database other than the test/development one;
+- ALWAYS ask before: a migration on any database other than a test container (while the
+  system runs locally, the Compose database is production — see the iron rules);
   deleting files or data outside the plan's scope; adding a new dependency.
 
 ### Git — agents on working branches, `main` belongs to the owner
@@ -65,7 +69,9 @@ hook enforce it (enabled once per clone: `git config core.hooksPath scripts/git-
 - When a task is done, tick it in `docs/ROADMAP.md` — the roadmap must not lie.
 - Record architectural decisions in `docs/DECISIONS.md` in the same PR.
 - Secrets and real users' data never in code, logs, commits or tests.
-- Production is out of reach of agent sessions — the owner performs operations on it.
+- Production is out of reach of agent sessions — the owner performs operations on it. While
+  the system runs locally, the owner's Compose database is production: agents only read it
+  when asked and never write to it or migrate it; tests use their own container.
 
 ## Commands
 
@@ -73,15 +79,21 @@ hook enforce it (enabled once per clone: `git config core.hooksPath scripts/git-
 # full verification of the stack (the same command as `verify.command` in .claude/workflow.json)
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q
 
-# running the application for development — added in stage 0 (FPL collector)
+# running the application locally (README, "Development", lists every module's CLI)
+docker compose up -d                         # PostgreSQL 16 with pgvector
+cd backend && uv run python -m app.worker run    # FPL jobs, ingest, extraction, indexing, alerts, presser
+uv run python -m app.worker status           # the state of every loop
 ```
+
+Migrating the Compose database (`uv run alembic upgrade head` in `backend/`) is the owner's
+operation: it is production while the system runs locally (the iron rules).
 
 ## Structure
 
 ```
 backend/           Python package `app/` (modules per area), tests, migrations
 frontend/          web UI — only once Wrapped is built
-docs/              project documents; docs/adr/ holds decision records
+docs/              project documents; docs/adr/ holds decision records, docs/reports/ the reports
 specs/             SPEC + PLAN per feature
 scripts/git-hooks/ pre-push guard for main
 ```

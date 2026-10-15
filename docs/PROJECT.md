@@ -84,8 +84,9 @@ Grouped by roadmap stage (`docs/ROADMAP.md`).
 - **Language:** product content in Polish FPL slang; repository, code, docs in English.
 - **Swappability:** the tweet source and the e-mail provider are adapters behind interfaces;
   switching one is a configuration change. The LLM is swapped by model through OpenRouter, the
-  only provider: a change of `LLM_MODEL` (a model outside the compared set needs a row in
-  `model_settings.toml` and `prices.toml`).
+  only provider: a change of `LLM_MODEL` (extraction and the corroboration judge) or
+  `PRESSER_MODEL` (the presser writer); a model outside the compared set needs a row in
+  `model_settings.toml` and `prices.toml`.
 - **Observability:** every LLM call is traced (inputs, outputs, tokens, cost, latency) from
   the first stage that calls an LLM.
 - **Evaluation:** every LLM step that produces data has an evaluation set before its
@@ -106,34 +107,47 @@ FPL API ───►│ FPL collector   │────►│                   
             └─────────────────┘     │  PostgreSQL 16       │
             ┌─────────────────┐     │  + pgvector          │
 X (source ─►│ Tweet ingest    │────►│  (facts, posts,      │
- adapter)   └────────┬────────┘     │   embeddings)        │
-                     ▼              │                      │
+ adapter)   └─────────────────┘     │   extractions,       │
+            ┌─────────────────┐     │   embeddings,        │
+            │ Extraction      │◄───►│   alert and presser  │
+            │ (LangGraph:     │     │   logs)              │
+            │ extract → link) │     │                      │
+            └─────────────────┘     │                      │
             ┌─────────────────┐     │                      │
-            │ LangGraph flow: │◄───►│                      │
-            │ extract → link →│     └──────────────────────┘
-            │ retrieve →      │               ▲
-            │ corroborate →   │               │
-            │ decide          │     ┌─────────┴────────────┐
-            └────────┬────────┘     │ Presser generator    │
-                     ▼              │ (SQL facts + LLM)    │
-              E-mail adapter ◄──────┴──────────────────────┘
+            │ Embedding loop  │◄───►│                      │
+            └─────────────────┘     └──────────────────────┘
+            ┌─────────────────┐               ▲
+            │ Alerts at slots:│◄──────────────┤
+            │ hybrid retrieval│               │
+            │ → corroboration │     ┌─────────┴────────────┐
+            │ (rules + LLM    │     │ Presser              │
+            │ judge) → render │     │ (SQL fact sheet →    │
+            └────────┬────────┘     │  LLM writer)         │
+                     ▼              └─────────┬────────────┘
+              E-mail adapter ◄────────────────┘
                      │
                      ▼
-               owner's inbox ──(copy-paste)──► WhatsApp
+               owner's inbox ──(button / copy-paste)──► WhatsApp
 ```
+
+Each box is a loop or a job of the one worker process. The LLM steps (extraction, the
+corroboration judge, the presser writer) are typed LangGraph nodes; the orchestration around
+them is plain Python, and recovery after a crash comes from the database (the alert log, the
+delivery idempotency key) — DECISIONS 2026-10-15.
 
 - **Facts are SQL, narrative is retrieval.** Points, standings and transfers are queried
   with SQL; posts, and later presser history and podcast transcripts, are retrieved.
 - **Processes:** one long-running worker with its own scheduler driven by the FPL deadline
   calendar — sparse polling outside the final window, every 20–30 s inside it. Cron cannot
   poll that often. An HTTP API appears only when something needs one (Wrapped).
-- **Environments:** development on a local Docker Compose stack (`pgvector/pgvector:pg16`);
-  production on Railway (worker + PostgreSQL); no staging. Tests that need a database use a
-  PostgreSQL container, also in CI.
-- **Models:** LLM and embeddings through provider APIs behind adapters; no local models in
-  production (memory cost). The default LLM is picked in
-  [ADR 0006](adr/0006-default-extraction-model-openrouter.md) by comparing cheap models on the
-  extraction evaluation set.
+- **Environments:** the system runs on a local Docker Compose stack
+  (`pgvector/pgvector:pg16`) on the owner's machine; a Railway deployment (worker +
+  PostgreSQL) is prepared and postponed (DECISIONS 2026-10-13, BACKLOG #37); no staging. Tests
+  that need a database use a PostgreSQL container, also in CI.
+- **Models:** LLM and embeddings through provider APIs behind adapters; no local models
+  (memory cost). Each default model is picked by comparing candidates on its evaluation set:
+  extraction in [ADR 0006](adr/0006-default-extraction-model-openrouter.md), the presser
+  writer in [ADR 0007](adr/0007-default-presser-model.md).
 - Decisions and their rationale: `docs/DECISIONS.md` and `docs/adr/`.
 
 ## Risks
