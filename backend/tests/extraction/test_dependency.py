@@ -14,7 +14,6 @@ _PACKAGES = [
     "langgraph",
     "langchain-core",
     "langfuse",
-    "langchain",
     "langchain-openrouter",
 ]
 
@@ -43,6 +42,12 @@ def test_removed_llm_packages_absent():
     for package in _REMOVED:
         assert package not in declared
         assert f'name = "{package}"' not in lock
+
+
+def test_langchain_package_absent():
+    # It came in only for the Langfuse LangChain callback, which the own tracer replaced.
+    assert "langchain" not in _pinned_versions()
+    assert 'name = "langchain"\n' not in UV_LOCK.read_text(encoding="utf-8")
 
 
 def test_no_module_imports_removed_packages():

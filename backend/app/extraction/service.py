@@ -4,8 +4,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.runnables import RunnableConfig
 from sqlalchemy import Engine
 from sqlmodel import Session
 
@@ -22,7 +20,7 @@ from app.extraction.linking import (
 )
 from app.extraction.schemas import FlowResult, PostInput
 from app.extraction.store import ExtractionRecord, save_extraction
-from app.extraction.tracing import run_config
+from app.extraction.tracing import ExtractionTracer, span_input, span_output
 from app.llm.chat import ChatModelSpec
 from app.llm.pricing import Price, compute_cost, load_prices
 from app.llm.tracing import TracingConfig
@@ -56,11 +54,10 @@ class StoredOutcome:
 def run_with_retries(
     flow: Flow,
     post: PostInput,
-    config: RunnableConfig,
     clock: Clock,
     stop_event: threading.Event,
 ) -> RetryOutcome[FlowResult]:
-    return with_retries(lambda: flow.run(post, config=config), clock, stop_event, what="extraction")
+    return with_retries(lambda: flow.run(post), clock, stop_event, what="extraction")
 
 
 def load_reference_files() -> tuple[dict[str, Price], Aliases]:
@@ -78,7 +75,7 @@ def extract_post(
     post: PostInput,
     clock: Clock,
     stop_event: threading.Event,
-    handler: BaseCallbackHandler | None,
+    tracer: ExtractionTracer,
     record_latency: bool,
 ) -> StoredOutcome | None:
     started_at = clock.now()
@@ -88,10 +85,11 @@ def extract_post(
             players, teams = load_players(session)
         player_aliases, team_aliases = runtime.aliases
         index = PlayerIndex(players, teams, player_aliases, team_aliases)
-        flow = build_flow(runtime.make_spec(), index)
-        config = run_config(post.x_id, PROMPT_VERSION, runtime.provider, runtime.model, handler)
-
-        retry = run_with_retries(flow, post, config, clock, stop_event)
+        flow = build_flow(runtime.make_spec(), index, tracer, runtime.prices)
+        trace_input = span_input(post.x_id, PROMPT_VERSION, runtime.provider, runtime.model)
+        with tracer.span("extraction", trace_input) as span:
+            retry = run_with_retries(flow, post, clock, stop_event)
+            span.update(output=span_output(retry))
         if retry.stopped:
             return None
         attempts = retry.attempts

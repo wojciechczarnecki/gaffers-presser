@@ -13,12 +13,12 @@ from app.extraction.linking import PlayerIndex
 from app.extraction.models import Extraction
 from app.extraction.schemas import PostInput
 from app.extraction.service import ExtractionRuntime, extract_post
-from app.extraction.tracing import run_config
+from app.extraction.tracing import NULL_EXTRACTION_TRACER
 from app.llm.chat import LlmConfig, build_chat_model
 from app.llm.models import ModelSettings
 from app.llm.pricing import Price
 from app.tweets.models import Tweet
-from tests.extraction.fakes import RecordingHandler
+from tests.extraction.fakes import RecordingExtractionTracer
 
 PAYLOAD = json.loads(
     (Path(__file__).parent / "payloads" / "openrouter_fallback_tool_call.json").read_text()
@@ -119,7 +119,13 @@ def test_fallback_answer_recorded(db_session):
     spec = _spec(client)
 
     outcome = extract_post(
-        db_session.get_bind(), _runtime(spec), POST, _Clock(), threading.Event(), None, False
+        db_session.get_bind(),
+        _runtime(spec),
+        POST,
+        _Clock(),
+        threading.Event(),
+        NULL_EXTRACTION_TRACER,
+        False,
     )
 
     assert outcome.status == "extracted"
@@ -140,7 +146,7 @@ def test_fallback_answer_recorded(db_session):
 def test_generation_id_and_reasoning_tokens_reach_the_flow_result():
     flow = build_flow(_spec(FakeSdkClient()), PlayerIndex([], [], [], []))
 
-    result = flow.run(POST, config={})
+    result = flow.run(POST)
 
     assert result.host is None  # filled later from the generation lookup (PLAN 005, D1)
     assert result.answered_model == "b/fallback-model"
@@ -150,20 +156,18 @@ def test_generation_id_and_reasoning_tokens_reach_the_flow_result():
     assert [e.mention for e in result.events] == ["Haaland"]
 
 
-def test_usage_and_callback_through_chat_openrouter():
-    handler = RecordingHandler()
-    flow = build_flow(_spec(FakeSdkClient()), PlayerIndex([], [], [], []))
-    config = run_config(1, "extraction@1", "openrouter", "a/primary", handler)
+def test_generation_traced_through_chat_openrouter_with_the_answering_model():
+    tracer = RecordingExtractionTracer()
+    prices = {"b/fallback-model": Price(input_per_million=1.0, output_per_million=2.0, checked="x")}
+    flow = build_flow(_spec(FakeSdkClient()), PlayerIndex([], [], [], []), tracer, prices)
 
-    flow.run(POST, config=config)
+    flow.run(POST)
 
-    (start,) = handler.chat_model_starts
-    assert start["metadata"]["x_id"] == 1
-    assert start["metadata"]["model"] == "a/primary"
-    (end,) = handler.llm_ends
-    assert end["usage"]["input_tokens"] == 120
-    assert end["usage"]["output_tokens"] == 40
-    assert end["llm_output"]["model_name"] == "b/fallback-model"
+    (generation,) = tracer.generations
+    assert generation["model"] == "b/fallback-model"
+    assert generation["usage"].input_tokens == 120
+    assert generation["usage"].output_tokens == 40
+    assert generation["cost_usd"] == pytest.approx(120 / 1e6 * 1.0 + 40 / 1e6 * 2.0)
 
 
 def test_provider_error_gives_three_attempts_then_a_failed_row(db_session):
@@ -172,7 +176,13 @@ def test_provider_error_gives_three_attempts_then_a_failed_row(db_session):
     spec = _spec(client)
 
     outcome = extract_post(
-        db_session.get_bind(), _runtime(spec), POST, _Clock(), threading.Event(), None, False
+        db_session.get_bind(),
+        _runtime(spec),
+        POST,
+        _Clock(),
+        threading.Event(),
+        NULL_EXTRACTION_TRACER,
+        False,
     )
 
     assert outcome.status == "failed"

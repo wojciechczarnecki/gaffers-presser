@@ -25,7 +25,7 @@ from app.retrieval.evaluation.metrics import (
 from app.retrieval.evaluation.schema import load_eval_corpus
 from app.retrieval.indexing import IndexingRuntime, index_missing, traced_embed
 from app.retrieval.search import SearchError, search
-from app.retrieval.tracing import RetrievalTracer
+from app.retrieval.tracing import NULL_TRACER, RetrievalTracer
 
 
 class EvaluationError(AppError):
@@ -133,7 +133,8 @@ def run_evaluation(
         tracing=None,
         clock=clock,
     )
-    indexed = index_missing(eval_engine, runtime, embedder, tracer, clock, stop_event)
+    # The frozen corpus is re-embedded on every run, so it is indexed untraced.
+    indexed = index_missing(eval_engine, runtime, embedder, NULL_TRACER, clock, stop_event)
     if indexed.failed:
         raise EvaluationError(f"{indexed.failed} corpus posts could not be embedded")
 

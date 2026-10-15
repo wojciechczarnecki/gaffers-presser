@@ -148,16 +148,15 @@ def test_other_model_rows_untouched(db):
     assert [(r.model, list(r.embedding)) for r in rows if r.model == "other/embed"] == before
 
 
-def test_embedding_call_traced_with_model_tokens_cost(db):
+def test_successful_embedding_is_stored_untraced(db):
     clock = FixedClock(NOW)
     add_tweet(db, 1, "Saka is fit")
     tracer = RecordingTracer()
     _embed(db, FakeEmbedder(tokens_per_text=7), _next(db, clock), clock, tracer=tracer)
-    (record,) = tracer.embeddings
-    assert record["model"] == MODEL
-    assert record["texts"] == ["Saka is fit"]
-    assert record["input_tokens"] == 7
-    assert record["cost_usd"] == pytest.approx(7 * 0.02 / 1e6)
+    assert tracer.embeddings == []
+    (row,) = _rows(db)
+    assert (row.status, row.input_tokens) == ("embedded", 7)
+    assert row.cost_usd == pytest.approx(7 * 0.02 / 1e6)
 
 
 def test_stopped_returns_none_without_a_row(db):
@@ -195,15 +194,15 @@ class RaisingTracer(RecordingTracer):
         raise ConnectionError("tracing backend down")
 
 
-def test_tracing_error_neither_retries_nor_fails_a_paid_embedding(db, caplog):
+def test_tracing_error_neither_adds_retries_nor_fails_a_paid_embedding(db, caplog):
     clock = FixedClock(NOW)
     add_tweet(db, 1)
-    embedder = FakeEmbedder()
+    embedder = FakeEmbedder(responses=[RuntimeError("x"), None])
     outcome = _embed(db, embedder, _next(db, clock), clock, tracer=RaisingTracer())
     assert outcome is not None and outcome.status == "embedded"
-    assert len(embedder.calls) == 1
+    assert len(embedder.calls) == 2
     (row,) = _rows(db)
-    assert (row.status, row.attempts) == ("embedded", 1)
+    assert (row.status, row.attempts) == ("embedded", 2)
     assert "retrieval tracing failed: ConnectionError" in caplog.text
 
 
@@ -213,11 +212,11 @@ def test_failed_embedding_calls_are_traced_with_the_error_class(db):
     tracer = RecordingTracer()
     embedder = FakeEmbedder(responses=[RuntimeError("x"), None])
     _embed(db, embedder, _next(db, clock), clock, tracer=tracer)
-    failed, succeeded = tracer.embeddings
+    (failed,) = tracer.embeddings
     assert failed["error_class"] == "RuntimeError"
+    assert failed["model"] == MODEL
+    assert failed["texts"] == ["Saka is fit"]
     assert (failed["input_tokens"], failed["cost_usd"]) == (None, None)
-    assert "error_class" not in succeeded
-    assert succeeded["input_tokens"] == 5
 
 
 def _fail_once(db, clock) -> None:

@@ -211,14 +211,13 @@ def test_a_query_that_cannot_be_embedded_is_named(eval_db):
         _run(eval_db, embedder=embedder)
 
 
-def test_runner_traces_searches_and_embeddings(eval_db):
+def test_runner_traces_query_embeddings_and_searches_but_not_the_corpus(eval_db):
     tracer = RecordingTracer()
     _run(eval_db, tracer=tracer)
 
     queries = _queries()
-    query_embeddings = [r for r in tracer.embeddings if r["texts"] in ([EN], [PL])]
-    assert sorted(r["texts"][0] for r in query_embeddings) == sorted([EN, PL])
-    assert len(query_embeddings) == 2
+    assert sorted(r["texts"][0] for r in tracer.embeddings) == sorted([EN, PL])
+    assert len(tracer.embeddings) == 2
     searches = tracer.searches
     assert len(searches) == len(queries) * 3
     assert sorted({(r["query"], r["mode"]) for r in searches}) == sorted(

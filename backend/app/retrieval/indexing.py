@@ -45,6 +45,7 @@ def traced_embed(
     tracer: RetrievalTracer,
     prices: dict[str, Price],
     timeout_seconds: float | None = None,
+    trace_success: bool = True,
 ) -> tuple[EmbeddingResult, float | None]:
     try:
         # Forwarded only when set, so an embedder that predates the keyword keeps working.
@@ -61,9 +62,14 @@ def traced_embed(
         )
         raise
     cost = compute_cost(embedder.model, result.input_tokens, None, prices)
-    _trace_safely(
-        tracer, model=embedder.model, texts=texts, input_tokens=result.input_tokens, cost_usd=cost
-    )
+    if trace_success:
+        _trace_safely(
+            tracer,
+            model=embedder.model,
+            texts=texts,
+            input_tokens=result.input_tokens,
+            cost_usd=cost,
+        )
     return result, cost
 
 
@@ -85,8 +91,9 @@ def embed_post(
     stop_event: threading.Event,
     record_latency: bool,
 ) -> IndexOutcome | None:
+    # A stored embedding is its own record (post_embedding), so only failed attempts are traced.
     retry = with_retries(
-        lambda: traced_embed(embedder, [post.text], tracer, runtime.prices),
+        lambda: traced_embed(embedder, [post.text], tracer, runtime.prices, trace_success=False),
         clock,
         stop_event,
         what="embedding",

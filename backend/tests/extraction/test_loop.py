@@ -1,7 +1,9 @@
 import threading
 import time
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
+from pydantic import SecretStr
 from sqlmodel import Session, select
 
 from app.extraction.loop import ExtractionLoop
@@ -10,6 +12,7 @@ from app.extraction.schemas import ExtractionOutput
 from app.extraction.service import ExtractionRuntime
 from app.extraction.store import RETRY_AFTER, current_extractions
 from app.llm.chat import ChatModelSpec
+from app.llm.tracing import TracingConfig
 from app.tweets.models import Tweet
 from tests.extraction.fakes import FakeChatModel
 from tests.tweets.membership_helpers import set_members
@@ -29,6 +32,11 @@ def _tweet_row(x_id: int, created_at: datetime = NOW, author: str = "reporter") 
         is_reply=False,
         raw={},
     )
+
+
+OFFLINE_TRACING = TracingConfig(
+    public_key=SecretStr("pk-fake"), secret_key=SecretStr("sk-fake"), host="http://127.0.0.1:9"
+)
 
 
 def _runtime(*responses) -> ExtractionRuntime:
@@ -361,11 +369,11 @@ def test_tracing_setup_error_extracts_untraced(db, monkeypatch, caplog):
         session.add(_tweet_row(x_id=1, created_at=NOW))
         session.commit()
 
-    def broken_handler(tracing):
+    def broken_client(tracing):
         raise ValueError("langfuse client cannot start with secret sk-lf-sentinel")
 
-    monkeypatch.setattr("app.extraction.loop.make_handler", broken_handler)
-    runtime = _runtime(ExtractionOutput(events=[]))
+    monkeypatch.setattr("app.llm.tracing.make_client", broken_client)
+    runtime = replace(_runtime(ExtractionOutput(events=[])), tracing=OFFLINE_TRACING)
     loop = ExtractionLoop(db, runtime, _AdvancingClock(), stop_event)
 
     with caplog.at_level("ERROR"):

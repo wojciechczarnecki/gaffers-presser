@@ -258,6 +258,8 @@ def test_prelabel_never_touches_public_tweet(eval_db, tmp_path):
         assert conn.execute(text("SELECT count(*) FROM public.post_embedding")).scalar_one() == 0
     assert 900 not in {j.x_id for j in load_queries(path)[0].judgements}
     assert tracer.searches
+    # the corpus is indexed untraced; only the query embeddings (vector and hybrid) are traced
+    assert [r["texts"] for r in tracer.embeddings] == [[queries[0].text]] * 2
 
 
 def test_prelabel_cost_adds_chat_and_embeddings(eval_db, tmp_path):

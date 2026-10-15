@@ -1,9 +1,11 @@
 import logging
+import time
+from dataclasses import dataclass
 from typing import Any, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph
+from pydantic import BaseModel
 
 from app.content import load_prompt
 from app.extraction.linking import PlayerIndex, PlayerRecord
@@ -15,7 +17,9 @@ from app.extraction.schemas import (
     PostInput,
 )
 from app.llm.chat import ChatModelSpec
+from app.llm.pricing import Price, compute_cost
 from app.llm.structured import Usage, answer_from_raw, usage_from_raw
+from app.llm.tracing import GenerationTracer, NullGenerationTracer
 
 logger = logging.getLogger(__name__)
 
@@ -80,11 +84,27 @@ def _render_disambiguation(
     return "\n".join(lines)
 
 
+@dataclass(frozen=True)
+class _Reply:
+    parsed: Any
+    parsing_error: BaseException | None
+    usage: Usage
+    answered_model: str | None
+    host: str | None
+    generation_id: str | None
+
+    @property
+    def error_class(self) -> str | None:
+        if self.parsing_error is not None:
+            return type(self.parsing_error).__name__
+        return "NoParsedResult" if self.parsed is None else None
+
+
 class Flow:
     def __init__(self, graph: Any) -> None:
         self._graph = graph
 
-    def run(self, post: PostInput, config: RunnableConfig) -> FlowResult:
+    def run(self, post: PostInput) -> FlowResult:
         state: FlowState = {
             "post": post,
             "extracted": None,
@@ -95,7 +115,7 @@ class Flow:
             "host": None,
             "generation_id": None,
         }
-        result = self._graph.invoke(state, config=config)
+        result = self._graph.invoke(state)
         return FlowResult(
             events=result["events"],
             usage=result["usage"],
@@ -106,27 +126,71 @@ class Flow:
         )
 
 
-def build_flow(spec: ChatModelSpec, index: PlayerIndex) -> Flow:
+def build_flow(
+    spec: ChatModelSpec,
+    index: PlayerIndex,
+    tracer: GenerationTracer | None = None,
+    prices: dict[str, Price] | None = None,
+) -> Flow:
+    traced = tracer or NullGenerationTracer()
+    known_prices = prices or {}
+
+    def call(schema: type[BaseModel], system: str, human: str) -> _Reply:
+        # One generation per LLM call, priced from prices.toml; a failed call is traced too.
+        started = time.monotonic()
+        try:
+            structured = spec.chat_model.with_structured_output(
+                schema, include_raw=True, **spec.structured_kwargs
+            )
+            result = structured.invoke([SystemMessage(system), HumanMessage(human)])
+        except Exception as exc:
+            traced.generation(
+                model=spec.model,
+                input=human,
+                output=None,
+                usage=None,
+                cost_usd=None,
+                latency_seconds=time.monotonic() - started,
+                error_class=type(exc).__name__,
+            )
+            raise
+        latency = time.monotonic() - started
+        raw = result.get("raw")
+        answered_model, host, generation_id = answer_from_raw(raw)
+        reply = _Reply(
+            parsed=result.get("parsed"),
+            parsing_error=result.get("parsing_error"),
+            usage=usage_from_raw(raw) if raw is not None else Usage(),
+            answered_model=answered_model,
+            host=host,
+            generation_id=generation_id,
+        )
+        model = answered_model or spec.model
+        usage = reply.usage
+        traced.generation(
+            model=model,
+            input=human,
+            output=reply.parsed.model_dump_json() if reply.parsed is not None else None,
+            usage=usage,
+            cost_usd=compute_cost(model, usage.input_tokens, usage.output_tokens, known_prices),
+            latency_seconds=latency,
+            error_class=reply.error_class,
+        )
+        return reply
+
     def extract_node(state: FlowState) -> dict[str, Any]:
         post = state["post"]
-        messages = [SystemMessage(EXTRACTION_PROMPT.text), HumanMessage(_render_post(post))]
-        structured = spec.chat_model.with_structured_output(
-            ExtractionOutput, include_raw=True, **spec.structured_kwargs
-        )
-        result = structured.invoke(messages)
-        if result["parsing_error"] is not None or result["parsed"] is None:
-            parsing_error = result["parsing_error"]
-            reason = type(parsing_error).__name__ if parsing_error else "no parsed result"
+        reply = call(ExtractionOutput, EXTRACTION_PROMPT.text, _render_post(post))
+        if reply.error_class is not None:
+            reason = reply.error_class if reply.parsing_error else "no parsed result"
             raise ExtractionOutputError(f"extraction output failed validation: {reason}")
-        usage = state["usage"] + usage_from_raw(result["raw"])
-        answered_model, host, generation_id = answer_from_raw(result["raw"])
         return {
-            "extracted": result["parsed"],
-            "usage": usage,
+            "extracted": reply.parsed,
+            "usage": state["usage"] + reply.usage,
             "llm_calls": state["llm_calls"] + 1,
-            "answered_model": answered_model,
-            "host": host,
-            "generation_id": generation_id,
+            "answered_model": reply.answered_model,
+            "host": reply.host,
+            "generation_id": reply.generation_id,
         }
 
     def link_node(state: FlowState) -> dict[str, Any]:
@@ -143,27 +207,16 @@ def build_flow(spec: ChatModelSpec, index: PlayerIndex) -> Flow:
             if len(candidates) == 1:
                 player = candidates[0]
             elif len(candidates) > 1:
-                structured = spec.chat_model.with_structured_output(
-                    Disambiguation, include_raw=True, **spec.structured_kwargs
+                human = _render_disambiguation(
+                    state["post"], item.player, item.team, candidates, index
                 )
-                messages = [
-                    SystemMessage(LINK_DISAMBIGUATION_PROMPT.text),
-                    HumanMessage(
-                        _render_disambiguation(
-                            state["post"], item.player, item.team, candidates, index
-                        )
-                    ),
-                ]
                 fpl_id: int | None = None
                 try:
-                    result = structured.invoke(messages)
+                    reply = call(Disambiguation, LINK_DISAMBIGUATION_PROMPT.text, human)
                     llm_calls += 1
-                    raw = result.get("raw")
-                    if raw is not None:
-                        usage = usage + usage_from_raw(raw)
-                    parsed = result.get("parsed")
-                    if parsed is not None:
-                        fpl_id = parsed.fpl_id
+                    usage = usage + reply.usage
+                    if reply.parsed is not None:
+                        fpl_id = reply.parsed.fpl_id
                 except Exception as exc:
                     logger.warning("disambiguation call failed: %s", type(exc).__name__)
                 if fpl_id is not None:
