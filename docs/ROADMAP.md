@@ -70,7 +70,7 @@ and each LLM step that produces data has an evaluation set with recorded results
       a slice shaped like the production query, full-text for names with an initial, pooling
       that follows new models and posts, self-describing result files and the retrieval
       evaluation's own entry point (BACKLOG #43–#46); before the next item, because the
-      corroboration judge reads retrieval's output (spec: TBD, planned as 016) — **portfolio MVP**
+      corroboration judge reads retrieval's output (spec: [016](../specs/016-retrieval-evaluation-tooling/SPEC.md)) — **portfolio MVP**
 - [ ] Extraction and corroboration evaluation v2 on the GW6 window: real pre-deadline leaks
       in the extraction set, the rehearsal e-mail cases added before the prompt fixes, the
       model comparison re-run and the default model revisited (ADR 0006); the owner's review of
