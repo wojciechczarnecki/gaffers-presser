@@ -19,12 +19,14 @@ from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder
 from app.retrieval.search import SearchFilters, search
 from app.retrieval.tracing import NULL_TRACER, RetrievalTracer
+from app.retrieval.variants import Variant, load_player_names, variant_text
 from app.tweets.classes import quoted_authors
 
 SEARCH_LIMIT = 20
 MAX_JUDGED = 10
 EMBED_TIMEOUT_SECONDS = 5.0
 DEFAULT_LOOKBACK = timedelta(days=7)
+QUERY_VARIANT: Variant = "web_name"
 
 Aliases = tuple[list[PlayerAlias], list[TeamAlias]]
 
@@ -127,6 +129,14 @@ def sql_claims(
     return claims
 
 
+def _query_text(engine: Engine, player: PlayerRef, variant: Variant) -> str:
+    if variant == "web_name":
+        return player.web_name
+    with Session(engine) as session:
+        names = load_player_names(session, player.season, player.fpl_id)
+    return variant_text(names, variant) if names is not None else player.web_name
+
+
 def retrieval_candidates(
     engine: Engine,
     player: PlayerRef,
@@ -138,10 +148,11 @@ def retrieval_candidates(
     tracer: RetrievalTracer = NULL_TRACER,
     prices: dict[str, Price] | None = None,
     embed_timeout_seconds: float = EMBED_TIMEOUT_SECONDS,
+    variant: Variant | None = None,
 ) -> Candidates:
     response = search(
         engine,
-        player.web_name,
+        _query_text(engine, player, variant or QUERY_VARIANT),
         "hybrid",
         embedder=embedder,
         filters=SearchFilters(since=start, until=as_of, sources_only=True),

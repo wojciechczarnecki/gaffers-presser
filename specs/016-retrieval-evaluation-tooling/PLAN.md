@@ -685,7 +685,7 @@ watches them fail for the expected reason, and then writes the code.
       Automatic verification: `uv run pytest -q tests/retrieval/test_variants.py` and lint.
       `iterations: 0`
 
-- [ ] 9. **Corroboration builds its query through the variant constant (AC6).** Files:
+- [x] 9. **Corroboration builds its query through the variant constant (AC6).** Files:
       `backend/app/corroboration/sources.py` and
       `backend/tests/corroboration/test_sources.py`.
 
@@ -706,6 +706,7 @@ watches them fail for the expected reason, and then writes the code.
       Automatic verification: `uv run pytest -q tests/corroboration tests/alerts` and lint.
       Then `git diff --stat -- tests/alerts` must be empty, and `tests/corroboration` may
       differ only by the added tests.
+      `iterations: 0`
 
 - [ ] 10. **Player-slice windows (AC3, the window rules).** Files: new
       `backend/app/retrieval/evaluation/players.py` (`GameweekWindow`,
