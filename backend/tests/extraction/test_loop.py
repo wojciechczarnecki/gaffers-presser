@@ -8,6 +8,7 @@ from app.extraction.loop import ExtractionLoop
 from app.extraction.models import Extraction
 from app.extraction.schemas import ExtractionOutput
 from app.extraction.service import ExtractionRuntime
+from app.extraction.store import RETRY_AFTER, current_extraction
 from app.llm.chat import ChatModelSpec
 from app.tweets.models import Tweet
 from tests.extraction.fakes import FakeChatModel
@@ -93,7 +94,7 @@ def test_new_post_picked_within_5_s(db):
     assert (rows[0].started_at - NOW).total_seconds() <= 5
 
 
-def test_oldest_first(db):
+def test_newest_first(db):
     stop_event = threading.Event()
     with Session(db) as session:
         session.add(_tweet_row(x_id=2, created_at=NOW + timedelta(minutes=1)))
@@ -128,14 +129,14 @@ def test_oldest_first(db):
     stop_event.set()
     thread.join(timeout=2)
 
-    assert [row.tweet_x_id for row in rows] == [1, 2]
+    assert [row.tweet_x_id for row in rows] == [2, 1]
 
 
 def test_failure_does_not_stop_the_loop(db):
     stop_event = threading.Event()
     with Session(db) as session:
-        session.add(_tweet_row(x_id=1, created_at=NOW))
-        session.add(_tweet_row(x_id=2, created_at=NOW + timedelta(minutes=1)))
+        session.add(_tweet_row(x_id=1, created_at=NOW + timedelta(minutes=1)))
+        session.add(_tweet_row(x_id=2, created_at=NOW))
         session.commit()
 
     class NoSleepClock:
@@ -174,6 +175,49 @@ def test_failure_does_not_stop_the_loop(db):
     assert by_x_id[2] == "extracted"
 
 
+def test_failed_post_is_retried_after_ten_minutes_and_becomes_current(db):
+    stop_event = threading.Event()
+    with Session(db) as session:
+        session.add(_tweet_row(x_id=1))
+        session.commit()
+
+    class RetryAfterClock:
+        # Every sleep passes RETRY_AFTER, so the retry is due on the first idle poll.
+        def __init__(self) -> None:
+            self._now = NOW
+
+        def now(self) -> datetime:
+            return self._now
+
+        def sleep(self, seconds: float) -> None:
+            self._now += RETRY_AFTER
+
+    runtime = _runtime(
+        RuntimeError("a"), RuntimeError("b"), RuntimeError("c"), ExtractionOutput(events=[])
+    )
+    loop = ExtractionLoop(db, runtime, RetryAfterClock(), stop_event)
+
+    thread = threading.Thread(target=loop.run, daemon=True)
+    thread.start()
+
+    rows: list[Extraction] = []
+
+    def _fetch() -> bool:
+        nonlocal rows
+        with Session(db) as session:
+            rows = session.exec(select(Extraction).order_by(Extraction.id)).all()
+        return len(rows) >= 2
+
+    _wait_for(_fetch)
+    stop_event.set()
+    thread.join(timeout=2)
+
+    assert [row.status for row in rows] == ["failed", "extracted"]
+    assert rows[1].started_at - rows[0].finished_at >= timedelta(minutes=10)
+    with Session(db) as session:
+        assert current_extraction(session, 1).extraction_id == rows[1].id
+
+
 def test_db_error_survives_iteration(db, monkeypatch, caplog):
     stop_event = threading.Event()
     with Session(db) as session:
@@ -185,11 +229,11 @@ def test_db_error_survives_iteration(db, monkeypatch, caplog):
     original_next_pending = loop_module.next_pending
     calls = {"n": 0}
 
-    def flaky_next_pending(session):
+    def flaky_next_pending(session, now):
         calls["n"] += 1
         if calls["n"] == 1:
             raise RuntimeError("db hiccup")
-        return original_next_pending(session)
+        return original_next_pending(session, now)
 
     monkeypatch.setattr(loop_module, "next_pending", flaky_next_pending)
 
@@ -305,8 +349,8 @@ def test_error_while_saving_stores_failed_and_moves_on(db, monkeypatch):
     rows = _run_until_rows(db, loop, stop_event, 2)
 
     assert [(row.tweet_x_id, row.status, row.error_class) for row in rows] == [
-        (1, "failed", "RuntimeError"),
         (2, "extracted", None),
+        (1, "failed", "RuntimeError"),
     ]
     assert 30.0 not in clock.sleeps
 

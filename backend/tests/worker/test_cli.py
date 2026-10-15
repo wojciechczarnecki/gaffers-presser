@@ -1191,7 +1191,8 @@ def test_status_shows_extraction_never(cli, db):
     assert "  model: fake:fake-model" in lines
     assert "  fallback: none" in lines
     assert "  posts waiting: 0" in lines
-    assert "  failed posts: 0" in lines
+    assert "  failed posts, retrying: 0" in lines
+    assert "  failed posts, given up: 0" in lines
     assert "  latest extraction: never" in lines
 
 
@@ -1268,7 +1269,8 @@ def test_status_shows_extraction_counts_and_latest(cli, db):
     assert "  model: fake:fake-model" in lines
     assert "  fallback: none" in lines
     assert "  posts waiting: 1" in lines  # x_id=2 has no extraction yet
-    assert "  failed posts: 1" in lines
+    assert "  failed posts, retrying: 1" in lines  # one failed extraction of five
+    assert "  failed posts, given up: 0" in lines
     assert "  latest extraction: 2026-09-26T00:00:03Z x_id=1 status=failed latency=3.0" in lines
 
 

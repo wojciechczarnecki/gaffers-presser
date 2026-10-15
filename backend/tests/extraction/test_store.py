@@ -15,6 +15,7 @@ from tests.tweets.membership_helpers import set_members
 
 SEASON = "2026/27"
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
+LATER = NOW + timedelta(days=1)
 
 
 def _tweet(
@@ -139,13 +140,14 @@ def test_current_extraction_exposes_post_flags(db_session):
     assert current.author_handle == "reporter"
 
 
-def test_next_pending_oldest_first(db_session):
-    db_session.add(_tweet(2, NOW + timedelta(seconds=10)))
+def test_next_pending_newest_first(db_session):
     db_session.add(_tweet(1, NOW))
+    db_session.add(_tweet(2, NOW + timedelta(seconds=10)))
+    db_session.add(_tweet(3, NOW + timedelta(seconds=20)))
     db_session.commit()
-    save_extraction(db_session, _record(1), [])
+    save_extraction(db_session, _record(3), [])
 
-    post = next_pending(db_session)
+    post = next_pending(db_session, LATER)
 
     assert post is not None
     assert post.x_id == 2
@@ -156,7 +158,57 @@ def test_next_pending_none_when_all_extracted(db_session):
     db_session.commit()
     save_extraction(db_session, _record(1), [])
 
-    assert next_pending(db_session) is None
+    assert next_pending(db_session, LATER) is None
+
+
+def test_never_attempted_post_goes_before_a_due_retry(db_session):
+    db_session.add(_tweet(1, NOW))
+    db_session.add(_tweet(2, NOW - timedelta(days=1)))
+    db_session.commit()
+    save_extraction(db_session, _record(1, "failed", finished_at=NOW), [])
+
+    assert next_pending(db_session, LATER).x_id == 2
+
+
+def test_failed_post_comes_back_after_ten_minutes(db_session):
+    db_session.add(_tweet(1, NOW))
+    db_session.commit()
+    save_extraction(db_session, _record(1, "failed", finished_at=NOW), [])
+
+    assert next_pending(db_session, NOW + timedelta(minutes=9, seconds=59)) is None
+    assert next_pending(db_session, NOW + timedelta(minutes=10)).x_id == 1
+
+
+def test_retry_waits_for_the_latest_failure(db_session):
+    db_session.add(_tweet(1, NOW))
+    db_session.commit()
+    save_extraction(db_session, _record(1, "failed", finished_at=NOW), [])
+    save_extraction(db_session, _record(1, "failed", finished_at=NOW + timedelta(minutes=10)), [])
+
+    assert next_pending(db_session, NOW + timedelta(minutes=15)) is None
+    assert next_pending(db_session, NOW + timedelta(minutes=20)).x_id == 1
+
+
+def test_no_sixth_extraction_of_a_failing_post(db_session):
+    db_session.add(_tweet(1, NOW))
+    db_session.commit()
+    for attempt in range(4):
+        finished_at = NOW + timedelta(minutes=10 * attempt)
+        save_extraction(db_session, _record(1, "failed", finished_at=finished_at), [])
+    assert next_pending(db_session, LATER).x_id == 1
+
+    save_extraction(db_session, _record(1, "failed", finished_at=NOW + timedelta(minutes=40)), [])
+
+    assert next_pending(db_session, LATER) is None
+
+
+def test_failed_reextraction_of_an_extracted_post_is_not_retried(db_session):
+    db_session.add(_tweet(1, NOW))
+    db_session.commit()
+    save_extraction(db_session, _record(1, "extracted", finished_at=NOW), [])
+    save_extraction(db_session, _record(1, "failed", finished_at=NOW + timedelta(minutes=1)), [])
+
+    assert next_pending(db_session, LATER) is None
 
 
 def test_posts_for_reextract_selectors(db_session):
@@ -195,7 +247,8 @@ def test_extraction_status_counts(db_session):
     status = extraction_status(db_session.get_bind())
 
     assert status.waiting == 1
-    assert status.failed_posts == 1
+    assert status.retrying == 1
+    assert status.failed_posts == 0
     assert status.latest is not None
     assert status.latest.tweet_x_id == 2
     assert status.latest.status == "extracted"
@@ -235,7 +288,34 @@ def test_failed_posts_count_uses_the_latest_extraction_only(db_session):
     status = extraction_status(db_session.get_bind())
 
     assert status.failed_posts == 2
+    assert status.retrying == 0
     assert status.waiting == 0
+
+
+def test_failing_post_moves_from_retrying_to_given_up_at_the_fifth_extraction(db_session):
+    db_session.add(_tweet(1, NOW))
+    db_session.commit()
+    for attempt in range(4):
+        finished_at = NOW + timedelta(minutes=10 * attempt)
+        save_extraction(db_session, _record(1, "failed", finished_at=finished_at), [])
+    status = extraction_status(db_session.get_bind())
+    assert (status.retrying, status.failed_posts) == (1, 0)
+
+    save_extraction(db_session, _record(1, "failed", finished_at=NOW + timedelta(minutes=40)), [])
+
+    status = extraction_status(db_session.get_bind())
+    assert (status.retrying, status.failed_posts) == (0, 1)
+
+
+def test_failed_context_post_is_given_up(db_session):
+    db_session.add(_tweet(1, NOW, author="outsider"))
+    db_session.commit()
+    set_members(db_session.get_bind(), ["member"])
+    save_extraction(db_session, _record(1, "failed", finished_at=NOW), [])
+
+    assert next_pending(db_session, LATER) is None
+    status = extraction_status(db_session.get_bind())
+    assert (status.retrying, status.failed_posts) == (0, 1)
 
 
 def test_context_post_is_not_pending(db_session):
@@ -243,7 +323,7 @@ def test_context_post_is_not_pending(db_session):
     db_session.commit()
     set_members(db_session.get_bind(), ["member"])
 
-    assert next_pending(db_session) is None
+    assert next_pending(db_session, LATER) is None
     assert extraction_status(db_session.get_bind()).waiting == 0
 
 
@@ -251,11 +331,11 @@ def test_context_post_becomes_pending_when_its_author_joins(db_session):
     db_session.add(_tweet(1, NOW, author="outsider"))
     db_session.commit()
     set_members(db_session.get_bind(), ["member"])
-    assert next_pending(db_session) is None
+    assert next_pending(db_session, LATER) is None
 
     set_members(db_session.get_bind(), ["member", "outsider"])
 
-    assert next_pending(db_session).x_id == 1
+    assert next_pending(db_session, LATER).x_id == 1
     assert extraction_status(db_session.get_bind()).waiting == 1
 
 
@@ -263,13 +343,14 @@ def test_context_post_becomes_pending_when_a_list_post_quotes_it(db_session):
     db_session.add(_tweet(1, NOW, author="outsider"))
     db_session.commit()
     set_members(db_session.get_bind(), ["member"])
-    assert next_pending(db_session) is None
+    assert next_pending(db_session, LATER) is None
 
     db_session.add(_tweet(2, NOW + timedelta(seconds=5), author="member", quoted_x_id=1))
     db_session.commit()
 
-    assert next_pending(db_session).x_id == 1
     assert extraction_status(db_session.get_bind()).waiting == 2
+    save_extraction(db_session, _record(2), [])
+    assert next_pending(db_session, LATER).x_id == 1
 
 
 def test_reextract_still_selects_a_context_post(db_session):
