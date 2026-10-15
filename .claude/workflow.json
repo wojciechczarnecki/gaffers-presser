@@ -7,7 +7,7 @@
     "dir": "../worktrees"
   },
   "verify": {
-    "command": "cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q"
+    "command": "cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto"
   },
   "format": [
     { "match": "*.py", "command": "uv run --project backend ruff format -q {file}" }
