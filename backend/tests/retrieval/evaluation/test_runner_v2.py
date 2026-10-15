@@ -256,6 +256,7 @@ def test_header_records_reference_counts_and_agreement(eval_db):
     assert header["judge_only_labels"] == 9
     assert header["judge_owner_agreement"] == pytest.approx(0.5)
     assert header["split"] == "dev" and header["depths"] == [20, 30, 50]
+    assert header["relevance_prompts"] == {"player": 1, "free": 1}
     assert header["estimated_embedding_tokens"] > 0
     # the owner's label beats the judge's: post 2 is no longer relevant
     data = _run(eval_db, items=items).data

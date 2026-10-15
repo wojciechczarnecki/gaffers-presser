@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy import Engine
 
+from app.content import load_prompt
 from app.core.clock import Clock
 from app.core.eval_results import make_header, write_json_atomic
 from app.core.retry import with_retries
@@ -45,6 +46,7 @@ LEG_DEPTH = 50
 FREE_TOP = 10
 CHARS_PER_TOKEN = 4
 DEFAULT_MAX_COST_USD = 1.00
+RELEVANCE_PROMPTS = {"player": "retrieval_relevance_player", "free": "retrieval_relevance_free"}
 
 __all__ = ["EvaluationError", "EvaluationResult", "run_evaluation"]
 
@@ -419,6 +421,9 @@ def run_evaluation(
             "k": k,
             "depths": sorted(set(depths)),
             "reference_judge": reference_judge,
+            "relevance_prompts": {
+                name: load_prompt(file).version for name, file in RELEVANCE_PROMPTS.items()
+            },
             "owner_reviewed_labels": counts.owner_reviewed,
             "judge_only_labels": counts.judge_only,
             "judge_owner_agreement": counts.judge_owner_agreement,

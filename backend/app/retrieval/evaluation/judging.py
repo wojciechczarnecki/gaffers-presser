@@ -12,13 +12,14 @@ from app.core.local_time import format_local
 from app.retrieval.evaluation.dataset import CorpusPost, EvaluationError, Judgement, PlayerQuery
 from app.retrieval.evaluation.labels import AnyQuery
 from app.retrieval.evaluation.pooling import new_posts
+from app.retrieval.evaluation.runner import RELEVANCE_PROMPTS
 
 CALL_OVERHEAD_TOKENS = 3000
 CHARS_PER_TOKEN = 4
 DEFAULT_MAX_POSTS = 30
 PROMPT_FILE = "judge-prompt.md"
 MAPPING_FILE = "mapping.json"
-PROMPT_NAMES = {"player": "retrieval_relevance_player", "free": "retrieval_relevance_free"}
+PROMPT_NAMES = RELEVANCE_PROMPTS
 # The same sentence scripts/session_judge.sh appends to the system prompt for the retrieval schema.
 REPLY_FORMAT = (
     'Reply with JSON only, no prose and no code fence: {"labels": {"P1": true, "P2": false}}'
