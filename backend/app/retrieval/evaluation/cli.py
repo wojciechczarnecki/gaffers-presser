@@ -40,6 +40,7 @@ from app.retrieval.evaluation.dataset import (
 )
 from app.retrieval.evaluation.labelling import prelabel
 from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL
+from app.retrieval.evaluation.player_metrics import DEFAULT_DEPTHS
 from app.retrieval.evaluation.players import build_player_slice
 from app.retrieval.evaluation.queries import (
     QueryCounts,
@@ -48,13 +49,18 @@ from app.retrieval.evaluation.queries import (
     make_query_writer,
 )
 from app.retrieval.evaluation.runner import (
+    DEFAULT_MAX_COST_USD,
+    Estimate,
     EvaluationError,
     default_run_name,
+    format_player_table,
     format_table,
     run_evaluation,
     write_result,
 )
 from app.retrieval.variants import has_initial
+
+DEFAULT_DEPTHS_TEXT = ",".join(str(depth) for depth in DEFAULT_DEPTHS)
 
 app = typer.Typer(
     add_completion=False,
@@ -289,62 +295,79 @@ def prelabel_command(
     typer.echo(f"total cost: {_cost(summary.cost_usd)}")
 
 
-@app.command(name="evaluate", help="Report recall@5, recall@10 and MRR per search mode.")
+@app.command(name="evaluate", help="Report the player slice at the judge's cut and the free slice.")
 def evaluate_command(
     ctx: typer.Context,
     split: Annotated[str, typer.Option("--split", help="dev or test.")],
-    include_unreviewed: Annotated[bool, typer.Option("--include-unreviewed")] = False,
+    reference_judge: Annotated[
+        str, typer.Option("--reference-judge", help="The judge whose labels are the reference.")
+    ],
     embedding_model: Annotated[
         str | None, typer.Option("--embedding-model", help="Embedding model ID.")
     ] = None,
+    depths: Annotated[
+        str, typer.Option("--depths", help="Search depths, e.g. 20,30,50.")
+    ] = ",".join(str(depth) for depth in DEFAULT_DEPTHS),
     k: Annotated[int, typer.Option("--k", min=0)] = 60,
-    depth: Annotated[int, typer.Option("--depth", min=1)] = 50,
-    limit: Annotated[int, typer.Option("--limit", min=1)] = 10,
-    run_name: Annotated[str | None, typer.Option("--run-name")] = None,
-    queries: Annotated[Path, typer.Option("--queries")] = DEFAULT_QUERIES_PATH,
-    corpus: Annotated[Path, typer.Option("--corpus")] = DEFAULT_CORPUS_PATH,
-    output_dir: Annotated[Path | None, typer.Option("--output-dir")] = None,
+    max_cost_usd: Annotated[float, typer.Option("--max-cost-usd", min=0)] = DEFAULT_MAX_COST_USD,
+    set_dir: Annotated[Path, typer.Option("--set", help="The set directory.")] = DEFAULT_SET_DIR,
+    output: Annotated[Path | None, typer.Option("--output")] = None,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite an existing result.")] = False,
 ) -> None:
     if split not in ("dev", "test"):
         raise fail("--split must be dev or test")
+    try:
+        chosen_depths = [int(part) for part in depths.split(",") if part.strip()]
+        if not chosen_depths or min(chosen_depths) < 1:
+            raise ValueError
+    except ValueError:
+        raise fail("--depths must be positive whole numbers separated by commas") from None
     deps = get_deps(ctx)
     try:
         embedder = deps.make_embedder(embedding_model)
         prices = deps.prices if deps.prices is not None else load_prices()
-        posts = load_corpus(corpus)
-        query_set = load_queries(queries)
+        eval_set = load_set(set_dir)
     except AppError as exc:
         raise fail(str(exc)) from None
     except (OSError, ValueError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
-    name = run_name or default_run_name(split, embedder.model)
     # Dev runs are working iterations: results/dev/ is gitignored.
-    directory = output_dir or (
-        DEFAULT_RESULTS_DIR / "dev" if split == "dev" else DEFAULT_RESULTS_DIR
-    )
+    directory = DEFAULT_RESULTS_DIR / "dev" if split == "dev" else DEFAULT_RESULTS_DIR
+    path = output or directory / f"{default_run_name(split, eval_set.version, embedder.model)}.json"
+    try:
+        check_new_result(path, force)
+    except ResultExistsError as exc:
+        raise fail(str(exc)) from None
+
+    def show_estimate(estimate: Estimate) -> None:
+        typer.echo(
+            f"estimated embedding: {estimate.tokens} tokens, ${estimate.cost_usd:.6f}"
+            f" ({embedder.model})"
+        )
+
     tracer = deps.make_tracer()
     try:
         result = run_evaluation(
             db_engine(deps),
-            posts,
-            query_set,
+            eval_set,
             embedder,
             tracer,
             prices,
             deps.clock,
             split=split,
-            include_unreviewed=include_unreviewed,
+            reference_judge=reference_judge,
+            depths=chosen_depths,
             k=k,
-            depth=depth,
-            limit=limit,
-            run_name=name,
+            max_cost_usd=max_cost_usd,
+            on_estimate=show_estimate,
         )
     except EvaluationError as exc:
         raise fail(str(exc)) from None
     finally:
         tracer.flush()
-    typer.echo(format_table(result.aggregate))
-    path = directory / f"{name}.json"
+    if result.player_rows:
+        typer.echo(format_player_table(result.player_rows, result.player_counts))
+    typer.echo(format_table(result.free))
     write_result(path, result.data)
     typer.echo(f"result written to {path}")
 

@@ -787,7 +787,7 @@ watches them fail for the expected reason, and then writes the code.
       and lint.
       `iterations: 0`
 
-- [ ] 13. **The v2 runner and `evaluate` (AC7 searches, AC8, AC9, the AC14 header, the AC16
+- [x] 13. **The v2 runner and `evaluate` (AC7 searches, AC8, AC9, the AC14 header, the AC16
       retrieval header).** Files: `backend/app/retrieval/evaluation/runner.py` (rewritten
       on Design §7), `metrics.py` (the unjudged share of the free top 10),
       `backend/app/retrieval/evaluation/cli.py` (`evaluate --split --embedding-model
@@ -813,6 +813,7 @@ watches them fail for the expected reason, and then writes the code.
       - `test_evaluate_writes_header_and_guard_refuses`.
 
       Automatic verification: `uv run pytest -q tests/retrieval/evaluation` and lint.
+      `iterations: 0`
 
 - [ ] 14. **`compare` (AC10).** Files: new `backend/app/retrieval/evaluation/compare.py`,
       `cli.py` (`compare FILE...`), and new
@@ -1093,6 +1094,7 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 - `minor` — step 2: three existing tests monkeypatched `os.replace` in the module that held its own copy (`...cases.os.replace`, `...dataset.os.replace`); they now patch `app.core.eval_results.os.replace`, the same atomic-write behaviour tested at its new home. Also added `reasoning_effort_of(model)` to `app/llm/models.py` so the four evaluations read a model's effort the same way.
 - `minor` — step 3: two existing CLI tests of `summary` (`test_summary_reports_and_applies_thresholds`, `test_summary_without_runs_or_winner`) wrote header-less run files and expected a winner; AC17 says a header-less run is never ranked, so their fixtures now carry a header (`headed(...)`). The runs' header is added in the CLI, beside the other three evaluations, not inside `run_evaluation`.
 - `minor` — step 6: `carry-v1` has an extra `--first N` option (step 20 needs a set of two carried queries for the owner's review scenario). `build-queries` and `prelabel` took `--set DIR` already here, in place of `--corpus`/`--queries`/`--output`, with their existing tests switched to `--set <tmp dir>` (same file names); `prelabel` skips player queries. Corpus lines are written without null fields, so v1 corpus files rewrite byte-compatible.
+- `minor` — step 13: `tests/retrieval/evaluation/test_runner.py` (v1 runner behaviour: `include_unreviewed`, `--queries`/`--corpus`/`--output-dir`, `--depth`/`--limit`/`--run-name`) is deleted and its still-valid cases (corpus not embeddable, query not embeddable, tracing, default run name, the CLI smoke test) are re-written in `test_runner_v2.py` against the v2 runner. `evaluate` lost `--include-unreviewed`, `--depth`, `--limit`, `--run-name`, `--output-dir` (replaced by `--reference-judge`, `--depths`, `--output`, `--force`, per Design §7 and §11). `EvaluationError` moved to `dataset.py` (re-exported by `runner.py`) to avoid an import cycle with `schema.py`.
 
 ## Final review
 
