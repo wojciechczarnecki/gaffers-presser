@@ -9,7 +9,7 @@ from typing import Any
 from app.content import load_prompt
 from app.core.eval_results import write_text_atomic
 from app.core.local_time import format_local
-from app.retrieval.evaluation.dataset import CorpusPost, EvaluationError, PlayerQuery
+from app.retrieval.evaluation.dataset import CorpusPost, EvaluationError, Judgement, PlayerQuery
 from app.retrieval.evaluation.labels import AnyQuery
 from app.retrieval.evaluation.pooling import new_posts
 
@@ -167,3 +167,134 @@ def estimate_export(out: Path) -> ExportEstimate:
             tokens += characters // CHARS_PER_TOKEN + CALL_OVERHEAD_TOKENS
         slices[name] = SliceEstimate(calls, tokens)
     return ExportEstimate(slices)
+
+
+@dataclass
+class ImportReport:
+    stored: int = 0
+    unchanged: int = 0
+    failures: list[str] = field(default_factory=list)
+    missing: list[str] = field(default_factory=list)
+
+
+def read_mapping(export: Path) -> dict[str, Any]:
+    path = export / MAPPING_FILE
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise EvaluationError(f"{export} holds no export (mapping.json is unreadable)") from None
+
+
+def _check_labels(input_id: str, data: Any, expected: Mapping[str, int]) -> str | None:
+    labels = data.get("labels") if isinstance(data, dict) else None
+    if not isinstance(labels, dict):
+        return f"{input_id}: the verdict has no labels object"
+    given = set(labels)
+    missing = sorted(set(expected) - given)
+    extra = sorted(given - set(expected))
+    problems = []
+    if missing:
+        problems.append(f"missing {', '.join(missing)}")
+    if extra:
+        problems.append(f"unknown {', '.join(extra)}")
+    bad = sorted(key for key in given & set(expected) if not isinstance(labels[key], bool))
+    if bad:
+        problems.append(f"not a boolean {', '.join(bad)}")
+    return f"{input_id}: {'; '.join(problems)}" if problems else None
+
+
+def import_verdicts(
+    queries: list[AnyQuery], export: Path, judge: str, *, force: bool = False
+) -> tuple[list[AnyQuery], ImportReport]:
+    mapping = read_mapping(export)
+    by_id = {query.id: index for index, query in enumerate(queries)}
+    report = ImportReport()
+    result = list(queries)
+    for input_id, item in mapping["inputs"].items():
+        path = export / item["slice"] / "verdicts" / f"{input_id}.json"
+        if not path.exists():
+            report.missing.append(input_id)
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError:
+            report.failures.append(f"{input_id}: the verdict is not valid JSON")
+            continue
+        problem = _check_labels(input_id, data, item["posts"])
+        if problem is not None:
+            report.failures.append(problem)
+            continue
+        position = by_id.get(item["query_id"])
+        if position is None:
+            report.failures.append(f"{input_id}: query {item['query_id']} is not in the set")
+            continue
+        query = result[position]
+        judgements = list(query.judgements)
+        added: list[Judgement] = []
+        conflicts = []
+        unchanged = 0
+        for neutral, x_id in item["posts"].items():
+            label = data["labels"][neutral]
+            existing = [j for j in judgements if j.x_id == x_id and j.labelled_by == judge]
+            same = [j for j in existing if j.relevant == label]
+            if same and len(same) == len(existing):
+                unchanged += 1
+            elif existing and not force:
+                conflicts.append(str(x_id))
+            else:
+                judgements = [
+                    j for j in judgements if not (j.x_id == x_id and j.labelled_by == judge)
+                ]
+                added.append(
+                    Judgement(x_id=x_id, relevant=label, reviewed=False, labelled_by=judge)
+                )
+        if conflicts:
+            report.failures.append(
+                f"{input_id}: {judge} already labelled {', '.join(conflicts)} differently;"
+                " pass --force to replace"
+            )
+            continue
+        result[position] = query.model_copy(update={"judgements": [*judgements, *added]})
+        report.stored += len(added)
+        report.unchanged += unchanged
+    return result, report
+
+
+@dataclass(frozen=True)
+class Disagreement:
+    query_id: str
+    x_id: int
+    first: bool
+    second: bool
+
+
+@dataclass(frozen=True)
+class Agreement:
+    compared: int
+    agreed: int
+    disagreements: list[Disagreement]
+
+    @property
+    def share(self) -> float | None:
+        return self.agreed / self.compared if self.compared else None
+
+
+def judge_label(query: AnyQuery, x_id: int, judge: str) -> bool | None:
+    found = [j for j in query.judgements if j.x_id == x_id and j.labelled_by == judge]
+    return found[-1].relevant if found else None
+
+
+def agreement(queries: Sequence[AnyQuery], first: str, second: str) -> Agreement:
+    compared = agreed = 0
+    disagreements = []
+    for query in queries:
+        for x_id in dict.fromkeys(j.x_id for j in query.judgements):
+            a, b = judge_label(query, x_id, first), judge_label(query, x_id, second)
+            if a is None or b is None:
+                continue
+            compared += 1
+            if a == b:
+                agreed += 1
+            else:
+                disagreements.append(Disagreement(query.id, x_id, a, b))
+    return Agreement(compared, agreed, disagreements)

@@ -880,7 +880,7 @@ watches them fail for the expected reason, and then writes the code.
       and lint.
       `iterations: 0`
 
-- [ ] 17. **`import-judge` and `agreement` (AC13).** Files: `judging.py` (`import_verdicts`,
+- [x] 17. **`import-judge` and `agreement` (AC13).** Files: `judging.py` (`import_verdicts`,
       `agreement`), `cli.py` and new `backend/tests/retrieval/evaluation/test_import.py`.
 
       Tests:
@@ -897,6 +897,7 @@ watches them fail for the expected reason, and then writes the code.
 
       Automatic verification:
       `uv run pytest -q tests/retrieval/evaluation/test_import.py` and lint.
+      `iterations: 0`
 
 - [ ] 18. **The owner's `review` (AC14).** Files: new
       `backend/app/retrieval/evaluation/review.py` (`review_order(queries, sample, seed)`),

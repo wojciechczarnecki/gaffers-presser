@@ -43,8 +43,11 @@ from app.retrieval.evaluation.dataset import (
 from app.retrieval.evaluation.judging import (
     DEFAULT_MAX_POSTS,
     ExportEstimate,
+    agreement,
     estimate_export,
     export_inputs,
+    import_verdicts,
+    read_mapping,
 )
 from app.retrieval.evaluation.labelling import prelabel
 from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL
@@ -501,6 +504,59 @@ def estimate_command(
     except EvaluationError as exc:
         raise fail(str(exc)) from None
     _echo_estimate(estimate)
+
+
+@app.command(name="import-judge", help="Store a session judge's verdicts as labels.")
+def import_judge_command(
+    export: Annotated[Path, typer.Option("--export", help="The export directory.")],
+    judge_model: Annotated[
+        str, typer.Option("--judge-model", help="Who judged, e.g. claude-opus-5-5 (session).")
+    ],
+    set_dir: Annotated[
+        Path | None, typer.Option("--set", help="The set directory; default the export's.")
+    ] = None,
+    force: Annotated[
+        bool, typer.Option("--force", help="Replace this judge's differing labels.")
+    ] = False,
+) -> None:
+    try:
+        chosen = set_dir or Path(read_mapping(export)["set_dir"])
+        queries = load_queries(chosen / QUERIES_FILE)
+        updated, report = import_verdicts(queries, export, judge_model, force=force)
+    except EvaluationError as exc:
+        raise fail(str(exc)) from None
+    except (OSError, ValueError) as exc:
+        raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
+    if report.stored:
+        write_queries(chosen / QUERIES_FILE, updated)
+    typer.echo(f"labels stored: {report.stored}  unchanged: {report.unchanged}")
+    for message in report.failures:
+        typer.echo(f"failed: {message}", err=True)
+    for input_id in report.missing:
+        typer.echo(f"missing verdict: {input_id}", err=True)
+    if report.failures or report.missing:
+        raise typer.Exit(1)
+
+
+@app.command(name="agreement", help="Print two judges' agreement and their disagreements.")
+def agreement_command(
+    judge: Annotated[list[str], typer.Option("--judge", help="Give --judge twice.")],
+    set_dir: Annotated[Path, typer.Option("--set", help="The set directory.")] = DEFAULT_SET_DIR,
+) -> None:
+    if len(judge) != 2 or judge[0] == judge[1]:
+        raise fail("give two different judges with --judge A --judge B")
+    try:
+        queries = load_queries(set_dir / QUERIES_FILE)
+    except (OSError, ValueError) as exc:
+        raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
+    result = agreement(queries, judge[0], judge[1])
+    share = "n/a" if result.share is None else f"{result.share:.3f}"
+    typer.echo(f"agreement: {share} over {result.compared} pairs ({judge[0]} vs {judge[1]})")
+    typer.echo(f"disagreements: {len(result.disagreements)}")
+    for item in result.disagreements:
+        typer.echo(
+            f"  {item.query_id}  {item.x_id}  {judge[0]}={item.first}  {judge[1]}={item.second}"
+        )
 
 
 REVIEW_ACTIONS = "[a]ccept  [f]lip  [s]kip  [+] add post  [n]ext query  [q]uit"
