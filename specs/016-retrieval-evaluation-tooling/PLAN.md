@@ -527,7 +527,7 @@ watches them fail for the expected reason, and then writes the code.
       and lint.
       `iterations: 0`
 
-- [ ] 3. **Presser header, and `summary` grouped by set and prompt version (AC16, AC17).**
+- [x] 3. **Presser header, and `summary` grouped by set and prompt version (AC16, AC17).**
       Files: `backend/app/presser/evaluation/runner.py`, `summary.py` and `cli.py`, plus
       `backend/tests/presser/evaluation/test_summary.py` and `test_cli.py`.
 
@@ -552,6 +552,7 @@ watches them fail for the expected reason, and then writes the code.
         `choose`.
 
       Automatic verification: `uv run pytest -q tests/presser/evaluation` and lint.
+      `iterations: 0`
 
 - [ ] 4. **`session_judge.sh` takes the verdict schema (AC15, closes BACKLOG #48).** Files:
       `scripts/session_judge.sh` and new `backend/tests/test_session_judge.py`.
@@ -1081,6 +1082,7 @@ Decision: the plan is ready for implementation — it covers every AC with test-
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
 
 - `minor` — step 2: three existing tests monkeypatched `os.replace` in the module that held its own copy (`...cases.os.replace`, `...dataset.os.replace`); they now patch `app.core.eval_results.os.replace`, the same atomic-write behaviour tested at its new home. Also added `reasoning_effort_of(model)` to `app/llm/models.py` so the four evaluations read a model's effort the same way.
+- `minor` — step 3: two existing CLI tests of `summary` (`test_summary_reports_and_applies_thresholds`, `test_summary_without_runs_or_winner`) wrote header-less run files and expected a winner; AC17 says a header-less run is never ranked, so their fixtures now carry a header (`headed(...)`). The runs' header is added in the CLI, beside the other three evaluations, not inside `run_evaluation`.
 
 ## Final review
 

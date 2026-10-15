@@ -1,11 +1,16 @@
 import json
 
+from typer.testing import CliRunner
+
+from app.presser.evaluation.cli import app
 from app.presser.evaluation.runner import compute_totals
 from app.presser.evaluation.summary import (
     FAITHFULNESS_THRESHOLD,
     STYLE_THRESHOLD,
     choose,
     format_run,
+    group_runs,
+    headerless,
     summarise,
     summarise_run,
 )
@@ -120,3 +125,49 @@ def test_summary_averages_inflection_errors():
     assert "inflection errors n/a" in format_run(legacy)
     mixed = summarise_run(run("a/m", [presser(1, inflection=3), presser(2)]))
     assert mixed.inflection_errors == 3.0
+
+
+def headed(data, set_version="v7", prompt_version="presser_writer@1"):
+    return data | {"header": {"set_version": set_version, "prompt_version": prompt_version}}
+
+
+def test_runs_grouped_by_set_and_prompt_version(tmp_path):
+    good = [presser(n, cost=0.002) for n in range(4)]
+    cheap = [presser(n, cost=0.0001) for n in range(4)]
+    write(tmp_path, headed(run("a/m", good)))
+    write(tmp_path, headed(run("b/m", [presser(n, cost=0.003) for n in range(4)])))
+    write(tmp_path, headed(run("c/m", cheap), prompt_version="presser_writer@2"))
+    runs = summarise(tmp_path)
+    groups = group_runs(runs)
+    assert list(groups) == [("v7", "presser_writer@1"), ("v7", "presser_writer@2")]
+    assert choose(groups[("v7", "presser_writer@1")]) == "a/m"
+    assert choose(groups[("v7", "presser_writer@2")]) == "c/m"
+
+    result = CliRunner().invoke(app, ["summary", "--results-dir", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    assert result.stdout.count("winner:") == 2
+    assert "set v7 · presser_writer@1" in result.stdout
+    first, second = result.stdout.split("== set v7 · presser_writer@2")
+    assert "winner: a/m" in first and "c/m" not in first
+    assert "winner: c/m" in second
+
+
+def test_headerless_runs_shown_apart_never_ranked(tmp_path):
+    write(tmp_path, run("old/m", [presser(n, cost=0.0001) for n in range(4)]))
+    write(tmp_path, headed(run("new/m", [presser(n, cost=0.002) for n in range(4)])))
+    runs = summarise(tmp_path)
+    assert [r.model for r in headerless(runs)] == ["old/m"]
+    assert [r.model for g in group_runs(runs).values() for r in g] == ["new/m"]
+
+    result = CliRunner().invoke(app, ["summary", "--results-dir", str(tmp_path)])
+    out = result.stdout
+    assert out.index("winner: new/m") < out.index("== no header") < out.index("old/m")
+    assert "winner: old/m" not in out
+    assert out.count("winner:") == 1
+
+
+def test_only_headerless_runs_print_no_winner_line(tmp_path):
+    write(tmp_path, run("old/m", [presser(n) for n in range(4)]))
+    result = CliRunner().invoke(app, ["summary", "--results-dir", str(tmp_path)])
+    assert "== no header" in result.stdout
+    assert "winner" not in result.stdout and "no model passes" not in result.stdout

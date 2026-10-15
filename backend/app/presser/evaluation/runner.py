@@ -164,6 +164,8 @@ def import_verdicts(
             record["error_class"] = None  # the API judge's failure, now replaced
     data["judge_model"] = judge_model
     data["judge_prompt_version"] = JUDGE_PROMPT_VERSION
+    if isinstance(data.get("header"), dict):
+        data["header"]["judge"] = judge_model
     data["totals"] = compute_totals(data["pressers"])
     return data
 
