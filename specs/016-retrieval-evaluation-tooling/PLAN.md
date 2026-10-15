@@ -899,7 +899,7 @@ watches them fail for the expected reason, and then writes the code.
       `uv run pytest -q tests/retrieval/evaluation/test_import.py` and lint.
       `iterations: 0`
 
-- [ ] 18. **The owner's `review` (AC14).** Files: new
+- [x] 18. **The owner's `review` (AC14).** Files: new
       `backend/app/retrieval/evaluation/review.py` (`review_order(queries, sample, seed)`),
       `cli.py` (`review --sample N --seed S [--split] [--set]`, replacing the moved v1
       review), and new `backend/tests/retrieval/evaluation/test_review.py`;
@@ -917,6 +917,7 @@ watches them fail for the expected reason, and then writes the code.
       Automatic verification:
       `uv run pytest -q tests/retrieval/evaluation/test_review.py tests/retrieval/evaluation/test_runner_v2.py`
       and lint.
+      `iterations: 0`
 
 - [ ] 19. **The command list and the documents (AC18, AC19).** Files:
       - `backend/tests/retrieval/evaluation/test_cli_entry.py`;

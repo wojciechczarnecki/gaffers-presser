@@ -9,7 +9,7 @@ from sqlmodel import Session
 
 from app.core.errors import AppError
 from app.core.eval_results import ResultExistsError, check_new_result
-from app.core.local_time import format_local, parse_local
+from app.core.local_time import parse_local
 from app.fpl.calendar import current_season
 from app.llm.chat import structured_kwargs_for
 from app.llm.pricing import load_prices
@@ -18,17 +18,12 @@ from app.retrieval.cli import RetrievalCliDeps, _cost, db_engine, fail, get_deps
 from app.retrieval.evaluation.compare import format_compare, load_runs
 from app.retrieval.evaluation.dataset import (
     CORPUS_FILE,
-    DEFAULT_CORPUS_PATH,
-    DEFAULT_QUERIES_PATH,
     DEFAULT_RESULTS_DIR,
     DEFAULT_SET_DIR,
     QUERIES_FILE,
     V1_DIR,
-    CorpusPost,
     FreeQuery,
-    Judgement,
     PlayerQuery,
-    Query,
     SetError,
     SetManifest,
     carry_v1,
@@ -59,6 +54,13 @@ from app.retrieval.evaluation.queries import (
     build_queries,
     current_events,
     make_query_writer,
+)
+from app.retrieval.evaluation.review import (
+    ACTIONS,
+    render_pair,
+    review_order,
+    reviewed_total,
+    with_owner_label,
 )
 from app.retrieval.evaluation.runner import (
     DEFAULT_MAX_COST_USD,
@@ -559,134 +561,60 @@ def agreement_command(
         )
 
 
-REVIEW_ACTIONS = "[a]ccept  [f]lip  [s]kip  [+] add post  [n]ext query  [q]uit"
-
-
-def _render_judgement(
-    query: Query, judgement: Judgement, post: CorpusPost | None, progress: str
-) -> str:
-    label = "relevant" if judgement.relevant else "not relevant"
-    lines = [
-        "─" * 70,
-        progress,
-        f"{query.id}  [{query.language}, {query.origin}]  {query.text}",
-    ]
-    if post is None:
-        lines.append(f"post {judgement.x_id}: not in the corpus")
-    else:
-        lines.append(f"@{post.author_handle}  {format_local(post.created_at)}  {post.x_id}")
-        lines.append(post.text)
-    lines.append(f"{judgement.labelled_by} says: {label}")
-    return "\n".join(lines)
-
-
-def _save_query(queries: list[Query], index: int, judgements: list[Judgement], path: Path) -> None:
-    queries[index] = queries[index].model_copy(update={"judgements": judgements})
-    write_queries(path, queries)
-
-
-def _review_queries(
-    queries: list[Query],
-    positions: list[int],
-    corpus: dict[int, CorpusPost],
-    path: Path,
-    counts: dict[str, int],
-) -> None:
-    # `queries` is saved whole after every change.
-    for done, position in enumerate(positions):
-        pending = [j.x_id for j in queries[position].judgements if not j.reviewed]
-        for x_id in pending:
-            while True:
-                current = queries[position].judgements
-                judgement = next((j for j in current if j.x_id == x_id), None)
-                if judgement is None or judgement.reviewed:
-                    break  # replaced by an added post
-                reviewed = sum(j.reviewed for q in queries for j in q.judgements)
-                total = sum(len(q.judgements) for q in queries)
-                progress = (
-                    f"{reviewed}/{total} labels reviewed,"
-                    f" {len(positions) - done} queries in this run"
-                )
-                typer.echo(
-                    _render_judgement(queries[position], judgement, corpus.get(x_id), progress)
-                )
-                action = typer.prompt(REVIEW_ACTIONS).strip().lower()
-                if action in ("a", "f"):
-                    update = {"reviewed": True}
-                    if action == "f":
-                        update["relevant"] = not judgement.relevant
-                    replaced = [
-                        j.model_copy(update=update) if j is judgement else j for j in current
-                    ]
-                    _save_query(queries, position, replaced, path)
-                    counts["accepted" if action == "a" else "flipped"] += 1
-                    break
-                if action == "s":
-                    counts["skipped"] += 1
-                    break
-                if action == "+":
-                    added = _add_post(queries, position, corpus, path)
-                    if added:
-                        counts["added"] += 1
-                elif action == "n":
-                    break
-                elif action == "q":
-                    return
-                else:
-                    typer.echo(f"unknown action {action!r}")
-            if action == "n":
-                break
-
-
-def _add_post(
-    queries: list[Query], position: int, corpus: dict[int, CorpusPost], path: Path
-) -> bool:
-    raw = typer.prompt("X ID of the relevant post").strip()
-    if not raw.isdigit() or int(raw) not in corpus:
-        typer.echo(f"{raw!r} is not in the corpus")
-        return False
-    added = Judgement(x_id=int(raw), relevant=True, reviewed=True, labelled_by="owner")
-    kept = [j for j in queries[position].judgements if j.x_id != added.x_id]
-    _save_query(queries, position, [*kept, added], path)
-    typer.echo("saved")
-    return True
-
-
-@app.command(help="Review the pre-labelled judgements: accept, flip, skip or add a post.")
+@app.command(help="Review the judges' labels blind: every disagreement, then a seeded sample.")
 def review(
-    queries_path: Annotated[Path, typer.Option("--queries")] = DEFAULT_QUERIES_PATH,
-    corpus_path: Annotated[Path, typer.Option("--corpus")] = DEFAULT_CORPUS_PATH,
+    sample: Annotated[int, typer.Option("--sample", min=0, help="Pairs to sample.")] = 0,
+    seed: Annotated[int, typer.Option("--seed")] = 6,
     split: Annotated[str | None, typer.Option("--split")] = None,
+    set_dir: Annotated[Path, typer.Option("--set", help="The set directory.")] = DEFAULT_SET_DIR,
 ) -> None:
     # Needs no database and no key, so it never builds RetrievalCliDeps.
     if split not in (None, "dev", "test"):
         raise fail("--split must be dev or test")
     try:
-        queries = load_queries(queries_path)
-        corpus = {post.x_id: post for post in load_corpus(corpus_path)}
-    except (OSError, ValueError) as exc:
-        raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
-    positions = [
-        i
-        for i, query in enumerate(queries)
-        if any(not j.reviewed for j in query.judgements) and split in (None, query.split)
-    ]
-    if not positions:
+        eval_set = load_set(set_dir)
+    except SetError as exc:
+        raise fail(str(exc)) from None
+    queries = list(eval_set.queries)
+    corpus = {post.x_id: post for post in eval_set.corpus}
+    positions = {query.id: index for index, query in enumerate(queries)}
+    in_scope = [query for query in queries if split in (None, query.split)]
+    order = review_order(in_scope, sample, seed)
+    if not order:
         typer.echo("nothing to review")
         return
-    counts = {"accepted": 0, "flipped": 0, "skipped": 0, "added": 0}
+    counts = {"relevant": 0, "not relevant": 0, "skipped": 0}
     interrupted = False
+    stop = False
     try:
-        _review_queries(queries, positions, corpus, queries_path, counts)
+        for done, (query_id, x_id) in enumerate(order):
+            position = positions[query_id]
+            progress = f"{done + 1}/{len(order)}"
+            typer.echo(render_pair(queries[position], corpus.get(x_id), x_id, progress))
+            while not stop:
+                action = typer.prompt(ACTIONS).strip().lower()
+                if action in ("r", "n"):
+                    queries[position] = with_owner_label(queries[position], x_id, action == "r")
+                    write_queries(set_dir / QUERIES_FILE, queries)
+                    counts["relevant" if action == "r" else "not relevant"] += 1
+                    break
+                if action == "s":
+                    counts["skipped"] += 1
+                    break
+                if action == "q":
+                    stop = True
+                else:
+                    typer.echo(f"unknown action {action!r}")
+            if stop:
+                break
     except (typer.Abort, KeyboardInterrupt):
-        interrupted = True  # every decision is already on disk
-    reviewed = sum(j.reviewed for q in queries for j in q.judgements)
+        interrupted = True  # every answer is already on disk
     typer.echo("── summary " + "─" * 61)
     typer.echo(
-        f"accepted: {counts['accepted']}  flipped: {counts['flipped']}"
-        f"  skipped: {counts['skipped']}  added: {counts['added']}"
+        f"relevant: {counts['relevant']}  not relevant: {counts['not relevant']}"
+        f"  skipped: {counts['skipped']}"
     )
-    typer.echo(f"reviewed: {reviewed}/{sum(len(q.judgements) for q in queries)}")
+    typer.echo(f"reviewed pairs: {reviewed_total(queries)['reviewed']}")
     if interrupted:
         raise typer.Exit(130)
 
