@@ -175,6 +175,68 @@ def embed_query_texts(
     return cache
 
 
+def prepare_model(
+    eval_engine: Engine,
+    embedder: Embedder,
+    queries: Sequence[AnyQuery],
+    tracer: RetrievalTracer,
+    prices: dict[str, Price],
+    clock: Clock,
+    stop_event: threading.Event,
+) -> CachedQueryEmbedder:
+    runtime = IndexingRuntime(
+        model=embedder.model,
+        make_embedder=lambda: embedder,
+        prices=prices,
+        tracing=None,
+        clock=clock,
+    )
+    # The frozen corpus is re-embedded on every run, so it is indexed untraced.
+    indexed = index_missing(eval_engine, runtime, embedder, NULL_TRACER, clock, stop_event)
+    if indexed.failed:
+        raise EvaluationError(f"{indexed.failed} corpus posts could not be embedded")
+    names: dict[str, str] = {}
+    for query in queries:
+        for text in query_texts([query]):
+            names.setdefault(text, query.id)
+    cache = embed_query_texts(embedder, list(names), names, tracer, prices, clock, stop_event)
+    return CachedQueryEmbedder(embedder, cache)
+
+
+def ranked_search(
+    eval_engine: Engine,
+    embedder: Embedder,
+    text: str,
+    mode: str,
+    *,
+    limit: int,
+    depth: int,
+    filters: SearchFilters,
+    who: str,
+    k: int,
+    tracer: RetrievalTracer,
+    prices: dict[str, Price],
+) -> list[int]:
+    try:
+        response = search(
+            eval_engine,
+            text,
+            mode,  # type: ignore[arg-type]
+            embedder=embedder,
+            filters=filters,
+            limit=limit,
+            k=k,
+            depth=depth,
+            tracer=tracer,
+            prices=prices,
+        )
+    except SearchError as exc:
+        raise EvaluationError(f"query {who}: {exc}") from None
+    if response.failed_legs:
+        raise EvaluationError(f"query {who}: the vector leg failed")
+    return [result.x_id for result in response.results]
+
+
 def _labelled(ids: Sequence[int], labels: dict[int, bool]) -> list[bool | None]:
     return [labels.get(x_id) for x_id in ids]
 
@@ -247,45 +309,25 @@ def run_evaluation(
 
     list_handles = eval_set.manifest.list_handles if eval_set.manifest else None
     eval_engine = load_eval_corpus(engine, eval_set.corpus, list_handles)
-    runtime = IndexingRuntime(
-        model=embedder.model,
-        make_embedder=lambda: embedder,
-        prices=prices,
-        tracing=None,
-        clock=clock,
-    )
-    # The frozen corpus is re-embedded on every run, so it is indexed untraced.
-    indexed = index_missing(eval_engine, runtime, embedder, NULL_TRACER, clock, stop_event)
-    if indexed.failed:
-        raise EvaluationError(f"{indexed.failed} corpus posts could not be embedded")
-
-    names: dict[str, str] = {}
-    for query in chosen:
-        for text in query_texts([query]):
-            names.setdefault(text, query.id)
-    cache = embed_query_texts(embedder, list(names), names, tracer, prices, clock, stop_event)
-    cached = CachedQueryEmbedder(embedder, cache)
+    cached = prepare_model(eval_engine, embedder, chosen, tracer, prices, clock, stop_event)
     search_tracer = SearchTracer(tracer)
 
-    def run_search(text: str, mode: str, limit: int, depth: int, filters: SearchFilters, who: str):
-        try:
-            response = search(
-                eval_engine,
-                text,
-                mode,  # type: ignore[arg-type]
-                embedder=cached,
-                filters=filters,
-                limit=limit,
-                k=k,
-                depth=depth,
-                tracer=search_tracer,
-                prices=prices,
-            )
-        except SearchError as exc:
-            raise EvaluationError(f"query {who}: {exc}") from None
-        if response.failed_legs:
-            raise EvaluationError(f"query {who}: the vector leg failed")
-        return [result.x_id for result in response.results]
+    def run_search(
+        text: str, mode: str, limit: int, depth: int, filters: SearchFilters, who: str
+    ) -> list[int]:
+        return ranked_search(
+            eval_engine,
+            cached,
+            text,
+            mode,
+            limit=limit,
+            depth=depth,
+            filters=filters,
+            who=who,
+            k=k,
+            tracer=search_tracer,
+            prices=prices,
+        )
 
     players = [q for q in chosen if isinstance(q, PlayerQuery)]
     frees = [q for q in chosen if isinstance(q, FreeQuery)]

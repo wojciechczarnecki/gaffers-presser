@@ -832,7 +832,7 @@ watches them fail for the expected reason, and then writes the code.
       `uv run pytest -q tests/retrieval/evaluation/test_compare.py` and lint.
       `iterations: 0`
 
-- [ ] 15. **Pooling (AC11).** Files: new `backend/app/retrieval/evaluation/pooling.py`
+- [x] 15. **Pooling (AC11).** Files: new `backend/app/retrieval/evaluation/pooling.py`
       (`pool_ids`, `new_posts`, and `pool_set(engine, eval_set, embedders, depths,
       variants, ...) -> dict[str, list[int]]` with the cost guard) and new
       `backend/tests/retrieval/evaluation/test_pooling.py`.
@@ -849,6 +849,7 @@ watches them fail for the expected reason, and then writes the code.
 
       Automatic verification:
       `uv run pytest -q tests/retrieval/evaluation/test_pooling.py` and lint.
+      `iterations: 0`
 
 - [ ] 16. **Prompts, `export-judge-inputs` and `estimate` (AC12, the AC13 estimate).** Files:
       - new `backend/app/content/prompts/retrieval_relevance_player.md` and
