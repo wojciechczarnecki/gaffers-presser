@@ -72,8 +72,8 @@ and each LLM step that produces data has an evaluation set with recorded results
       the GW6 corpus and queries, the judge pilot and the owner's review, the comparison of
       modes (full-text, vector, hybrid), embedding models, query variants and depths, the
       default-model ADR, a decision on reranking (BACKLOG #16), the production query and the
-      alert window (BACKLOG #53) and a results section in the README (spec: TBD, number
-      017); before the next item, because the corroboration judge reads retrieval's output —
+      alert window (BACKLOG #53) and a results section in the README
+      (spec: [017](../specs/017-retrieval-evaluation-run/SPEC.md)); before the next item, because the corroboration judge reads retrieval's output —
       **portfolio MVP**
 - [ ] Extraction and corroboration evaluation v2 on the GW6 window: real pre-deadline leaks
       in the extraction set, the rehearsal e-mail cases added before the prompt fixes, the
