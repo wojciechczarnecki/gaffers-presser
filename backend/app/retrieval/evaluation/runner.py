@@ -1,6 +1,6 @@
 import threading
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +41,7 @@ from app.retrieval.evaluation.player_metrics import (
     query_numbers,
 )
 from app.retrieval.evaluation.schema import load_eval_corpus
+from app.retrieval.evaluation.strata import owner_agreement
 from app.retrieval.indexing import IndexingRuntime, index_missing, traced_embed
 from app.retrieval.search import SearchError, SearchFilters, search
 from app.retrieval.tracing import NULL_TRACER, RetrievalTracer
@@ -429,6 +430,11 @@ def run_evaluation(
             "owner_reviewed_labels": counts.owner_reviewed,
             "judge_only_labels": counts.judge_only,
             "judge_owner_agreement": counts.judge_owner_agreement,
+            "judge_owner_estimates": asdict(
+                owner_agreement(
+                    chosen, {post.x_id: post.text for post in eval_set.corpus}, reference_judge
+                )
+            ),
             "estimated_embedding_tokens": estimate.tokens,
             "estimated_embedding_cost_usd": estimate.cost_usd,
         },

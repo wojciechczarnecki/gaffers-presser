@@ -48,7 +48,7 @@ from app.retrieval.evaluation.judging import (
 from app.retrieval.evaluation.labelling import prelabel
 from app.retrieval.evaluation.llm import DEFAULT_LABEL_MODEL
 from app.retrieval.evaluation.player_metrics import DEFAULT_DEPTHS
-from app.retrieval.evaluation.players import build_player_slice
+from app.retrieval.evaluation.players import build_player_slice, merge_player_queries
 from app.retrieval.evaluation.pooling import pool_set
 from app.retrieval.evaluation.queries import (
     QueryCounts,
@@ -72,6 +72,12 @@ from app.retrieval.evaluation.runner import (
     format_table,
     run_evaluation,
     write_result,
+)
+from app.retrieval.evaluation.strata import (
+    OwnerAgreement,
+    cohen_kappa,
+    owner_agreement,
+    stratified_order,
 )
 from app.retrieval.variants import has_initial
 
@@ -188,7 +194,10 @@ def build_queries_command(
     typer.echo(f"total cost: {_cost(caller.cost_usd)}")
 
 
-@app.command(name="build-player-slice", help="Build the player queries for a gameweek deadline.")
+@app.command(
+    name="build-player-slice",
+    help="Build the player queries for a gameweek deadline, beside other gameweeks' queries.",
+)
 def build_player_slice_command(
     ctx: typer.Context,
     gameweek: Annotated[int, typer.Option("--gameweek", min=1, help="The deadline's gameweek.")],
@@ -198,7 +207,9 @@ def build_player_slice_command(
     ] = "alerts",
     seed: Annotated[int, typer.Option("--seed")] = 6,
     set_dir: Annotated[Path, typer.Option("--set", help="The set directory.")] = DEFAULT_SET_DIR,
-    force: Annotated[bool, typer.Option("--force", help="Replace the player queries.")] = False,
+    force: Annotated[
+        bool, typer.Option("--force", help="Replace this gameweek's player queries.")
+    ] = False,
 ) -> None:
     if window not in ("alerts", "after-last-match"):
         raise fail("--window must be alerts or after-last-match")
@@ -206,8 +217,11 @@ def build_player_slice_command(
     engine = db_engine(deps)
     queries_path = set_dir / QUERIES_FILE
     existing = load_queries(queries_path) if queries_path.exists() else []
-    if any(isinstance(query, PlayerQuery) for query in existing) and not force:
-        raise fail(f"{queries_path} already holds player queries; pass --force to replace them")
+    if any(isinstance(q, PlayerQuery) and q.gameweek == gameweek for q in existing) and not force:
+        raise fail(
+            f"{queries_path} already holds gameweek {gameweek}'s player queries;"
+            " pass --force to replace them"
+        )
     try:
         chosen = season
         if chosen is None:
@@ -218,8 +232,7 @@ def build_player_slice_command(
         built = build_player_slice(engine, chosen, gameweek, window, seed)
     except EvaluationError as exc:
         raise fail(str(exc)) from None
-    kept = [query for query in existing if not isinstance(query, PlayerQuery)]
-    write_queries(queries_path, [*built, *kept])
+    write_queries(queries_path, merge_player_queries(existing, built, gameweek))
     claimed = [post for query in built for post in query.claimed]
     typer.echo(f"player queries: {len(built)} written to {queries_path}")
     typer.echo(f"claimed posts: {len(claimed)}  stale: {sum(post.stale for post in claimed)}")
@@ -543,6 +556,26 @@ def import_judge_command(
         raise typer.Exit(1)
 
 
+def _share(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.3f}"
+
+
+def _corpus_texts(set_dir: Path) -> dict[int, str]:
+    path = set_dir / CORPUS_FILE
+    return {post.x_id: post.text for post in load_corpus(path)} if path.exists() else {}
+
+
+def _owner_line(name: str, found: OwnerAgreement) -> str:
+    line = (
+        f"  {name}: precision {_share(found.precision)}  recall {_share(found.recall)}"
+        f"  kappa {_share(found.kappa)}  agreement {_share(found.agreement)}"
+        f"  over {found.reviewed} reviewed pairs"
+    )
+    if found.unreviewed_pairs:
+        line += f"  ({found.unreviewed_pairs} pairs in unreviewed strata)"
+    return line
+
+
 @app.command(name="agreement", help="Print two judges' agreement and their disagreements.")
 def agreement_command(
     judge: Annotated[list[str], typer.Option("--judge", help="Give --judge twice.")],
@@ -552,21 +585,46 @@ def agreement_command(
         raise fail("give two different judges with --judge A --judge B")
     try:
         queries = load_queries(set_dir / QUERIES_FILE)
+        texts = _corpus_texts(set_dir)
     except (OSError, ValueError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
     result = agreement(queries, judge[0], judge[1])
-    share = "n/a" if result.share is None else f"{result.share:.3f}"
-    typer.echo(f"agreement: {share} over {result.compared} pairs ({judge[0]} vs {judge[1]})")
+    typer.echo(
+        f"agreement: {_share(result.share)} over {result.compared} pairs ({judge[0]} vs {judge[1]})"
+    )
+    typer.echo(
+        f"kappa: {_share(cohen_kappa(result.pairs))}  relevant: {judge[0]}"
+        f" {sum(a for a, _ in result.pairs)}, {judge[1]} {sum(b for _, b in result.pairs)}"
+    )
     typer.echo(f"disagreements: {len(result.disagreements)}")
     for item in result.disagreements:
         typer.echo(
             f"  {item.query_id}  {item.x_id}  {judge[0]}={item.first}  {judge[1]}={item.second}"
         )
+    found = {name: owner_agreement(queries, texts, name) for name in judge}
+    if any(item.reviewed for item in found.values()):
+        typer.echo("against the owner (weighted by stratum, relevant is the positive class):")
+        for name, item in found.items():
+            typer.echo(_owner_line(name, item))
 
 
-@app.command(help="Review the judges' labels blind: every disagreement, then a seeded sample.")
+@app.command(
+    help="Review the judges' labels blind: every disagreement, then a seeded sample"
+    " (or one per stratum with --relevant, --named and --rest)."
+)
 def review(
     sample: Annotated[int, typer.Option("--sample", min=0, help="Pairs to sample.")] = 0,
+    relevant: Annotated[
+        int | None,
+        typer.Option("--relevant", min=0, help="Stratified: pairs every judge called relevant."),
+    ] = None,
+    named: Annotated[
+        int | None,
+        typer.Option("--named", min=0, help="Stratified: not relevant, the player named."),
+    ] = None,
+    rest: Annotated[
+        int | None, typer.Option("--rest", min=0, help="Stratified: the other pairs.")
+    ] = None,
     seed: Annotated[int, typer.Option("--seed")] = 6,
     split: Annotated[str | None, typer.Option("--split")] = None,
     set_dir: Annotated[Path, typer.Option("--set", help="The set directory.")] = DEFAULT_SET_DIR,
@@ -582,7 +640,15 @@ def review(
     corpus = {post.x_id: post for post in eval_set.corpus}
     positions = {query.id: index for index, query in enumerate(queries)}
     in_scope = [query for query in queries if split in (None, query.split)]
-    order = review_order(in_scope, sample, seed)
+    sizes = {"relevant": relevant, "named": named, "rest": rest}
+    if any(size is not None for size in sizes.values()):
+        if sample:
+            raise fail("--sample cannot be combined with --relevant, --named or --rest")
+        texts = {post.x_id: post.text for post in eval_set.corpus}
+        chosen = {category: size or 0 for category, size in sizes.items()}
+        order = stratified_order(in_scope, texts, chosen, seed)
+    else:
+        order = review_order(in_scope, sample, seed)
     if not order:
         typer.echo("nothing to review")
         return

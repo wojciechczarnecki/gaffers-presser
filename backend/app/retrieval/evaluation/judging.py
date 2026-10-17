@@ -289,6 +289,7 @@ class Agreement:
     compared: int
     agreed: int
     disagreements: list[Disagreement]
+    pairs: list[tuple[bool, bool]]
 
     @property
     def share(self) -> float | None:
@@ -303,14 +304,16 @@ def judge_label(query: AnyQuery, x_id: int, judge: str) -> bool | None:
 def agreement(queries: Sequence[AnyQuery], first: str, second: str) -> Agreement:
     compared = agreed = 0
     disagreements = []
+    pairs = []
     for query in queries:
         for x_id in dict.fromkeys(j.x_id for j in query.judgements):
             a, b = judge_label(query, x_id, first), judge_label(query, x_id, second)
             if a is None or b is None:
                 continue
             compared += 1
+            pairs.append((a, b))
             if a == b:
                 agreed += 1
             else:
                 disagreements.append(Disagreement(query.id, x_id, a, b))
-    return Agreement(compared, agreed, disagreements)
+    return Agreement(compared, agreed, disagreements, pairs)

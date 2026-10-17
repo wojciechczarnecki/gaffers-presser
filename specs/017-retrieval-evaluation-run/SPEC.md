@@ -166,16 +166,23 @@ fast path, and it is merged as its own data PR:
       depth (50) across the three modes, the three query variants and the four models
       (baseline and three candidates). Before every judge run, `estimate` is printed and the
       owner sees it. The session judge's tokens for the whole of phase A stay at or below 3M.
-- [ ] AC4: The pilot runs on a seeded sample of about 20 `player` queries (`--query-sample 20`).
-      It is judged by Sonnet at medium effort and by Opus, `agreement` is run, and the owner
-      reviews every disagreement plus a seeded sample of 30 other pairs. Sonnet becomes the
-      judge for the rest when its agreement with the owner on the reviewed pairs is at least
-      0.90 and no more than 0.05 below Opus's; otherwise Opus does. The choice and
-      both agreements are recorded in the data PR's description and later in the report.
+- [ ] AC4: The pilot runs on a seeded sample of queries (`--query-sample 20 --seed 1`, which
+      draws over both slices and gave 15 `player` queries and 769 pairs). It is judged by Sonnet
+      at medium effort and by Opus, and `agreement` is run. Relevant pairs are about 4% of the
+      pool, so raw agreement does not choose the judge. The owner reviews the pilot by stratum
+      (`review --relevant N --named N --rest N`): every disagreement, every pair both judges
+      called relevant, every not-relevant pair whose post names the player, and 20 of the other
+      pairs. Each judge's precision and recall on the relevant class against the owner are
+      estimated with each reviewed pair weighted by its stratum's size over its reviewed pairs,
+      and Cohen's kappa beside them. Sonnet becomes the judge for the rest when its precision
+      and its recall are each at least 0.90 and each no more than 0.05 below Opus's; otherwise
+      Opus does. The choice, both judges' precision, recall and kappa, and their kappa with
+      each other are recorded in the data PR's description and later in the report.
 - [ ] AC5: The chosen judge labels every remaining pooled pair of the `player` slice. The owner
-      reviews every disagreement between the two judges on the pilot queries, plus a seeded
-      sample of 30 pairs from the rest. Set v2 is committed with all labels, and
-      the data PR is merged before `/pipeline:ship 017` starts.
+      reviews the rest by stratum too: a seeded 30 of the pairs the judge called relevant, a
+      seeded 30 of the not-relevant pairs whose post names the player, and a seeded 20 of the
+      other pairs. Set v2 is committed with all labels, and the data PR is merged before
+      `/pipeline:ship 017` starts.
 
 **Phase B — the run and the report**
 
@@ -184,7 +191,7 @@ fast path, and it is merged as its own data PR:
       --reference-judge <judge>`. Each covers the `player` slice in the three modes and the three
       variants at depths 20, 30 and 50, and its header names the set version, the reference
       judge, the owner-reviewed and judge-only label counts, and the judge's agreement with the
-      owner. A dev run per model is also kept. The `compare` table is in the report, and
+      owner, with its weighted precision, recall and kappa (`judge_owner_estimates`). A dev run per model is also kept. The `compare` table is in the report, and
       `compare` accepts the four test files together.
 - [ ] AC7: The winner is the configuration (model, mode, variant, depth) with the highest recall
       at the judge's cut on the test split of the `player` slice. On a tie, the configuration
@@ -220,8 +227,12 @@ fast path, and it is merged as its own data PR:
 - [ ] AC10: `docs/reports/retrieval-eval-v2.md` contains:
       - the set: corpus size, window, queries per split, and the count of players with a
         `web_name` initial;
-      - the labelling: the pilot, the chosen judge, both agreements with the owner, and the
-        label counts;
+      - the labelling: the pilot, the chosen judge, both judges' weighted precision, recall
+        and kappa against the owner, their kappa with each other, the strata and their review
+        rates, and the label counts;
+      - the relevance distribution: relevant posts per query, the share of relevant pairs, and
+        the count of queries with no unclaimed relevant post, which recall at the cut leaves
+        out (with one relevant post, a query's recall is a hit or a miss);
       - the session tokens and the paid embedding spend;
       - the `compare` table;
       - the winner and the tie rule applied;
@@ -291,6 +302,7 @@ fast path, and it is merged as its own data PR:
 | The alert window starts at the later of the previous gameweek's last match plus 2 hours and the deadline minus the lookback, implemented regardless of GW6's numbers | implementing only on a numeric trigger; no lookback; a separate rule for the ingest; a per-club window (after the player's own club's last N−1 match) | news before the previous gameweek's last match concerns that gameweek, and GW6 cannot measure it because of the break. The lookback still cuts break windows, and one function keeps the ingest covering the alert window (DECISIONS 2026-10-07). The gameweek-wide floor cuts post-match news about clubs that played earlier (e.g. a Sunday "out for 3 weeks" when the last match is on Monday), and the owner accepts this: news about an important player is repeated in the following days, fresh post-match news is often unconfirmed sensation, and a per-club window would split the window per player and the ingest's rule from the alerts' (overengineering) (the owner, 2026-10-16) |
 | Reranking: decided by a rule set now, implemented in its own spec | implementing it here; no rule, the owner decides after reading | a reranker is a new LLM step or dependency with its own evaluation set; setting the rule before the results keeps the decision honest (the owner, 2026-10-16) |
 | The `free` slice is skipped until the Stage 4 Q&A agent | judging it with the session judge now (about 0.25M tokens) | it decides nothing in production today, and the owner's review time goes to the `player` slice (the owner, 2026-10-16) |
+| The judge is chosen by weighted precision and recall on the relevant class from a stratified owner review | raw agreement with the owner (the original AC4); a random review sample | with relevant pairs at about 4%, raw agreement is near 0.96 for any judge and a random sample of 30 holds about one relevant pair; weighting by stratum keeps the estimates unbiased over the whole pool (the owner, 2026-10-17) |
 | `--max-cost-usd 0.10` for the embedding runs | the tooling's default 1.00 | the estimate is about $0.05 for all four models; the owner prefers to spend less than the $1 cap |
 
 ## Owner decisions
@@ -310,6 +322,12 @@ fast path, and it is merged as its own data PR:
 - 2026-10-16: the `free` slice is skipped here, and a note at the ROADMAP's Q&A item plus a
   BACKLOG row bring it back.
 - 2026-10-16: the paid embedding spend is capped at $1, and cheaper is preferred.
+- 2026-10-17: the judge is chosen and checked by its precision and recall on the relevant class
+  against the owner, estimated from a stratified review, not by raw agreement: relevant pairs
+  are about 4% of the pilot, so a judge that calls everything not relevant would agree 0.96.
+  `review` gains a stratified mode and `agreement` and the result header the weighted
+  estimates and kappa, in the data PR (a tooling change this spec otherwise excludes).
+  Recall at the cut stays the selection metric: it is computed on relevant posts only.
 - Carried from spec 016:
   - session judge tokens ≤ 3M, estimated and shown before launch;
   - a judge pilot with Sonnet (medium) and Opus, the cheaper judge chosen when its agreement

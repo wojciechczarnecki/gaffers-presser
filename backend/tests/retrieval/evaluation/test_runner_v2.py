@@ -298,6 +298,16 @@ def test_header_records_reference_counts_and_agreement(eval_db):
     assert header["owner_reviewed_labels"] == 2
     assert header["judge_only_labels"] == 9
     assert header["judge_owner_agreement"] == pytest.approx(0.5)
+    estimates = header["judge_owner_estimates"]
+    assert estimates["reviewed"] == 2
+    assert set(estimates) == {
+        "reviewed",
+        "unreviewed_pairs",
+        "agreement",
+        "precision",
+        "recall",
+        "kappa",
+    }
     assert header["split"] == "dev" and header["depths"] == [20, 30, 50]
     assert header["relevance_prompts"] == {"player": [2], "free": [1]}
     assert header["estimated_embedding_tokens"] > 0
