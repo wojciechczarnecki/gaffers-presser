@@ -1,5 +1,6 @@
 import random
-from collections.abc import Mapping, Sequence
+import re
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 
 from app.extraction.linking import normalise
@@ -20,8 +21,11 @@ def mentions_player(query: AnyQuery, text: str) -> bool:
         return False
     player = query.player
     names = {normalise(name) for name in (player.web_name, player.second_name, *player.aliases)}
-    haystack = f" {normalise(text)} "
-    return any(name and f" {name} " in haystack for name in names)
+    haystack = normalise(text)
+    # Up to three letters of an ending, as Polish posts inflect names (Haalanda, Salahem).
+    return any(
+        name and re.search(rf"\b{re.escape(name)}[a-z]{{0,3}}\b", haystack) for name in names
+    )
 
 
 def _judge_labels(query: AnyQuery, x_id: int) -> dict[str, bool]:
@@ -98,15 +102,20 @@ def _ratio(top: float, bottom: float) -> float | None:
 
 
 def owner_agreement(
-    queries: Sequence[AnyQuery], texts: Mapping[int, str], judge: str
+    queries: Sequence[AnyQuery],
+    texts: Mapping[int, str],
+    judge: str,
+    within: Collection[str] = (),
 ) -> OwnerAgreement:
-    # The judge's labels against the owner's, as estimates over every pair the judge labelled:
-    # each reviewed pair counts for its stratum's size over its reviewed pairs.
+    # The judge's labels against the owner's, as estimates over every pair the judge labelled
+    # (or only the pairs every judge in `within` labelled too): each reviewed pair counts for
+    # its stratum's size over its reviewed pairs. A stratum with no reviewed pair is left out
+    # and counted, so the estimates cover the pool only when every stratum was sampled.
     by_query = {query.id: query for query in queries}
     tp = fp = fn = tn = 0.0
     reviewed = unreviewed = 0
     for (judges, _), pairs in strata(queries, texts).items():
-        if judge not in judges:
+        if judge not in judges or not set(within) <= set(judges):
             continue
         compared = []
         for query_id, x_id in pairs:

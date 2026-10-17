@@ -9,6 +9,7 @@ from app.retrieval.evaluation.dataset import (
     FreeQuery,
     Judgement,
     load_queries,
+    write_corpus,
     write_queries,
 )
 from app.retrieval.evaluation.judging import agreement, export_inputs
@@ -240,9 +241,11 @@ def test_agreement_command_prints_share_n_and_each_disagreement(tmp_path):
         ]
     )
     write_queries(tmp_path / "queries.jsonl", [query])
-    result = CliRunner().invoke(
-        app, ["agreement", "--judge", "a", "--judge", "b", "--set", str(tmp_path)]
-    )
+    args = ["agreement", "--judge", "a", "--judge", "b", "--set", str(tmp_path)]
+    no_corpus = CliRunner().invoke(app, args)
+    assert no_corpus.exit_code == 1  # the strata need the posts
+    write_corpus(tmp_path / "corpus.jsonl", list(corpus(2).values()))
+    result = CliRunner().invoke(app, args)
     assert result.exit_code == 0, result.output
     assert "agreement: 0.500 over 2 pairs (a vs b)" in result.stdout
     assert "disagreements: 1" in result.stdout

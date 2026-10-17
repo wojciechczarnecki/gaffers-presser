@@ -560,11 +560,6 @@ def _share(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.3f}"
 
 
-def _corpus_texts(set_dir: Path) -> dict[int, str]:
-    path = set_dir / CORPUS_FILE
-    return {post.x_id: post.text for post in load_corpus(path)} if path.exists() else {}
-
-
 def _owner_line(name: str, found: OwnerAgreement) -> str:
     line = (
         f"  {name}: precision {_share(found.precision)}  recall {_share(found.recall)}"
@@ -585,7 +580,8 @@ def agreement_command(
         raise fail("give two different judges with --judge A --judge B")
     try:
         queries = load_queries(set_dir / QUERIES_FILE)
-        texts = _corpus_texts(set_dir)
+        # The strata read the posts: without the corpus they would differ from review's.
+        texts = {post.x_id: post.text for post in load_corpus(set_dir / CORPUS_FILE)}
     except (OSError, ValueError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
     result = agreement(queries, judge[0], judge[1])
@@ -601,29 +597,33 @@ def agreement_command(
         typer.echo(
             f"  {item.query_id}  {item.x_id}  {judge[0]}={item.first}  {judge[1]}={item.second}"
         )
-    found = {name: owner_agreement(queries, texts, name) for name in judge}
+    # Both judges on the same pairs: the strata both labelled.
+    found = {name: owner_agreement(queries, texts, name, within=judge) for name in judge}
     if any(item.reviewed for item in found.values()):
-        typer.echo("against the owner (weighted by stratum, relevant is the positive class):")
+        typer.echo(
+            "against the owner on the pairs both judged"
+            " (weighted by stratum, relevant is the positive class):"
+        )
         for name, item in found.items():
             typer.echo(_owner_line(name, item))
 
 
 @app.command(
     help="Review the judges' labels blind: every disagreement, then a seeded sample"
-    " (or one per stratum with --relevant, --named and --rest)."
+    " (or one per stratum, each set of judges apart, with --relevant, --named and --rest)."
 )
 def review(
-    sample: Annotated[int, typer.Option("--sample", min=0, help="Pairs to sample.")] = 0,
+    sample: Annotated[int | None, typer.Option("--sample", min=0, help="Pairs to sample.")] = None,
     relevant: Annotated[
         int | None,
-        typer.Option("--relevant", min=0, help="Stratified: pairs every judge called relevant."),
+        typer.Option("--relevant", min=0, help="Pairs per stratum all judges called relevant."),
     ] = None,
     named: Annotated[
         int | None,
-        typer.Option("--named", min=0, help="Stratified: not relevant, the player named."),
+        typer.Option("--named", min=0, help="Pairs per stratum not relevant, the player named."),
     ] = None,
     rest: Annotated[
-        int | None, typer.Option("--rest", min=0, help="Stratified: the other pairs.")
+        int | None, typer.Option("--rest", min=0, help="Pairs per stratum of the others.")
     ] = None,
     seed: Annotated[int, typer.Option("--seed")] = 6,
     split: Annotated[str | None, typer.Option("--split")] = None,
@@ -642,13 +642,13 @@ def review(
     in_scope = [query for query in queries if split in (None, query.split)]
     sizes = {"relevant": relevant, "named": named, "rest": rest}
     if any(size is not None for size in sizes.values()):
-        if sample:
+        if sample is not None:
             raise fail("--sample cannot be combined with --relevant, --named or --rest")
         texts = {post.x_id: post.text for post in eval_set.corpus}
         chosen = {category: size or 0 for category, size in sizes.items()}
         order = stratified_order(in_scope, texts, chosen, seed)
     else:
-        order = review_order(in_scope, sample, seed)
+        order = review_order(in_scope, sample or 0, seed)
     if not order:
         typer.echo("nothing to review")
         return

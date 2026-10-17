@@ -297,7 +297,9 @@ class Agreement:
 
 
 def judge_label(query: AnyQuery, x_id: int, judge: str) -> bool | None:
-    found = [j for j in query.judgements if j.x_id == x_id and j.labelled_by == judge]
+    found = [
+        j for j in query.judgements if j.x_id == x_id and j.labelled_by == judge and not j.reviewed
+    ]
     return found[-1].relevant if found else None
 
 

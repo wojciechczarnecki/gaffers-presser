@@ -79,7 +79,10 @@ def free_query(judgements):
         ("ØDEGAARD OUT", True),
         ("Captain Martin starts", True),
         ("Odegaard's knee is fine", True),
-        ("Odegaardo is a typo, not him", False),
+        ("Brak Ødegaarda na treningu", True),
+        ("z Odegaardem w składzie", True),
+        ("Odegaardowski is someone else", False),
+        ("NotOdegaard", False),
         ("Saka out, Rice doubtful", False),
     ],
 )
@@ -257,3 +260,22 @@ def test_the_agreement_command_prints_kappa_and_each_judge_against_the_owner(wor
     lines = {line.split(":")[0].strip(): line for line in result.stdout.splitlines()}
     assert "pairs in unreviewed strata" in lines["a"]  # the rest query has no review
     assert "over 3 reviewed pairs" in lines["b"]
+
+
+def test_the_judges_compare_against_the_owner_on_the_pairs_both_labelled():
+    queries = pilot_and_rest()
+    pilot = queries[0]
+    queries[0] = pilot.model_copy(update={"judgements": [*pilot.judgements, own(2, True)]})
+    rest = queries[1]
+    queries[1] = rest.model_copy(update={"judgements": [*rest.judgements, own(100, False)]})
+    alone = owner_agreement(queries, TEXTS, "a")
+    shared = owner_agreement(queries, TEXTS, "a", within=("a", "b"))
+    assert alone.reviewed == 2 and alone.precision == pytest.approx(4 / 8)
+    assert shared.reviewed == 1 and shared.precision == pytest.approx(1.0)
+
+
+def test_reviewed_entries_are_not_a_judge_label_between_judges():
+    from app.retrieval.evaluation.judging import agreement
+
+    q = player_query([j(1, True, "a"), j(1, False, "b"), j(1, True, "b", reviewed=True)])
+    assert agreement([q], "a", "b").pairs == [(True, False)]

@@ -163,13 +163,17 @@ uv run python -m app.retrieval.evaluation compare evals/retrieval/results/test-v
   (about 4% on GW6), so a judge calling everything not relevant agrees about 0.96 and a random
   sample of 30 holds about one relevant pair. A pair's stratum is the judges that labelled it
   and its category: a disagreement, relevant for every judge, not relevant with the player named
-  in the post (`web_name`, `second_name` or an alias as a whole word, accents folded), or the
-  rest. `review --relevant N --named N --rest N` shows every disagreement, then a seeded sample
-  of N pairs of each other stratum. `agreement` prints the judges' kappa with each other and,
-  once the owner has reviewed, each judge's precision, recall, kappa and agreement against the
-  owner, with each reviewed pair weighted by its stratum's size over its reviewed pairs; strata
-  with no reviewed pair are left out and counted. Pilot pairs and the rest of the pool are
-  separate strata, so reviewing the pilot in full does not skew the rest's estimates.
+  in the post (`web_name`, `second_name` or an alias as a word with up to three letters of a
+  Polish ending, accents folded), or the rest. `review --relevant N --named N --rest N` shows
+  every disagreement, then a seeded sample of N pairs of each other stratum, and N applies to
+  each set of judges apart (the pilot's pairs and the rest's are sampled separately).
+  `agreement` needs the corpus; it prints the judges' kappa with each other and, once the owner
+  has reviewed, each judge's precision, recall, kappa and agreement against the owner on the
+  pairs both judges labelled, with each reviewed pair weighted by its stratum's size over its
+  reviewed pairs. A stratum with no reviewed pair is left out and counted, so the run header's
+  `judge_owner_estimates` cover the whole pool only when every stratum was sampled. The weights
+  assume each stratum's reviewed pairs are a seeded sample of it, so a set is reviewed in one
+  mode: the stratified one, or `--sample` alone.
 - **The review is blind.** `review` shows every pair the judges disagree on, then a seeded
   sample of the other pairs, with the player or the query and the post but no judge's label,
   and stores the owner's answer as a reviewed label beside the judges'. The reference label of
