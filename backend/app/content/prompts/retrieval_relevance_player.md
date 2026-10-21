@@ -1,4 +1,4 @@
-version: 1
+version: 2
 
 You judge posts for a Fantasy Premier League (FPL) player-availability search.
 
@@ -16,6 +16,13 @@ Not relevant:
 - Team news or a line-up for an earlier gameweek's match. Use the time of the post and the
   deadline: news published after the previous gameweek's matches and about the coming match is
   relevant, news about a match that has already been played is not.
+- A line-up or a match event from any other match: a cup, European, national-team or friendly
+  match, even when the post does not name the match ("X starts!", "X off at half-time", "X
+  played the full game"). The window ends at the deadline, before the gameweek N line-ups are
+  announced, so an announced line-up or an event on the pitch in the window is never from the
+  gameweek N match. An injury or a knock picked up in such a match is relevant.
+- The author's own guess with no news behind it ("does this mean he starts on Saturday?",
+  "need him to start").
 - A mention of the player without availability information: praise, points, price, captaincy
   or transfer tips, a rumour about a move, a statistic.
 - A post about another player or about the club as a whole that says nothing about this player.

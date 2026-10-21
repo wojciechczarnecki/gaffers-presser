@@ -162,7 +162,7 @@ def test_mapping_outside_inputs(tmp_path):
     assert not list(out.glob("*/inputs/mapping.json")) and not list(out.glob("*/mapping.json"))
     mapping = json.loads((out / "mapping.json").read_text())
     assert mapping["seed"] == 6 and mapping["set_dir"] == "set" and mapping["for_judge"] is None
-    assert mapping["prompts"] == {"player": 1, "free": 1}
+    assert mapping["prompts"] == {"player": 2, "free": 1}
     player_map = mapping["inputs"]["p-gw6-1"]
     assert player_map["slice"] == "player" and player_map["query_id"] == "p-gw6-1"
     assert sorted(player_map["posts"].values()) == ids(1, 3)
@@ -183,11 +183,12 @@ def test_long_query_split_by_max_posts(tmp_path):
 def test_player_prompt_and_input_name_gameweek_and_deadline(tmp_path):
     export(tmp_path, [player(), free()], {"p-gw6-1": ids(1, 2), "q-post-en-001": ids(3, 4)})
     prompt = load_prompt("retrieval_relevance_player")
-    assert prompt.version == 1
+    assert prompt.version == 2
     assert (tmp_path / "out/player/inputs/judge-prompt.md").read_text() == prompt.text
     free_prompt = load_prompt("retrieval_relevance_free")
     assert (tmp_path / "out/free/inputs/judge-prompt.md").read_text() == free_prompt.text
     assert "gameweek N" in prompt.text and "denial" in prompt.text
+    assert "never from the" in prompt.text  # line-ups in the window are from other matches
     text = read_input(tmp_path, "player", "p-gw6-1")
     assert "Bukayo Saka (Saka), Arsenal" in text
     assert "Gameweek 6, deadline 2026-10-03 19:30 (Europe/Warsaw)" in text
