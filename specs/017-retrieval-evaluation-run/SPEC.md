@@ -150,9 +150,9 @@ fast path, and it is merged as its own data PR:
 
 - [ ] AC1: Set v2 in `backend/evals/retrieval/v2/` holds the following:
       - the corpus, exported with `--since 2026-09-18T17:30Z` (the GW5 deadline) and
-        `--until 2026-10-10T10:00Z` (the GW6 deadline);
-      - the `player` slice for gameweek 6, built with the `alerts` window rule and split into
-        dev and test by the builder's seed;
+        `--until 2026-10-17T10:00Z` (the GW7 deadline);
+      - the `player` slices for gameweeks 6 and 7, each built with the `alerts` window rule and
+        split into dev and test by the builder's seed (owner decision of 2026-10-17);
       - v1's queries as the `free` slice, carried with their labels and not judged again.
       The set's `set.json` names its set version. Only the commands
       `export-corpus` and `build-player-slice` touched the Compose database, read only.
@@ -165,7 +165,8 @@ fast path, and it is merged as its own data PR:
 - [ ] AC3: The pool of every `player` query is the union of the judge's cut at the largest
       depth (50) across the three modes, the three query variants and the four models
       (baseline and three candidates). Before every judge run, `estimate` is printed and the
-      owner sees it. The session judge's tokens for the whole of phase A stay at or below 3M.
+      owner sees it. The session judge's tokens for the whole of phase A stay at or below 3M
+      (set for one gameweek; with GW7 the spend is about 5M, see the open questions).
 - [ ] AC4: The pilot runs on a seeded sample of queries (`--query-sample 20 --seed 1`, which
       draws over both slices and gave 15 `player` queries and 769 pairs). It is judged by Sonnet
       at medium effort and by Opus, and `agreement` is run. Relevant pairs are about 4% of the
@@ -181,7 +182,9 @@ fast path, and it is merged as its own data PR:
 - [ ] AC5: The chosen judge labels every remaining pooled pair of the `player` slice. The owner
       reviews the rest by stratum too: a seeded 30 of the pairs the judge called relevant, a
       seeded 30 of the not-relevant pairs whose post names the player, and a seeded 20 of the
-      other pairs. Set v2 is committed with all labels, and the data PR is merged before
+      other pairs. Every pair a judge called relevant under `retrieval_relevance_player` v1 is
+      judged again under v2 (owner decision of 2026-10-21); its not-relevant labels stand, as
+      v2 only narrows relevance. Set v2 is committed with all labels, and the data PR is merged before
       `/pipeline:ship 017` starts.
 
 **Phase B — the run and the report**
@@ -198,7 +201,7 @@ fast path, and it is merged as its own data PR:
       equal to today's production wins (`text-embedding-3-small`, hybrid, `web_name`, 20). After
       that, the cheaper model wins, then the smaller depth, then the simpler variant, in the
       order `web_name`, `full_name`, `names`. There is no margin, so the absolute best wins.
-      The report states that differences below about 0.05 on about 58 test queries are within
+      The report states that differences below about 0.05 on 188 test queries are within
       noise. The rule is applied exactly, and a test of a function implementing it is not
       required: it is applied by reading the `compare` table and shown in the report.
 - [ ] AC8: The winner runs in production:
@@ -239,10 +242,10 @@ fast path, and it is merged as its own data PR:
       - per-query misses of the winner taken from the result file (at least the five worst
         queries);
       - the reranking numbers and decision;
-      - the stale-claim and stale-anchor counts, with the note that GW6 cannot show them
-        because of the international break;
-      - the limits: one gameweek, about 58 test queries, labels of one query not independent
-        (one call per query).
+      - the stale-claim and stale-anchor counts per gameweek: GW6 cannot show them because of
+        the international break, GW7 can (121 of its 332 claims are stale);
+      - the limits: two gameweeks, 188 test queries, labels of one query not independent
+        (one call per query), and labels of two prompt versions (v1 not-relevant, v2 relevant).
 - [ ] AC11: ADR 0009 records the embedding model chosen, or kept, with the candidates, their
       prices and recall at the cut, and the rejected alternatives. DECISIONS gets a row that
       links it and names the production query variant, mode and depth.
@@ -328,6 +331,14 @@ fast path, and it is merged as its own data PR:
   `review` gains a stratified mode and `agreement` and the result header the weighted
   estimates and kappa, in the data PR (a tooling change this spec otherwise excludes).
   Recall at the cut stays the selection metric: it is computed on relevant posts only.
+- 2026-10-17: the set takes the GW7 slice and the corpus runs to the GW7 deadline, for more
+  test queries and for stale claims GW6 cannot show.
+- 2026-10-21: a line-up or an event on the pitch from any other match (cup, European, national
+  team) is not relevant, even when the post does not name the match: the window ends at the
+  deadline, before the gameweek's line-ups are announced, so such a post in the window is never
+  from the gameweek's match. An injury from such a match is relevant. This is the extraction
+  rule of 2026-09-28 (DECISIONS); `retrieval_relevance_player` v2 states it, the pairs judged
+  relevant under v1 are judged again, and the owner's review restarts under it.
 - Carried from spec 016:
   - session judge tokens ≤ 3M, estimated and shown before launch;
   - a judge pilot with Sonnet (medium) and Opus, the cheaper judge chosen when its agreement
@@ -341,4 +352,5 @@ fast path, and it is merged as its own data PR:
 
 ## Open questions (non-blocking)
 
-- none
+- AC3's cap of 3M judge tokens was set for one gameweek. With GW7 and the v2 re-judge the
+  phase A spend is about 5M; the owner confirms the overrun in the data PR.
