@@ -106,7 +106,7 @@ def test_window_floor_without_a_previous_deadline_uses_the_lookback():
 
 
 D5 = datetime(2026, 9, 18, 17, 30, tzinfo=UTC)
-D6 = D5 + timedelta(days=7)
+D6 = D5 + timedelta(days=4)  # shorter than LOOKBACK, so D5 is not the lookback floor
 LOOKBACK = timedelta(days=7)
 SAT = D5 + timedelta(days=1, hours=-3.5)  # Sat 14:00
 MON = SAT + timedelta(days=2, hours=5)  # Mon 19:00
@@ -180,12 +180,17 @@ def test_before_the_first_gameweek_the_helper_is_none_and_the_lookback_applies(d
 
 
 def test_without_previous_fixtures_or_kickoffs_the_previous_deadline_is_used(db):
+    assert D6 - LOOKBACK < D5
     _calendar(db, fixtures=[(1, 5, None)])
+    with Session(db) as session:
+        assert previous_gameweek_end(session, D6 - timedelta(hours=1)) == D5
     assert _floor(db, D6 - timedelta(hours=1)) == D5
 
 
 def test_without_any_fixture_the_previous_deadline_is_used(db):
     _calendar(db)
+    with Session(db) as session:
+        assert previous_gameweek_end(session, D6 - timedelta(hours=1)) == D5
     assert _floor(db, D6 - timedelta(hours=1)) == D5
 
 
@@ -206,7 +211,15 @@ def test_a_match_not_yet_ended_does_not_count(db):
 def test_no_match_ended_gives_the_previous_deadline(db):
     _calendar(db, fixtures=[(1, 5, SAT)])
     as_of = SAT + timedelta(hours=1)
+    with Session(db) as session:
+        assert previous_gameweek_end(session, as_of) == D5
     assert _floor(db, as_of) == D5
+
+
+def test_a_match_ending_exactly_at_the_moment_counts(db):
+    _calendar(db, fixtures=[(1, 5, SAT), (2, 5, MON)])
+    as_of = MON + timedelta(hours=2)
+    assert _floor(db, as_of) == MON + timedelta(hours=2)
 
 
 def test_the_gameweek_can_be_chosen_apart_from_the_moment(db):

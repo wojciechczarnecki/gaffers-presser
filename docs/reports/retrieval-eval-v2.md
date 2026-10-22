@@ -59,7 +59,7 @@ Test split labels: 104 owner-reviewed and 9,582 judge-only (dev: 35 and 4,185).
 
 Reference labels are the owner's where reviewed and the judge's otherwise. On the test split:
 
-- 121 relevant pairs among 10,292 pooled pairs (1.2%).
+- 121 relevant pairs among 9,686 pooled pairs (1.25%).
 - 69 of the 188 queries have a relevant post, and each of them has an unclaimed relevant post.
   The other **119 queries have no unclaimed relevant post**, and recall at the cut leaves them
   out. With one relevant post a query's recall is a hit or a miss, and one query moves the mean

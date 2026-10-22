@@ -243,6 +243,24 @@ def test_result_holds_cut_ids_and_labels_per_configuration(eval_db):
     assert free["modes"]["fulltext"]["top10_labels"][0] is True
 
 
+def test_recall_at_depth_is_written_apart_from_recall_at_cut(eval_db, monkeypatch):
+    import app.retrieval.evaluation.player_metrics as player_metrics
+
+    # a cut of one post leaves the second retrievable relevant post between the cut and the depth
+    monkeypatch.setattr(player_metrics, "JUDGE_CUT", 1)
+    result = _run(eval_db)
+    metrics = _rows(result)[("fulltext", "web_name", 20)]
+    assert metrics.recall_at_cut == pytest.approx((0.25 + 0.0) / 2)
+    assert metrics.recall_at_depth == pytest.approx((0.5 + 0.0) / 2)
+    row = next(
+        r
+        for r in result.data["player"]["rows"]
+        if (r["mode"], r["variant"], r["depth"]) == ("fulltext", "web_name", 20)
+    )
+    assert row["recall_at_cut"] == pytest.approx(0.125)
+    assert row["recall_at_depth"] == pytest.approx(0.25)
+
+
 def _record_searches(monkeypatch):
     import app.retrieval.evaluation.runner as runner
 

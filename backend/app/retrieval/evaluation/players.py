@@ -51,6 +51,11 @@ def gameweek_window(
             Gameweek.season == season, Gameweek.deadline_at < deadline
         )
     ).one()
+    # Two ends of the previous gameweek on purpose: `previous_end` (fixtures of gameweek − 1,
+    # every match) is the after-last-match rule and the stale marker, recorded in the set as
+    # `previous_last_match_end`; the `alerts` start below reproduces production's floor, which
+    # picks the gameweek by deadline order and counts only matches ended by N's deadline. They
+    # agree on real calendars, where gameweek − 1 holds the previous deadline and ends before N.
     last_kickoff = session.exec(
         select(func.max(Fixture.kickoff_at)).where(
             Fixture.season == season, Fixture.gameweek_fpl_id == gameweek - 1

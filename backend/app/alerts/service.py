@@ -1,7 +1,7 @@
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from functools import partial
 from typing import Literal
@@ -29,6 +29,7 @@ from app.corroboration.schemas import Corroboration
 from app.corroboration.service import CorroborationRuntime, corroborate
 from app.delivery.channels.base import Message
 from app.delivery.service import DeliveryService
+from app.extraction.linking import load_aliases
 from app.fpl.calendar import current_season
 from app.fpl.deadlines import previous_gameweek_end, window_floor
 
@@ -169,10 +170,13 @@ def build_slot_alert(
         if not listed:
             return SlotDraft(kind, as_of, None, [], [])
 
+    corroboration = runtime.corroboration
+    if corroboration.embedder is not None:
+        corroboration = replace(corroboration, player_aliases=load_aliases()[0])
     corroborate_one = partial(
         corroborate_player,
         engine,
-        runtime.corroboration,
+        corroboration,
         as_of=as_of,
         since=start,
         new_since=new_since,

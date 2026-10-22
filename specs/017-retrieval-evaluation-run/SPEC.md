@@ -10,7 +10,7 @@ metrics:
   started_at: 2026-10-22T15:25
   plan_steps: 9
   plan_changes: 9
-  escalations: 3
+  escalations: 4
   escalations_permission: 1
   escalations_tooling: 1
   plan_review_blockers: 1
@@ -22,6 +22,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 3
   final_review_nits: 5
+  findings_accepted: 8
+  findings_rejected: 0
 ---
 
 # SPEC 017 — Retrieval evaluation run on the GW6 window and rolling out the winners

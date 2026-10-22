@@ -550,9 +550,9 @@ Patterns reused:
       - The full `verify.command` is green (2182 passed).
 - [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, ADR 0009, `docs/BACKLOG.md`,
       `docs/EVALUATION.md`, `README.md` (and `docs/DEPLOYMENT.md` if the model changed)
-- [ ] if the model changed: the PR description gives the owner's re-index command and the
+- [x] if the model changed: the PR description gives the owner's re-index command and the
       `EMBEDDING_MODEL` note (for the final review: the model changed)
-- [ ] the PR description lists phase A's judge-choice deviation (Opus kept while AC4's rule
+- [x] the PR description lists phase A's judge-choice deviation (Opus kept while AC4's rule
       picks Sonnet) for the owner to confirm
 - [x] spec status: `implemented`
 
@@ -721,3 +721,35 @@ Findings:
 Rejected: none (two perspective findings were lowered to `nit` — F4, because the two computations agree on every real calendar, the slice builder runs only on demand and the frozen v2 windows do not change; F5, because a small TOML parse per player is negligible beside the embedding call and the search).
 
 Left out: 11 nit findings
+
+### 2026-10-22 — final review (apply)
+
+All eight findings accepted at the gate (`## Owner decisions`); fixed as follows:
+
+- **F1** — `backend/tests/fpl/test_deadlines.py`: `D6 = D5 + 4 days`, shorter than the 7-day
+  lookback, and the three fallback tests assert `previous_gameweek_end(...) == D5` directly; the
+  mutation `return None` instead of the deadline now fails 3 tests.
+- **F2** — `backend/tests/retrieval/evaluation/test_runner_v2.py`: new
+  `test_recall_at_depth_is_written_apart_from_recall_at_cut` sets the judge's cut to one post,
+  so the second retrievable relevant post sits between the cut and the depth (0.125 against
+  0.25, asserted on the metrics and in the result JSON); writing `recall_at_cut` into
+  `recall_at_depth` now fails it.
+- **F3** — `docs/reports/retrieval-eval-v2.md`: "121 relevant pairs among 9,686 pooled pairs
+  (1.25%)".
+- **F4** — `backend/app/retrieval/evaluation/players.py`: a comment on why `gameweek_window`
+  computes the previous gameweek's end twice (the after-last-match rule and stale marker
+  against production's floor) and when they agree.
+- **F5** — the aliases are loaded once per alert build: `build_slot_alert` puts them into the
+  corroboration runtime (`CorroborationRuntime.player_aliases`), `retrieval_candidates` takes
+  `aliases=` and passes them to `load_player_names`, and `build_candidates` loads them once
+  per run; tests `test_sources.py::test_passed_aliases_are_used_without_reading_the_aliases_file`
+  and `test_slots.py::test_the_aliases_are_loaded_once_per_alert_not_per_player`.
+- **F6** — `backend/tests/fpl/test_deadlines.py`: `test_a_match_ending_exactly_at_the_moment_counts`
+  (`as_of = MON + 2 h` gives `MON + 2 h`); the mutation `<=` → `<` now fails it.
+- **F7** — `README.md`: a note that "recall within the depth" is each row at its own depth and
+  that the reranking check reads the winner's depth-50 row (0.998).
+- **F8** — `docs/EVALUATION.md`: the `free` table printed for set v2 is unjudged and to be
+  ignored.
+
+Verification after the fixes: `verify.command` green (2186 passed). BACKLOG: no new items and
+no fired triggers; #53 was delivered and removed in the implementation.

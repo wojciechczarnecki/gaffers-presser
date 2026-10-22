@@ -375,6 +375,23 @@ def test_the_web_name_variant_searches_the_web_name_without_a_player_lookup(db, 
     assert queries == ["Saka"]
 
 
+def test_passed_aliases_are_used_without_reading_the_aliases_file(db, monkeypatch):
+    from app.extraction.linking import PlayerAlias
+    from app.retrieval import variants
+
+    seed_reference(db)
+    queries = _recording_search(monkeypatch)
+
+    def no_file(*args, **kwargs):
+        raise AssertionError("passed aliases must not be loaded again")
+
+    monkeypatch.setattr(variants, "load_aliases", no_file)
+    ref = PlayerRef(SEASON, GABRIEL_MAGALHAES, "Gabriel", "Arsenal")
+    aliases = [PlayerAlias(alias="Big Gabi", season=SEASON, fpl_id=GABRIEL_MAGALHAES)]
+    retrieval_candidates(db, ref, DEADLINE, NOW, embedder=FakeEmbedder(), aliases=aliases)
+    assert queries == ["Gabriel Magalhaes Big Gabi"]
+
+
 def test_a_missing_player_row_falls_back_to_the_web_name(db, monkeypatch):
     queries = _recording_search(monkeypatch)
     retrieval_candidates(db, SAKA_REF, DEADLINE, NOW, embedder=FakeEmbedder(), variant="names")

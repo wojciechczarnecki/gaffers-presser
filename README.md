@@ -56,7 +56,8 @@ test queries that have one.
 | `google/gemini-embedding-001` | full-text, `names`, depth 30 | 0.919 | 0.965 | 0.872 |
 | the earlier default: `text-embedding-3-small`, hybrid, `web_name`, depth 20 | | 0.906 | 0.926 | 0.869 |
 
-Differences below about 0.05 on 69 queries are within noise; the full-text rows do not use the
+"Recall within the depth" is each row at its own depth; the reranking check reads the winner's
+depth-50 row (0.998). Differences below about 0.05 on 69 queries are within noise; the full-text rows do not use the
 embedding, so they are the same for every model. Reranking is not needed. The full tables, the
 labelling, the misses and the limits are in the
 [report](docs/reports/retrieval-eval-v2.md), and the choice in

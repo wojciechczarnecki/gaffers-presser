@@ -533,3 +533,34 @@ def test_a_rehearsal_during_matches_counts_only_ended_matches(db):
     assert during == SAT_KICKOFF + timedelta(hours=2)
     before_any_ended = window_starts(db, SAT_KICKOFF + timedelta(hours=1))
     assert before_any_ended == {"real": PREVIOUS, "rehearsal": PREVIOUS}
+
+
+def test_the_aliases_are_loaded_once_per_alert_not_per_player(db, monkeypatch):
+    import app.alerts.service as service
+    from app.extraction.linking import load_aliases
+    from app.retrieval import variants
+
+    seed(db)
+    add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=5), author="a1")
+    add_claim(db, 2, ISAK, "out", created_at=NOW - timedelta(hours=4), author="a2")
+    loads = []
+
+    def counted():
+        loads.append(1)
+        return load_aliases()
+
+    def per_player(*args, **kwargs):
+        raise AssertionError("corroboration must use the aliases loaded for the alert")
+
+    monkeypatch.setattr(service, "load_aliases", counted)
+    monkeypatch.setattr(variants, "load_aliases", per_player)
+    corroboration, _ = scripted_corroboration()
+    runtime, _, _ = setup(db, corroboration)
+
+    draft = build_slot_alert(db, runtime, REAL, "digest", 120, NOW, set())
+
+    assert len(draft.reports) == 2
+    assert [r.corroboration.retrieval.status for r in draft.reports] == ["ran", "ran"]
+    failures = [r.corroboration.retrieval.failure or "" for r in draft.reports]
+    assert not [f for f in failures if f.startswith("retrieval failed")], failures
+    assert loads == [1]

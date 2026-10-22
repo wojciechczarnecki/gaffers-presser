@@ -130,11 +130,13 @@ def sql_claims(
     return claims
 
 
-def _query_text(engine: Engine, player: PlayerRef, variant: Variant) -> str:
+def _query_text(
+    engine: Engine, player: PlayerRef, variant: Variant, aliases: list[PlayerAlias] | None
+) -> str:
     if variant == "web_name":
         return player.web_name
     with Session(engine) as session:
-        names = load_player_names(session, player.season, player.fpl_id)
+        names = load_player_names(session, player.season, player.fpl_id, aliases)
     return variant_text(names, variant) if names is not None else player.web_name
 
 
@@ -150,10 +152,11 @@ def retrieval_candidates(
     prices: dict[str, Price] | None = None,
     embed_timeout_seconds: float = EMBED_TIMEOUT_SECONDS,
     variant: Variant | None = None,
+    aliases: list[PlayerAlias] | None = None,
 ) -> Candidates:
     response = search(
         engine,
-        _query_text(engine, player, variant or QUERY_VARIANT),
+        _query_text(engine, player, variant or QUERY_VARIANT, aliases),
         SEARCH_MODE,
         embedder=embedder,
         filters=SearchFilters(since=start, until=as_of, sources_only=True),

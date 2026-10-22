@@ -32,6 +32,7 @@ from app.corroboration.sources import (
     window_start,
 )
 from app.corroboration.tracing import NULL_CORROBORATION_TRACER, CorroborationTracer
+from app.extraction.linking import PlayerAlias
 from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder
 
@@ -49,6 +50,8 @@ class CorroborationRuntime:
     embed_timeout_seconds: float = EMBED_TIMEOUT_SECONDS
     rules: GradeRules = DEFAULT_RULES
     skipped_reason: str | None = None
+    # loaded once per alert build, so the query variant does not re-read aliases per player
+    player_aliases: list[PlayerAlias] | None = None
 
 
 def _citation(item: LabelledPost, new_since: datetime) -> Citation:
@@ -94,6 +97,7 @@ def _judge_candidates(
             tracer=tracer.retrieval(),
             prices=runtime.prices,
             embed_timeout_seconds=runtime.embed_timeout_seconds,
+            aliases=runtime.player_aliases,
         )
     except Exception as exc:
         logger.error("corroboration retrieval failed: %s", type(exc).__name__)

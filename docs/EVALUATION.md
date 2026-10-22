@@ -130,7 +130,8 @@ uv run python -m app.retrieval.evaluation compare evals/retrieval/results/test-v
 ```
 
 - **The `free` slice is not judged until Stage 4** (BACKLOG #56): it decides nothing in production
-  today, and `evaluate` reports only the `player` slice's numbers for set v2.
+  today. For set v2 only the `player` slice's numbers count: `evaluate` and `compare` still print a
+  `free` table, which is unjudged and to be ignored.
 - **The `alerts` window rule now follows the production floor** (DECISIONS 2026-10-22: the
   previous gameweek's last match plus 2 hours, counting only matches that have ended). A rebuild
   of set v2's `player` slice would therefore give other windows than the frozen set, whose
