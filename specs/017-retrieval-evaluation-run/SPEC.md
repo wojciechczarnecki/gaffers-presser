@@ -1,10 +1,15 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-10-16"
   - "spec-ready — 2026-10-16"
+  - "plan-draft — 2026-10-22"
 metrics:
   started_at: 2026-10-22T15:25
+  plan_steps: 9
+  escalations: 0
+  escalations_permission: 0
+  escalations_tooling: 0
 ---
 
 # SPEC 017 — Retrieval evaluation run on the GW6 window and rolling out the winners
