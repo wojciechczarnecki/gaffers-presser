@@ -543,6 +543,7 @@ Patterns reused:
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
 - 2026-10-22 — plan-review — `decision` — AC12's floor can come after `as_of` (the D-1 digest before a midweek deadline after a Monday-evening match, a rehearsal deadline set during matches, the ingest catch-up during the previous gameweek's matches), which empties the window; how to guard it? — Count only the previous gameweek's matches that ended (kickoff + 2 h) by `as_of`; when none has ended, the floor falls back to the previous deadline. One shared function for the alerts and the ingest stays (2026-10-16); add one test case per scenario in steps 2 and 3.
+- 2026-10-22 — implement — `tooling` — Step 4 stalls on `qwen/qwen3-embedding-8b`: OpenRouter embeds about 100 posts per 10 min with repeated `ReadTimeout`s, over 15 h for the qwen test run alone; how to proceed? — Drop `qwen/qwen3-embedding-8b` from the candidates (this changes the 2026-10-16 decision of three candidates): the run compares the baseline `openai/text-embedding-3-small` with `openai/text-embedding-3-large` and `google/gemini-embedding-001`, test and dev each. The report and the ADR state that qwen was dropped for its embedding throughput on OpenRouter, not for its quality.
 
 ## Review log
 
