@@ -204,3 +204,26 @@ def test_retrieval_report_v2_has_every_section():
         assert f"## {heading}" in text or f"## The {heading.lower()}" in text, heading
     for phrase in ("69", "0.05", "claude-opus-5-5", "qwen"):
         assert phrase in text, phrase
+
+
+def test_adr_0009_and_decisions_row_for_the_retrieval_winner():
+    adr = (ROOT / "docs" / "adr" / "0009-default-embedding-model.md").read_text(encoding="utf-8")
+    for model in (
+        "openai/text-embedding-3-large",
+        "openai/text-embedding-3-small",
+        "google/gemini-embedding-001",
+        "qwen/qwen3-embedding-8b",
+    ):
+        assert model in adr, model
+    decisions = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")
+    (row,) = [line for line in decisions.splitlines() if "adr/0009-" in line]
+    for needle in ('`QUERY_VARIANT = "names"`', '`SEARCH_MODE = "hybrid"`', "`SEARCH_LIMIT = 20`"):
+        assert needle in row, needle
+
+
+def test_decisions_supersede_the_previous_deadline_window():
+    decisions = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")
+    (row,) = [line for line in decisions.splitlines() if "previous_gameweek_end" in line]
+    for needle in ("window_floor", "last match", "supersedes"):
+        assert needle in row, needle
+

@@ -388,7 +388,7 @@ Patterns reused:
         - **The noise:** differences below about 0.05 on 69 queries are within noise.
       Automatic verification: `cd backend && uv run pytest -q tests/test_docs.py`
       `iterations: 0`
-- [ ] 7. **ADR 0009 and the DECISIONS rows (AC11, AC13 DECISIONS).** Files: new
+- [x] 7. **ADR 0009 and the DECISIONS rows (AC11, AC13 DECISIONS).** Files: new
       `docs/adr/0009-default-embedding-model.md`, `docs/DECISIONS.md` and
       `backend/tests/test_docs.py`.
       - Tests first:
@@ -414,6 +414,7 @@ Patterns reused:
           the 2026-10-07 row. The per-club window is the rejected
           alternative, as in the SPEC.
       Automatic verification: `cd backend && uv run pytest -q tests/test_docs.py`
+      `iterations: 0`
 - [ ] 8. **BACKLOG, ROADMAP, EVALUATION.md, README and DEPLOYMENT (AC9 backlog, AC13,
       AC14).** Files: `docs/BACKLOG.md`, `docs/ROADMAP.md`, `docs/EVALUATION.md`, `README.md`,
       `docs/DEPLOYMENT.md` (only if the model changed) and `backend/tests/test_docs.py`.
