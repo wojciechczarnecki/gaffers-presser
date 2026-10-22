@@ -754,3 +754,10 @@ All eight findings accepted at the gate (`## Owner decisions`); fixed as follows
 
 Verification after the fixes: `verify.command` green (2186 passed). BACKLOG: no new items and
 no fired triggers; #53 was delivered and removed in the implementation.
+
+CI on PR #39: `backend-audit` failed on CVE-2026-114603 in the transitive `opentelemetry-api
+1.45.0`. Per the owner decision of 2026-10-22, `uv lock --upgrade-package opentelemetry-api`
+moved it to 1.45.1 (with it the pinned `opentelemetry-sdk` 1.45.0 → 1.45.1 and
+`opentelemetry-semantic-conventions` 0.66b0 → 0.66b1, patch releases only, `backend/uv.lock`
+only). `verify.command` green again (2186 passed); a local `pip-audit` on the exported lock
+finds no known vulnerabilities.
