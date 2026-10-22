@@ -186,7 +186,7 @@ Patterns reused:
 
 ## Steps
 
-- [ ] 1. **Recall within the depth in the evaluation (AC9 number, AC6 column).** Files:
+- [x] 1. **Recall within the depth in the evaluation (AC9 number, AC6 column).** Files:
       `backend/app/retrieval/evaluation/player_metrics.py`, `runner.py` (`_format_row`,
       `format_player_table`), `compare.py`, tests
       `backend/tests/retrieval/evaluation/test_player_metrics.py`, `test_compare.py` and
@@ -206,6 +206,7 @@ Patterns reused:
       - Record the change in `## Deviations` as `minor` (the SPEC's "blocks the run" exception
         to "no change to the spec 016 tooling").
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_player_metrics.py tests/retrieval/evaluation/test_compare.py tests/retrieval/evaluation/test_runner_v2.py && uv run ruff check app/retrieval/evaluation tests/retrieval/evaluation`
+      `iterations: 1`
 - [ ] 2. **`previous_gameweek_end` and the new `window_floor` rule (AC12 core, AC13
       docstring).** Files: `backend/app/fpl/deadlines.py` and
       `backend/tests/fpl/test_deadlines.py`.
@@ -651,6 +652,8 @@ findings were fixed in the plan, and every phase B AC has steps with runnable ve
 ## Deviations
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+
+- `minor` — step 1: added `recall_at_depth` beside `recall_at_cut` to the spec 016 evaluation tooling (`player_metrics.py`, `runner.py`, `compare.py`); AC9 needs it and it cannot be derived from result files (the SPEC's "blocks the run" exception).
 
 ## Final review
 

@@ -141,3 +141,28 @@ def test_counts_of_initials_stale_claims_and_stale_anchors():
     assert counts.no_relevant == 2
     # unclaimed relevant: a {} (1 claimed), b {9}, c {}, d {}
     assert counts.no_unclaimed_relevant == 3
+
+
+def test_recall_at_depth_counts_unclaimed_relevant_posts_beyond_the_cut():
+    ranked = ids(1, 60)
+    claimed = {101, 102}
+    labels = {x_id: True for x_id in ids(1, 15)} | {101: True, 102: True}
+    numbers = query_numbers(ranked, claimed, labels, 20)
+    assert numbers.recall_at_cut == pytest.approx(10 / 15)
+    assert numbers.recall_at_depth == pytest.approx(15 / 15)
+
+
+def test_recall_at_depth_depends_on_the_depth():
+    ranked = ids(1, 60)
+    labels = {30: True}
+    assert query_numbers(ranked, set(), labels, 20).recall_at_depth == 0.0
+    assert query_numbers(ranked, set(), labels, 50).recall_at_depth == 1.0
+
+
+def test_recall_at_depth_is_none_without_an_unclaimed_relevant_post_and_stays_out_of_the_mean():
+    ranked = ids(1, 30)
+    none = query_numbers(ranked, {1}, {1: True}, 20)
+    assert none.recall_at_depth is None
+    full = query_numbers(ranked, set(), {2: True}, 20)
+    assert aggregate_player([none, full]).recall_at_depth == 1.0
+    assert aggregate_player([none]).recall_at_depth is None

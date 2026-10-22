@@ -17,6 +17,7 @@ def judge_cut(ranked: Sequence[int], claimed: Collection[int], depth: int) -> li
 class QueryNumbers:
     cut: list[int]
     recall_at_cut: float | None
+    recall_at_depth: float | None
     recall_at_10: float | None
     empty_cut_with_miss: bool
     unjudged: int
@@ -31,6 +32,9 @@ def query_numbers(
     return QueryNumbers(
         cut=cut,
         recall_at_cut=len(set(cut) & unclaimed) / len(unclaimed) if unclaimed else None,
+        recall_at_depth=len(set(ranked[:depth]) & unclaimed) / len(unclaimed)
+        if unclaimed
+        else None,
         recall_at_10=len(set(ranked[:RAW_TOP]) & relevant) / len(relevant) if relevant else None,
         empty_cut_with_miss=not cut and bool(unclaimed),
         unjudged=sum(1 for x_id in cut if x_id not in labels),
@@ -41,6 +45,7 @@ def query_numbers(
 class PlayerAggregate:
     queries: int
     recall_at_cut: float | None
+    recall_at_depth: float | None
     recall_at_10: float | None
     empty_cuts_with_miss: int
     unjudged_share: float | None
@@ -55,6 +60,9 @@ def aggregate_player(numbers: Sequence[QueryNumbers]) -> PlayerAggregate:
     return PlayerAggregate(
         queries=len(numbers),
         recall_at_cut=_mean([n.recall_at_cut for n in numbers if n.recall_at_cut is not None]),
+        recall_at_depth=_mean(
+            [n.recall_at_depth for n in numbers if n.recall_at_depth is not None]
+        ),
         recall_at_10=_mean([n.recall_at_10 for n in numbers if n.recall_at_10 is not None]),
         empty_cuts_with_miss=sum(n.empty_cut_with_miss for n in numbers),
         unjudged_share=sum(n.unjudged for n in numbers) / cut_total if cut_total else None,
