@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-16"
   - "spec-ready — 2026-10-16"
   - "plan-draft — 2026-10-22"
   - "plan-approved — 2026-10-22"
   - "implemented — 2026-10-22"
+  - "done — 2026-10-22"
 metrics:
   started_at: 2026-10-22T15:25
   plan_steps: 9
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 5
   findings_accepted: 8
   findings_rejected: 0
+  cost_plan_cents: 226
+  cost_plan_review_cents: 206
+  cost_implement_cents: 1394
+  cost_final_review_cents: 709
+  finished_at: 2026-10-22T23:51
 ---
 
 # SPEC 017 — Retrieval evaluation run on the GW6 window and rolling out the winners
