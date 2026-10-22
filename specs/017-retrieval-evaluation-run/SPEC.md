@@ -19,6 +19,9 @@ metrics:
   implement_iterations: 5
   deviations_minor: 5
   deviations_major: 0
+  final_review_blockers: 0
+  final_review_worth_fixing: 3
+  final_review_nits: 5
 ---
 
 # SPEC 017 — Retrieval evaluation run on the GW6 window and rolling out the winners

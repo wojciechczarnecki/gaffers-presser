@@ -684,3 +684,38 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 ## Final review
 
 _(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
+
+### 2026-10-22 — final review (report)
+
+Three independent perspectives (compliance, quality, tests) ran as separate subagents; every
+finding below was checked in the code or the data before it was kept.
+
+AC → evidence:
+
+| AC | Evidence |
+|---|---|
+| AC1–AC5 | phase A (PR #38, `78e82b6`): `set.json` v2 with the GW5–GW7 corpus window, 2557 posts, 269 `player` queries; price rows; 13,906 Opus pairs; the pilot numbers in the report match `78e82b6`; the judge-choice deviation goes to the PR description |
+| AC6 | `backend/evals/retrieval/results/test-v2-{openai-text-embedding-3-small,openai-text-embedding-3-large,google-gemini-embedding-001}.json` (qwen dropped by the owner decision of 2026-10-22), headers with set v2, reference judge, label counts and `judge_owner_estimates`, depths 20/30/50, `recall_at_depth` on every row; `test_runner_v2.py`, `test_compare.py` |
+| AC7 | report "Winner": exact maximum 0.933318694 tied on 3-large/hybrid/`names` at 20/30/50, production 0.90576 not in the tie, smaller depth wins → 20 (re-checked from the files) |
+| AC8 | `app/corroboration/sources.py` (`QUERY_VARIANT = "names"`, `SEARCH_MODE = "hybrid"`, `SEARCH_LIMIT = 20`, `MAX_JUDGED = 10`), `app/retrieval/config.py` (3-large); `test_sources.py::test_corroboration_searches_with_the_evaluated_winner`, `test_config.py`; the owner's re-index before the merge stays open |
+| AC9 | `player_metrics.py` `recall_at_depth` + `test_player_metrics.py`; report "Reranking" (0.933 ≥ 0.80; 0.998 − 0.933 = 0.065 < 0.10 → not needed); BACKLOG #16 P3; `test_docs.py::test_backlog_has_reranking_and_ann_entries` |
+| AC10 | `docs/reports/retrieval-eval-v2.md`, every section (see F3); `test_docs.py::test_retrieval_report_v2_has_every_section` |
+| AC11 | `docs/adr/0009-default-embedding-model.md`; DECISIONS 2026-10-22 row; `test_docs.py::test_adr_0009_and_decisions_row_for_the_retrieval_winner` |
+| AC12 | `app/fpl/deadlines.py::previous_gameweek_end` + `window_floor`, call sites in `alerts/service.py`, `tweets/loop.py`, `retrieval/evaluation/players.py`; `tests/fpl/test_deadlines.py` (every calendar case, see F1), `tests/alerts/test_slots.py`, `tests/tweets/test_loop.py`, `test_players.py::test_alerts_window_follows_the_production_floor` |
+| AC13 | DECISIONS superseding row, BACKLOG #53 removed and #50 shortened, `window_floor` docstring, `alerts/service.py` comment, `alerts/config.py:55`; `test_docs.py::test_backlog_window_row_and_017_018_renumbering`, `::test_decisions_supersede_the_previous_deadline_window` |
+| AC14 | README `## Retrieval results`, BACKLOG #56, ROADMAP Stage 2 ticked and Q&A item naming #56, EVALUATION.md `2026-10-10T10:00Z` and the `free` slice line; `test_docs.py::test_readme_results_free_slice_row_and_roadmap` |
+
+Findings:
+
+- **F1** `worth-fixing` — backend/tests/fpl/test_deadlines.py:108-110, 182, 187, 206 — the calendar has `D6 = D5 + 7 days` and `LOOKBACK = 7 days`, so the expected previous deadline `D5` equals the lookback floor `D6 − LOOKBACK`: a `previous_gameweek_end` that returns `None` instead of the deadline when no match qualifies keeps all three fallback tests green (mutation run) — make the GW5→GW6 gap shorter than the lookback (e.g. `D6 = D5 + 4 days`) and assert `previous_gameweek_end(...) == D5` directly.
+- **F2** `worth-fixing` — backend/tests/retrieval/evaluation/test_runner_v2.py:176, 236 — the fixture gives 0.25 for both `recall_at_cut` and `recall_at_depth`, so `_format_row` writing `recall_at_cut` into `"recall_at_depth"` stays green across `test_player_metrics`, `test_runner_v2` and `test_compare` (mutation run), and a wrong field in the result JSON would ship — add one unclaimed relevant post ranked between the cut and the depth so the two values differ, and assert both exactly.
+- **F3** `worth-fixing` — docs/reports/retrieval-eval-v2.md:62 — "121 relevant pairs among 10,292 pooled pairs (1.2%)": 10,292 counts judgement entries on the test split (Opus, Sonnet pilot and owner), while the distinct pooled pairs are 9,686 (= 104 owner-reviewed + 9,582 judge-only in the header), so AC10's share is stated against the wrong denominator — write "121 of 9,686 pooled pairs (1.25%)".
+- **F4** `nit` — backend/app/retrieval/evaluation/players.py:52-72 — `gameweek_window` computes the previous gameweek's end twice: the stale marker (`previous_end`, fixtures of `gameweek − 1`, no `as_of` guard) and the `alerts` start (`previous_gameweek_end`, by deadline order, matches ended by N's deadline); they agree on real calendars, but a divergence would mark claims inside a newly built window as stale — comment why they differ, or derive both from one helper.
+- **F5** `nit` — backend/app/corroboration/sources.py:133-138 — with `QUERY_VARIANT = "names"` the default path no longer short-circuits: every corroborated player opens a Session and `load_player_names(..., aliases=None)` re-parses the aliases TOML, on the alert hot path — load the aliases once per run and pass them in (as `resolve_player` does), or cache `load_aliases`.
+- **F6** `nit` — backend/app/fpl/deadlines.py:60 — no test sits on the boundary of `Fixture.kickoff_at <= as_of - MATCH_LENGTH` (a match ending exactly at `as_of`); mutating `<=` to `<` stays green — add a case with `as_of = MON + 2 h` expecting `MON + 2 h`.
+- **F7** `nit` — README.md:52 — the results table's "recall within the depth" shows each row at its own depth (0.941 for the winner at 20), while AC9, ADR 0009 and BACKLOG #16 use the depth-50 value (0.998) — add a one-line note that AC9 reads the depth-50 row.
+- **F8** `nit` — docs/EVALUATION.md:133 — "`evaluate` reports only the `player` slice's numbers for set v2", but `evaluate` and `compare` still print an empty, unjudged `free` table (the report says so itself) — say the `free` table printed for set v2 is unjudged and to be ignored.
+
+Rejected: none (two perspective findings were lowered to `nit` — F4, because the two computations agree on every real calendar, the slice builder runs only on demand and the frozen v2 windows do not change; F5, because a small TOML parse per player is negligible beside the embedding call and the search).
+
+Left out: 11 nit findings
