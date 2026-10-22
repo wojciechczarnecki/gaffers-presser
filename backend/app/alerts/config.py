@@ -52,7 +52,8 @@ class AlertConfig:
     trending_min_accounts: int
     widely_owned_percent: Decimal
     rehearsal_deadline: datetime | None
-    # the alert window starts at the previous deadline, but never earlier than this before now
+    # the alert window starts after the previous gameweek's last match, but never earlier than
+    # this before the alert deadline
     max_lookback: timedelta = DEFAULT_MAX_LOOKBACK
 
 

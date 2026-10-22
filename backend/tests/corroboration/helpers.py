@@ -5,7 +5,7 @@ from sqlmodel import Session
 
 from app.extraction.schemas import LinkedEvent
 from app.extraction.store import ExtractionRecord, save_extraction
-from app.fpl.models.reference import Gameweek, Player, Season, Team
+from app.fpl.models.reference import Fixture, Gameweek, Player, Season, Team
 from tests.retrieval.helpers import add_tweet
 
 SEASON = "2026/27"
@@ -21,6 +21,21 @@ PLAYERS = [
     (GABRIEL_JESUS, "Jesus", "Gabriel", "Jesus", 1),
     (GABRIEL_MAGALHAES, "Gabriel", "Gabriel", "dos Santos Magalhaes", 1),
 ]
+
+
+def add_fixture(engine: Engine, fpl_id: int, gameweek: int, kickoff: datetime | None) -> None:
+    with Session(engine) as session, session.begin():
+        session.add(
+            Fixture(
+                season=SEASON,
+                fpl_id=fpl_id,
+                gameweek_fpl_id=gameweek,
+                kickoff_at=kickoff,
+                team_h_fpl_id=1,
+                team_a_fpl_id=2,
+                finished=True,
+            )
+        )
 
 
 def seed_reference(engine: Engine, deadlines: dict[int, datetime] | None = None) -> None:

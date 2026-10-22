@@ -10,8 +10,8 @@ from app.core.clock import Clock, StopAwareClock
 from app.core.shutdown import Shutdown
 from app.fpl.deadlines import (
     DEFAULT_MAX_LOOKBACK,
-    deadline_at_or_before,
     next_deadline_after,
+    previous_gameweek_end,
     upcoming_deadlines,
     window_floor,
 )
@@ -112,10 +112,10 @@ class TweetPoller:
                     now = self._clock.now()
                     next_at = next_poll_at(deadlines, last, now, self._window, self._slot_times)
                     if next_at <= now:
-                        # like the alert window, the previous deadline is a real gameweek
-                        # only, never a rehearsal deadline
+                        # like the alert window, the previous gameweek is a real one only,
+                        # never a rehearsal deadline
                         with Session(self._engine) as session:
-                            previous = deadline_at_or_before(session, now)
+                            previous = previous_gameweek_end(session, now)
                         floor = window_floor(
                             previous, next_deadline_after(deadlines, now), self._max_lookback, now
                         )

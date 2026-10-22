@@ -240,7 +240,7 @@ Patterns reused:
         deadline".
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_deadlines.py && uv run ruff check app/fpl tests/fpl`
       `iterations: 0`
-- [ ] 3. **The alerts, the ingest catch-up and the slice builder on the new rule (AC12,
+- [x] 3. **The alerts, the ingest catch-up and the slice builder on the new rule (AC12,
       AC13 comments).** Files: `backend/app/alerts/service.py`, `backend/app/alerts/config.py`,
       `backend/app/tweets/loop.py`, `backend/app/retrieval/evaluation/players.py` and the tests
       listed below.
@@ -285,6 +285,7 @@ Patterns reused:
       - The existing alert, corroboration and tweet tests seed no fixtures, so they take the
         previous-deadline fallback and must pass unchanged.
       Automatic verification: `cd backend && uv run pytest -q -n auto tests/fpl tests/alerts tests/tweets tests/corroboration tests/retrieval/evaluation/test_players.py tests/worker && uv run ruff check app tests`
+      `iterations: 1`
 - [ ] 4. **The evaluation runs (AC6, AC2 cap).** Files:
       `backend/evals/retrieval/results/test-v2-{openai-text-embedding-3-small,qwen-qwen3-embedding-8b,openai-text-embedding-3-large,google-gemini-embedding-001}.json`
       (committed). The dev runs go to `results/dev/`, which is gitignored, and are kept
@@ -655,6 +656,8 @@ findings were fixed in the plan, and every phase B AC has steps with runnable ve
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
 
 - `minor` — step 1: added `recall_at_depth` beside `recall_at_cut` to the spec 016 evaluation tooling (`player_metrics.py`, `runner.py`, `compare.py`); AC9 needs it and it cannot be derived from result files (the SPEC's "blocks the run" exception).
+- `minor` — step 2: `previous_gameweek_end` breaks ties between seasons by the later season, so a same-deadline gameweek of another season cannot make the choice depend on row order.
+- `minor` — step 3: shared helper `add_fixture` added to `tests/corroboration/helpers.py`; three existing tests in `tests/retrieval/evaluation/test_players.py` (lookback cap, `claimed_ids_equal_sql_claims`, the CLI test) were adjusted because their `world()` fixtures now start the `alerts` window at the last match (their purpose unchanged). Under the new rule no claim of a newly built slice can be stale, so the `stale: 1` expectation became `stale: 0`; the stale code stays for the frozen v2 data.
 
 ## Final review
 

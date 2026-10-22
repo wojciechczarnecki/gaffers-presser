@@ -27,6 +27,7 @@ from tests.corroboration.helpers import (
     SAKA,
     add_claim,
     add_extraction,
+    add_fixture,
     seed_reference,
 )
 from tests.delivery.fakes import FakeChannel, FixedClock
@@ -489,3 +490,46 @@ def test_a_player_failing_even_without_search_fails_the_slot_unsent(db, monkeypa
 
     assert channel.calls == []
     assert alerts(db) == []
+
+
+SAT_KICKOFF = PREVIOUS + timedelta(days=1, hours=-4)
+LATE_KICKOFF = NOW - timedelta(days=1)
+
+
+def window_starts(db, as_of):
+    from app.alerts.service import alert_window_start
+
+    config = AlertConfig((120, 30), 3, Decimal("15"), None)
+    with Session(db) as session:
+        return {
+            "real": alert_window_start(session, as_of, REAL, config),
+            "rehearsal": alert_window_start(session, as_of, REHEARSAL, config),
+        }
+
+
+def test_alert_window_starts_after_the_previous_gameweeks_last_match(db):
+    seed(db)
+    add_fixture(db, 1, 5, SAT_KICKOFF)
+    add_fixture(db, 2, 5, LATE_KICKOFF)
+    end = LATE_KICKOFF + timedelta(hours=2)
+    assert end > PREVIOUS
+    assert window_starts(db, NOW) == {"real": end, "rehearsal": end}
+
+
+def test_the_digest_before_a_midweek_deadline_counts_only_ended_matches(db):
+    seed(db)
+    add_fixture(db, 1, 5, SAT_KICKOFF)
+    add_fixture(db, 2, 5, NOW - timedelta(hours=1))
+    starts = window_starts(db, NOW)["real"]
+    assert starts == SAT_KICKOFF + timedelta(hours=2)
+    assert starts <= NOW
+
+
+def test_a_rehearsal_during_matches_counts_only_ended_matches(db):
+    seed(db)
+    add_fixture(db, 1, 5, SAT_KICKOFF)
+    add_fixture(db, 2, 5, NOW - timedelta(hours=1))
+    during = window_starts(db, NOW - timedelta(minutes=30))["rehearsal"]
+    assert during == SAT_KICKOFF + timedelta(hours=2)
+    before_any_ended = window_starts(db, SAT_KICKOFF + timedelta(hours=1))
+    assert before_any_ended == {"real": PREVIOUS, "rehearsal": PREVIOUS}

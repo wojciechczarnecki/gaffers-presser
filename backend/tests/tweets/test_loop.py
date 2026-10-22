@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 from app.core.clock import StopAwareClock
 from app.core.shutdown import Shutdown
 from app.fpl.models import Gameweek, Season
+from app.fpl.models.reference import Fixture, Team
 from app.tweets.loop import TweetPoller, start_poller
 from app.tweets.membership import latest_snapshot
 from app.tweets.models import ListMembership, TweetPoll
@@ -491,3 +492,50 @@ def test_membership_save_failure_is_reported_as_a_save(db, caplog, monkeypatch):
 
     assert "list membership save failed: OperationalError" in caplog.text
     assert "fetch failed" not in caplog.text
+
+
+def _add_gw5_fixtures(db, *kickoffs):
+    with Session(db) as session, session.begin():
+        session.add(Team(season="2026/27", fpl_id=1, name="A", short_name="A"))
+        session.add(Team(season="2026/27", fpl_id=2, name="B", short_name="B"))
+        session.flush()
+        for fpl_id, kickoff in enumerate(kickoffs, 1):
+            session.add(
+                Fixture(
+                    season="2026/27",
+                    fpl_id=fpl_id,
+                    gameweek_fpl_id=5,
+                    kickoff_at=kickoff,
+                    team_h_fpl_id=1,
+                    team_a_fpl_id=2,
+                    finished=True,
+                )
+            )
+
+
+def test_the_catch_up_floor_equals_the_alert_window_start(db, monkeypatch):
+    from decimal import Decimal
+
+    from app.alerts.config import AlertConfig
+    from app.alerts.schemas import AlertDeadline
+    from app.alerts.service import alert_window_start
+
+    gw5 = DEADLINE - timedelta(days=4)
+    _seed_gw5_and_gw6(db, gw5)
+    last_kickoff = gw5 + timedelta(days=2)
+    _add_gw5_fixtures(db, gw5 + timedelta(days=1), last_kickoff)
+    now = DEADLINE - timedelta(days=1)
+    floors = _floors_of_one_poll(db, monkeypatch, now=now)
+    config = AlertConfig((120, 30), 3, Decimal("15"), None, max_lookback=timedelta(days=5))
+    gw6 = AlertDeadline("2026/27:gw6", DEADLINE, False, "2026/27", 6)
+    with Session(db) as session:
+        start = alert_window_start(session, now, gw6, config)
+    assert floors == [start] == [last_kickoff + timedelta(hours=2)]
+
+
+def test_the_catch_up_during_matches_stops_at_the_previous_deadline(db, monkeypatch):
+    gw5 = DEADLINE - timedelta(days=4)
+    _seed_gw5_and_gw6(db, gw5)
+    now = gw5 + timedelta(days=1, hours=1)
+    _add_gw5_fixtures(db, now - timedelta(minutes=30))
+    assert _floors_of_one_poll(db, monkeypatch, now=now) == [gw5]

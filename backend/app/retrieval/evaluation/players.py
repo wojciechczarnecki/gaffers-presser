@@ -1,14 +1,19 @@
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from sqlalchemy import Engine, func
 from sqlmodel import Session, select
 
 from app.extraction.linking import load_aliases
 from app.extraction.store import current_extractions
-from app.fpl.deadlines import DEFAULT_MAX_LOOKBACK, window_floor
+from app.fpl.deadlines import (
+    DEFAULT_MAX_LOOKBACK,
+    MATCH_LENGTH,
+    previous_gameweek_end,
+    window_floor,
+)
 from app.fpl.models.reference import Fixture, Gameweek, Player, Team
 from app.retrieval.evaluation.dataset import (
     ClaimedPost,
@@ -20,8 +25,6 @@ from app.retrieval.evaluation.dataset import (
 from app.retrieval.evaluation.labels import AnyQuery
 from app.retrieval.evaluation.queries import DEV_SHARE
 from app.retrieval.variants import load_player_names
-
-MATCH_LENGTH = timedelta(hours=2)
 
 
 @dataclass(frozen=True)
@@ -61,7 +64,12 @@ def gameweek_window(
             )
         start = previous_end
     else:
-        start = window_floor(previous_deadline, deadline, DEFAULT_MAX_LOOKBACK, deadline)
+        production_end = (
+            previous_gameweek_end(session, deadline, gameweek_at=previous_deadline)
+            if previous_deadline is not None
+            else None
+        )
+        start = window_floor(production_end, deadline, DEFAULT_MAX_LOOKBACK, deadline)
     return GameweekWindow(season, gameweek, deadline, start, deadline, rule, previous_end)
 
 
