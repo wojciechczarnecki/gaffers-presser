@@ -6,7 +6,7 @@ from app.core.errors import ConfigError
 from app.llm.pricing import Price, load_prices
 from app.llm.settings import LlmSettings, load_llm_settings
 
-DEFAULT_EMBEDDING_MODEL = "openai/text-embedding-3-small"
+DEFAULT_EMBEDDING_MODEL = "openai/text-embedding-3-large"
 
 
 class RetrievalSettings(LlmSettings):

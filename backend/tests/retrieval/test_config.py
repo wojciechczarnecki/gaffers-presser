@@ -25,7 +25,7 @@ def _settings(monkeypatch, **env: str) -> RetrievalSettings:
 
 
 def test_default_model_name():
-    assert DEFAULT_EMBEDDING_MODEL == "openai/text-embedding-3-small"
+    assert DEFAULT_EMBEDDING_MODEL == "openai/text-embedding-3-large"
 
 
 @pytest.mark.parametrize("env", [{}, {"EMBEDDING_MODEL": ""}])

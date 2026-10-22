@@ -17,7 +17,7 @@ from app.extraction.store import current_extractions
 from app.fpl.deadlines import deadline_at_or_before
 from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder
-from app.retrieval.search import SearchFilters, search
+from app.retrieval.search import Mode, SearchFilters, search
 from app.retrieval.tracing import NULL_TRACER, RetrievalTracer
 from app.retrieval.variants import Variant, load_player_names, variant_text
 from app.tweets.classes import quoted_authors
@@ -26,7 +26,8 @@ SEARCH_LIMIT = 20
 MAX_JUDGED = 10
 EMBED_TIMEOUT_SECONDS = 5.0
 DEFAULT_LOOKBACK = timedelta(days=7)
-QUERY_VARIANT: Variant = "web_name"
+QUERY_VARIANT: Variant = "names"
+SEARCH_MODE: Mode = "hybrid"
 
 Aliases = tuple[list[PlayerAlias], list[TeamAlias]]
 
@@ -153,7 +154,7 @@ def retrieval_candidates(
     response = search(
         engine,
         _query_text(engine, player, variant or QUERY_VARIANT),
-        "hybrid",
+        SEARCH_MODE,
         embedder=embedder,
         filters=SearchFilters(since=start, until=as_of, sources_only=True),
         limit=SEARCH_LIMIT,

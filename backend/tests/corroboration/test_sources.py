@@ -326,10 +326,10 @@ def test_quote_carries_quoted_author(db):
     assert candidate.quoted_author_handle == "Outsider"
 
 
-def test_query_variant_constant_defaults_to_web_name():
+def test_query_variant_constant_defaults_to_names():
     from app.corroboration import sources
 
-    assert sources.QUERY_VARIANT == "web_name"
+    assert sources.QUERY_VARIANT == "names"
 
 
 def _recording_search(monkeypatch):
@@ -362,7 +362,7 @@ def test_another_variant_reaches_the_search(db, monkeypatch):
     assert queries == ["Gabriel dos Santos Magalhaes", "Gabriel Magalhaes", "Gabriel"]
 
 
-def test_the_default_variant_searches_the_web_name_without_a_player_lookup(db, monkeypatch):
+def test_the_web_name_variant_searches_the_web_name_without_a_player_lookup(db, monkeypatch):
     from app.corroboration import sources
 
     queries = _recording_search(monkeypatch)
@@ -371,7 +371,7 @@ def test_the_default_variant_searches_the_web_name_without_a_player_lookup(db, m
         raise AssertionError("the web_name variant must not look the player up")
 
     monkeypatch.setattr(sources, "load_player_names", no_lookup)
-    retrieval_candidates(db, SAKA_REF, DEADLINE, NOW, embedder=FakeEmbedder())
+    retrieval_candidates(db, SAKA_REF, DEADLINE, NOW, embedder=FakeEmbedder(), variant="web_name")
     assert queries == ["Saka"]
 
 
@@ -379,6 +379,23 @@ def test_a_missing_player_row_falls_back_to_the_web_name(db, monkeypatch):
     queries = _recording_search(monkeypatch)
     retrieval_candidates(db, SAKA_REF, DEADLINE, NOW, embedder=FakeEmbedder(), variant="names")
     assert queries == ["Saka"]
+
+
+def test_corroboration_searches_with_the_evaluated_winner(db, monkeypatch):
+    from app.corroboration import sources
+    from app.retrieval.search import SearchResponse
+
+    seed_reference(db)
+    calls = []
+
+    def recorder(engine, query, mode, *args, **kwargs):
+        calls.append((query, mode, kwargs["limit"]))
+        return SearchResponse(mode=mode, model=None, results=[])
+
+    monkeypatch.setattr(sources, "search", recorder)
+    ref = PlayerRef(SEASON, GABRIEL_MAGALHAES, "Gabriel", "Arsenal")
+    retrieval_candidates(db, ref, DEADLINE, NOW, embedder=FakeEmbedder())
+    assert calls == [("Gabriel Magalhaes", "hybrid", 20)]
 
 
 def test_judge_cut_constants_match_the_evaluation():

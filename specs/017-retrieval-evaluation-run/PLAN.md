@@ -321,7 +321,7 @@ Patterns reused:
       on its cause. It never goes around `--max-cost-usd`.
       Automatic verification: `cd backend && uv run python -m app.retrieval.evaluation compare evals/retrieval/results/test-v2-*.json` prints 4 files with depths 20,30,50 and 108 player rows (4 models × 3 modes × 3 variants × 3 depths)
       `iterations: 0` (qwen dropped by the owner decision of 2026-10-22: 3 files and 81 player rows; the three test files and their dev runs ran at the scratch container, the baseline files were reused from the earlier attempt: valid, `git_commit` f70b9db, clean)
-- [ ] 5. **Pick the winner and put it into production (AC7, AC8).** Files:
+- [x] 5. **Pick the winner and put it into production (AC7, AC8).** Files:
       `backend/app/corroboration/sources.py`, `backend/app/retrieval/config.py` (only if the
       model changes), `backend/tests/corroboration/test_sources.py` and
       `backend/tests/retrieval/test_config.py` (only if the model changes).
@@ -351,6 +351,7 @@ Patterns reused:
         - If the model changes, set `DEFAULT_EMBEDDING_MODEL`.
         - Leave `README.md` line 167 and `DEPLOYMENT.md` line 97 for step 8.
       Automatic verification: `cd backend && uv run pytest -q -n auto tests/corroboration tests/alerts tests/retrieval && uv run ruff check app tests`
+      `iterations: 1` (winner: `openai/text-embedding-3-large`, hybrid, `names`, depth 20, recall at the cut 0.9333, a three-way tie across depths 20/30/50 settled by the smaller depth; `tests/retrieval/test_cli.py:150` also named the old default model)
 - [ ] 6. **The report `docs/reports/retrieval-eval-v2.md` (AC7, AC9, AC10, AC2 spend).**
       Files: the new report and `backend/tests/test_docs.py`.
       - Test first: `test_retrieval_report_v2_has_every_section`. The report exists and
@@ -662,7 +663,7 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 - `minor` — step 2: `previous_gameweek_end` breaks ties between seasons by the later season, so a same-deadline gameweek of another season cannot make the choice depend on row order.
 - `minor` — step 3: shared helper `add_fixture` added to `tests/corroboration/helpers.py`; three existing tests in `tests/retrieval/evaluation/test_players.py` (lookback cap, `claimed_ids_equal_sql_claims`, the CLI test) were adjusted because their `world()` fixtures now start the `alerts` window at the last match (their purpose unchanged). Under the new rule no claim of a newly built slice can be stale, so the `stale: 1` expectation became `stale: 0`; the stale code stays for the frozen v2 data.
 - `minor` — step 4: three models instead of four (qwen dropped, owner decision of 2026-10-22), so `compare` prints 3 files and 81 player rows; the dev run of each model went to `results/dev/` as planned. The baseline pair of runs was reused from the earlier attempt (same code commit f70b9db).
-
+- `minor` — step 5: `tests/retrieval/test_cli.py::test_status_on_empty_database` named the old default model in its expected status line; updated to the new default (a test naming the old value, as the plan allows).
 
 ## Final review
 
