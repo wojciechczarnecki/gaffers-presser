@@ -565,6 +565,7 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 - 2026-10-22 — implement — `permission` — The pipeline guard refuses `alembic upgrade head` on the scratch container (`localhost:55432`) in step 4; how to prepare the scratch schema? — The owner starts `presser-eval-017` and runs the migration on it; the implementer then checks the scratch schema (read only) and resumes at step 4's run loop without running alembic itself.
 - 2026-10-22 — final-review — `decision` — Phase A kept Opus as the reference judge although AC4's rule points to Sonnet on the final pilot numbers; is the deviation accepted? — Accepted: Opus stays the reference judge of set v2 (the owner confirmed it at the final review gate).
 - 2026-10-22 — final-review — `gate` — Which final review findings are accepted? — `accepted`: F1, F2, F3, F4, F5, F6, F7, F8; `rejected`: none
+- 2026-10-22 — final-review — `decision` — The `backend-audit` CI job fails on PR #39: pip-audit reports CVE-2026-114603 in the transitive dependency `opentelemetry-api 1.45.0` (fixed in 1.45.1), which this branch does not touch; how to get green CI? — Bump it on this branch: `cd backend && uv lock --upgrade-package opentelemetry-api` (patch release to 1.45.1), full verification, commit, push and wait for CI again.
 
 ## Review log
 
