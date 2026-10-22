@@ -202,7 +202,8 @@ fast path, and it is merged as its own data PR:
       equal to today's production wins (`text-embedding-3-small`, hybrid, `web_name`, 20). After
       that, the cheaper model wins, then the smaller depth, then the simpler variant, in the
       order `web_name`, `full_name`, `names`. There is no margin, so the absolute best wins.
-      The report states that differences below about 0.05 on 188 test queries are within
+      The report states that differences below about 0.05 on the 69 test queries recall at the cut counts (of 188;
+      the others have no unclaimed relevant post) are within
       noise. The rule is applied exactly, and a test of a function implementing it is not
       required: it is applied by reading the `compare` table and shown in the report.
 - [ ] AC8: The winner runs in production:
@@ -245,7 +246,7 @@ fast path, and it is merged as its own data PR:
       - the reranking numbers and decision;
       - the stale-claim and stale-anchor counts per gameweek: GW6 cannot show them because of
         the international break, GW7 can (121 of its 332 claims are stale);
-      - the limits: two gameweeks, 188 test queries, labels of one query not independent
+      - the limits: two gameweeks, 69 test queries counted by recall at the cut (of 188), labels of one query not independent
         (one call per query), and labels of several prompt versions (each later one only narrows
         relevance, so a not-relevant label of an earlier version stands).
 - [ ] AC11: ADR 0009 records the embedding model chosen, or kept, with the candidates, their
