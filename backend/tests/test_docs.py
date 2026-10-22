@@ -15,7 +15,8 @@ def test_backlog_has_reranking_and_ann_entries():
     rows = _rows()
     reranking = [row for row in rows if "rerank" in row.lower()]
     ann = [row for row in rows if "HNSW" in row]
-    assert len(reranking) == 1 and " P2 " in reranking[0]
+    assert len(reranking) == 1 and " P3 " in reranking[0]
+    assert "a later retrieval evaluation" in reranking[0]
     assert len(ann) == 1 and " P3 " in ann[0]
     for row in (*reranking, *ann):
         assert row.rstrip().rstrip("|").rsplit("|", 1)[-1].strip(), "an entry needs a trigger"
@@ -160,8 +161,10 @@ def test_backlog_window_row_and_017_018_renumbering():
     rows = _rows()
     for number in ("43", "44", "45", "48"):
         assert not [row for row in rows if row.startswith(f"| {number} |")], number
-    (window,) = [row for row in rows if "last match" in row and "window_floor" in row]
-    assert " P1 " in window and "spec 017" in window
+    assert not [row for row in rows if row.startswith("| 53 |")]
+    assert not [row for row in rows if "last match" in row and "window_floor" in row]
+    (docstrings,) = [row for row in rows if row.startswith("| 50 |")]
+    assert "alerts/config.py:55" not in docstrings
     for number in ("46", "47"):
         (row,) = [row for row in rows if row.startswith(f"| {number} |")]
         assert "spec 018" in row and "spec 017" not in row, number
@@ -227,3 +230,23 @@ def test_decisions_supersede_the_previous_deadline_window():
     for needle in ("window_floor", "last match", "supersedes"):
         assert needle in row, needle
 
+
+def test_readme_results_free_slice_row_and_roadmap():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "## Retrieval results" in readme
+    results = readme.split("## Retrieval results", 1)[1].split("\n## ", 1)[0]
+    assert "docs/reports/retrieval-eval-v2.md" in results
+    (free,) = [row for row in _rows() if row.startswith("| 56 |")]
+    assert " P3 " in free and "`free` slice" in free
+    assert (
+        free.rstrip().rstrip("|").rsplit("|", 1)[-1].strip() == "building the Q&A agent (Stage 4)"
+    )
+    roadmap = (ROOT / "docs" / "ROADMAP.md").read_text(encoding="utf-8")
+    (qa,) = [line for line in roadmap.splitlines() if "Q&A agent with cited sources" in line]
+    assert "#56" in qa
+    item = roadmap.split("- [x] Retrieval evaluation report on the GW6 window", 1)[1]
+    item = item.split("\n- [", 1)[0]
+    assert "reports/retrieval-eval-v2.md" in item and "adr/0009-" in item
+    evaluation = (ROOT / "docs" / "EVALUATION.md").read_text(encoding="utf-8")
+    assert "2026-10-10T10:00" in evaluation and "2026-10-10T18:30" not in evaluation
+    assert "not judged until Stage 4" in evaluation

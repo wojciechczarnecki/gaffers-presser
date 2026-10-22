@@ -41,6 +41,27 @@ Stack: Python 3.12, SQLModel, Alembic, PostgreSQL 16 + pgvector, LangGraph, Lang
 OpenRouter, Langfuse, uv; it runs locally on Docker Compose (a Railway deployment is prepared
 and postponed).
 
+## Retrieval results
+
+Corroboration searches a player's news with an embedding model, a search mode, a query variant and
+a depth, and these were measured, not guessed. Set v2 holds 2557 posts and 269 queries from the
+GW6 and GW7 pre-deadline windows, labelled by an LLM judge and reviewed by the owner; the score is
+the recall of the relevant posts that extraction missed, within the judge's cut of 10, on the 69
+test queries that have one.
+
+| model | best configuration | recall at the cut | recall within the depth | recall@10 |
+|---|---|---|---|---|
+| `openai/text-embedding-3-large` (the default) | hybrid, `names`, depth 20 | 0.933 | 0.941 | 0.874 |
+| `openai/text-embedding-3-small` | full-text, `names`, depth 30 | 0.919 | 0.965 | 0.872 |
+| `google/gemini-embedding-001` | full-text, `names`, depth 30 | 0.919 | 0.965 | 0.872 |
+| the earlier default: `text-embedding-3-small`, hybrid, `web_name`, depth 20 | | 0.906 | 0.926 | 0.869 |
+
+Differences below about 0.05 on 69 queries are within noise; the full-text rows do not use the
+embedding, so they are the same for every model. Reranking is not needed. The full tables, the
+labelling, the misses and the limits are in the
+[report](docs/reports/retrieval-eval-v2.md), and the choice in
+[ADR 0009](docs/adr/0009-default-embedding-model.md).
+
 ## Documentation
 
 | Document | Contents |
@@ -165,7 +186,7 @@ the run is traced in Langfuse under the run name. Prices for the cost figures co
 every run file under `results/`, dev runs included.
 
 Retrieval — a fourth loop inside the worker embeds every stored post (`EMBEDDING_MODEL`, default
-`openai/text-embedding-3-small` through OpenRouter; it needs `OPENROUTER_API_KEY`), and search
+`openai/text-embedding-3-large` through OpenRouter; it needs `OPENROUTER_API_KEY`), and search
 fuses PostgreSQL full-text and pgvector rankings with reciprocal rank fusion. The evaluation sets
 live in `backend/evals/retrieval/`: v1 is a frozen corpus of public posts with about 40 queries
 (the `free` slice); set v2 adds the `player` slice, one query per player with a claim in a

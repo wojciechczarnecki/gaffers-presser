@@ -94,7 +94,7 @@ below; agents never touch production.
 9. **Retrieval indexing.** Indexing runs whenever `OPENROUTER_API_KEY` is set (the same key as
    extraction); without it the worker logs `retrieval indexing disabled` and every other loop
    runs as before.
-   - `EMBEDDING_MODEL` is optional; empty means the default `openai/text-embedding-3-small`.
+   - `EMBEDDING_MODEL` is optional; empty means the default `openai/text-embedding-3-large`.
      A model with no row in `backend/app/llm/prices.toml`, or with a chat-model row (one that
      has an output price), fails the worker on start with a message naming the variable, never
      a key; add an input-only row first.

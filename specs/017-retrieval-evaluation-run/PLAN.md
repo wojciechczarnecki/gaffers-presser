@@ -415,7 +415,7 @@ Patterns reused:
           alternative, as in the SPEC.
       Automatic verification: `cd backend && uv run pytest -q tests/test_docs.py`
       `iterations: 0`
-- [ ] 8. **BACKLOG, ROADMAP, EVALUATION.md, README and DEPLOYMENT (AC9 backlog, AC13,
+- [x] 8. **BACKLOG, ROADMAP, EVALUATION.md, README and DEPLOYMENT (AC9 backlog, AC13,
       AC14).** Files: `docs/BACKLOG.md`, `docs/ROADMAP.md`, `docs/EVALUATION.md`, `README.md`,
       `docs/DEPLOYMENT.md` (only if the model changed) and `backend/tests/test_docs.py`.
       - Tests first:
@@ -455,6 +455,7 @@ Patterns reused:
           - if the model changed, update the default named on line 167.
         - **DEPLOYMENT:** if the model changed, update the default named on line 97.
       Automatic verification: `cd backend && uv run pytest -q tests/test_docs.py`
+      `iterations: 1` (the Q&A line of the ROADMAP had to name #56 on its first line)
 - [ ] 9. **Full verification and the roadmap check.** Files: none new. Run the full
       verification, then the end-to-end checks below, and record the results under
       "Definition of Done".
