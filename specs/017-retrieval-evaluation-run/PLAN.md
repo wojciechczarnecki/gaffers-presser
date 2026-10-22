@@ -207,7 +207,7 @@ Patterns reused:
         to "no change to the spec 016 tooling").
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_player_metrics.py tests/retrieval/evaluation/test_compare.py tests/retrieval/evaluation/test_runner_v2.py && uv run ruff check app/retrieval/evaluation tests/retrieval/evaluation`
       `iterations: 1`
-- [ ] 2. **`previous_gameweek_end` and the new `window_floor` rule (AC12 core, AC13
+- [x] 2. **`previous_gameweek_end` and the new `window_floor` rule (AC12 core, AC13
       docstring).** Files: `backend/app/fpl/deadlines.py` and
       `backend/tests/fpl/test_deadlines.py`.
       - Tests first, each with a seeded calendar of `Gameweek` and `Fixture` rows (add a
@@ -239,6 +239,7 @@ Patterns reused:
         `window_floor` tests stay, with their wording updated where it says "previous
         deadline".
       Automatic verification: `cd backend && uv run pytest -q tests/fpl/test_deadlines.py && uv run ruff check app/fpl tests/fpl`
+      `iterations: 0`
 - [ ] 3. **The alerts, the ingest catch-up and the slice builder on the new rule (AC12,
       AC13 comments).** Files: `backend/app/alerts/service.py`, `backend/app/alerts/config.py`,
       `backend/app/tweets/loop.py`, `backend/app/retrieval/evaluation/players.py` and the tests
