@@ -286,7 +286,7 @@ Patterns reused:
         previous-deadline fallback and must pass unchanged.
       Automatic verification: `cd backend && uv run pytest -q -n auto tests/fpl tests/alerts tests/tweets tests/corroboration tests/retrieval/evaluation/test_players.py tests/worker && uv run ruff check app tests`
       `iterations: 1`
-- [ ] 4. **The evaluation runs (AC6, AC2 cap).** Files:
+- [x] 4. **The evaluation runs (AC6, AC2 cap).** Files:
       `backend/evals/retrieval/results/test-v2-{openai-text-embedding-3-small,qwen-qwen3-embedding-8b,openai-text-embedding-3-large,google-gemini-embedding-001}.json`
       (committed). The dev runs go to `results/dev/`, which is gitignored, and are kept
       locally.
@@ -320,6 +320,7 @@ Patterns reused:
       A failed run (a cost refusal or an embedding error) goes into the self-correction loop
       on its cause. It never goes around `--max-cost-usd`.
       Automatic verification: `cd backend && uv run python -m app.retrieval.evaluation compare evals/retrieval/results/test-v2-*.json` prints 4 files with depths 20,30,50 and 108 player rows (4 models × 3 modes × 3 variants × 3 depths)
+      `iterations: 0` (qwen dropped by the owner decision of 2026-10-22: 3 files and 81 player rows; the three test files and their dev runs ran at the scratch container, the baseline files were reused from the earlier attempt: valid, `git_commit` f70b9db, clean)
 - [ ] 5. **Pick the winner and put it into production (AC7, AC8).** Files:
       `backend/app/corroboration/sources.py`, `backend/app/retrieval/config.py` (only if the
       model changes), `backend/tests/corroboration/test_sources.py` and
@@ -660,6 +661,8 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 - `minor` — step 1: added `recall_at_depth` beside `recall_at_cut` to the spec 016 evaluation tooling (`player_metrics.py`, `runner.py`, `compare.py`); AC9 needs it and it cannot be derived from result files (the SPEC's "blocks the run" exception).
 - `minor` — step 2: `previous_gameweek_end` breaks ties between seasons by the later season, so a same-deadline gameweek of another season cannot make the choice depend on row order.
 - `minor` — step 3: shared helper `add_fixture` added to `tests/corroboration/helpers.py`; three existing tests in `tests/retrieval/evaluation/test_players.py` (lookback cap, `claimed_ids_equal_sql_claims`, the CLI test) were adjusted because their `world()` fixtures now start the `alerts` window at the last match (their purpose unchanged). Under the new rule no claim of a newly built slice can be stale, so the `stale: 1` expectation became `stale: 0`; the stale code stays for the frozen v2 data.
+- `minor` — step 4: three models instead of four (qwen dropped, owner decision of 2026-10-22), so `compare` prints 3 files and 81 player rows; the dev run of each model went to `results/dev/` as planned. The baseline pair of runs was reused from the earlier attempt (same code commit f70b9db).
+
 
 ## Final review
 
