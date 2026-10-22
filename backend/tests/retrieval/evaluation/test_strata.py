@@ -15,10 +15,13 @@ from app.retrieval.evaluation.dataset import (
     write_queries,
 )
 from app.retrieval.evaluation.strata import (
+    STRATA_FILE,
     cohen_kappa,
+    load_strata,
     mentions_player,
     owner_agreement,
     pair_stratum,
+    save_strata,
     strata,
     stratified_order,
 )
@@ -279,3 +282,62 @@ def test_reviewed_entries_are_not_a_judge_label_between_judges():
 
     q = player_query([j(1, True, "a"), j(1, False, "b"), j(1, True, "b", reviewed=True)])
     assert agreement([q], "a", "b").pairs == [(True, False)]
+
+
+def relabel(query, x_id, relevant, by="a"):
+    kept = [e for e in query.judgements if not (e.x_id == x_id and e.labelled_by == by)]
+    return query.model_copy(update={"judgements": [*kept, j(x_id, relevant, by)]})
+
+
+def test_frozen_strata_keep_a_rejudged_pair_where_it_was_sampled():
+    # 4 relevant pairs (2 reviewed) and 16 others (2 reviewed), then the judge wrongly turns a
+    # reviewed relevant pair to not relevant
+    judgements = [j(x_id, x_id < 4, "a") for x_id in range(20)]
+    judgements += [own(0, True), own(1, True), own(10, False), own(11, False)]
+    q = player_query(judgements)
+    frozen = strata([q], {})
+    changed = relabel(q, 1, False)
+    # the weights stay relevant 4/2 and rest 16/2: tp 2, fn 2, tn 16
+    found = owner_agreement([changed], {}, "a", frozen=frozen)
+    assert found.recall == pytest.approx(0.5) and found.precision == pytest.approx(1.0)
+    # unfrozen, the miss would weigh 17/3 in the other stratum
+    assert owner_agreement([changed], {}, "a").recall == pytest.approx(3 / (3 + 17 / 3))
+    assert strata([changed], {}) != frozen and strata([changed], {}, frozen) == frozen
+
+
+def test_pairs_labelled_after_freezing_form_new_strata():
+    q = player_query([j(x_id, x_id < 2, "a") for x_id in range(6)] + [own(0, True), own(3, False)])
+    frozen = strata([q], {})
+    later = q.model_copy(update={"judgements": [*q.judgements, j(50, True, "a")]})
+    found = strata([later], {}, frozen)
+    assert found[(("a",), "relevant (new)")] == [("p-gw6-1", 50)]
+    assert owner_agreement([later], {}, "a", frozen=frozen).unreviewed_pairs == 1
+    assert stratified_order([later], {}, {"relevant": 5}, 1, frozen) == [
+        ("p-gw6-1", 1),
+        ("p-gw6-1", 50),
+    ]
+
+
+def test_strata_round_trip_through_the_file(tmp_path):
+    found = strata(pilot_and_rest(), TEXTS)
+    save_strata(tmp_path / STRATA_FILE, found)
+    assert load_strata(tmp_path / STRATA_FILE) == found
+    assert load_strata(tmp_path / "missing.json") is None
+
+
+def test_the_review_freezes_the_player_strata_and_skips_free_queries(world):
+    queries = load_queries(world / "queries.jsonl")
+    free = free_query([j(1, True, "a")])
+    write_queries(world / "queries.jsonl", [*queries, free])
+    args = ["review", "--set", str(world), "--relevant", "1", "--named", "0", "--rest", "0"]
+    first = CliRunner().invoke(app, args, input="q\n")
+    assert first.exit_code == 0, first.output
+    assert "q-post-en-001" not in first.output
+    frozen = load_strata(world / STRATA_FILE)
+    assert all(not q.startswith("q-") for pairs in frozen.values() for q, _ in pairs)
+    # a re-judge after the first session leaves the saved strata as they were
+    queries = load_queries(world / "queries.jsonl")
+    queries[1] = relabel(queries[1], 100, False)
+    write_queries(world / "queries.jsonl", queries)
+    CliRunner().invoke(app, args, input="q\n")
+    assert load_strata(world / STRATA_FILE) == frozen

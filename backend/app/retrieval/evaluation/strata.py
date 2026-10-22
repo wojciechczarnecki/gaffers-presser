@@ -1,8 +1,11 @@
+import json
 import random
 import re
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
+from app.core.eval_results import write_text_atomic
 from app.extraction.linking import normalise
 from app.retrieval.evaluation.dataset import PlayerQuery
 from app.retrieval.evaluation.labels import AnyQuery, judge_entry, reviewed_entry
@@ -11,9 +14,13 @@ from app.retrieval.evaluation.labels import AnyQuery, judge_entry, reviewed_entr
 # per cent of a pool, so the owner reviews the categories at different rates, and every
 # estimate weights a reviewed pair by its stratum's size over its reviewed pairs.
 CATEGORIES = ("disagreement", "relevant", "named", "rest")
+STRATA_FILE = "strata.json"
+# A pair labelled after the strata were frozen falls in a stratum of its own, with no review.
+NEW = " (new)"
 
 Pair = tuple[str, int]
 StratumKey = tuple[tuple[str, ...], str]
+Strata = dict[StratumKey, list[Pair]]
 
 
 def mentions_player(query: AnyQuery, text: str) -> bool:
@@ -49,14 +56,54 @@ def pair_stratum(query: AnyQuery, x_id: int, text: str) -> StratumKey | None:
     return judges, "named" if mentions_player(query, text) else "rest"
 
 
-def strata(queries: Sequence[AnyQuery], texts: Mapping[int, str]) -> dict[StratumKey, list[Pair]]:
-    found: dict[StratumKey, list[Pair]] = {}
+def strata(
+    queries: Sequence[AnyQuery], texts: Mapping[int, str], frozen: Strata | None = None
+) -> Strata:
+    # A re-judged pair can change its stratum, and a reviewed pair would then weigh in a stratum
+    # it was not sampled from. With frozen strata (saved when the review starts) every pair keeps
+    # the stratum it had then; pairs labelled later fall in their own strata (NEW).
+    by_query = {query.id: query for query in queries}
+    found: Strata = {}
+    known: set[Pair] = set()
+    if frozen is not None:
+        for key, pairs in frozen.items():
+            kept = [pair for pair in pairs if pair[0] in by_query]
+            known.update(pairs)
+            if kept:
+                found[key] = kept
     for query in queries:
         for x_id in sorted(dict.fromkeys(j.x_id for j in query.judgements)):
+            if (query.id, x_id) in known:
+                continue
             key = pair_stratum(query, x_id, texts.get(x_id, ""))
             if key is not None:
+                if frozen is not None:
+                    key = (key[0], key[1] + NEW)
                 found.setdefault(key, []).append((query.id, x_id))
     return found
+
+
+def save_strata(path: Path, found: Strata) -> None:
+    # One stratum per line: the file holds every judged pair of the slice.
+    lines = [
+        json.dumps(
+            {"judges": list(judges), "category": category, "pairs": [list(p) for p in pairs]},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        for (judges, category), pairs in sorted(found.items())
+    ]
+    write_text_atomic(path, '{"strata": [\n' + ",\n".join(lines) + "\n]}\n")
+
+
+def load_strata(path: Path) -> Strata | None:
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {
+        (tuple(item["judges"]), item["category"]): [(q, int(x)) for q, x in item["pairs"]]
+        for item in data["strata"]
+    }
 
 
 def _reviewed(queries: Sequence[AnyQuery]) -> set[Pair]:
@@ -69,19 +116,23 @@ def _reviewed(queries: Sequence[AnyQuery]) -> set[Pair]:
 
 
 def stratified_order(
-    queries: Sequence[AnyQuery], texts: Mapping[int, str], sizes: Mapping[str, int], seed: int
+    queries: Sequence[AnyQuery],
+    texts: Mapping[int, str],
+    sizes: Mapping[str, int],
+    seed: int,
+    frozen: Strata | None = None,
 ) -> list[Pair]:
     # Every disagreement, then a seeded sample of each other stratum. The sample is drawn over
     # the whole stratum, reviewed pairs included, and those are skipped afterwards: a resumed
     # review shows the same sample.
     done = _reviewed(queries)
-    found = strata(queries, texts)
+    found = strata(queries, texts, frozen)
     order: list[Pair] = []
     for category in CATEGORIES:
-        for key in sorted(k for k in found if k[1] == category):
+        for key in sorted(k for k in found if k[1].removesuffix(NEW) == category):
             pairs = found[key]
             if category != "disagreement":
-                rng = random.Random(f"{seed}:{'+'.join(key[0])}:{category}")
+                rng = random.Random(f"{seed}:{'+'.join(key[0])}:{key[1]}")
                 pairs = sorted(rng.sample(pairs, min(sizes.get(category, 0), len(pairs))))
             order += [pair for pair in pairs if pair not in done]
     return order
@@ -106,6 +157,7 @@ def owner_agreement(
     texts: Mapping[int, str],
     judge: str,
     within: Collection[str] = (),
+    frozen: Strata | None = None,
 ) -> OwnerAgreement:
     # The judge's labels against the owner's, as estimates over every pair the judge labelled
     # (or only the pairs every judge in `within` labelled too): each reviewed pair counts for
@@ -114,7 +166,7 @@ def owner_agreement(
     by_query = {query.id: query for query in queries}
     tp = fp = fn = tn = 0.0
     reviewed = unreviewed = 0
-    for (judges, _), pairs in strata(queries, texts).items():
+    for (judges, _), pairs in strata(queries, texts, frozen).items():
         if judge not in judges or not set(within) <= set(judges):
             continue
         compared = []

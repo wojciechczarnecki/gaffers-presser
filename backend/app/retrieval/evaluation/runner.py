@@ -41,7 +41,7 @@ from app.retrieval.evaluation.player_metrics import (
     query_numbers,
 )
 from app.retrieval.evaluation.schema import load_eval_corpus
-from app.retrieval.evaluation.strata import owner_agreement
+from app.retrieval.evaluation.strata import STRATA_FILE, load_strata, owner_agreement
 from app.retrieval.indexing import IndexingRuntime, index_missing, traced_embed
 from app.retrieval.search import SearchError, SearchFilters, search
 from app.retrieval.tracing import NULL_TRACER, RetrievalTracer
@@ -432,7 +432,10 @@ def run_evaluation(
             "judge_owner_agreement": counts.judge_owner_agreement,
             "judge_owner_estimates": asdict(
                 owner_agreement(
-                    chosen, {post.x_id: post.text for post in eval_set.corpus}, reference_judge
+                    chosen,
+                    {post.x_id: post.text for post in eval_set.corpus},
+                    reference_judge,
+                    frozen=load_strata(eval_set.directory / STRATA_FILE),
                 )
             ),
             "estimated_embedding_tokens": estimate.tokens,

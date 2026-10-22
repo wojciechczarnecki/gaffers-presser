@@ -74,9 +74,13 @@ from app.retrieval.evaluation.runner import (
     write_result,
 )
 from app.retrieval.evaluation.strata import (
+    STRATA_FILE,
     OwnerAgreement,
     cohen_kappa,
+    load_strata,
     owner_agreement,
+    save_strata,
+    strata,
     stratified_order,
 )
 from app.retrieval.variants import has_initial
@@ -582,7 +586,8 @@ def agreement_command(
         queries = load_queries(set_dir / QUERIES_FILE)
         # The strata read the posts: without the corpus they would differ from review's.
         texts = {post.x_id: post.text for post in load_corpus(set_dir / CORPUS_FILE)}
-    except (OSError, ValueError) as exc:
+        frozen = load_strata(set_dir / STRATA_FILE)
+    except (OSError, ValueError, KeyError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
     result = agreement(queries, judge[0], judge[1])
     typer.echo(
@@ -598,7 +603,9 @@ def agreement_command(
             f"  {item.query_id}  {item.x_id}  {judge[0]}={item.first}  {judge[1]}={item.second}"
         )
     # Both judges on the same pairs: the strata both labelled.
-    found = {name: owner_agreement(queries, texts, name, within=judge) for name in judge}
+    found = {
+        name: owner_agreement(queries, texts, name, within=judge, frozen=frozen) for name in judge
+    }
     if any(item.reviewed for item in found.values()):
         typer.echo(
             "against the owner on the pairs both judged"
@@ -610,7 +617,8 @@ def agreement_command(
 
 @app.command(
     help="Review the judges' labels blind: every disagreement, then a seeded sample"
-    " (or one per stratum, each set of judges apart, with --relevant, --named and --rest)."
+    " (or one per stratum of the player slice, each set of judges apart, with --relevant,"
+    " --named and --rest; the strata are saved to strata.json on the first such review)."
 )
 def review(
     sample: Annotated[int | None, typer.Option("--sample", min=0, help="Pairs to sample.")] = None,
@@ -646,7 +654,17 @@ def review(
             raise fail("--sample cannot be combined with --relevant, --named or --rest")
         texts = {post.x_id: post.text for post in eval_set.corpus}
         chosen = {category: size or 0 for category, size in sizes.items()}
-        order = stratified_order(in_scope, texts, chosen, seed)
+        # The player slice only: the free slice has no "named" category and is judged apart.
+        players = [query for query in queries if isinstance(query, PlayerQuery)]
+        try:
+            frozen = load_strata(set_dir / STRATA_FILE)
+        except (OSError, ValueError, KeyError) as exc:
+            raise fail(f"cannot read {STRATA_FILE}: {type(exc).__name__}") from None
+        if frozen is None:
+            frozen = strata(players, texts)
+            save_strata(set_dir / STRATA_FILE, frozen)
+        scoped = [query for query in players if split in (None, query.split)]
+        order = stratified_order(scoped, texts, chosen, seed, frozen)
     else:
         order = review_order(in_scope, sample or 0, seed)
     if not order:
