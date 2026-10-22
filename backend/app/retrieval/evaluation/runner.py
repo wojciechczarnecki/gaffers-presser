@@ -306,6 +306,13 @@ def run_evaluation(
             " import the judge's verdicts or pass another --reference-judge"
         )
     counts = label_counts(chosen, reference_judge)
+    # Before any paid work: a damaged strata.json stops the run here, not at the header.
+    owner_estimates = owner_agreement(
+        chosen,
+        {post.x_id: post.text for post in eval_set.corpus},
+        reference_judge,
+        frozen=load_strata(eval_set.directory / STRATA_FILE),
+    )
 
     estimate = estimate_embedding(
         [post.text for post in eval_set.corpus], chosen, embedder.model, prices
@@ -430,14 +437,7 @@ def run_evaluation(
             "owner_reviewed_labels": counts.owner_reviewed,
             "judge_only_labels": counts.judge_only,
             "judge_owner_agreement": counts.judge_owner_agreement,
-            "judge_owner_estimates": asdict(
-                owner_agreement(
-                    chosen,
-                    {post.x_id: post.text for post in eval_set.corpus},
-                    reference_judge,
-                    frozen=load_strata(eval_set.directory / STRATA_FILE),
-                )
-            ),
+            "judge_owner_estimates": asdict(owner_estimates),
             "estimated_embedding_tokens": estimate.tokens,
             "estimated_embedding_cost_usd": estimate.cost_usd,
         },

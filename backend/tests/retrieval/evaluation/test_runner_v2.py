@@ -331,6 +331,26 @@ def test_no_reference_label_refuses_before_any_embedding(eval_db):
     assert embedder.calls == []
 
 
+def test_a_damaged_strata_file_refuses_before_any_embedding(eval_db, tmp_path):
+    (tmp_path / "strata.json").write_text('{"strata": [{"judges": ["a"]}]}')
+    damaged = EvalSet(
+        version="v2", manifest=None, corpus=CORPUS, queries=queries(), directory=tmp_path
+    )
+    embedder = FakeEmbedder()
+    with pytest.raises(EvaluationError, match="cannot read strata.json"):
+        run_evaluation(
+            eval_db,
+            damaged,
+            embedder,
+            RecordingTracer(),
+            PRICES,
+            FixedClock(),
+            split="dev",
+            reference_judge=JUDGE,
+        )
+    assert embedder.calls == []
+
+
 def test_estimate_is_reported_and_the_cap_refuses_before_embedding(eval_db):
     seen = []
     embedder = FakeEmbedder()

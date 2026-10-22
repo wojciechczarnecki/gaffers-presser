@@ -586,9 +586,12 @@ def agreement_command(
         queries = load_queries(set_dir / QUERIES_FILE)
         # The strata read the posts: without the corpus they would differ from review's.
         texts = {post.x_id: post.text for post in load_corpus(set_dir / CORPUS_FILE)}
-        frozen = load_strata(set_dir / STRATA_FILE)
-    except (OSError, ValueError, KeyError) as exc:
+    except (OSError, ValueError) as exc:
         raise fail(f"cannot read the inputs: {type(exc).__name__}") from None
+    try:
+        frozen = load_strata(set_dir / STRATA_FILE)
+    except EvaluationError as exc:
+        raise fail(str(exc)) from None
     result = agreement(queries, judge[0], judge[1])
     typer.echo(
         f"agreement: {_share(result.share)} over {result.compared} pairs ({judge[0]} vs {judge[1]})"
@@ -618,7 +621,9 @@ def agreement_command(
 @app.command(
     help="Review the judges' labels blind: every disagreement, then a seeded sample"
     " (or one per stratum of the player slice, each set of judges apart, with --relevant,"
-    " --named and --rest; the strata are saved to strata.json on the first such review)."
+    " --named and --rest). The first stratified session saves the strata to strata.json"
+    " before any answer, with the labels as they are then: run it after every judge has"
+    " labelled the pool."
 )
 def review(
     sample: Annotated[int | None, typer.Option("--sample", min=0, help="Pairs to sample.")] = None,
@@ -656,14 +661,16 @@ def review(
         chosen = {category: size or 0 for category, size in sizes.items()}
         # The player slice only: the free slice has no "named" category and is judged apart.
         players = [query for query in queries if isinstance(query, PlayerQuery)]
+        if len(players) < len(queries):
+            typer.echo("the stratified review covers the player slice; review free with --sample")
         try:
             frozen = load_strata(set_dir / STRATA_FILE)
-        except (OSError, ValueError, KeyError) as exc:
-            raise fail(f"cannot read {STRATA_FILE}: {type(exc).__name__}") from None
+        except EvaluationError as exc:
+            raise fail(str(exc)) from None
         if frozen is None:
             frozen = strata(players, texts)
             save_strata(set_dir / STRATA_FILE, frozen)
-        scoped = [query for query in players if split in (None, query.split)]
+        scoped = [query for query in in_scope if isinstance(query, PlayerQuery)]
         order = stratified_order(scoped, texts, chosen, seed, frozen)
     else:
         order = review_order(in_scope, sample or 0, seed)

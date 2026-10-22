@@ -339,5 +339,54 @@ def test_the_review_freezes_the_player_strata_and_skips_free_queries(world):
     queries = load_queries(world / "queries.jsonl")
     queries[1] = relabel(queries[1], 100, False)
     write_queries(world / "queries.jsonl", queries)
-    CliRunner().invoke(app, args, input="q\n")
+    second = CliRunner().invoke(app, args, input="q\n")
+    assert second.exit_code == 0, second.output
+    assert "covers the player slice" in second.output
     assert load_strata(world / STRATA_FILE) == frozen
+
+
+def test_a_pair_whose_judges_changed_after_freezing_falls_in_a_new_stratum():
+    q = player_query([j(x_id, x_id < 2, "a") for x_id in range(6)])
+    frozen = strata([q], {})
+    later = q.model_copy(update={"judgements": [*q.judgements, j(4, False, "b")]})
+    found = strata([later], {}, frozen)
+    assert found[(("a", "b"), "rest (new)")] == [("p-gw6-1", 4)]
+    assert ("p-gw6-1", 4) not in found[(("a",), "rest")]
+    assert owner_agreement([later], {}, "b", frozen=frozen).unreviewed_pairs == 1
+
+
+def test_a_pair_that_turned_into_a_disagreement_is_always_shown():
+    pilot = [j(x_id, True, by) for x_id in (1, 2, 3) for by in ("a", "b")]
+    q = player_query(pilot)
+    frozen = strata([q], {})
+    later = relabel(q, 2, False, by="b")
+    assert strata([later], {}, frozen)[(("a", "b"), "disagreement (new)")] == [("p-gw6-1", 2)]
+    assert stratified_order([later], {}, {"relevant": 0}, 1, frozen) == [("p-gw6-1", 2)]
+
+
+def test_frozen_pairs_without_a_judge_label_are_dropped_and_free_pairs_never_new():
+    q = player_query([j(1, True, "a"), j(2, False, "a")])
+    frozen = strata([q], {})
+    rebuilt = q.model_copy(update={"judgements": [j(1, True, "a")]})
+    free = free_query([j(7, True, "a")])
+    found = strata([rebuilt, free], {}, frozen)
+    assert found == {
+        (("a",), "relevant"): [("p-gw6-1", 1)],
+        (("a",), "relevant (free)"): [("q-post-en-001", 7)],
+    }
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "not json",
+        '{"strata": [{"judges": ["a"]}]}',
+        '{"strata": [{"judges": ["a"], "category": "rest", "pairs": [3]}]}',
+    ],
+)
+def test_a_damaged_strata_file_is_an_evaluation_error(tmp_path, content):
+    from app.retrieval.evaluation.dataset import EvaluationError
+
+    (tmp_path / STRATA_FILE).write_text(content)
+    with pytest.raises(EvaluationError, match="cannot read strata.json"):
+        load_strata(tmp_path / STRATA_FILE)

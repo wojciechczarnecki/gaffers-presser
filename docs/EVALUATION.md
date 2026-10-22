@@ -174,10 +174,14 @@ uv run python -m app.retrieval.evaluation compare evals/retrieval/results/test-v
   `judge_owner_estimates` cover the whole pool only when every stratum was sampled. The weights
   assume each stratum's reviewed pairs are a seeded sample of it, so a set is reviewed in one
   mode: the stratified one, or `--sample` alone. The stratified review covers the `player`
-  slice only, and its first session saves the strata to `strata.json` in the set: a pair
-  judged again later (a new prompt version) keeps the stratum it was sampled from, and pairs
-  labelled after that form their own `(new)` strata. `agreement` and the run header read the
-  file. Delete it only together with the owner's review labels, to draw new strata.
+  slice only, and its first session saves the strata to `strata.json` in the set before any
+  answer, so it runs once every judge has labelled the pool. A pair judged again later (a new
+  prompt version) keeps the stratum it was sampled from; a pair labelled after that, labelled
+  by another judge since, or turned into a disagreement falls in a `(new)` stratum (a new
+  disagreement is shown like any other), and a pair with no judge label left is dropped.
+  `agreement` and the run header read the file, and a run checks it before any embedding.
+  Delete it only together with the owner's review labels, to draw new strata, and after
+  `build-player-slice --force`, whose query IDs may then name other players.
 - **The review is blind.** `review` shows every pair the judges disagree on, then a seeded
   sample of the other pairs, with the player or the query and the post but no judge's label,
   and stores the owner's answer as a reviewed label beside the judges'. The reference label of

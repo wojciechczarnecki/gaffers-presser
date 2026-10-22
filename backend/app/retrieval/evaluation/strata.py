@@ -7,7 +7,7 @@ from pathlib import Path
 
 from app.core.eval_results import write_text_atomic
 from app.extraction.linking import normalise
-from app.retrieval.evaluation.dataset import PlayerQuery
+from app.retrieval.evaluation.dataset import EvaluationError, PlayerQuery
 from app.retrieval.evaluation.labels import AnyQuery, judge_entry, reviewed_entry
 
 # A pair's stratum is the judges that labelled it and its category. Relevant pairs are a few
@@ -15,8 +15,11 @@ from app.retrieval.evaluation.labels import AnyQuery, judge_entry, reviewed_entr
 # estimate weights a reviewed pair by its stratum's size over its reviewed pairs.
 CATEGORIES = ("disagreement", "relevant", "named", "rest")
 STRATA_FILE = "strata.json"
-# A pair labelled after the strata were frozen falls in a stratum of its own, with no review.
+# A player pair labelled after the strata were frozen, or whose judges or disagreement changed
+# since, falls in a stratum of its own.
 NEW = " (new)"
+# The free slice is never frozen: with frozen strata its pairs keep strata of their own.
+FREE = " (free)"
 
 Pair = tuple[str, int]
 StratumKey = tuple[tuple[str, ...], str]
@@ -60,26 +63,35 @@ def strata(
     queries: Sequence[AnyQuery], texts: Mapping[int, str], frozen: Strata | None = None
 ) -> Strata:
     # A re-judged pair can change its stratum, and a reviewed pair would then weigh in a stratum
-    # it was not sampled from. With frozen strata (saved when the review starts) every pair keeps
-    # the stratum it had then; pairs labelled later fall in their own strata (NEW).
-    by_query = {query.id: query for query in queries}
+    # it was not sampled from. With frozen strata (saved when the review starts) a player pair
+    # keeps the stratum it had then while its judges stay the same and it does not turn into a
+    # disagreement (every disagreement is reviewed); otherwise it falls in a NEW stratum. A pair
+    # with no judge label left is dropped.
+    where = {
+        pair: (key, n) for key, pairs in (frozen or {}).items() for n, pair in enumerate(pairs)
+    }
     found: Strata = {}
-    known: set[Pair] = set()
-    if frozen is not None:
-        for key, pairs in frozen.items():
-            kept = [pair for pair in pairs if pair[0] in by_query]
-            known.update(pairs)
-            if kept:
-                found[key] = kept
     for query in queries:
         for x_id in sorted(dict.fromkeys(j.x_id for j in query.judgements)):
-            if (query.id, x_id) in known:
-                continue
             key = pair_stratum(query, x_id, texts.get(x_id, ""))
-            if key is not None:
-                if frozen is not None:
+            if key is None:
+                continue
+            if frozen is not None and not isinstance(query, PlayerQuery):
+                key = (key[0], key[1] + FREE)
+            elif frozen is not None:
+                was = where.get((query.id, x_id), (None, 0))[0]
+                if (
+                    was is not None
+                    and was[0] == key[0]
+                    and (key[1] != "disagreement" or was[1] == "disagreement")
+                ):
+                    key = was
+                else:
                     key = (key[0], key[1] + NEW)
-                found.setdefault(key, []).append((query.id, x_id))
+            found.setdefault(key, []).append((query.id, x_id))
+    # A frozen stratum keeps its saved order, so the seeded sample is drawn as it was.
+    for key in found.keys() & (frozen or {}).keys():
+        found[key].sort(key=lambda pair: where[pair][1])
     return found
 
 
@@ -99,11 +111,16 @@ def save_strata(path: Path, found: Strata) -> None:
 def load_strata(path: Path) -> Strata | None:
     if not path.exists():
         return None
-    data = json.loads(path.read_text(encoding="utf-8"))
-    return {
-        (tuple(item["judges"]), item["category"]): [(q, int(x)) for q, x in item["pairs"]]
-        for item in data["strata"]
-    }
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return {
+            (tuple(str(j) for j in item["judges"]), str(item["category"])): [
+                (str(q), int(x)) for q, x in item["pairs"]
+            ]
+            for item in data["strata"]
+        }
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise EvaluationError(f"cannot read {path.name}: {type(exc).__name__}") from None
 
 
 def _reviewed(queries: Sequence[AnyQuery]) -> set[Pair]:
