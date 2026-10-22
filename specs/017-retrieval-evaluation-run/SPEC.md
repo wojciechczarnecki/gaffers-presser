@@ -7,9 +7,12 @@ stage_history:
 metrics:
   started_at: 2026-10-22T15:25
   plan_steps: 9
+  plan_changes: 5
   escalations: 0
   escalations_permission: 0
   escalations_tooling: 0
+  plan_review_blockers: 1
+  plan_review_majors: 0
 ---
 
 # SPEC 017 — Retrieval evaluation run on the GW6 window and rolling out the winners

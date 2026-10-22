@@ -72,7 +72,9 @@ million tokens, against the baseline's $0.02. The labels are 13,906 Opus pairs
 **Reference judge.** The reference judge is `claude-opus-5-5 (session)`: only Opus labelled
 the whole `player` slice. On its final pilot numbers, AC4's rule points to Sonnet. The data PR
 recorded keeping Opus as a deviation ("owner to confirm"), and the owner merged that PR. The
-report states this. It is not reopened here.
+report states this. It is not reopened here, but the confirmation is not in `## Owner
+decisions`, so the PR description lists it under "for the owner to confirm" at the final
+review gate.
 
 **1. Recall within the depth (AC9).** AC9's second number is the recall of the unclaimed
 relevant posts within the top 50, with claimed posts dropped and no cut to 10. The tooling
@@ -88,7 +90,8 @@ so the number cannot be derived afterwards.
 
 The change is additive: no existing number changes, and `compare` reads older files with
 `.get`. It is the SPEC's "blocks the run" exception, because without it AC9 cannot be
-delivered.
+delivered. As the SPEC's out-of-scope list requires for such a change, step 1 records it as a
+`minor` entry in `## Deviations`.
 
 **2. The alert window (AC12, AC13).**
 
@@ -98,7 +101,9 @@ delivered.
     `previous_gameweek_end(session: Session, t: datetime) -> datetime | None`.
   - The helper takes the gameweek with the latest `deadline_at` at or before `t`, the same
     choice `deadline_at_or_before` makes. It returns that gameweek's latest non-null
-    `Fixture.kickoff_at` plus `MATCH_LENGTH` (2 h).
+    `Fixture.kickoff_at` plus `MATCH_LENGTH` (2 h). The fixtures are matched on both
+    `Fixture.season` and `Fixture.gameweek_fpl_id` of that gameweek, because the database
+    holds more than one season.
   - A gameweek with no fixture with a kickoff returns its deadline (the fallback). No gameweek
     returns `None`.
 - Variant B, rejected: give `window_floor` a `Session`. That would turn its pure tests into
@@ -190,6 +195,8 @@ Patterns reused:
       - Then add the field: `recall_at_depth = |set(ranked[:depth]) ∩ unclaimed| /
         |unclaimed|`, or `None` when nothing is unclaimed. Aggregate it with `_mean` like
         `recall_at_cut`.
+      - Record the change in `## Deviations` as `minor` (the SPEC's "blocks the run" exception
+        to "no change to the spec 016 tooling").
       Automatic verification: `cd backend && uv run pytest -q tests/retrieval/evaluation/test_player_metrics.py tests/retrieval/evaluation/test_compare.py tests/retrieval/evaluation/test_runner_v2.py && uv run ruff check app/retrieval/evaluation tests/retrieval/evaluation`
 - [ ] 2. **`previous_gameweek_end` and the new `window_floor` rule (AC12 core, AC13
       docstring).** Files: `backend/app/fpl/deadlines.py` and
@@ -206,6 +213,8 @@ Patterns reused:
         - **Before GW1:** with no gameweek before, the helper returns `None` and the window is
           the deadline minus the lookback.
         - **No N−1 fixtures**, or only fixtures with a null kickoff: the previous deadline.
+        - **Another season:** a fixture with the same gameweek number in another season does
+          not count.
       - Then add `MATCH_LENGTH = timedelta(hours=2)` and `previous_gameweek_end`.
       - Rename `window_floor`'s first parameter to `previous_end`, and rewrite its docstring
         for the new rule. AC13 asks for the docstring explicitly. The existing pure
@@ -329,7 +338,9 @@ Patterns reused:
           3.98M, re-judges 1.33M, accepted 2026-10-22). Paid embedding spend: phase A about
           $0.08, plus phase B, the sum of the eight runs' `estimated_embedding_cost_usd`,
           labelled as an estimate.
-        - **The `compare` table** from step 4.
+        - **The `compare` table** from step 4, its `player` part only. `compare` also prints
+          the `free` slice's table (v1 labels); the SPEC keeps the `free` slice out of the
+          report, so that part is left out, and the report says so in one line.
         - **The winner:** the tied set and the rule applied, from step 5.
         - **Misses:** at least the five worst test queries for the winner's configuration,
           from the file's `queries` details (relevant ids not in `cut`).
@@ -400,8 +411,8 @@ Patterns reused:
             rebuild of set v2's `player` slice would give other windows than the frozen set.
         - **README:**
           - add a `## Retrieval results` section before `## Documentation`, with the setup in
-            two sentences, the `compare` rows cut to the best configuration per model, and a
-            link to the report;
+            two sentences, the `player` `compare` rows cut to the best configuration per
+            model (no `free` slice numbers), and a link to the report;
           - if the model changed, update the default named on line 167.
         - **DEPLOYMENT:** if the model changed, update the default named on line 97.
       Automatic verification: `cd backend && uv run pytest -q tests/test_docs.py`
@@ -434,6 +445,12 @@ Patterns reused:
   open after the last slot. The loss is of posts outside every alert window, which follows
   from "one function for the alerts and the ingest" (owner decision 2026-10-16). It is
   recorded as a BACKLOG proposal in the stage summary, not as a plan step.
+- **The floor after `as_of` (open, escalated by the plan review).** The previous gameweek's
+  last match plus 2 h can be later than the moment the window is computed for, not only during
+  the ingest: the digest at `D-1@20:00` before a midweek deadline that follows a Monday-evening
+  match, and a rehearsal deadline set during a gameweek's matches. The window then starts after
+  `as_of` and the alert has no news. The SPEC's "no guard is needed" argues only from N's
+  deadline. Steps 2 and 3 follow the owner's decision on this (see `## Review log`).
 - **The docs tests pin wording.** `test_backlog_window_row_and_017_018_renumbering` and
   `test_backlog_has_reranking_and_ann_entries` currently assert #53 and P2. Update them in
   step 8 together with the documents.
@@ -482,6 +499,8 @@ Patterns reused:
       `docs/EVALUATION.md`, `README.md` (and `docs/DEPLOYMENT.md` if the model changed)
 - [ ] if the model changed: the PR description gives the owner's re-index command and the
       `EMBEDDING_MODEL` note
+- [ ] the PR description lists phase A's judge-choice deviation (Opus kept while AC4's rule
+      picks Sonnet) for the owner to confirm
 - [ ] spec status: `implemented`
 
 ## Owner decisions
@@ -490,7 +509,63 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+### 2026-10-22 — plan review
+
+Findings:
+
+- `blocker` — AC12's rule can put the window start after the moment it is computed for, and
+  the plan (like the SPEC) has no case for it. `previous_gameweek_end(session, as_of)` takes the
+  gameweek with the latest deadline at or before `as_of`, so whenever `as_of` falls before that
+  gameweek's last match plus 2 h, `window_floor` returns a start later than `as_of`, and the
+  alert's claims and search are empty. This happens (a) for the digest at the default slot
+  `D-1@20:00` (Warsaw) before a midweek deadline when N−1 ends with a Monday-evening match
+  (festive and midweek rounds), (b) for a rehearsal deadline (`ALERT_REHEARSAL_DEADLINE`, any
+  time) set during a gameweek's matches, and (c) for the ingest catch-up during N−1's matches
+  (already in Risks). The SPEC rules out a guard ("No guard for an N−1 kickoff after the current
+  deadline is needed") with an argument about N's deadline only, and fixes the rule as "the
+  latest `fixture.kickoff_at` of gameweek N−1 plus 2 hours". A guard (for example, counting only
+  N−1 matches that ended by `as_of`, or falling back to the previous deadline when the end is
+  after `as_of`) changes the SPEC's rule, so this is a SPEC gap and is escalated. A note was
+  added to Risks; steps 2 and 3 get the chosen case and its test after the owner's decision.
+- `minor` — `compare` also prints the `free` slice's table, and step 6 copied "the `compare`
+  table" whole into the report, while the SPEC keeps the `free` slice out of the report. Step 6
+  and the README part of step 8 now take the `player` part only.
+- `minor` — the SPEC requires a tooling change made under the "blocks the run" exception to be
+  recorded as a deviation; the plan did not say so. Approach (1) and step 1 now record
+  `recall_at_depth` as a `minor` deviation.
+- `minor` — phase A's judge-choice deviation (Opus kept while AC4's rule picks Sonnet) ends in
+  "Owner to confirm" in PR #38, and no entry in `## Owner decisions` records the confirmation.
+  The plan now lists it in the PR description for the final review gate (Approach, Definition
+  of Done); it does not reopen phase A.
+- `minor` — `previous_gameweek_end` did not say how fixtures are matched to the gameweek; the
+  database holds several seasons. Approach (2) now matches on season and gameweek, and step 2
+  has an "another season" test.
+
+Checked and found sound:
+
+- Coverage: every phase B AC (AC6–AC14) has steps and a proving test or the SPEC's waiver
+  (AC7); AC1–AC5 are phase A, delivered in PR #38 (`78e82b6`), and the matrix matches the steps.
+- `recall_at_depth` cannot be derived from existing result files: `runner.py` keeps only the
+  cut and the top 10 per configuration, so the additive column is needed for AC9.
+- The evaluation search equals production's: `search(limit=depth, depth=50)` in the runner and
+  `search(limit=SEARCH_LIMIT)` with the default leg depth 50 in `sources.py`; the per-query
+  windows are frozen in `queries.jsonl`, so the `players.py` rule change does not alter the run.
+- Every `window_floor` / `alert_window_start` call site (`alerts/service.py`,
+  `alerts/breaking.py` through `alert_window_start`, `tweets/loop.py`,
+  `retrieval/evaluation/players.py`) is covered; no alert, tweet, corroboration or worker test
+  seeds `Fixture` rows, so they take the fallback unchanged.
+- The test helpers the plan reuses exist (`_seed_gw5_and_gw6`, `_floors_of_one_poll`,
+  `add_fixture`, `seed_reference`, `GABRIEL_MAGALHAES`, `_recording_search`, `_rows`), as do the
+  tests it updates and `tests/retrieval/test_config.py`'s default-model literal.
+- The run's safety: every `evaluate` and Alembic command carries the scratch `DATABASE_URL`;
+  `--max-cost-usd 0.10` covers the costliest model (about 143k tokens × $0.15/M ≈ $0.02); dev
+  results go to the gitignored `results/dev/`; the file names follow `default_run_name`.
+- The tie-rule escalations of step 5 (a full-text winner, a mode-only tie) are real gaps of
+  AC7 and are left as conditional escalations.
+- No new dependency and no data migration; the Owner summary flags agree. The manual item has
+  a `Pass when:` line. The plan is in English.
+
+Not approved: the blocker above is a SPEC gap the review cannot settle in the plan.
 
 ## Deviations
 
