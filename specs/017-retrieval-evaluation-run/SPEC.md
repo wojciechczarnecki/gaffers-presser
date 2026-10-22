@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-16"
   - "spec-ready — 2026-10-16"
+metrics:
+  started_at: 2026-10-22T15:25
 ---
 
 # SPEC 017 — Retrieval evaluation run on the GW6 window and rolling out the winners
