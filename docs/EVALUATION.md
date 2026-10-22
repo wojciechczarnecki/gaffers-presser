@@ -121,7 +121,7 @@ uv run python -m app.retrieval.evaluation estimate --export $SCRATCH/judge
 uv run python -m app.retrieval.evaluation import-judge --export $SCRATCH/judge \
     --judge-model "claude-sonnet-5-5 (Claude Code session)"
 uv run python -m app.retrieval.evaluation agreement --judge NAME_A --judge NAME_B
-uv run python -m app.retrieval.evaluation review --sample 30 --seed 1
+uv run python -m app.retrieval.evaluation review --relevant 30 --named 30 --rest 20 --seed 1
 
 # 5. One run per embedding model, then one table
 uv run python -m app.retrieval.evaluation evaluate --split test --reference-judge NAME \
@@ -154,15 +154,41 @@ uv run python -m app.retrieval.evaluation compare evals/retrieval/results/test-v
   `scripts/session_judge.sh DIR PARALLEL MODEL retrieval [EFFORT]` judges only the inputs
   without a verdict; a reply that misses a label moves to `raw/<id>.invalid.json` and the next
   run calls the judge again for that input only.
-- **The pilot.** `--query-sample N --seed S` exports a seeded subset of queries. Judge it with
-  Sonnet at medium effort and with Opus, run `agreement`, and let the owner `review` it: switch
-  to the cheaper judge when its agreement with the owner holds (lesson 6).
+- **The pilot.** `--query-sample N --seed S` exports a seeded subset of queries, drawn over both
+  slices. Judge it with Sonnet at medium effort and with Opus, run `agreement`, and let the
+  owner `review` it: switch to the cheaper judge when its precision and recall against the
+  owner hold (lesson 6). The second judge can judge a copy of the same export directory instead
+  of a `--for-judge` export, which saves embedding the corpus again.
+- **Review by stratum; raw agreement misleads.** Relevant pairs are a few per cent of a pool
+  (about 4% on GW6), so a judge calling everything not relevant agrees about 0.96 and a random
+  sample of 30 holds about one relevant pair. A pair's stratum is the judges that labelled it
+  and its category: a disagreement, relevant for every judge, not relevant with the player named
+  in the post (`web_name`, `second_name` or an alias as a word with up to three letters of a
+  Polish ending, accents folded), or the rest. `review --relevant N --named N --rest N` shows
+  every disagreement, then a seeded sample of N pairs of each other stratum, and N applies to
+  each set of judges apart (the pilot's pairs and the rest's are sampled separately).
+  `agreement` needs the corpus; it prints the judges' kappa with each other and, once the owner
+  has reviewed, each judge's precision, recall, kappa and agreement against the owner on the
+  pairs both judges labelled, with each reviewed pair weighted by its stratum's size over its
+  reviewed pairs. A stratum with no reviewed pair is left out and counted, so the run header's
+  `judge_owner_estimates` cover the whole pool only when every stratum was sampled. The weights
+  assume each stratum's reviewed pairs are a seeded sample of it, so a set is reviewed in one
+  mode: the stratified one, or `--sample` alone. The stratified review covers the `player`
+  slice only, and its first session saves the strata to `strata.json` in the set before any
+  answer, so it runs once every judge has labelled the pool. A pair judged again later (a new
+  prompt version) keeps the stratum it was sampled from; a pair labelled after that, labelled
+  by another judge since, or turned into a disagreement falls in a `(new)` stratum (a new
+  disagreement is shown like any other), and a pair with no judge label left is dropped.
+  `agreement` and the run header read the file, and a run checks it before any embedding.
+  Delete it only together with the owner's review labels, to draw new strata, and after
+  `build-player-slice --force`, whose query IDs may then name other players.
 - **The review is blind.** `review` shows every pair the judges disagree on, then a seeded
   sample of the other pairs, with the player or the query and the post but no judge's label,
   and stores the owner's answer as a reviewed label beside the judges'. The reference label of
   a pair is the owner's if there is one, otherwise `--reference-judge`'s; each run's header
   records the reference judge, the counts of owner-reviewed and judge-only labels and the
-  judge's agreement with the owner on the reviewed pairs, and the relevance prompt versions
+  judge's agreement with the owner on the reviewed pairs (raw, and weighted by stratum with
+  precision, recall and kappa as `judge_owner_estimates`), and the relevance prompt versions
   behind the judge labels it measured against (each imported label keeps its export's
   version). An evaluation with no label from the reference judge or the owner refuses to run,
   and `compare` refuses result files of different sets, splits, reference judges or `k`, and

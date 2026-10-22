@@ -1,4 +1,5 @@
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -16,6 +17,7 @@ from app.retrieval.evaluation.dataset import (
     PlayerQuery,
     WindowRule,
 )
+from app.retrieval.evaluation.labels import AnyQuery
 from app.retrieval.evaluation.queries import DEV_SHARE
 from app.retrieval.variants import load_player_names
 
@@ -122,6 +124,16 @@ def build_player_slice(
                 )
             )
     return assign_splits(queries, seed)
+
+
+def merge_player_queries(
+    existing: Sequence[AnyQuery], built: Sequence[PlayerQuery], gameweek: int
+) -> list[AnyQuery]:
+    # A set holds several gameweeks: the built gameweek replaces only its own queries, and
+    # each gameweek keeps the dev/test split its build drew.
+    players = [q for q in existing if isinstance(q, PlayerQuery) and q.gameweek != gameweek]
+    others = [q for q in existing if not isinstance(q, PlayerQuery)]
+    return [*players, *built, *others]
 
 
 def assign_splits(queries: list[PlayerQuery], seed: int) -> list[PlayerQuery]:

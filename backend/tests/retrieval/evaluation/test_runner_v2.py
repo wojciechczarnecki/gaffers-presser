@@ -298,6 +298,16 @@ def test_header_records_reference_counts_and_agreement(eval_db):
     assert header["owner_reviewed_labels"] == 2
     assert header["judge_only_labels"] == 9
     assert header["judge_owner_agreement"] == pytest.approx(0.5)
+    estimates = header["judge_owner_estimates"]
+    assert estimates["reviewed"] == 2
+    assert set(estimates) == {
+        "reviewed",
+        "unreviewed_pairs",
+        "agreement",
+        "precision",
+        "recall",
+        "kappa",
+    }
     assert header["split"] == "dev" and header["depths"] == [20, 30, 50]
     assert header["relevance_prompts"] == {"player": [2], "free": [1]}
     assert header["estimated_embedding_tokens"] > 0
@@ -318,6 +328,26 @@ def test_no_reference_label_refuses_before_any_embedding(eval_db):
         _run(eval_db, embedder=embedder, items=other)
     with pytest.raises(EvaluationError, match="in the test split"):
         _run(eval_db, embedder=embedder, split="test")
+    assert embedder.calls == []
+
+
+def test_a_damaged_strata_file_refuses_before_any_embedding(eval_db, tmp_path):
+    (tmp_path / "strata.json").write_text('{"strata": [{"judges": ["a"]}]}')
+    damaged = EvalSet(
+        version="v2", manifest=None, corpus=CORPUS, queries=queries(), directory=tmp_path
+    )
+    embedder = FakeEmbedder()
+    with pytest.raises(EvaluationError, match="cannot read strata.json"):
+        run_evaluation(
+            eval_db,
+            damaged,
+            embedder,
+            RecordingTracer(),
+            PRICES,
+            FixedClock(),
+            split="dev",
+            reference_judge=JUDGE,
+        )
     assert embedder.calls == []
 
 
