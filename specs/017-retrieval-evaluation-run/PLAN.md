@@ -456,10 +456,11 @@ Patterns reused:
         - **DEPLOYMENT:** if the model changed, update the default named on line 97.
       Automatic verification: `cd backend && uv run pytest -q tests/test_docs.py`
       `iterations: 1` (the Q&A line of the ROADMAP had to name #56 on its first line)
-- [ ] 9. **Full verification and the roadmap check.** Files: none new. Run the full
+- [x] 9. **Full verification and the roadmap check.** Files: none new. Run the full
       verification, then the end-to-end checks below, and record the results under
       "Definition of Done".
       Automatic verification: `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto`
+      `iterations: 1` (`tests/worker/test_cli.py:855` named the old default model)
 
 ## Risks and traps
 
@@ -532,16 +533,28 @@ Patterns reused:
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, ADR 0009, `docs/BACKLOG.md`,
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here:
+      - `compare` on the test files prints `set v2  split test  files 3` (qwen dropped, owner
+        decision of 2026-10-22) with depths 20,30,50 and 81 player rows with the
+        `recall@depth` column.
+      - The headers of all six result files (three test, three dev): `set_version` v2,
+        `reference_judge` `claude-opus-5-5 (session)`, `judge_owner_estimates` present, depths
+        `[20, 30, 50]`, every row has `recall_at_depth`, test files give 188 queries and 119 with
+        no unclaimed relevant post. Non-zero `unjudged_share` is at most 0.0012 and is stated in
+        the report.
+      - Winner in code matches the report: `QUERY_VARIANT = "names"`, `SEARCH_MODE = "hybrid"`,
+        `SEARCH_LIMIT = 20`, `DEFAULT_EMBEDDING_MODEL = "openai/text-embedding-3-large"`.
+      - `python -m app.worker status` with the scratch `DATABASE_URL` starts without an error.
+      - The full `verify.command` is green (2182 passed).
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, ADR 0009, `docs/BACKLOG.md`,
       `docs/EVALUATION.md`, `README.md` (and `docs/DEPLOYMENT.md` if the model changed)
 - [ ] if the model changed: the PR description gives the owner's re-index command and the
-      `EMBEDDING_MODEL` note
+      `EMBEDDING_MODEL` note (for the final review: the model changed)
 - [ ] the PR description lists phase A's judge-choice deviation (Opus kept while AC4's rule
       picks Sonnet) for the owner to confirm
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
