@@ -68,8 +68,9 @@ and each LLM step that produces data has an evaluation set with recorded results
       initial, recall at the judge's cut, pooling that follows new models and posts, the
       session judge for relevance with the owner's blind review, self-describing result files
       and the evaluation's own entry point (BACKLOG #43–#45, #48 and the header of #46)
-      (spec: [016](../specs/016-retrieval-evaluation-tooling/SPEC.md)). Spec 017 (the run, open):
-      the GW6 corpus and queries, the judge pilot and the owner's review, the comparison of
+      (spec: [016](../specs/016-retrieval-evaluation-tooling/SPEC.md)). Spec 017 (the run, open; phase A, the labelled
+      set, done in its data PR): the GW6 and GW7 corpus and queries, the judge pilot and the
+      owner's stratified review, the comparison of
       modes (full-text, vector, hybrid), embedding models, query variants and depths, the
       default-model ADR, a decision on reranking (BACKLOG #16), the production query and the
       alert window (BACKLOG #53) and a results section in the README

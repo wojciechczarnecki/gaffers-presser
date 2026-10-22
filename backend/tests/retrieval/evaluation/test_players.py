@@ -14,12 +14,18 @@ from app.retrieval.evaluation.dataset import (
     EvaluationError,
     FreeQuery,
     Judgement,
+    PlayerInfo,
     PlayerQuery,
     load_queries,
     write_corpus,
     write_queries,
 )
-from app.retrieval.evaluation.players import assign_splits, build_player_slice, gameweek_window
+from app.retrieval.evaluation.players import (
+    assign_splits,
+    build_player_slice,
+    gameweek_window,
+    merge_player_queries,
+)
 from tests.corroboration.helpers import ISAK, SAKA, SEASON, add_extraction, seed_reference
 from tests.retrieval.helpers import add_tweet
 from tests.retrieval.test_cli import _deps
@@ -273,3 +279,45 @@ def test_the_cli_writes_player_queries_keeps_free_ones_and_refuses_existing(db, 
 
     bad = CliRunner().invoke(app, [*args, "--window", "nonsense"], obj=_deps(db))
     assert bad.exit_code == 1
+
+
+def test_a_gameweek_is_added_beside_the_others_and_replaces_only_its_own():
+    def query(gameweek, fpl_id, split):
+        return PlayerQuery(
+            id=f"p-gw{gameweek}-{fpl_id}",
+            split=split,
+            player=PlayerInfo(
+                season="2026/27",
+                fpl_id=fpl_id,
+                web_name="Saka",
+                first_name="Bukayo",
+                second_name="Saka",
+                team="Arsenal",
+                aliases=[],
+            ),
+            gameweek=gameweek,
+            deadline_at=LINEUP_AT,
+            window_start=LINEUP_AT,
+            window_end=LINEUP_AT,
+            window_rule="alerts",
+            previous_last_match_end=None,
+            claimed=[],
+            judgements=[],
+        )
+
+    free = FreeQuery(
+        id="q-post-en-001",
+        text="saka",
+        language="en",
+        origin="post",
+        source_x_id=None,
+        event=None,
+        split="test",
+        judgements=[],
+    )
+    gw6 = [query(6, 1, "dev"), query(6, 2, "test")]
+    added = merge_player_queries([*gw6, free], [query(7, 1, "test")], 7)
+    assert [q.id for q in added] == ["p-gw6-1", "p-gw6-2", "p-gw7-1", "q-post-en-001"]
+    assert added[:2] == gw6  # the earlier gameweek keeps its split
+    replaced = merge_player_queries(added, [query(7, 3, "dev")], 7)
+    assert [q.id for q in replaced] == ["p-gw6-1", "p-gw6-2", "p-gw7-3", "q-post-en-001"]
