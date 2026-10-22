@@ -17,9 +17,11 @@
     break.
   - AC9 needs one extra column in the spec 016 tooling. It is additive, and the plan treats it
     as the "blocks the run" exception.
-  - During the previous gameweek's matches, the ingest catch-up now pages back only to the
-    newest page. The new floor is in the future at that time. This follows from "one function
-    for the alerts and the ingest" (owner decision); see Risks.
+  - The new floor never comes after the moment it is computed for: only the previous
+    gameweek's matches that have ended (kickoff + 2 h) by then count, and with none ended the
+    floor is the previous deadline (owner decision 2026-10-22). While N−1's matches are still
+    being played, the window of one deadline therefore moves forward as matches end; see
+    Risks.
 - **New dependency:** no.
 - **Data migration:** no. `post_embedding.embedding` has no fixed dimension, and embeddings
   are keyed by (post, model). Alembic runs only on the scratch container.
@@ -98,14 +100,19 @@ delivered. As the SPEC's out-of-scope list requires for such a change, step 1 re
 - Variant A, chosen: keep `window_floor` pure and change what its first argument means.
   - It was the previous deadline and becomes the previous gameweek's end.
   - A new DB helper in `app/fpl/deadlines.py` computes that end:
-    `previous_gameweek_end(session: Session, t: datetime) -> datetime | None`.
-  - The helper takes the gameweek with the latest `deadline_at` at or before `t`, the same
-    choice `deadline_at_or_before` makes. It returns that gameweek's latest non-null
-    `Fixture.kickoff_at` plus `MATCH_LENGTH` (2 h). The fixtures are matched on both
-    `Fixture.season` and `Fixture.gameweek_fpl_id` of that gameweek, because the database
-    holds more than one season.
-  - A gameweek with no fixture with a kickoff returns its deadline (the fallback). No gameweek
-    returns `None`.
+    `previous_gameweek_end(session: Session, as_of: datetime, gameweek_at: datetime | None = None) -> datetime | None`.
+  - The helper takes the gameweek with the latest `deadline_at` at or before `gameweek_at`
+    (default `as_of`), the same choice `deadline_at_or_before` makes. Among that gameweek's
+    fixtures with a non-null `Fixture.kickoff_at`, it keeps those that ended by `as_of`
+    (`kickoff_at + MATCH_LENGTH <= as_of`, owner decision 2026-10-22) and returns the latest
+    such end. The fixtures are matched on both `Fixture.season` and `Fixture.gameweek_fpl_id`
+    of that gameweek, because the database holds more than one season.
+  - A gameweek with no ended fixture — none with a kickoff, or none finished by `as_of` —
+    returns its deadline (the fallback). No gameweek returns `None`. The result is therefore
+    never later than `as_of` when `gameweek_at` is left at its default.
+  - `gameweek_at` exists only for the slice builder, which picks gameweek N−1 by its deadline
+    but counts matches ended by N's deadline. Passing `previous_deadline` as `as_of` there
+    would count no match at all (none has ended at N−1's own deadline).
 - Variant B, rejected: give `window_floor` a `Session`. That would turn its pure tests into
   DB tests and push a query into a function that is pure today.
 
@@ -125,7 +132,8 @@ Call sites:
   alert window and stays.
 - `tweets/loop.py` uses the helper instead of `deadline_at_or_before`.
 - The `alerts` rule in `retrieval/evaluation/players.py` feeds
-  `previous_gameweek_end(session, previous_deadline)` (or `None`) into `window_floor`.
+  `previous_gameweek_end(session, deadline, gameweek_at=previous_deadline)` (or `None` when
+  there is no previous deadline) into `window_floor`, with `deadline` (N's) as the moment.
   `MATCH_LENGTH` moves to `app/fpl/deadlines.py`, and `players.py` imports it.
 
 **3. The run.** `evaluate` drops and recreates the `retrieval_eval` schema in the database
@@ -215,6 +223,15 @@ Patterns reused:
         - **No N−1 fixtures**, or only fixtures with a null kickoff: the previous deadline.
         - **Another season:** a fixture with the same gameweek number in another season does
           not count.
+        - **A match not yet ended by `as_of`** (owner decision 2026-10-22): N−1 fixtures at
+          Sat 14:00 and Mon 19:00, `as_of` Mon 20:00. Only the Sat match counts, and the
+          window starts on Sat 16:00, not after `as_of`.
+        - **No N−1 match ended by `as_of`:** `as_of` between N−1's deadline and its first
+          match's end. The floor is N−1's deadline.
+        - **`gameweek_at`:** `previous_gameweek_end(session, N's deadline,
+          gameweek_at=N−1's deadline)` gives N−1's last match plus 2 h.
+        - Across all cases above with the default `gameweek_at`, the result is never later
+          than `as_of`.
       - Then add `MATCH_LENGTH = timedelta(hours=2)` and `previous_gameweek_end`.
       - Rename `window_floor`'s first parameter to `previous_end`, and rewrite its docstring
         for the new rule. AC13 asks for the docstring explicitly. The existing pure
@@ -227,18 +244,31 @@ Patterns reused:
       listed below.
       - Tests first:
         - `tests/alerts/test_slots.py::test_alert_window_starts_after_the_previous_gameweeks_last_match`:
-          seed GW5 fixtures. `alert_window_start` for `REAL` and for `REHEARSAL` gives the
-          last kickoff plus 2 h. The rehearsal uses the last real gameweek.
+          seed GW5 fixtures that all ended before `NOW`. `alert_window_start` for `REAL` and
+          for `REHEARSAL` gives the last kickoff plus 2 h. The rehearsal uses the last real
+          gameweek.
         - `tests/tweets/test_loop.py::test_the_catch_up_floor_equals_the_alert_window_start`:
           seed GW5 and GW6 with GW5 fixtures. The floor of one poll at moment T equals
           `alert_window_start(session, T, <AlertDeadline of GW6>, AlertConfig(...,
-          max_lookback=7 days))`, and both equal the last kickoff plus 2 h.
+          max_lookback=<the poller's lookback, 5 days in _floors_of_one_poll>))`, and both equal the last kickoff plus 2 h (T after that
+          end).
         - `tests/retrieval/evaluation/test_players.py`: rename and update
           `test_a_lineup_before_the_last_match_is_stale_under_alerts_and_outside_after_last_match`.
           Under `alerts` the window now starts at `LAST_END`, so the line-up claim is outside
           it. Add `test_alerts_window_follows_the_production_floor`: with fixtures the start
           is the last match plus 2 h, and without them it is the previous deadline.
           `test_alerts_window_starts_at_the_previous_deadline` (no fixtures) stays as it is.
+        - One test per scenario of the owner decision of 2026-10-22:
+          - `tests/alerts/test_slots.py::test_the_digest_before_a_midweek_deadline_counts_only_ended_matches`:
+            GW5 fixtures on Sat and on Mon evening, `as_of` the D-1@20:00 slot before a
+            Tuesday deadline, earlier than the Mon match's end. `alert_window_start` for
+            `REAL` gives the Sat match plus 2 h, and the start is not after `as_of`.
+          - `tests/alerts/test_slots.py::test_a_rehearsal_during_matches_counts_only_ended_matches`:
+            `as_of` during GW5's matches, the same check for `REHEARSAL`; with `as_of` before
+            the first match ends, the start is GW5's deadline.
+          - `tests/tweets/test_loop.py::test_the_catch_up_during_matches_stops_at_the_previous_deadline`:
+            GW5 fixtures, `now` before the first GW5 match ends. The floor of one poll is GW5's
+            deadline (as before this change), not a time after `now`.
       - Then:
         - `alert_window_start` returns `window_floor(previous_gameweek_end(session, as_of),
           deadline.deadline_at, config.max_lookback, as_of)`. Drop the `window_start` import,
@@ -247,9 +277,9 @@ Patterns reused:
           deadline, and it starts after the previous gameweek's last match.
         - In `tweets/loop.py` the floor uses `previous_gameweek_end(session, now)`. Update its
           comment.
-        - In `players.py` the `alerts` rule uses `previous_gameweek_end(session,
-          previous_deadline) if previous_deadline else None`, and `MATCH_LENGTH` is imported
-          from `app.fpl.deadlines`.
+        - In `players.py` the `alerts` rule uses `previous_gameweek_end(session, deadline,
+          gameweek_at=previous_deadline) if previous_deadline else None`, and `MATCH_LENGTH`
+          is imported from `app.fpl.deadlines`.
       - The existing alert, corroboration and tweet tests seed no fixtures, so they take the
         previous-deadline fallback and must pass unchanged.
       Automatic verification: `cd backend && uv run pytest -q -n auto tests/fpl tests/alerts tests/tweets tests/corroboration tests/retrieval/evaluation/test_players.py tests/worker && uv run ruff check app tests`
@@ -372,8 +402,10 @@ Patterns reused:
         - The embedding model and the production query, linking ADR 0009, with the
           reranking decision.
         - The alert window: the later of the previous gameweek's last kickoff plus 2 h and the
-          deadline minus the lookback, with the fallbacks, superseding the "previous real
-          deadline" part of the 2026-10-07 row. The per-club window is the rejected
+          deadline minus the lookback, counting only the matches ended by the moment the
+          window is computed for (none ended → the previous deadline; owner decision
+          2026-10-22), with the fallbacks, superseding the "previous real deadline" part of
+          the 2026-10-07 row. The per-club window is the rejected
           alternative, as in the SPEC.
       Automatic verification: `cd backend && uv run pytest -q tests/test_docs.py`
 - [ ] 8. **BACKLOG, ROADMAP, EVALUATION.md, README and DEPLOYMENT (AC9 backlog, AC13,
@@ -439,18 +471,18 @@ Patterns reused:
 - **Ties:** with 69 counted queries and full-text rows identical across models, ties are
   likely. Compare exact values, never the 3-decimal table. The two unordered cases escalate
   (step 5).
-- **Ingest during gameweek N−1's matches.** Between N−1's deadline and its last match plus 2 h,
-  the floor is in the future, so a catch-up after downtime stores only the newest page. Before
-  this change it paged back to N−1's deadline. Alerts never run then, because breaking alerts
-  open after the last slot. The loss is of posts outside every alert window, which follows
-  from "one function for the alerts and the ingest" (owner decision 2026-10-16). It is
-  recorded as a BACKLOG proposal in the stage summary, not as a plan step.
-- **The floor after `as_of` (open, escalated by the plan review).** The previous gameweek's
-  last match plus 2 h can be later than the moment the window is computed for, not only during
-  the ingest: the digest at `D-1@20:00` before a midweek deadline that follows a Monday-evening
-  match, and a rehearsal deadline set during a gameweek's matches. The window then starts after
-  `as_of` and the alert has no news. The SPEC's "no guard is needed" argues only from N's
-  deadline. Steps 2 and 3 follow the owner's decision on this (see `## Review log`).
+- **The floor after `as_of` (settled, owner decision 2026-10-22).** The previous gameweek's
+  last match plus 2 h could be later than the moment the window is computed for: the digest at
+  `D-1@20:00` before a midweek deadline that follows a Monday-evening match, a rehearsal
+  deadline set during a gameweek's matches, and the ingest catch-up during N−1's matches. Only
+  matches ended by `as_of` count, and with none ended the floor is the previous deadline, so
+  the floor is never after `as_of` and the ingest catch-up during matches pages back to N−1's
+  deadline as before. Steps 2 and 3 test each scenario.
+- **One window per deadline, once N−1 has ended.** `alert_window_start`'s old docstring says
+  counting from the deadline keeps one window for all of a deadline's alerts. Under the guard
+  this holds only once all of N−1's matches have ended; an alert computed during them gets an
+  earlier start, which moves forward as matches end. The replacement comment says so.
+  `test_window_is_the_same_for_every_alert_of_a_deadline` seeds no fixtures and stays green.
 - **The docs tests pin wording.** `test_backlog_window_row_and_017_018_renumbering` and
   `test_backlog_has_reranking_and_ann_entries` currently assert #53 and P2. Update them in
   step 8 together with the documents.
@@ -568,6 +600,53 @@ Checked and found sound:
   a `Pass when:` line. The plan is in English.
 
 Not approved: the blocker above is a SPEC gap the review cannot settle in the plan.
+
+### 2026-10-22 — plan review, after the owner decision
+
+The owner decision of 2026-10-22 (`## Owner decisions`) settles the blocker above: only the
+previous gameweek's matches ended (kickoff + 2 h) by `as_of` count, and with none ended the
+floor is the previous deadline. It was applied in the Owner summary, Approach (2), steps 2, 3
+and 7 and Risks: the helper filters fixtures by `kickoff_at + MATCH_LENGTH <= as_of`, step 2
+adds the "not yet ended" and "none ended" cases and a never-after-`as_of` check, and step 3
+adds one test per scenario (the D-1 digest before a midweek deadline, a rehearsal during
+matches, the ingest catch-up during matches).
+
+Findings:
+
+- `major` — with the guard, the slice builder's call `previous_gameweek_end(session,
+  previous_deadline)` would count matches ended by N−1's own deadline, i.e. none, so the
+  `alerts` rule would always fall back to the previous deadline and stop following production.
+  The helper now takes an optional `gameweek_at` (which gameweek) beside `as_of` (which
+  matches have ended), and `players.py` calls it with N's deadline as `as_of` and
+  `gameweek_at=previous_deadline` (Approach (2), step 2 test, step 3).
+- `minor` — step 3's catch-up test compared the poll's floor with `alert_window_start` under a
+  7-day lookback, while `_floors_of_one_poll` builds the poller with 5 days. The test now uses
+  the poller's lookback.
+- `minor` — the old risk "the ingest pages back only to the newest page during N−1's matches"
+  no longer holds under the guard, and the "one window for all of a deadline's alerts" claim of
+  `alert_window_start`'s docstring holds only once N−1 has ended. Risks and the Owner summary
+  now say so, and the DECISIONS row of step 7 names the guard.
+
+Checked and found sound:
+
+- The guard keeps the floor at or before `as_of` at every call site: `alert_window_start`
+  (digest, news and breaking alerts through it), `tweets/loop.py` (`now`), and the slice
+  builder (N's deadline, after which no N−1 match is played, as the SPEC argues).
+- Existing alert, tweet, corroboration and evaluation tests seed no fixtures, so they still
+  take the previous-deadline fallback; `test_window_is_the_same_for_every_alert_of_a_deadline`
+  stays green.
+- The frozen `queries.jsonl` windows do not change with the builder rule, so the evaluation
+  runs of step 4 are unaffected by steps 2 and 3.
+- The rest of the first review's "checked" list still stands: nothing outside steps 2, 3, 7
+  and Risks changed. No new dependency, no data migration, the manual item has its
+  `Pass when:` line, and the plan is in English.
+- Compliance: `docs/CONVENTIONS.md` read in full; the plan writes tests before code, mirrors
+  `app/` in `tests/`, replaces the `alert_window_start` docstring with a comment and keeps the
+  `window_floor` docstring only because AC13 names it; the DECISIONS 2026-10-07 row is the one
+  the new row supersedes.
+
+Approved: the only blocker is settled by the owner's decision and applied, the remaining
+findings were fixed in the plan, and every phase B AC has steps with runnable verification.
 
 ## Deviations
 

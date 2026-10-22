@@ -1,18 +1,19 @@
 ---
-status: plan-draft
+status: plan-approved
 stage_history:
   - "spec-draft — 2026-10-16"
   - "spec-ready — 2026-10-16"
   - "plan-draft — 2026-10-22"
+  - "plan-approved — 2026-10-22"
 metrics:
   started_at: 2026-10-22T15:25
   plan_steps: 9
-  plan_changes: 5
-  escalations: 0
+  plan_changes: 9
+  escalations: 1
   escalations_permission: 0
   escalations_tooling: 0
   plan_review_blockers: 1
-  plan_review_majors: 0
+  plan_review_majors: 1
 ---
 
 # SPEC 017 — Retrieval evaluation run on the GW6 window and rolling out the winners
