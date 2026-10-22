@@ -352,7 +352,7 @@ Patterns reused:
         - Leave `README.md` line 167 and `DEPLOYMENT.md` line 97 for step 8.
       Automatic verification: `cd backend && uv run pytest -q -n auto tests/corroboration tests/alerts tests/retrieval && uv run ruff check app tests`
       `iterations: 1` (winner: `openai/text-embedding-3-large`, hybrid, `names`, depth 20, recall at the cut 0.9333, a three-way tie across depths 20/30/50 settled by the smaller depth; `tests/retrieval/test_cli.py:150` also named the old default model)
-- [ ] 6. **The report `docs/reports/retrieval-eval-v2.md` (AC7, AC9, AC10, AC2 spend).**
+- [x] 6. **The report `docs/reports/retrieval-eval-v2.md` (AC7, AC9, AC10, AC2 spend).**
       Files: the new report and `backend/tests/test_docs.py`.
       - Test first: `test_retrieval_report_v2_has_every_section`. The report exists and
         contains these headings or phrases: "Set", "Labelling", "Relevance", "Tokens and
@@ -387,6 +387,7 @@ Patterns reused:
         - **The limits:** as AC10 lists them. Also state any non-zero unjudged share.
         - **The noise:** differences below about 0.05 on 69 queries are within noise.
       Automatic verification: `cd backend && uv run pytest -q tests/test_docs.py`
+      `iterations: 0`
 - [ ] 7. **ADR 0009 and the DECISIONS rows (AC11, AC13 DECISIONS).** Files: new
       `docs/adr/0009-default-embedding-model.md`, `docs/DECISIONS.md` and
       `backend/tests/test_docs.py`.

@@ -4,6 +4,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BACKLOG = ROOT / "docs" / "BACKLOG.md"
 REPORT = ROOT / "docs" / "reports" / "twscrape-list-replies-2026-10.md"
 LATENCY_REPORT = ROOT / "docs" / "reports" / "tweet-source-latency-2026-09.md"
+RETRIEVAL_REPORT = ROOT / "docs" / "reports" / "retrieval-eval-v2.md"
 
 
 def _rows() -> list[str]:
@@ -184,3 +185,22 @@ def test_decisions_cover_retrieval_set_v2_and_results_header():
         "summary",
     ):
         assert needle in header, needle
+
+
+def test_retrieval_report_v2_has_every_section():
+    text = RETRIEVAL_REPORT.read_text(encoding="utf-8")
+    for heading in (
+        "Set",
+        "Labelling",
+        "Relevance",
+        "Tokens and spend",
+        "compare",
+        "Winner",
+        "Misses",
+        "Reranking",
+        "Stale",
+        "Limits",
+    ):
+        assert f"## {heading}" in text or f"## The {heading.lower()}" in text, heading
+    for phrase in ("69", "0.05", "claude-opus-5-5", "qwen"):
+        assert phrase in text, phrase
