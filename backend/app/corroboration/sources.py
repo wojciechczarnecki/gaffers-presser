@@ -99,6 +99,7 @@ def sql_claims(
         created_until=as_of,
         player=(player.season, player.fpl_id),
         sources_only=True,
+        fresh_lineups_only=True,
     )
     quoted = quoted_authors(session, [row.tweet_x_id for row in rows])
     for row in rows:

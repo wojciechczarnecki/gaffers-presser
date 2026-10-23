@@ -15,7 +15,15 @@ from tests.alerts.helpers import (
     set_raw,
 )
 from tests.alerts.test_slots import DEADLINE_AT, REAL, seed
-from tests.corroboration.helpers import ISAK, NOW, SAKA, SEASON, add_claim, add_extraction
+from tests.corroboration.helpers import (
+    ISAK,
+    NOW,
+    SAKA,
+    SEASON,
+    add_claim,
+    add_extraction,
+    add_fixture,
+)
 from tests.delivery.fakes import FakeChannel, FixedClock
 from tests.retrieval.helpers import add_tweet
 from tests.tweets.membership_helpers import set_members
@@ -311,3 +319,13 @@ def test_quoted_off_list_leak_breaks_and_is_cited(db):
     alert, rows = alert_rows(db, "alert:2026/27:gw6:breaking:2")
     assert alert.trigger_x_id == 2
     assert rows[(SAKA, 2)] == "new"
+
+
+def test_a_confirmed_lineup_days_before_the_next_kickoff_never_breaks(db):
+    runtime, channel, clock = world(db)
+    add_fixture(db, 1, 6, NOW + timedelta(days=4))
+    add_late(db, 2, event="confirmed_starter", certainty="confirmed")
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 0
+    assert channel.keys == []

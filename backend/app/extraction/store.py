@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 
 from app.extraction.models import Extraction, ExtractionEvent
 from app.extraction.schemas import LinkedEvent, PostInput
-from app.fpl.models.reference import Player
+from app.fpl.models.reference import Fixture, Player
 from app.tweets.classes import source_post_sql
 from app.tweets.models import Tweet
 
@@ -15,6 +15,11 @@ RETRY_AFTER = timedelta(minutes=10)
 # 5 passes of up to 3 model calls: a post that still fails is left failed until
 # `reextract --failed` is run by hand.
 MAX_EXTRACTIONS = 5
+# A confirmed line-up this long before the club's next Premier League kickoff is about another
+# match (a European or cup tie, or one already played): the managers' own team news comes up to
+# about 54 hours before kickoff, the stray line-ups from 67 hours (GW6-GW8 data, BACKLOG #54).
+LINEUP_MAX_LEAD = timedelta(hours=60)
+LINEUP_EVENTS = ("confirmed_starter", "benched")
 
 
 @dataclass(frozen=True)
@@ -77,6 +82,17 @@ class ExtractionStatus:
     failed_posts: int  # given up by the loop; `reextract --failed` takes them
     retrying: int  # failed so far; the loop takes them back after RETRY_AFTER
     latest: LatestExtraction | None
+
+
+def is_stale_lineup(
+    event_type: str, certainty: str, created_at: datetime, next_kickoff: datetime | None
+) -> bool:
+    return (
+        event_type in LINEUP_EVENTS
+        and certainty == "confirmed"
+        and next_kickoff is not None
+        and next_kickoff - created_at > LINEUP_MAX_LEAD
+    )
 
 
 def _latest_per_post(columns: str, where: str = "") -> str:
@@ -209,6 +225,7 @@ def current_extractions(
     created_until: datetime | None = None,
     player: tuple[str, int] | None = None,
     sources_only: bool = False,
+    fresh_lineups_only: bool = False,
 ) -> list[CurrentExtraction]:
     if x_ids is not None and not x_ids:
         return []
@@ -257,8 +274,24 @@ def current_extractions(
     if not rows:
         return []
     events: dict[int, list[EventRecord]] = {row["id"]: [] for row in rows}
+    created_at = {row["id"]: row["created_at"] for row in rows}
+    next_kickoff = (
+        select(func.min(Fixture.kickoff_at))
+        .where(
+            Fixture.season == Player.season,
+            or_(
+                Fixture.team_h_fpl_id == Player.team_fpl_id,
+                Fixture.team_a_fpl_id == Player.team_fpl_id,
+            ),
+            Fixture.kickoff_at > Tweet.created_at,
+        )
+        .correlate(Player, Tweet)
+        .scalar_subquery()
+    )
     event_rows = session.exec(
-        select(ExtractionEvent, Player.web_name)
+        select(ExtractionEvent, Player.web_name, next_kickoff)
+        .join(Extraction, Extraction.id == ExtractionEvent.extraction_id)
+        .join(Tweet, Tweet.x_id == Extraction.tweet_x_id)
         .join(
             Player,
             and_(
@@ -270,7 +303,11 @@ def current_extractions(
         .where(ExtractionEvent.extraction_id.in_(list(events)))
         .order_by(ExtractionEvent.id)
     ).all()
-    for event, web_name in event_rows:
+    for event, web_name, kickoff in event_rows:
+        if fresh_lineups_only and is_stale_lineup(
+            event.event_type, event.certainty, created_at[event.extraction_id], kickoff
+        ):
+            continue
         events[event.extraction_id].append(
             EventRecord(
                 mention=event.mention,
