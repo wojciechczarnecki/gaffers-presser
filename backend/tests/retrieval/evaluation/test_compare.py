@@ -6,7 +6,16 @@ from app.core.eval_results import write_json_atomic
 from app.retrieval.evaluation.cli import app
 
 
-def result(model, set_version="v2", split="dev", recall=0.5, header=True, judge="judge-a", k=60):
+def result(
+    model,
+    set_version="v2",
+    split="dev",
+    recall=0.5,
+    header=True,
+    judge="judge-a",
+    k=60,
+    with_depth=True,
+):
     free = {"recall_at_5": 0.9, "recall_at_10": 0.95, "mrr": 0.8, "n": 3, "unjudged_share": 0.1}
     data = {
         "player": {
@@ -19,6 +28,7 @@ def result(model, set_version="v2", split="dev", recall=0.5, header=True, judge=
                     "queries": 4,
                     "recall_at_cut": recall,
                     "recall_at_10": 0.6,
+                    **({"recall_at_depth": 0.812} if with_depth else {}),
                     "empty_cuts_with_miss": 1,
                     "unjudged_share": 0.25,
                 }
@@ -141,3 +151,19 @@ def test_a_headed_result_of_another_evaluation_is_refused_without_a_traceback(tm
         assert out.exit_code == 1
         assert path.name in out.stderr and "not a result of the retrieval evaluation" in out.stderr
         assert out.exception is None or isinstance(out.exception, SystemExit)
+
+
+def test_recall_at_depth_is_printed_and_an_older_file_prints_a_dash(tmp_path):
+    new = write(tmp_path, "new.json", model="openai/small")
+    old = write(tmp_path, "old.json", model="other/embed", with_depth=False)
+    out = run(new, old)
+    assert out.exit_code == 0, out.output
+    assert "recall@depth" in out.stdout
+    new_rows = [
+        line for line in out.stdout.splitlines() if "openai/small" in line and "web_name" in line
+    ]
+    old_rows = [
+        line for line in out.stdout.splitlines() if "other/embed" in line and "web_name" in line
+    ]
+    assert all("0.812" in line for line in new_rows)
+    assert all("0.812" not in line and " -" in line for line in old_rows)

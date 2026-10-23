@@ -147,7 +147,7 @@ def test_status_on_empty_database(db):
     result = _run(_deps(db), "status")
     lines = result.stdout.splitlines()
     assert lines[0] == "posts: 0"
-    assert "model openai/text-embedding-3-small: embedded 0  missing 0  failed 0" in lines
+    assert "model openai/text-embedding-3-large: embedded 0  missing 0  failed 0" in lines
     assert "latest embedding: never" in lines
 
 

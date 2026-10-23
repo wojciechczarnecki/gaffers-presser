@@ -852,7 +852,7 @@ def test_deps_enable_indexing_with_key(monkeypatch, tmp_path):
     indexing = worker_cli._deps_from_settings().indexing
 
     assert indexing is not None
-    assert indexing.model == "openai/text-embedding-3-small"
+    assert indexing.model == "openai/text-embedding-3-large"
     assert indexing.model in indexing.prices
     assert indexing.tracing is None
 

@@ -17,7 +17,7 @@ from app.extraction.store import current_extractions
 from app.fpl.deadlines import deadline_at_or_before
 from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder
-from app.retrieval.search import SearchFilters, search
+from app.retrieval.search import Mode, SearchFilters, search
 from app.retrieval.tracing import NULL_TRACER, RetrievalTracer
 from app.retrieval.variants import Variant, load_player_names, variant_text
 from app.tweets.classes import quoted_authors
@@ -26,7 +26,8 @@ SEARCH_LIMIT = 20
 MAX_JUDGED = 10
 EMBED_TIMEOUT_SECONDS = 5.0
 DEFAULT_LOOKBACK = timedelta(days=7)
-QUERY_VARIANT: Variant = "web_name"
+QUERY_VARIANT: Variant = "names"
+SEARCH_MODE: Mode = "hybrid"
 
 Aliases = tuple[list[PlayerAlias], list[TeamAlias]]
 
@@ -129,11 +130,13 @@ def sql_claims(
     return claims
 
 
-def _query_text(engine: Engine, player: PlayerRef, variant: Variant) -> str:
+def _query_text(
+    engine: Engine, player: PlayerRef, variant: Variant, aliases: list[PlayerAlias] | None
+) -> str:
     if variant == "web_name":
         return player.web_name
     with Session(engine) as session:
-        names = load_player_names(session, player.season, player.fpl_id)
+        names = load_player_names(session, player.season, player.fpl_id, aliases)
     return variant_text(names, variant) if names is not None else player.web_name
 
 
@@ -149,11 +152,12 @@ def retrieval_candidates(
     prices: dict[str, Price] | None = None,
     embed_timeout_seconds: float = EMBED_TIMEOUT_SECONDS,
     variant: Variant | None = None,
+    aliases: list[PlayerAlias] | None = None,
 ) -> Candidates:
     response = search(
         engine,
-        _query_text(engine, player, variant or QUERY_VARIANT),
-        "hybrid",
+        _query_text(engine, player, variant or QUERY_VARIANT, aliases),
+        SEARCH_MODE,
         embedder=embedder,
         filters=SearchFilters(since=start, until=as_of, sources_only=True),
         limit=SEARCH_LIMIT,

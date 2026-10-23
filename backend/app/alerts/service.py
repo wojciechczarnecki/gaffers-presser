@@ -1,7 +1,7 @@
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from functools import partial
 from typing import Literal
@@ -27,11 +27,11 @@ from app.core.shutdown import Shutdown
 from app.corroboration.runtime import sql_only_runtime
 from app.corroboration.schemas import Corroboration
 from app.corroboration.service import CorroborationRuntime, corroborate
-from app.corroboration.sources import window_start
 from app.delivery.channels.base import Message
 from app.delivery.service import DeliveryService
+from app.extraction.linking import load_aliases
 from app.fpl.calendar import current_season
-from app.fpl.deadlines import window_floor
+from app.fpl.deadlines import previous_gameweek_end, window_floor
 
 logger = logging.getLogger(__name__)
 
@@ -72,11 +72,12 @@ def alert_key(deadline: AlertDeadline, kind: str, suffix: int | str) -> str:
 def alert_window_start(
     session: Session, as_of: datetime, deadline: AlertDeadline, config: AlertConfig
 ) -> datetime:
-    """The previous deadline, but no further back than the configured lookback before the alert
-    deadline: a long break between deadlines (an international break) would otherwise fill
-    alerts with stale news. Counting from the deadline keeps one window for all its alerts."""
+    # the window starts after the last match of the previous gameweek that has ended by as_of
+    # (its deadline when none has), but no further back than the lookback before the alert
+    # deadline, so a long break does not fill alerts with stale news. Once all of that
+    # gameweek's matches have ended, every alert of a deadline shares one window.
     return window_floor(
-        window_start(session, as_of), deadline.deadline_at, config.max_lookback, as_of
+        previous_gameweek_end(session, as_of), deadline.deadline_at, config.max_lookback, as_of
     )
 
 
@@ -169,10 +170,13 @@ def build_slot_alert(
         if not listed:
             return SlotDraft(kind, as_of, None, [], [])
 
+    corroboration = runtime.corroboration
+    if corroboration.embedder is not None:
+        corroboration = replace(corroboration, player_aliases=load_aliases()[0])
     corroborate_one = partial(
         corroborate_player,
         engine,
-        runtime.corroboration,
+        corroboration,
         as_of=as_of,
         since=start,
         new_since=new_since,

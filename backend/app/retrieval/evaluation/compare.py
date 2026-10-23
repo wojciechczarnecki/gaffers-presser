@@ -49,13 +49,14 @@ def format_compare(runs: list[tuple[Path, dict[str, Any], dict[str, Any]]]) -> s
         lines.append("")
         lines.append(
             f"{'model':<34}{'mode':<10}{'variant':<11}{'depth':>6}{'recall@cut':>12}"
-            f"{'recall@10':>11}{'empty':>7}{'unjudged':>10}"
+            f"{'recall@depth':>14}{'recall@10':>11}{'empty':>7}{'unjudged':>10}"
         )
         for model, rows in player:
             for row in rows:
                 lines.append(
                     f"{model:<34}{row['mode']:<10}{row['variant']:<11}{row['depth']:>6}"
-                    f"{_fmt(row['recall_at_cut']):>12}{_fmt(row['recall_at_10']):>11}"
+                    f"{_fmt(row['recall_at_cut']):>12}{_fmt(row.get('recall_at_depth')):>14}"
+                    f"{_fmt(row['recall_at_10']):>11}"
                     f"{row['empty_cuts_with_miss']:>7}{_fmt(row['unjudged_share']):>10}"
                 )
     lines.append("")

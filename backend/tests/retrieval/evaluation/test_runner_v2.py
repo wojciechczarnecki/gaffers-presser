@@ -173,6 +173,7 @@ def test_player_slice_searches_window_and_sources(eval_db):
     # relevant and unclaimed: 1, 2, 3, 4 of which 1 and 2 are retrievable; p-gw6-2 finds nothing
     assert fulltext.queries == 2
     assert fulltext.recall_at_cut == pytest.approx((0.5 + 0.0) / 2)
+    assert fulltext.recall_at_depth == pytest.approx((0.5 + 0.0) / 2)
 
 
 def test_the_names_and_full_name_variants_find_the_initial_player(eval_db):
@@ -213,6 +214,7 @@ def test_the_free_slice_reports_recall_mrr_and_the_unjudged_share(eval_db):
     assert "unjudged" in table.splitlines()[0]
     player_table = format_player_table(result.player_rows, result.player_counts)
     assert "recall@cut" in player_table
+    assert "recall@depth" in player_table
     assert "stale anchors 0" in player_table
 
 
@@ -226,6 +228,12 @@ def test_result_holds_cut_ids_and_labels_per_configuration(eval_db):
         if (c["mode"], c["variant"], c["depth"]) == ("fulltext", "web_name", 20)
     )
     assert sorted(config["cut"]) == [1, 2]
+    row = next(
+        r
+        for r in data["player"]["rows"]
+        if (r["mode"], r["variant"], r["depth"]) == ("fulltext", "web_name", 20)
+    )
+    assert row["recall_at_depth"] == pytest.approx((0.5 + 0.0) / 2)
     assert dict(zip(config["cut"], config["cut_labels"], strict=True)) == {1: True, 2: True}
     reference = {1: True, 2: True, 3: True, 4: True, 5: False, 6: True}
     assert config["top10_labels"] == [reference.get(x) for x in config["top10"]]
@@ -233,6 +241,24 @@ def test_result_holds_cut_ids_and_labels_per_configuration(eval_db):
     assert free["kind"] == "free"
     assert free["modes"]["fulltext"]["top10"][0] == 1
     assert free["modes"]["fulltext"]["top10_labels"][0] is True
+
+
+def test_recall_at_depth_is_written_apart_from_recall_at_cut(eval_db, monkeypatch):
+    import app.retrieval.evaluation.player_metrics as player_metrics
+
+    # a cut of one post leaves the second retrievable relevant post between the cut and the depth
+    monkeypatch.setattr(player_metrics, "JUDGE_CUT", 1)
+    result = _run(eval_db)
+    metrics = _rows(result)[("fulltext", "web_name", 20)]
+    assert metrics.recall_at_cut == pytest.approx((0.25 + 0.0) / 2)
+    assert metrics.recall_at_depth == pytest.approx((0.5 + 0.0) / 2)
+    row = next(
+        r
+        for r in result.data["player"]["rows"]
+        if (r["mode"], r["variant"], r["depth"]) == ("fulltext", "web_name", 20)
+    )
+    assert row["recall_at_cut"] == pytest.approx(0.125)
+    assert row["recall_at_depth"] == pytest.approx(0.25)
 
 
 def _record_searches(monkeypatch):

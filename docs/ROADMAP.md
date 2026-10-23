@@ -63,17 +63,18 @@ and each LLM step that produces data has an evaluation set with recorded results
       path, a trial of a parallel test run; one PR each, in this order, fast path except the
       test-run trial (a development dependency, approved by the owner)
       (BACKLOG #38–#42; [audit](reports/code-audit-2026-10.md))
-- [ ] Retrieval evaluation report on the GW6 window, in two specs. Spec 016 (tooling, done):
+- [x] Retrieval evaluation report on the GW6 window, in two specs. Spec 016 (tooling, done):
       set v2 with a slice shaped like the production query, query variants for names with an
       initial, recall at the judge's cut, pooling that follows new models and posts, the
       session judge for relevance with the owner's blind review, self-describing result files
       and the evaluation's own entry point (BACKLOG #43–#45, #48 and the header of #46)
-      (spec: [016](../specs/016-retrieval-evaluation-tooling/SPEC.md)). Spec 017 (the run, open; phase A, the labelled
-      set, done in its data PR): the GW6 and GW7 corpus and queries, the judge pilot and the
+      (spec: [016](../specs/016-retrieval-evaluation-tooling/SPEC.md)). Spec 017 (the run, done): the GW6 and GW7 corpus and queries, the judge pilot and the
       owner's stratified review, the comparison of
       modes (full-text, vector, hybrid), embedding models, query variants and depths, the
       default-model ADR, a decision on reranking (BACKLOG #16), the production query and the
-      alert window (BACKLOG #53) and a results section in the README
+      alert window (BACKLOG #53) and a results section in the README; the winner is
+      `text-embedding-3-large` with hybrid search and the `names` variant, reranking is not needed
+      ([report](reports/retrieval-eval-v2.md), [ADR 0009](adr/0009-default-embedding-model.md))
       (spec: [017](../specs/017-retrieval-evaluation-run/SPEC.md)); before the next item, because the corroboration judge reads retrieval's output —
       **portfolio MVP**
 - [ ] Extraction and corroboration evaluation v2 on the GW6 window: real pre-deadline leaks
@@ -130,7 +131,8 @@ and each LLM step that produces data has an evaluation set with recorded results
 ## Stage 4 — Source credibility and Q&A
 
 - [ ] Settle leaks against the ground truth; per-account accuracy shown in alerts (spec: TBD)
-- [ ] Q&A agent with cited sources, routing between SQL and retrieval (spec: TBD)
+- [ ] Q&A agent with cited sources (BACKLOG #56), routing between SQL and retrieval; it brings back the
+      `free` slice of retrieval set v2 (BACKLOG #56) (spec: TBD)
 - [ ] Podcast transcripts as a knowledge source (spec: TBD)
 
 ## Stage 5 — Operational hardening

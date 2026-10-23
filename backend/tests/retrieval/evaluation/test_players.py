@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, delete
 from sqlmodel import Session
 from typer.testing import CliRunner
 
@@ -158,20 +158,31 @@ def test_a_player_with_no_event_gets_no_query(db):
     assert [q.player.fpl_id for q in build(db)] == [SAKA]
 
 
-def test_a_lineup_before_the_last_match_is_stale_under_alerts_and_outside_after_last_match(db):
+def test_a_lineup_before_the_last_match_is_outside_both_rules(db):
     world(db)
     claim(db, 1, LINEUP_AT)
     claim(db, 2, IN_WINDOW)
-    alerts = build(db, "alerts")[0]
-    assert [(c.x_id, c.stale) for c in alerts.claimed] == [(1, True), (2, False)]
-    after = build(db, "after-last-match")[0]
-    assert [(c.x_id, c.stale) for c in after.claimed] == [(2, False)]
-    assert after.window_start == LAST_END
-    assert after.window_rule == "after-last-match"
+    for rule in ("alerts", "after-last-match"):
+        found = build(db, rule)[0]
+        assert [(c.x_id, c.stale) for c in found.claimed] == [(2, False)]
+        assert found.window_start == LAST_END
+        assert found.window_rule == rule
+
+
+def test_alerts_window_follows_the_production_floor(db):
+    world(db)
+    assert window(db, "alerts").window_start == LAST_END
+    other = window(db, "alerts", gameweek=5)
+    assert other.window_start == D5 - timedelta(days=7)
+    with Session(db) as session:
+        session.exec(delete(Fixture))
+        session.commit()
+    assert window(db, "alerts").window_start == D5
 
 
 def test_a_window_longer_than_the_lookback_starts_at_the_deadline_minus_the_lookback(db):
-    world(db, {5: D6 - timedelta(days=14), 6: D6})
+    seed_reference(db, {5: D6 - timedelta(days=14), 6: D6})
+    set_members(db, ["listed"])
     claim(db, 1, D6 - timedelta(days=10))
     claim(db, 2, D6 - timedelta(days=6))
     queries = build(db)
@@ -187,10 +198,11 @@ def test_claimed_ids_equal_sql_claims(db):
     claim(db, 4, IN_WINDOW, author="other")
     queries = build(db)
     assert len(queries) == 2
+    assert {c.x_id for q in queries for c in q.claimed} == {2, 3}
     for query in queries:
         ref = PlayerRef(SEASON, query.player.fpl_id, query.player.web_name, query.player.team)
         with Session(db) as session:
-            expected = {c.post.x_id for c in sql_claims(session, ref, D5, D6)}
+            expected = {c.post.x_id for c in sql_claims(session, ref, query.window_start, D6)}
         assert {c.x_id for c in query.claimed} == expected
 
 
@@ -261,7 +273,7 @@ def test_the_cli_writes_player_queries_keeps_free_ones_and_refuses_existing(db, 
     result = CliRunner().invoke(app, args, obj=_deps(db))
     assert result.exit_code == 0, result.output
     assert "player queries: 1" in result.stdout
-    assert "claimed posts: 2  stale: 1" in result.stdout
+    assert "claimed posts: 1  stale: 0" in result.stdout
     assert "players with an initial: 0" in result.stdout
     assert "1 claimed posts are not source posts" in result.stdout
     loaded = load_queries(tmp_path / "queries.jsonl")

@@ -103,7 +103,7 @@ with one change in the unit of a call: **one call per query** (see below). Comma
 
 ```bash
 # 1. Build the set (read-only on the Compose database)
-uv run python -m app.retrieval.evaluation export-corpus --until 2026-10-10T18:30
+uv run python -m app.retrieval.evaluation export-corpus --until 2026-10-10T10:00Z
 uv run python -m app.retrieval.evaluation build-player-slice --gameweek 6 [--window after-last-match]
 uv run python -m app.retrieval.evaluation carry-v1          # v1's queries and labels as the free slice
 
@@ -128,6 +128,14 @@ uv run python -m app.retrieval.evaluation evaluate --split test --reference-judg
     --embedding-model MODEL
 uv run python -m app.retrieval.evaluation compare evals/retrieval/results/test-v2-*.json
 ```
+
+- **The `free` slice is not judged until Stage 4** (BACKLOG #56): it decides nothing in production
+  today. For set v2 only the `player` slice's numbers count: `evaluate` and `compare` still print a
+  `free` table, which is unjudged and to be ignored.
+- **The `alerts` window rule now follows the production floor** (DECISIONS 2026-10-22: the
+  previous gameweek's last match plus 2 hours, counting only matches that have ended). A rebuild
+  of set v2's `player` slice would therefore give other windows than the frozen set, whose
+  windows were built with the old rule (the previous deadline).
 
 - **Pooling extends, it never restarts.** `export-judge-inputs` pools what the configured runs
   would show: for the `player` slice the judge's cut at the largest depth of each ranking

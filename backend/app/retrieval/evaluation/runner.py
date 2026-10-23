@@ -256,6 +256,7 @@ def _format_row(row: PlayerRow) -> dict[str, Any]:
         "depth": row.depth,
         "queries": m.queries,
         "recall_at_cut": m.recall_at_cut,
+        "recall_at_depth": m.recall_at_depth,
         "recall_at_10": m.recall_at_10,
         "empty_cuts_with_miss": m.empty_cuts_with_miss,
         "unjudged_share": m.unjudged_share,
@@ -467,14 +468,14 @@ def _fmt(value: float | None) -> str:
 
 def format_player_table(rows: Sequence[PlayerRow], counts: PlayerCounts) -> str:
     lines = [
-        f"{'mode':<10}{'variant':<11}{'depth':>6}{'n':>5}{'recall@cut':>12}{'recall@10':>11}"
-        f"{'empty cuts':>12}{'unjudged':>10}"
+        f"{'mode':<10}{'variant':<11}{'depth':>6}{'n':>5}{'recall@cut':>12}{'recall@depth':>14}"
+        f"{'recall@10':>11}{'empty cuts':>12}{'unjudged':>10}"
     ]
     for row in rows:
         m = row.metrics
         lines.append(
             f"{row.mode:<10}{row.variant:<11}{row.depth:>6}{m.queries:>5}"
-            f"{_fmt(m.recall_at_cut):>12}{_fmt(m.recall_at_10):>11}"
+            f"{_fmt(m.recall_at_cut):>12}{_fmt(m.recall_at_depth):>14}{_fmt(m.recall_at_10):>11}"
             f"{m.empty_cuts_with_miss:>12}{_fmt(m.unjudged_share):>10}"
         )
     lines.append(
