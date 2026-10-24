@@ -357,3 +357,29 @@ def test_reextract_still_selects_a_context_post(db_session):
 
     assert [p.x_id for p in posts_for_reextract(db_session, x_id=1)] == [1]
     assert [p.x_id for p in posts_for_reextract(db_session, since=NOW)] == [1]
+
+
+def test_save_extraction_stores_the_match_check_answer(db_session):
+    _seed_player(db_session, fpl_id=10)
+    db_session.add(_tweet(1, NOW))
+    db_session.commit()
+
+    def event(mention, answer):
+        return LinkedEvent(
+            mention=mention,
+            team=None,
+            player_season=SEASON,
+            player_fpl_id=10,
+            event_type="benched",
+            certainty="likely",
+            for_next_pl_match=answer,
+        )
+
+    save_extraction(db_session, _record(1), [event("A", True), event("B", False), event("C", None)])
+
+    [current] = current_extractions(db_session, x_ids=[1])
+    assert {e.mention: e.for_next_pl_match for e in current.events} == {
+        "A": True,
+        "B": False,
+        "C": None,
+    }

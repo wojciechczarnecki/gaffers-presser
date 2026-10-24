@@ -43,6 +43,7 @@ class LinkedEvent:
     player_fpl_id: int | None
     event_type: EventType
     certainty: Certainty
+    for_next_pl_match: bool | None = None
 
 
 @dataclass(frozen=True)

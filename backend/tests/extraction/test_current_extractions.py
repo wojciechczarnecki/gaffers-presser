@@ -50,6 +50,7 @@ def _event(
     fpl_id: int | None = 7,
     mention: str = "Saka",
     certainty: str = "likely",
+    for_next_pl_match: bool | None = None,
 ) -> LinkedEvent:
     return LinkedEvent(
         mention=mention,
@@ -58,6 +59,7 @@ def _event(
         player_fpl_id=fpl_id,
         event_type=event_type,
         certainty=certainty,
+        for_next_pl_match=for_next_pl_match,
     )
 
 
@@ -326,3 +328,63 @@ def test_a_post_left_with_no_fresh_event_keeps_its_row_without_events(db_session
     [row] = current_extractions(db_session, fresh_lineups_only=True)
 
     assert row.events == []
+
+
+def _seed_next_match(session, kickoff_in: timedelta = timedelta(hours=10)) -> None:
+    _seed(session)
+    session.add(Team(season=SEASON, fpl_id=2, name="Chelsea", short_name="CHE"))
+    session.flush()
+    session.add(_fixture(1, NOW + kickoff_in))
+    session.add(_tweet(1, NOW, text="Saka starts"))
+    session.commit()
+
+
+def test_fresh_lineups_only_drops_a_lineup_the_check_answered_false(db_session):
+    _seed_next_match(db_session)
+    save_extraction(
+        db_session,
+        _record(1),
+        [
+            _event("benched", certainty="rumour", for_next_pl_match=False),
+            _event("confirmed_starter", certainty="confirmed", for_next_pl_match=False),
+            _event("out", certainty="confirmed", for_next_pl_match=False),
+        ],
+    )
+
+    [row] = current_extractions(db_session, fresh_lineups_only=True)
+
+    assert [(e.event_type, e.for_next_pl_match) for e in row.events] == [("out", False)]
+
+
+def test_null_and_true_answers_meet_the_lead_filter(db_session):
+    _seed_next_match(db_session, kickoff_in=timedelta(days=4))
+    save_extraction(
+        db_session,
+        _record(1),
+        [
+            _event("benched", certainty="confirmed", for_next_pl_match=None),
+            _event("benched", certainty="confirmed", for_next_pl_match=True),
+            _event("benched", certainty="likely", for_next_pl_match=True),
+            _event("confirmed_starter", certainty="likely", for_next_pl_match=None),
+        ],
+    )
+
+    [row] = current_extractions(db_session, fresh_lineups_only=True)
+
+    assert [(e.certainty, e.for_next_pl_match) for e in row.events] == [
+        ("likely", True),
+        ("likely", None),
+    ]
+
+
+def test_unfiltered_read_returns_every_event(db_session):
+    _seed_next_match(db_session)
+    save_extraction(
+        db_session,
+        _record(1),
+        [_event("benched", for_next_pl_match=False), _event("benched", for_next_pl_match=None)],
+    )
+
+    [row] = current_extractions(db_session)
+
+    assert [e.for_next_pl_match for e in row.events] == [False, None]

@@ -393,7 +393,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/db/test_migrations.py tests/test_docs.py -k "migration or 0014"`,
       then Verify. `iterations: 0`
-- [ ] 3. **The read-time predicate and storage (AC5 storage, AC7, AC19 predicate).** Files:
+- [x] 3. **The read-time predicate and storage (AC5 storage, AC7, AC19 predicate).** Files:
       - new: `app/extraction/lineups.py`;
       - changed: `app/extraction/store.py` (it imports `LINEUP_EVENTS`, `LINEUP_MAX_LEAD` and
         `is_stale_lineup` from `lineups`, and `kept_at_read` replaces the
@@ -419,7 +419,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/extraction/test_lineups.py tests/extraction/test_current_extractions.py tests/extraction/test_store.py tests/alerts tests/corroboration -n auto`,
-      then Verify.
+      then Verify. `iterations: 1`
 - [ ] 4. **Fixture data (AC4 data, AC14 snapshot format).** Files:
       - new: `app/extraction/fixtures.py` (approach item 4);
       - changed: `app/extraction/linking.py` (`PlayerIndex.player(fpl_id)`).
