@@ -82,7 +82,7 @@ class Files:
         )
 
     def run(self, *actions, extra=()):
-        args = ["review", "--cases", str(self.cases), "--players", str(self.players), *extra]
+        args = ["review", "--set", str(self.cases.parent), *extra]
         return CliRunner().invoke(app, args, input="".join(f"{a}\n" for a in actions))
 
     def loaded(self):

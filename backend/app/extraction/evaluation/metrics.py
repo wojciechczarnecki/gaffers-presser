@@ -4,6 +4,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 
 from app.extraction.evaluation.cases import ExpectedEvent
+from app.extraction.lineups import LINEUP_EVENTS
 from app.extraction.linking import normalise
 from app.extraction.schemas import Certainty
 
@@ -14,10 +15,18 @@ MAX_FALSE_ALARM_RATE = 0.05
 MAX_MONTHLY_COST_PLN = 5.0
 
 
+class RawEvent(ExpectedEvent):
+    for_next_pl_match: bool | None = None
+    kept: bool = True
+    kept_by_lead_only: bool = True
+
+
 @dataclass(frozen=True)
 class CaseResult:
     expected: Sequence[ExpectedEvent]
     predicted: Sequence[ExpectedEvent]
+    raw_predicted: Sequence[RawEvent] = ()
+    other_match: bool = False
     latency_seconds: float | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
@@ -58,6 +67,12 @@ class Metrics:
     hosts: dict[str, int] = field(default_factory=dict)
     answered_models: dict[str, int] = field(default_factory=dict)
     thresholds_passed: dict[str, bool] = field(default_factory=dict)
+    other_match_cases: int = 0
+    other_match_false_alarms: int = 0
+    other_match_false_alarm_rate: float = 0.0
+    lineups_dropped_by_check: int = 0
+    other_match_with_raw_events: int = 0
+    other_match_caught_by_lead_only: int = 0
 
 
 def threshold_flags(
@@ -190,6 +205,11 @@ def compute_metrics(
     certainty_matched = 0
     certainty_correct = 0
     confusion = {e: {p: 0 for p in CERTAINTY_LEVELS} for e in CERTAINTY_LEVELS}
+    other_match_cases = 0
+    other_match_false_alarms = 0
+    lineups_dropped = 0
+    other_match_raw = 0
+    other_match_lead_only = 0
 
     for result in results:
         expected_total += len(result.expected)
@@ -205,6 +225,19 @@ def compute_metrics(
         for exp, pred in _link_pairs(result.expected, result.predicted):
             linking_paired += 1
             linking_correct += exp.fpl_id == pred.fpl_id
+
+        if result.raw_predicted:
+            for exp, raw in _match_pairs(result.expected, result.raw_predicted):
+                lineups_dropped += (
+                    exp.event_type in LINEUP_EVENTS and raw.for_next_pl_match is False
+                )
+
+        if result.other_match and result.error_class is None:
+            other_match_cases += 1
+            other_match_false_alarms += bool(result.predicted)
+            if result.raw_predicted:
+                other_match_raw += 1
+                other_match_lead_only += not any(e.kept_by_lead_only for e in result.raw_predicted)
 
         if not result.expected and result.error_class is None:
             empty_cases += 1
@@ -253,4 +286,10 @@ def compute_metrics(
         hosts=_counts(r.host for r in results),
         answered_models=_counts(r.answered_model for r in results),
         thresholds_passed=flags,
+        other_match_cases=other_match_cases,
+        other_match_false_alarms=other_match_false_alarms,
+        other_match_false_alarm_rate=_ratio(other_match_false_alarms, other_match_cases),
+        lineups_dropped_by_check=lineups_dropped,
+        other_match_with_raw_events=other_match_raw,
+        other_match_caught_by_lead_only=other_match_lead_only,
     )

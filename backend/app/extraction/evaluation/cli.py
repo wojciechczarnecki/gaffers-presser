@@ -31,6 +31,15 @@ from app.extraction.evaluation.cases import (
     write_cases,
 )
 from app.extraction.evaluation.compare import compare_sets
+from app.extraction.evaluation.dataset import (
+    CASES_FILE,
+    DEFAULT_RESULTS_DIR,
+    DEFAULT_SET_DIR,
+    FIXTURES_FILE,
+    PLAYERS_FILE,
+    load_set,
+    players_path,
+)
 from app.extraction.evaluation.metrics import (
     MAX_FALSE_ALARM_RATE,
     MAX_MONTHLY_COST_PLN,
@@ -47,7 +56,7 @@ from app.extraction.evaluation.review import (
     run_editor,
 )
 from app.extraction.evaluation.runner import run_evaluation
-from app.extraction.fixtures import FixtureIndex, load_fixtures
+from app.extraction.fixtures import FixtureIndex, fixtures_snapshot, load_fixtures
 from app.extraction.flow import build_flow
 from app.extraction.linking import PlayerIndex, load_aliases, load_players, load_snapshot
 from app.extraction.service import run_with_retries
@@ -60,11 +69,13 @@ app = typer.Typer(
     add_completion=False, no_args_is_help=True, help="The extraction evaluation toolkit."
 )
 
+SetOption = Annotated[Path, typer.Option("--set", help="The evaluation set directory.")]
+
 
 @app.command("snapshot-players", help="Write the latest season's players and teams as JSON.")
 def snapshot_players(
     ctx: typer.Context,
-    output: Annotated[Path, typer.Option("--output")],
+    set_dir: SetOption = DEFAULT_SET_DIR,
 ) -> None:
     deps = get_deps(ctx)
     with Session(db_engine(deps)) as session:
@@ -76,15 +87,34 @@ def snapshot_players(
         "players": [asdict(p) for p in sorted(players, key=lambda p: p.fpl_id)],
         "teams": [asdict(t) for t in sorted(teams, key=lambda t: t.fpl_id)],
     }
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n")
+    set_dir.mkdir(parents=True, exist_ok=True)
+    (set_dir / PLAYERS_FILE).write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n")
     typer.echo(f"players: {len(players)}")
+
+
+@app.command("snapshot-fixtures", help="Write the current season's fixtures as JSON.")
+def snapshot_fixtures(
+    ctx: typer.Context,
+    set_dir: SetOption = DEFAULT_SET_DIR,
+) -> None:
+    deps = get_deps(ctx)
+    with Session(db_engine(deps)) as session:
+        fixtures = load_fixtures(session)
+    if not fixtures:
+        raise fail("no fixtures in the database")
+    set_dir.mkdir(parents=True, exist_ok=True)
+    payload = fixtures_snapshot(fixtures)
+    (set_dir / FIXTURES_FILE).write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n")
+    typer.echo(f"fixtures: {len(fixtures)}")
 
 
 @app.command(help="Pre-label local posts with a model into candidate evaluation cases.")
 def prelabel(
     ctx: typer.Context,
-    output: Annotated[Path, typer.Option("--output")],
+    set_dir: SetOption = DEFAULT_SET_DIR,
+    output: Annotated[
+        Path | None, typer.Option("--output", help="Default: cases.jsonl of the set.")
+    ] = None,
     since: str | None = typer.Option(None, "--since"),
     until: str | None = typer.Option(None, "--until"),
     limit: int | None = typer.Option(None, "--limit"),
@@ -92,6 +122,7 @@ def prelabel(
     eval_set: Annotated[Path | None, typer.Option("--eval-set")] = None,
 ) -> None:
     deps = get_deps(ctx)
+    output = output or set_dir / CASES_FILE
     try:
         spec = deps.build_spec(model, fallback=False)
     except AppError as exc:
@@ -157,10 +188,6 @@ def prelabel(
     typer.echo(f"failures: {failures}")
 
 
-EVALS_DIR = Path(__file__).resolve().parents[3] / "evals" / "extraction"
-DEFAULT_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
-DEFAULT_PLAYERS_PATH = EVALS_DIR / "v1" / "players-2026-27.json"
-DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
 THRESHOLD_LABELS = {
     "f1": f"f1 >= {MIN_F1:g}",
     "linking_accuracy": f"linking accuracy >= {MIN_LINKING_ACCURACY:g}",
@@ -178,14 +205,17 @@ def evaluate(
     model: str | None = typer.Option(None, "--model"),
     run_name: str | None = typer.Option(None, "--run-name"),
     posts_per_month: float = typer.Option(1050.0, "--posts-per-month"),
-    cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
-    players_path: Annotated[Path, typer.Option("--players")] = DEFAULT_PLAYERS_PATH,
+    set_dir: SetOption = DEFAULT_SET_DIR,
     output_dir: Annotated[Path | None, typer.Option("--output-dir")] = None,
     force: Annotated[bool, typer.Option("--force")] = False,
 ) -> None:
     deps = get_deps(ctx)
 
-    selected = [case for case in load_cases(cases_path) if case.split == split]
+    try:
+        eval_set = load_set(set_dir)
+    except (OSError, ValueError) as exc:
+        raise fail(f"cannot read the evaluation set {set_dir}: {exc}") from None
+    selected = [case for case in eval_set.cases if case.split == split]
     unreviewed = [case for case in selected if not case.reviewed]
     if unreviewed:
         raise fail(f"{len(unreviewed)} cases of the {split} split are not reviewed")
@@ -204,15 +234,14 @@ def evaluate(
         raise fail(str(exc)) from None
 
     name = run_name or _default_run_name(split, spec, deps.clock.now())
-    output_dir = output_dir or default_output_dir(split)
+    output_dir = output_dir or default_output_dir(split, eval_set.version)
     result_path = output_dir / f"{name}.json"
     try:
         check_new_result(result_path, force)
     except ResultExistsError as exc:
         raise fail(str(exc)) from None
-    players, teams = load_snapshot(players_path)
     player_aliases, team_aliases = load_aliases()
-    index = PlayerIndex(players, teams, player_aliases, team_aliases)
+    index = PlayerIndex(eval_set.players, eval_set.teams, player_aliases, team_aliases)
     tracer = make_extraction_tracer(resolve_tracing(deps.settings))
     host_lookup = deps.host_lookup()
     try:
@@ -227,6 +256,7 @@ def evaluate(
             posts_per_month=posts_per_month,
             usd_pln_rate=usd_pln_rate,
             host_lookup=host_lookup,
+            fixtures=FixtureIndex(eval_set.fixtures),
         )
     finally:
         tracer.flush()
@@ -236,7 +266,7 @@ def evaluate(
 
     data = report.to_json_dict()
     data["header"] = make_header(
-        set_version=cases_path.parent.name,
+        set_version=eval_set.version,
         model=report.model,
         prompt_version=report.prompt_version,
         reasoning_effort=report.settings.reasoning_effort if report.settings else None,
@@ -252,6 +282,11 @@ def evaluate(
     typer.echo(f"linking accuracy: {m.linking_accuracy:.3f} ({m.linking_paired} paired)")
     typer.echo(f"false alarm rate: {m.false_alarm_rate:.3f}")
     typer.echo(f"certainty accuracy: {m.certainty_accuracy:.3f}")
+    typer.echo(
+        f"other match false alarms: {m.other_match_false_alarms} of {m.other_match_cases} "
+        f"({m.other_match_false_alarm_rate:.3f})"
+    )
+    typer.echo(f"line-ups dropped by the check: {m.lineups_dropped_by_check}")
     typer.echo(f"latency p50/p95: {_fmt(m.latency_p50_seconds)} / {_fmt(m.latency_p95_seconds)} s")
     typer.echo(f"mean tokens in/out: {_fmt(m.mean_input_tokens)} / {_fmt(m.mean_output_tokens)}")
     typer.echo(f"mean reasoning tokens: {_fmt(m.mean_reasoning_tokens)}")
@@ -266,9 +301,10 @@ def evaluate(
     typer.echo(f"results: {result_path}")
 
 
-def default_output_dir(split: str) -> Path:
-    # Dev runs are working iterations: results/dev/ is gitignored.
-    return DEFAULT_RESULTS_DIR / "dev" if split == "dev" else DEFAULT_RESULTS_DIR
+def default_output_dir(split: str, set_version: str) -> Path:
+    # Dev runs are working iterations: results/dev/ and results/<set>/dev/ are gitignored.
+    base = DEFAULT_RESULTS_DIR if set_version == "v1" else DEFAULT_RESULTS_DIR / set_version
+    return base / "dev" if split == "dev" else base
 
 
 def _run_total(data: dict, metrics_key: str, case_key: str) -> float:
@@ -328,13 +364,14 @@ def _read_baseline(cases_path: Path, revision: str) -> list[EvalCase]:
     "compare-labels", help="Compare the reviewed set with the pre-labelled set at a revision."
 )
 def compare_labels(
-    cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
+    set_dir: SetOption = DEFAULT_SET_DIR,
     revision: Annotated[str, typer.Option("--revision")] = DEFAULT_BASELINE_REVISION,
     baseline_path: Annotated[
         Path | None, typer.Option("--baseline", help="A cases file instead of a git revision.")
     ] = None,
 ) -> None:
     # Needs no database and no LLM key, so it never builds ExtractionCliDeps.
+    cases_path = set_dir / CASES_FILE
     reviewed = load_cases(cases_path)
     baseline = load_cases(baseline_path) if baseline_path else _read_baseline(cases_path, revision)
     for comparison in compare_sets(reviewed, baseline):
@@ -362,16 +399,16 @@ REVIEW_ACTIONS = "[a]ccept  [e]dit  [f]ind player  [s]kip  [q]uit"
 
 @app.command(help="Review evaluation cases one by one: accept, edit or skip them.")
 def review(
-    cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
-    players_path: Annotated[Path, typer.Option("--players")] = DEFAULT_PLAYERS_PATH,
+    set_dir: SetOption = DEFAULT_SET_DIR,
     split: str | None = typer.Option(None, "--split"),
     case_id: str | None = typer.Option(None, "--id", help="One case, even a reviewed one."),
 ) -> None:
     # Needs no database and no LLM key, so it never builds ExtractionCliDeps.
     if split not in (None, "dev", "test"):
         raise fail("--split must be dev or test")
+    cases_path = set_dir / CASES_FILE
     cases = load_cases(cases_path)
-    players, teams = load_snapshot(players_path)
+    players, teams = load_snapshot(players_path(set_dir))
     directory = PlayerDirectory(players, teams, *load_aliases())
 
     if case_id is not None:

@@ -276,3 +276,56 @@ def test_totals_sum_case_costs():
         CaseResult(expected=[], predicted=[]),
     ]
     assert run(results).total_cost_usd == pytest.approx(0.75)
+
+
+def raw(
+    mention="Haaland", fpl_id=5, event_type="benched", certainty="likely", answer=None, kept=True
+):
+    from app.extraction.evaluation.metrics import RawEvent
+
+    return RawEvent(
+        mention=mention,
+        fpl_id=fpl_id,
+        event_type=event_type,
+        certainty=certainty,
+        for_next_pl_match=answer,
+        kept=kept,
+        kept_by_lead_only=True,
+    )
+
+
+def test_other_match_false_alarms():
+    metrics = run(
+        [
+            CaseResult(expected=[], predicted=[ev(event_type="benched")], other_match=True),
+            CaseResult(expected=[], predicted=[], other_match=True),
+            CaseResult(expected=[], predicted=[], other_match=True, error_class="Boom"),
+            CaseResult(expected=[], predicted=[ev(event_type="benched")]),
+        ]
+    )
+    assert metrics.other_match_cases == 2
+    assert metrics.other_match_false_alarms == 1
+    assert metrics.other_match_false_alarm_rate == 0.5
+    assert metrics.false_alarm_rate == pytest.approx(2 / 3)
+
+
+def test_lineups_dropped_by_check():
+    expected = [ev(event_type="benched"), ev("Saka", 7, event_type="out")]
+    metrics = run(
+        [
+            CaseResult(
+                expected=expected,
+                predicted=[],
+                raw_predicted=[
+                    raw(answer=False, kept=False),
+                    raw("Saka", 7, event_type="out", answer=False),
+                ],
+            ),
+            CaseResult(
+                expected=[ev(event_type="benched")],
+                predicted=[ev(event_type="benched")],
+                raw_predicted=[raw(answer=True)],
+            ),
+        ]
+    )
+    assert metrics.lineups_dropped_by_check == 1

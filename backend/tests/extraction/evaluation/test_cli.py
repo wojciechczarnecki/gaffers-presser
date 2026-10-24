@@ -14,9 +14,10 @@ from app.extraction.config import ExtractionSettings
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
 from app.extraction.evaluation.cli import DEFAULT_RESULTS_DIR, app, default_output_dir
 from app.extraction.evaluation.runner import run_evaluation
+from app.extraction.fixtures import load_fixtures_snapshot
 from app.extraction.linking import PlayerIndex, PlayerRecord, load_snapshot
 from app.extraction.schemas import ExtractedEvent, ExtractionOutput
-from app.fpl.models.reference import Player, Season, Team
+from app.fpl.models.reference import Fixture, Player, Season, Team
 from app.llm.chat import ChatModelSpec
 from app.llm.models import ModelSettings
 from app.llm.pricing import Price
@@ -112,10 +113,10 @@ def test_snapshot_players_writes_the_latest_season(db, tmp_path):
         _seed_players(session, "2025/26", 1, "Old")
         _seed_players(session, "2026/27", 2, "Current")
     build_spec, _ = _build_spec()
-    output = tmp_path / "players.json"
+    output = tmp_path / "set" / "players.json"
 
     result = CliRunner().invoke(
-        app, ["snapshot-players", "--output", str(output)], obj=_deps(db, build_spec)
+        app, ["snapshot-players", "--set", str(output.parent)], obj=_deps(db, build_spec)
     )
 
     assert result.exit_code == 0, result.output
@@ -327,10 +328,8 @@ class _Files:
             split,
             "--model",
             "m",
-            "--cases",
-            str(self.cases),
-            "--players",
-            str(self.players),
+            "--set",
+            str(self.cases.parent),
             "--output-dir",
             str(self.results),
             *extra,
@@ -691,7 +690,7 @@ def test_compare_labels_with_baseline_file(tmp_path):
     write_cases(base, baseline)
 
     result = CliRunner().invoke(
-        app, ["compare-labels", "--cases", str(cases), "--baseline", str(base)]
+        app, ["compare-labels", "--set", str(cases.parent), "--baseline", str(base)]
     )
 
     assert result.exit_code == 0, result.output
@@ -728,7 +727,7 @@ def test_compare_labels_at_git_revision(tmp_path):
     git("commit", "-q", "-m", "reviewed")
 
     result = CliRunner().invoke(
-        app, ["compare-labels", "--cases", str(cases), "--revision", "HEAD~1"]
+        app, ["compare-labels", "--set", str(cases.parent), "--revision", "HEAD~1"]
     )
 
     assert result.exit_code == 0, result.output
@@ -743,7 +742,7 @@ def test_compare_labels_unknown_revision_fails(tmp_path):
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True, capture_output=True)
 
     result = CliRunner().invoke(
-        app, ["compare-labels", "--cases", str(cases), "--revision", "nope"]
+        app, ["compare-labels", "--set", str(cases.parent), "--revision", "nope"]
     )
 
     assert result.exit_code == 1
@@ -751,8 +750,10 @@ def test_compare_labels_unknown_revision_fails(tmp_path):
 
 
 def test_dev_runs_default_to_the_ignored_directory():
-    assert default_output_dir("dev") == DEFAULT_RESULTS_DIR / "dev"
-    assert default_output_dir("test") == DEFAULT_RESULTS_DIR
+    assert default_output_dir("dev", "v1") == DEFAULT_RESULTS_DIR / "dev"
+    assert default_output_dir("test", "v1") == DEFAULT_RESULTS_DIR
+    assert default_output_dir("dev", "v2") == DEFAULT_RESULTS_DIR / "v2" / "dev"
+    assert default_output_dir("test", "v2") == DEFAULT_RESULTS_DIR / "v2"
 
     def ignored(path: str) -> int:
         return subprocess.run(
@@ -763,11 +764,15 @@ def test_dev_runs_default_to_the_ignored_directory():
 
     assert ignored("backend/evals/extraction/results/dev/x.json") == 0
     assert ignored("backend/evals/extraction/results/x.json") == 1
+    assert ignored("backend/evals/extraction/results/v2/dev/x.json") == 0
+    assert ignored("backend/evals/extraction/results/v2/x.json") == 1
 
 
 def test_evaluate_dev_writes_into_the_dev_directory(tmp_path, monkeypatch):
     monkeypatch.setattr("app.extraction.evaluation.cli.DEFAULT_RESULTS_DIR", tmp_path / "results")
-    files = _Files(tmp_path, [_eval_case("1", "dev")])
+    set_dir = tmp_path / "v1"
+    set_dir.mkdir()
+    files = _Files(set_dir, [_eval_case("1", "dev")])
     build_spec, _ = _build_spec(_haaland_out(), model="m")
     args = files.args("--run-name", "d1", split="dev")
     del args[args.index("--output-dir") : args.index("--output-dir") + 2]
@@ -776,6 +781,27 @@ def test_evaluate_dev_writes_into_the_dev_directory(tmp_path, monkeypatch):
 
     assert result.exit_code == 0, result.output
     assert (tmp_path / "results" / "dev" / "d1.json").exists()
+
+
+def test_v2_dev_runs_go_to_the_set_dev_directory(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.extraction.evaluation.cli.DEFAULT_RESULTS_DIR", tmp_path / "results")
+    set_dir = tmp_path / "v2"
+    set_dir.mkdir()
+    files = _Files(set_dir, [_eval_case("1", "dev"), _eval_case("2", "test")])
+    args = files.args("--run-name", "d2", split="dev")
+    del args[args.index("--output-dir") : args.index("--output-dir") + 2]
+    build_spec, _ = _build_spec(_haaland_out(), model="m")
+
+    result = CliRunner().invoke(app, args, obj=_no_db_deps(build_spec))
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "results" / "v2" / "dev" / "d2.json").exists()
+
+    args = files.args("--run-name", "t2", split="test")
+    del args[args.index("--output-dir") : args.index("--output-dir") + 2]
+    build_spec, _ = _build_spec(_haaland_out(), model="m")
+    result = CliRunner().invoke(app, args, obj=_no_db_deps(build_spec))
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "results" / "v2" / "t2.json").exists()
 
 
 def _run_file(directory, name, cost, reported=None, with_totals=True, split="test"):
@@ -852,3 +878,144 @@ def test_provider_option_removed(args):
     build_spec, _ = _build_spec()
     result = CliRunner().invoke(app, [*args, "--provider", "openai"], obj=_no_db_deps(build_spec))
     assert result.exit_code == 2
+
+
+def _write_v2_set(set_dir, cases, tags=None):
+    set_dir.mkdir(exist_ok=True)
+    write_cases(set_dir / "cases.jsonl", cases)
+    _snapshot(set_dir / "players.json")
+    (set_dir / "fixtures.json").write_text(
+        json.dumps(
+            {
+                "season": "2026/27",
+                "fixtures": [
+                    {
+                        "season": "2026/27",
+                        "fpl_id": 1,
+                        "gameweek": 1,
+                        "kickoff_at": (NOW + timedelta(days=2)).isoformat(),
+                        "team_h_fpl_id": 1,
+                        "team_a_fpl_id": 2,
+                    }
+                ],
+            }
+        )
+    )
+    (set_dir / "set.json").write_text(json.dumps({"version": "v2"}))
+
+
+def _benched_case(case_id, split="test", tags=()):
+    return _eval_case(case_id, split).model_copy(
+        update={
+            "tags": list(tags),
+            "expected_events": []
+            if "other_match_lineup" in tags
+            else [
+                ExpectedEvent(mention="Haaland", fpl_id=5, event_type="benched", certainty="likely")
+            ],
+        }
+    )
+
+
+def _benched_out() -> ExtractionOutput:
+    return ExtractionOutput(
+        events=[
+            ExtractedEvent(player="Haaland", team=None, event_type="benched", certainty="likely")
+        ]
+    )
+
+
+def test_evaluate_reads_the_set_directory_without_a_database(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.extraction.evaluation.cli.DEFAULT_RESULTS_DIR", tmp_path / "results")
+    set_dir = tmp_path / "v2"
+    _write_v2_set(
+        set_dir,
+        [_benched_case("1"), _benched_case("2", tags=["other_match_lineup"])],
+    )
+    # the first reply is the extraction, the second the match check of case 1, and so on
+    from app.extraction.schemas import MatchCheck
+
+    build_spec, _ = _build_spec(
+        _benched_out(),
+        MatchCheck(for_next_pl_match=True),
+        _benched_out(),
+        MatchCheck(for_next_pl_match=False),
+        model="m",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        ["evaluate", "--split", "test", "--model", "m", "--set", str(set_dir), "--run-name", "r"],
+        obj=_no_db_deps(build_spec),
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "other match false alarms: 0 of 1 (0.000)" in result.stdout
+    assert "line-ups dropped by the check: 0" in result.stdout
+    data = json.loads((tmp_path / "results" / "v2" / "r.json").read_text())
+    by_id = {c["id"]: c for c in data["case_results"]}
+    assert by_id["1"]["predicted"][0]["event_type"] == "benched"
+    assert by_id["2"]["predicted"] == []
+    assert by_id["2"]["raw_predicted"][0]["for_next_pl_match"] is False
+    assert by_id["2"]["other_match"] is True
+    assert data["metrics"]["other_match_cases"] == 1
+
+
+def test_evaluate_header_names_the_three_prompts(tmp_path):
+    set_dir = tmp_path / "set"
+    _write_v2_set(set_dir, [_benched_case("1")])
+    build_spec, _ = _build_spec(_haaland_out(), model="m")
+    results = tmp_path / "results"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "evaluate",
+            "--split",
+            "test",
+            "--model",
+            "m",
+            "--set",
+            str(set_dir),
+            "--run-name",
+            "h",
+            "--output-dir",
+            str(results),
+        ],
+        obj=_no_db_deps(build_spec),
+    )
+
+    assert result.exit_code == 0, result.output
+    header = json.loads((results / "h.json").read_text())["header"]
+    assert header["set_version"] == "v2"
+    for part in ("extraction@", "link_disambiguation@1", "match_check@1"):
+        assert part in header["prompt_version"]
+
+
+def test_snapshot_fixtures_writes_the_season(db, tmp_path):
+    with Session(db) as session:
+        _seed_players(session, "2025/26", 1, "Old")
+        _seed_players(session, "2026/27", 2, "Current")
+        session.add(Team(season="2026/27", fpl_id=2, name="Team Two", short_name="TWO"))
+        session.flush()
+        for season, fpl_id in (("2025/26", 1), ("2026/27", 2)):
+            session.add(
+                Fixture(
+                    season=season,
+                    fpl_id=fpl_id,
+                    kickoff_at=NOW,
+                    team_h_fpl_id=1,
+                    team_a_fpl_id=1 if season == "2025/26" else 2,
+                    finished=False,
+                )
+            )
+        session.commit()
+    build_spec, _ = _build_spec()
+
+    result = CliRunner().invoke(
+        app, ["snapshot-fixtures", "--set", str(tmp_path)], obj=_deps(db, build_spec)
+    )
+
+    assert result.exit_code == 0, result.output
+    fixtures = load_fixtures_snapshot(tmp_path / "fixtures.json")
+    assert [(f.season, f.fpl_id, f.kickoff_at) for f in fixtures] == [("2026/27", 2, NOW)]

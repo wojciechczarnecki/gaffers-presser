@@ -6,10 +6,12 @@ from typing import Any
 
 from app.core.clock import Clock
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent
-from app.extraction.evaluation.metrics import CaseResult, Metrics, compute_metrics
+from app.extraction.evaluation.metrics import CaseResult, Metrics, RawEvent, compute_metrics
+from app.extraction.fixtures import FixtureIndex
 from app.extraction.flow import PROMPT_VERSION, Flow, build_flow
+from app.extraction.lineups import kept_at_read
 from app.extraction.linking import PlayerIndex
-from app.extraction.schemas import FlowResult, PostInput
+from app.extraction.schemas import FlowResult, LinkedEvent, PostInput
 from app.extraction.service import run_with_retries
 from app.extraction.tracing import ExtractionTracer, span_input, span_output
 from app.llm.chat import ChatModelSpec
@@ -65,6 +67,8 @@ class EvaluationReport:
                     "generation_id": outcome.result.generation_id,
                     "expected": [e.model_dump() for e in outcome.result.expected],
                     "predicted": [e.model_dump() for e in outcome.result.predicted],
+                    "raw_predicted": [e.model_dump() for e in outcome.result.raw_predicted],
+                    "other_match": outcome.result.other_match,
                 }
                 for outcome in self.outcomes
             ],
@@ -96,6 +100,37 @@ def _post_from_case(case: EvalCase) -> PostInput:
     )
 
 
+def _raw_events(
+    events: Sequence[LinkedEvent], case: EvalCase, index: PlayerIndex, fixtures: FixtureIndex
+) -> list[RawEvent]:
+    raw = []
+    for event in events:
+        player = index.player(event.player_fpl_id) if event.player_fpl_id is not None else None
+        next_kickoff = (
+            fixtures.next_kickoff(player.team_fpl_id, case.created_at) if player else None
+        )
+        raw.append(
+            RawEvent(
+                mention=event.mention,
+                fpl_id=event.player_fpl_id,
+                event_type=event.event_type,
+                certainty=event.certainty,
+                for_next_pl_match=event.for_next_pl_match,
+                kept=kept_at_read(
+                    event.event_type,
+                    event.certainty,
+                    case.created_at,
+                    next_kickoff,
+                    event.for_next_pl_match,
+                ),
+                kept_by_lead_only=kept_at_read(
+                    event.event_type, event.certainty, case.created_at, next_kickoff, None
+                ),
+            )
+        )
+    return raw
+
+
 def _with_host(outcome: CaseOutcome, host_lookup: Callable[[str], str | None]) -> CaseOutcome:
     result = outcome.result
     if result.host is not None or result.generation_id is None:
@@ -115,9 +150,11 @@ def run_evaluation(
     posts_per_month: float,
     usd_pln_rate: float,
     host_lookup: Callable[[str], str | None] | None = None,
+    fixtures: FixtureIndex | None = None,
 ) -> EvaluationReport:
     prices = load_prices()
-    flow = _TimedFlow(build_flow(spec, index, tracer, prices))
+    known_fixtures = fixtures or FixtureIndex([])
+    flow = _TimedFlow(build_flow(spec, index, tracer, prices, known_fixtures))
     stop_event = threading.Event()
     outcomes: list[CaseOutcome] = []
 
@@ -130,21 +167,30 @@ def run_evaluation(
         expected = list(case.expected_events)
         if retry.result is None:
             error_class = type(retry.error).__name__ if retry.error else "UnknownError"
-            result = CaseResult(expected=expected, predicted=[], error_class=error_class)
+            result = CaseResult(
+                expected=expected,
+                predicted=[],
+                error_class=error_class,
+                other_match="other_match_lineup" in case.tags,
+            )
         else:
             usage = retry.result.usage
             answered_model = retry.result.answered_model or spec.model
+            raw = _raw_events(retry.result.events, case, index, known_fixtures)
             result = CaseResult(
                 expected=expected,
                 predicted=[
                     ExpectedEvent(
                         mention=event.mention,
-                        fpl_id=event.player_fpl_id,
+                        fpl_id=event.fpl_id,
                         event_type=event.event_type,
                         certainty=event.certainty,
                     )
-                    for event in retry.result.events
+                    for event in raw
+                    if event.kept
                 ],
+                raw_predicted=raw,
+                other_match="other_match_lineup" in case.tags,
                 latency_seconds=flow.last_seconds,
                 input_tokens=usage.input_tokens,
                 output_tokens=usage.output_tokens,

@@ -477,7 +477,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/extraction tests/content -n auto`, then Verify. `iterations: 0`
-- [ ] 6. **The set directory, `snapshot-fixtures` and the evaluation on the whole flow (AC9
+- [x] 6. **The set directory, `snapshot-fixtures` and the evaluation on the whole flow (AC9
       header, AC14, AC19).** Files:
       - new: `app/extraction/evaluation/dataset.py` (`SetManifest`, `EvalSet`, `load_set`);
       - changed: `app/extraction/evaluation/cli.py` (`--set` on `snapshot-players`,
@@ -510,7 +510,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Adapt the moved evaluate tests to `--set`.
 
       Automatic verification:
-      `uv run pytest -q tests/extraction/evaluation -n auto`, then Verify.
+      `uv run pytest -q tests/extraction/evaluation -n auto`, then Verify. `iterations: 3`
 - [ ] 7. **The tag, the v2 composition and the listing of changed cases (AC12, AC13, AC25
       check).** Files: `app/extraction/evaluation/cases.py` (`other_match_lineup` in `Tag`,
       `composition_problems_v2`, the window constants with a comment naming the GW6 and GW7
@@ -968,6 +968,8 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 
 - `minor` — `tests/test_docs.py::test_backlog_window_row_and_017_018_renumbering` was already red on the branch (the SPEC commit removed "planned as 018" from the roadmap); step 1 changed its roadmap assertion to the SPEC link so Verify is green, and step 16 rewrites the test as the plan says.
 - `minor` — `app/extraction/cli.py` keeps a no-op `_callback`, because with `reextract` as the only command typer would otherwise collapse the group into that command.
+- `minor` — The `other_match_lineup` tag was added to `Tag` in step 6 instead of step 7, because the runner and its tests already use it; step 7 adds its composition rules.
+- `minor` — `prelabel` keeps `--output` (default `<set>/cases.jsonl`) and `--eval-set` beside the new `--set`, so the paid pre-labelling command keeps its shape; `PlayerIndex` also gained a `teams()` accessor for the judge's fixtures context.
 
 ## Final review
 
