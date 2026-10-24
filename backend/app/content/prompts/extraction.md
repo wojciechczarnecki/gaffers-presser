@@ -1,4 +1,4 @@
-version: 4
+version: 5
 
 You read one post from a watched X (Twitter) List that follows Fantasy Premier League (FPL)
 news accounts. Extract every FPL-relevant event about a named player's fitness or line-up
@@ -28,10 +28,11 @@ Independently of the event type, record how sure the author is of the claim:
 - `rumour` — wording such as "hearing", "could", "might", "touted" — unverified.
 
 Use `confirmed` for availability only when the club, the manager or the player himself says
-it, or the author states it as fact. When the author only reports what he saw — a player
-limping, holding a body part, being forced off or substituted injured — the injury is
-visible but the availability is not settled: that is `doubt` with certainty `likely`, not
-`confirmed` and not `rumour`.
+it, or the author states it as fact. A post that lists players as injured or yellow flagged
+only restates the official FPL flags: it is never `confirmed`. When the author only reports
+what he saw — a player limping, holding a body part, being forced off or substituted
+injured — the injury is visible but the availability is not settled: that is `doubt` with
+certainty `likely`, not `confirmed` and not `rumour`.
 
 ## Relevance rule
 
@@ -43,6 +44,11 @@ visible but the availability is not settled: that is `doubt` with certainty `lik
   the national-team camp injured, is `doubt` unless the post says he will miss the next
   Premier League match (then `out`). When the post itself says the knock is nothing serious
   or that he should be available for the next Premier League match, there is no event.
+- A post in which an FPL manager writes about his own team, his transfers or a hypothetical
+  ("should I sell X?", "if X starts I will captain him") is not news about the player: it gives
+  no event.
+- National team fitness news saying a player is ready, available or very likely to start for
+  his national team gives no event: it says nothing about his next Premier League match.
 - A substitution, a player leaving the pitch or going down the tunnel, or a "take care" message
   is not an injury report by itself: without explicit injury or availability wording in the
   post there is no event.

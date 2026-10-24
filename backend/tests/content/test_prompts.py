@@ -70,3 +70,11 @@ def test_retrieval_prompts_load_with_a_version(name):
     prompt = load_prompt(name)
     assert prompt.version >= 1
     assert prompt.text.strip()
+
+
+def test_extraction_prompt_v5_rules():
+    prompt = load_prompt("extraction")
+    normalised = " ".join(prompt.text.lower().split())
+    assert prompt.version == 5
+    for phrase in ("own team", "hypothetical", "national team", "flag", "never `confirmed`"):
+        assert phrase in normalised, phrase

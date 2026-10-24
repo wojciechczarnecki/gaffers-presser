@@ -570,7 +570,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/extraction/evaluation tests/test_session_judge.py -n auto`, then
       Verify. `iterations: 3`
-- [ ] 9. **Extraction prompt v5: the three #23 rules (AC11 prompt).** Files:
+- [x] 9. **Extraction prompt v5: the three #23 rules (AC11 prompt).** Files:
       `app/content/prompts/extraction.md`. Set `version: 5` and add:
       - to the relevance rule: an FPL manager writing about his own team, his transfers or a
         hypothetical gives no event;
@@ -584,7 +584,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       keywords "own team", "hypothetical", "national team", "flag").
 
       Automatic verification:
-      `uv run pytest -q tests/content tests/extraction/test_flow.py`, then Verify.
+      `uv run pytest -q tests/content tests/extraction/test_flow.py`, then Verify. `iterations: 0`
 - [ ] 10. **Build set v2 with session pre-labels (AC11–AC14 data, AC18).** The spec owner
       approved these read-only Compose reads (`DATABASE_URL` from `backend/.env`); no command
       here writes to Compose. Prefix every command with `env -u TWEET_SOURCE`.
