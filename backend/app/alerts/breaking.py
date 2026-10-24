@@ -61,7 +61,7 @@ def _candidates(
 ) -> list[tuple[CurrentExtraction, list[ListedPlayer]]]:
     found = []
     for row in current_extractions(
-        session, created_from=start, created_until=now, sources_only=True
+        session, created_from=start, created_until=now, sources_only=True, fresh_lineups_only=True
     ):
         if row.finished_at < since_extracted:
             continue

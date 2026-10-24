@@ -13,7 +13,15 @@ from app.llm.structured import StructuredCaller
 from app.retrieval.search import SearchError
 from app.retrieval.store import save_embedded
 from tests.corroboration.fakes import FakeLangfuseClient, RecordingCorroborationTracer
-from tests.corroboration.helpers import ISAK, NOW, SAKA, SEASON, add_claim, seed_reference
+from tests.corroboration.helpers import (
+    ISAK,
+    NOW,
+    SAKA,
+    SEASON,
+    add_claim,
+    add_fixture,
+    seed_reference,
+)
 from tests.extraction.fakes import FakeChatModel
 from tests.retrieval.fakes import FakeEmbedder, SlowEmbedder
 from tests.retrieval.helpers import MODEL, PRICES, FixedClock, add_tweet
@@ -377,3 +385,24 @@ def test_quoting_anchor_counts_as_the_quoted_account_in_counts_and_trace(db):
     (root,) = client.named("corroboration")
     (update,) = root["updates"]
     assert update["output"]["anchor"]["account"] == "outsider"
+
+
+def test_a_stale_lineup_is_neither_a_claim_nor_judged(db):
+    _claims(db)
+    add_fixture(db, 1, 6, NOW + timedelta(days=4))
+    add_claim(
+        db,
+        3,
+        SAKA,
+        "benched",
+        "confirmed",
+        created_at=NOW - timedelta(hours=1),
+        author="a3",
+        text="Saka on the bench tonight",
+    )
+    judge, fake = _judge()
+    result = _run(db, _runtime(judge))
+    assert result.anchor.post.x_id == 2
+    cited = result.supporting + result.contradicting + result.related
+    assert all(c.x_id != 3 for c in cited)
+    assert fake.received_messages == []

@@ -333,3 +333,15 @@ def test_a_gameweek_is_added_beside_the_others_and_replaces_only_its_own():
     assert added[:2] == gw6  # the earlier gameweek keeps its split
     replaced = merge_player_queries(added, [query(7, 3, "dev")], 7)
     assert [q.id for q in replaced] == ["p-gw6-1", "p-gw6-2", "p-gw7-3", "q-post-en-001"]
+
+
+def test_a_stale_lineup_lists_no_player_but_stays_claimed(db):
+    world(db)
+    add_fixture(db, 3, 6, IN_WINDOW + timedelta(days=4))
+    claim(db, 1, IN_WINDOW)
+    for x_id, player in ((2, SAKA), (3, ISAK)):
+        add_tweet(db, x_id, f"post {x_id}", created_at=IN_WINDOW, author="listed")
+        add_extraction(db, x_id, player, "confirmed_starter", "confirmed")
+    queries = build(db)
+    assert [q.player.fpl_id for q in queries] == [SAKA]
+    assert [c.x_id for c in queries[0].claimed] == [1, 2]

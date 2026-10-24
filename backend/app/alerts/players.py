@@ -19,7 +19,13 @@ def _claims(
     session: Session, season: str, start: datetime, as_of: datetime
 ) -> dict[int, list[tuple[int, str]]]:
     claims: dict[int, list[tuple[int, str]]] = defaultdict(list)
-    rows = current_extractions(session, created_from=start, created_until=as_of, sources_only=True)
+    rows = current_extractions(
+        session,
+        created_from=start,
+        created_until=as_of,
+        sources_only=True,
+        fresh_lineups_only=True,
+    )
     quoted = quoted_authors(session, [row.tweet_x_id for row in rows])
     for row in rows:
         post = PostRef(

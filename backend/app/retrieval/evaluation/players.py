@@ -96,10 +96,24 @@ def build_player_slice(
                 if event.player_fpl_id is None or event.player_season != season:
                     continue
                 claims.setdefault(event.player_fpl_id, {})[row.tweet_x_id] = row.created_at
+        # Production lists a player only for an event that survives the stale line-up filter;
+        # every post naming him still counts as claimed.
+        listed = {
+            event.player_fpl_id
+            for row in current_extractions(
+                session,
+                created_from=window.window_start,
+                created_until=window.window_end,
+                sources_only=True,
+                fresh_lineups_only=True,
+            )
+            for event in row.events
+            if event.player_fpl_id is not None and event.player_season == season
+        }
 
         stale_before = window.previous_last_match_end
         queries = []
-        for fpl_id in sorted(claims):
+        for fpl_id in sorted(listed):
             names = load_player_names(session, season, fpl_id, aliases)
             player = session.get(Player, (season, fpl_id))
             if names is None or player is None:
