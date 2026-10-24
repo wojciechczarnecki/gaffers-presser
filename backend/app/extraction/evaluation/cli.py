@@ -392,6 +392,8 @@ def compare_labels(
             "  pre-labels precision / recall / f1: "
             f"{comparison.precision:.3f} / {comparison.recall:.3f} / {comparison.f1:.3f}"
         )
+        for line in comparison.changes:
+            typer.echo(f"  changed {line}")
 
 
 REVIEW_ACTIONS = "[a]ccept  [e]dit  [f]ind player  [s]kip  [q]uit"

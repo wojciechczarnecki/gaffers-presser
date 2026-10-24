@@ -1019,3 +1019,19 @@ def test_snapshot_fixtures_writes_the_season(db, tmp_path):
     assert result.exit_code == 0, result.output
     fixtures = load_fixtures_snapshot(tmp_path / "fixtures.json")
     assert [(f.season, f.fpl_id, f.kickoff_at) for f in fixtures] == [("2026/27", 2, NOW)]
+
+
+def test_compare_labels_lists_each_changed_case(tmp_path):
+    reviewed, baseline = _reviewed_and_baseline()
+    cases, base = tmp_path / "cases.jsonl", tmp_path / "base.jsonl"
+    write_cases(cases, reviewed)
+    write_cases(base, baseline)
+
+    result = CliRunner().invoke(
+        app, ["compare-labels", "--set", str(tmp_path), "--baseline", str(base)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "changed a: relabelled Salah certainty" in result.stdout
+    assert "changed b: added 1" in result.stdout
+    assert "changed c: removed 1" in result.stdout

@@ -1,13 +1,16 @@
-from collections.abc import Sequence
-from datetime import datetime
+from collections.abc import Collection, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict
 
 from app.core.eval_results import write_lines_atomic
 from app.extraction.linking import PlayerRecord
 from app.extraction.schemas import Certainty, EventType
+
+if TYPE_CHECKING:
+    from app.extraction.evaluation.dataset import SetManifest
 
 Tag = Literal[
     "international_injury",
@@ -129,5 +132,99 @@ def composition_problems(cases: Sequence[EvalCase], snapshot: Sequence[PlayerRec
         for event in case.expected_events:
             if event.fpl_id is not None and event.fpl_id not in known_ids:
                 problems.append(f"case {case.id}: fpl_id {event.fpl_id} is not in the snapshot")
+
+    return problems
+
+
+# GW6 opened with the deadline of 2026-10-03T10:00Z and GW7 closed at 2026-10-17T10:00Z; the
+# retrieval set v2 windows (evals/retrieval/v2/queries.jsonl) use the same bounds.
+NEW_CASES_FROM = datetime(2026, 10, 1, tzinfo=UTC)
+NEW_CASES_UNTIL = datetime(2026, 10, 18, tzinfo=UTC)
+GW_WINDOW = (datetime(2026, 10, 3, 10, tzinfo=UTC), datetime(2026, 10, 17, 10, tzinfo=UTC))
+MIN_NEW_REAL = 70
+MIN_WINDOW_LINEUPS = 15
+MIN_OTHER_MATCH = 8
+MIN_OTHER_MATCH_IN_TEST = 5
+LINEUP_TYPES = ("benched", "confirmed_starter")
+BACKLOG_23_NO_EVENT = ("2104646876389650860", "2106010889262436608")
+BACKLOG_23_NOT_CONFIRMED = "2104158837540622748"
+
+
+def composition_problems_v2(
+    cases: Sequence[EvalCase],
+    snapshot: Sequence[PlayerRecord],
+    manifest: "SetManifest",
+    v1_ids: Collection[str],
+) -> list[str]:
+    problems = composition_problems(cases, snapshot)
+    by_id = {case.id: case for case in cases}
+
+    missing = sorted(set(v1_ids) - set(by_id))
+    if missing:
+        problems.append(f"v1 cases missing from v2: {', '.join(missing)}")
+
+    new_real = [c for c in cases if c.id not in v1_ids and not c.synthetic]
+    in_window = [c for c in new_real if NEW_CASES_FROM <= c.created_at < NEW_CASES_UNTIL]
+    if len(in_window) < MIN_NEW_REAL:
+        problems.append(f"new real cases in 2026-10-01..17: {len(in_window)}, need {MIN_NEW_REAL}")
+
+    start, end = GW_WINDOW
+    window_lineups = [
+        e
+        for c in cases
+        if c.split == "test" and start <= c.created_at < end
+        for e in c.expected_events
+        if e.event_type in LINEUP_TYPES
+    ]
+    if len(window_lineups) < MIN_WINDOW_LINEUPS:
+        problems.append(
+            f"test line-up events in the GW6-GW7 windows: {len(window_lineups)}, "
+            f"need {MIN_WINDOW_LINEUPS}"
+        )
+
+    other = [c for c in cases if "other_match_lineup" in c.tags]
+    if len(other) < MIN_OTHER_MATCH:
+        problems.append(f"other_match_lineup cases: {len(other)}, need {MIN_OTHER_MATCH}")
+    other_test = [c for c in other if c.split == "test"]
+    if len(other_test) < MIN_OTHER_MATCH_IN_TEST:
+        problems.append(
+            f"other_match_lineup cases in test: {len(other_test)}, need {MIN_OTHER_MATCH_IN_TEST}"
+        )
+    with_events = [c.id for c in other if c.expected_events]
+    if with_events:
+        problems.append(
+            f"other_match_lineup cases must have no expected events: {', '.join(with_events)}"
+        )
+
+    for case_id in BACKLOG_23_NO_EVENT:
+        case = by_id.get(case_id)
+        if case is None:
+            problems.append(f"BACKLOG #23 case {case_id} is missing")
+        elif case.expected_events:
+            problems.append(f"BACKLOG #23 case {case_id} must have no expected events")
+    case = by_id.get(BACKLOG_23_NOT_CONFIRMED)
+    if case is None:
+        problems.append(f"BACKLOG #23 case {BACKLOG_23_NOT_CONFIRMED} is missing")
+    elif any(e.certainty == "confirmed" for e in case.expected_events):
+        problems.append(f"BACKLOG #23 case {BACKLOG_23_NOT_CONFIRMED} must have no confirmed event")
+    listed_23 = set(manifest.backlog_cases.get("23", []))
+    unlisted = sorted({*BACKLOG_23_NO_EVENT, BACKLOG_23_NOT_CONFIRMED} - listed_23)
+    if unlisted:
+        problems.append(f"set.json backlog_cases 23 lacks: {', '.join(unlisted)}")
+
+    for case_id in manifest.backlog_54_lineups:
+        case = by_id.get(case_id)
+        if case is None:
+            problems.append(f"BACKLOG #54 case {case_id} is missing")
+        elif "other_match_lineup" not in case.tags:
+            problems.append(f"BACKLOG #54 line-up {case_id} is not tagged other_match_lineup")
+
+    watched = {handle.casefold() for handle in manifest.list_handles}
+    for case in new_real:
+        expected_split = "dev" if int(case.id) % 10 < 3 else "test"
+        if case.split != expected_split:
+            problems.append(f"case {case.id}: split {case.split}, the rule gives {expected_split}")
+        if case.author_handle.casefold() not in watched:
+            problems.append(f"case {case.id}: author is not on the watched list")
 
     return problems

@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent
 from app.extraction.evaluation.metrics import CaseResult, compute_metrics
@@ -29,6 +29,7 @@ class SplitComparison:
     precision: float
     recall: float
     f1: float
+    changes: list[str] = field(default_factory=list)
 
 
 def _identity(event: ExpectedEvent) -> tuple[str, int | None, str, str]:
@@ -64,6 +65,26 @@ def compare_events(
     return len(reviewed_left), len(baseline_left), relabelled
 
 
+def describe_change(
+    case: EvalCase, added: int, removed: int, relabelled: Sequence[EventChange], baseline: EvalCase
+) -> str | None:
+    parts = []
+    if added:
+        parts.append(f"added {added}")
+    if removed:
+        parts.append(f"removed {removed}")
+    for change in relabelled:
+        if change.fields:
+            parts.append(f"relabelled {change.mention} {'/'.join(change.fields)}")
+    gained = sorted(set(case.tags) - set(baseline.tags))
+    lost = sorted(set(baseline.tags) - set(case.tags))
+    if gained:
+        parts.append(f"tags +{','.join(gained)}")
+    if lost:
+        parts.append(f"tags -{','.join(lost)}")
+    return f"{case.id}: {', '.join(parts)}" if parts else None
+
+
 def compare_sets(
     reviewed: Sequence[EvalCase], baseline: Sequence[EvalCase]
 ) -> list[SplitComparison]:
@@ -85,6 +106,7 @@ def compare_sets(
                 "only_reviewed": [],
                 "only_baseline": [],
                 "results": [],
+                "changes": [],
             },
         )
 
@@ -105,6 +127,9 @@ def compare_sets(
             for field_name in change.fields:
                 b["by_field"][field_name] += 1
         b["changed"] += bool(added or removed or relabelled)
+        line = describe_change(case, added, removed, relabelled, other)
+        if line is not None:
+            b["changes"].append(line)
         b["results"].append(
             CaseResult(expected=case.expected_events, predicted=other.expected_events)
         )
@@ -130,6 +155,7 @@ def compare_sets(
                 precision=metrics.precision,
                 recall=metrics.recall,
                 f1=metrics.f1,
+                changes=b["changes"],
             )
         )
     return comparisons

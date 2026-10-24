@@ -511,7 +511,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/extraction/evaluation -n auto`, then Verify. `iterations: 3`
-- [ ] 7. **The tag, the v2 composition and the listing of changed cases (AC12, AC13, AC25
+- [x] 7. **The tag, the v2 composition and the listing of changed cases (AC12, AC13, AC25
       check).** Files: `app/extraction/evaluation/cases.py` (`other_match_lineup` in `Tag`,
       `composition_problems_v2`, the window constants with a comment naming the GW6 and GW7
       deadlines), `app/extraction/evaluation/compare.py` (`SplitComparison.changes: list[str]`)
@@ -529,7 +529,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/extraction/evaluation/test_cases.py tests/extraction/evaluation/test_compare.py tests/extraction/evaluation/test_cli.py`,
-      then Verify.
+      then Verify. `iterations: 1`
 - [ ] 8. **The session judge for extraction (AC16–AC18, AC1 names).** Files:
       - new: `app/extraction/evaluation/judging.py` (approach item 9) and
         `app/content/prompts/extraction_prelabel.md` (`version: 1`);
