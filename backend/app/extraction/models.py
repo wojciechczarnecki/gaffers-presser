@@ -50,3 +50,4 @@ class ExtractionEvent(SQLModel, table=True):
     player_fpl_id: int | None = None
     event_type: str
     certainty: str
+    for_next_pl_match: bool | None = None

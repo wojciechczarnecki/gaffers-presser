@@ -139,6 +139,12 @@ def test_deployment_lists_migration_0013():
         assert needle in text, needle
 
 
+def test_deployment_lists_migration_0014():
+    text = (ROOT / "docs" / "DEPLOYMENT.md").read_text(encoding="utf-8")
+    for needle in ("0014", "for_next_pl_match", "nullable"):
+        assert needle in text, needle
+
+
 def test_evaluation_md_describes_the_retrieval_procedure():
     text = (ROOT / "docs" / "EVALUATION.md").read_text(encoding="utf-8")
     for needle in (

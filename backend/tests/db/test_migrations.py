@@ -37,12 +37,14 @@ NOW = datetime(2026, 9, 26, tzinfo=UTC)
 OFF_LIST_COLUMNS = {"embedded", "quoted_x_id"}
 BEFORE_GAMEWEEK_RANK = {"gameweek_rank"}
 MATCH_STATS_COLUMNS = {"live_stats"}
+MATCH_CHECK_COLUMNS = {"for_next_pl_match"}
 BEFORE_OWNERSHIP = (
     DEFAULT_EXCLUDE
     | {"selected_by_percent"}
     | OFF_LIST_COLUMNS
     | BEFORE_GAMEWEEK_RANK
     | MATCH_STATS_COLUMNS
+    | MATCH_CHECK_COLUMNS
 )
 BEFORE_MATCH_STATS = (
     DEFAULT_EXCLUDE
@@ -50,6 +52,7 @@ BEFORE_MATCH_STATS = (
     | OFF_LIST_COLUMNS
     | BEFORE_GAMEWEEK_RANK
     | MATCH_STATS_COLUMNS
+    | MATCH_CHECK_COLUMNS
 )
 ALERT_TABLES = {"alert", "alert_post"}
 PRE_0010_TABLES = set(SQLModel.metadata.tables.keys()) - {
@@ -538,6 +541,7 @@ def test_alert_log_migration_adds_only_new_tables():
             | OFF_LIST_COLUMNS
             | BEFORE_GAMEWEEK_RANK
             | MATCH_STATS_COLUMNS
+            | MATCH_CHECK_COLUMNS
         )
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
@@ -592,6 +596,7 @@ def test_quote_migration_backfills_and_downgrades():
             | OFF_LIST_COLUMNS
             | BEFORE_GAMEWEEK_RANK
             | MATCH_STATS_COLUMNS
+            | MATCH_CHECK_COLUMNS
         )
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
@@ -633,6 +638,7 @@ def test_presser_migration_adds_only_new_table():
             | OFF_LIST_COLUMNS
             | BEFORE_GAMEWEEK_RANK
             | MATCH_STATS_COLUMNS
+            | MATCH_CHECK_COLUMNS
         )
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=other_tables)
@@ -691,6 +697,7 @@ def test_gameweek_rank_migration_adds_empty_column_and_downgrades():
             | OFF_LIST_COLUMNS
             | BEFORE_GAMEWEEK_RANK
             | MATCH_STATS_COLUMNS
+            | MATCH_CHECK_COLUMNS
         )
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=tables)
@@ -815,7 +822,7 @@ def test_match_stats_migration_backfills_from_the_latest_payload_and_downgrades(
             payload(conn, "fixtures", 1, early, fixtures_body(10))
 
         tables = set(SQLModel.metadata.tables.keys()) - {"player_fixture_stat"}
-        excluded = DEFAULT_EXCLUDE | {"search_vector"} | MATCH_STATS_COLUMNS
+        excluded = DEFAULT_EXCLUDE | {"search_vector"} | MATCH_STATS_COLUMNS | MATCH_CHECK_COLUMNS
         with Session(engine) as session:
             before = table_contents(session, exclude=excluded, tables=tables)
 
@@ -858,3 +865,49 @@ def test_match_stats_migration_backfills_from_the_latest_payload_and_downgrades(
         assert "live_stats" not in columns
         with Session(engine) as session:
             assert table_contents(session, exclude=excluded, tables=tables) == before
+
+
+def test_match_check_migration_leaves_existing_events_null():
+    with PostgresContainer("pgvector/pgvector:pg16", driver="psycopg") as container:
+        url = container.get_connection_url()
+        run_alembic(url, "upgrade", "0013")
+        engine = make_engine(url)
+        with engine.begin() as conn:
+            conn.execute(
+                sa_text(
+                    "INSERT INTO tweet (x_id, author_handle, text, created_at, first_fetched_at,"
+                    " source, is_repost, is_reply, raw) VALUES (1, 'reporter', 'Post 1', :now,"
+                    " :now, 'list', false, false, '{}')"
+                ),
+                {"now": NOW},
+            )
+            conn.execute(
+                sa_text(
+                    "INSERT INTO extraction (id, tweet_x_id, status, provider, model,"
+                    " prompt_version, started_at, finished_at, attempts) VALUES (1, 1,"
+                    " 'extracted', 'p', 'm', 'v', :now, :now, 1)"
+                ),
+                {"now": NOW},
+            )
+            conn.execute(
+                sa_text(
+                    "INSERT INTO extraction_event (id, extraction_id, mention, event_type,"
+                    " certainty) VALUES (1, 1, 'Haaland', 'benched', 'likely')"
+                )
+            )
+
+        run_alembic(url, "upgrade", "head")
+        with engine.connect() as conn:
+            columns = {c["name"] for c in inspect(conn).get_columns("extraction_event")}
+            answers = conn.execute(
+                sa_text("SELECT for_next_pl_match FROM extraction_event")
+            ).fetchall()
+        assert "for_next_pl_match" in columns
+        assert answers == [(None,)]
+
+        run_alembic(url, "downgrade", "-1")
+        with engine.connect() as conn:
+            columns = {c["name"] for c in inspect(conn).get_columns("extraction_event")}
+            remaining = conn.execute(sa_text("SELECT count(*) FROM extraction_event")).scalar()
+        assert "for_next_pl_match" not in columns
+        assert remaining == 1

@@ -373,7 +373,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/extraction -n auto && uv run python -m app.extraction.evaluation --help && uv run python -m app.extraction --help`, then Verify. `iterations: 1`
-- [ ] 2. **Migration 0014 (AC8): the data migration on its own.** Files:
+- [x] 2. **Migration 0014 (AC8): the data migration on its own.** Files:
       - new: `migrations/versions/0014_match_check.py` (`revision "0014"`, `down_revision
         "0013"`; `op.add_column("extraction_event", sa.Column("for_next_pl_match",
         sa.Boolean(), nullable=True))`; the downgrade drops the column);
@@ -392,7 +392,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/db/test_migrations.py tests/test_docs.py -k "migration or 0014"`,
-      then Verify.
+      then Verify. `iterations: 0`
 - [ ] 3. **The read-time predicate and storage (AC5 storage, AC7, AC19 predicate).** Files:
       - new: `app/extraction/lineups.py`;
       - changed: `app/extraction/store.py` (it imports `LINEUP_EVENTS`, `LINEUP_MAX_LEAD` and
