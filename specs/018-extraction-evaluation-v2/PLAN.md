@@ -207,8 +207,14 @@
    - Every node uses the one `spec` (`fallback=False`), so every step runs with the model under
      test.
 8. **Set v2 and its checks (AC12, AC13).**
-   - The new tag `other_match_lineup` marks a Premier League club's line-up for a non-Premier
-     League match, whether or not the post names the match, and expects no event.
+   - The new tag `other_match_lineup` marks a line-up naming Premier League players for any
+     match other than their club's next Premier League match (a cup or European tie, a
+     national team, a match already played), whether or not the post names the match, and
+     expects no event. It sits beside the v1 tags: a v1 case tagged `cup_european_lineup` or
+     `national_lineup` whose line-up names Premier League players gets it too (through the
+     judge's flag, so it is a changed case the owner reviews). It is not added to
+     `NO_EVENT_TAGS`, because v1 has no such case and `composition_problems` must stay green on
+     v1; `composition_problems_v2` checks it.
    - `composition_problems_v2(cases, players, manifest, v1_ids)` in `cases.py` runs
      `composition_problems` (the v1 rules) and adds:
      - every v1 id is present;
@@ -221,8 +227,10 @@
      - real new cases split by `int(id) % 10 < 3 → dev`;
      - real new cases' authors in `list_handles` (AC25).
    - `compare-labels` also prints one line per changed case (`<id>: added N, removed N,
-     relabelled <mention> <fields>`) from `compare_events`, so that every relabelled case is
-     listed (AC12).
+     relabelled <mention> <fields>, tags +<added> -<removed>`) from `compare_events` and the
+     tag difference, so that every relabelled case is listed (AC12), a tag-only change
+     included. A relabel whose field tuple is empty (the mention spelled differently) is not a
+     change.
 9. **The session judge for extraction (AC16–AC18).** `app/extraction/evaluation/judging.py`
    follows `app/retrieval/evaluation/judging.py`.
    - `export_inputs` writes into `out/`:
@@ -245,7 +253,9 @@
      with the reply-format sentence counted.
    - The verdict is `PrelabelVerdict(ExtractionOutput)` with `extra="forbid"` and one added
      required field, `other_match_lineup: bool`. The events part is the extraction output
-     schema itself.
+     schema itself, validated strictly: `ExtractedEvent` ignores unknown keys, so the import
+     validates each event with a `extra="forbid"` subclass and refuses an event with an extra
+     key, as the shell validator does.
      - The flag adds the tag, which the extraction output cannot express, and keeps the owner
        from tagging about 25 cases by hand.
      - The rejected variant was tags set only in the owner's `review`, which would be a second
@@ -256,9 +266,14 @@
        input without one is skipped and listed.
      - Events are linked through `PlayerIndex` (a single candidate gives `fpl_id`, several give
        `null`), with no LLM call.
-     - A `case` input whose events (`compare_events`: zero added, removed or relabelled) and
-       tags are unchanged is copied as it is (`reviewed: true`). Otherwise it becomes
-       `reviewed: false` with the judge's events and the tag added.
+     - For a `case` input, a judge event that `compare_events` pairs with a v1 event of the
+       same player and whose own `fpl_id` is `null` (an ambiguous name the import could not
+       link) takes the v1 event's `fpl_id`; the import makes no LLM call, so this keeps a
+       linking gap from posing as a label change.
+     - A `case` input whose events are unchanged (`compare_events`: zero added, zero removed
+       and no relabel with a non-empty field tuple) and whose tags are unchanged is copied
+       verbatim from v1 (`reviewed: true`). Otherwise it becomes `reviewed: false` with the
+       judge's events and the tag added.
      - `post` inputs become candidates, and `--select N --seed S` picks them by tier:
        1. required;
        2. flagged `other_match_lineup` (quota 25);
@@ -508,7 +523,8 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
         line-ups in the window, too few tagged cases, a tagged case with an event, a wrong #23
         label, an untagged #54 line-up, a wrong split and an unknown author. Each is built
         from a small synthetic set;
-      - `tests/extraction/evaluation/test_compare.py::test_changed_cases_listed`;
+      - `tests/extraction/evaluation/test_compare.py::test_changed_cases_listed` (an event
+        change, a tag-only change listed; a mention-spelling-only relabel not listed);
       - `tests/extraction/evaluation/test_cli.py::test_compare_labels_lists_each_changed_case`.
 
       Automatic verification:
@@ -534,7 +550,8 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       - `test_import_refuses_an_invalid_verdict` (an extra key, a bad `event_type`, a missing
         `other_match_lineup`: nothing is written);
       - `test_import_refuses_a_missing_case_verdict`;
-      - `test_unchanged_v1_case_copied_reviewed`;
+      - `test_unchanged_v1_case_copied_reviewed` (also when the judge spells the mention
+        differently or leaves an ambiguous name unlinked: the v1 case is copied verbatim);
       - `test_changed_v1_case_unreviewed_with_the_tag`;
       - `test_select_tiers_and_quotas`;
       - `test_imported_cases_unreviewed_with_the_judge_in_the_manifest`;
@@ -646,13 +663,15 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       - Iterate:
         `env -u TWEET_SOURCE uv run python -m app.extraction.evaluation evaluate --set evals/extraction/v2 --split dev --model openai/gpt-6-luna --run-name dev-v2-luna-iN`
         and the same for `google/gemini-3.1-flash-lite` (`dev-v2-gemini-iN`).
-      - Edit `extraction.md` (and `match_check.md` if the dev misses point at it; any change
-        there bumps it to version 2) on dev failures only, and stop at five iterations or
-        once both pass every threshold on dev.
-      - Record every iteration in a scratch log (`$S/dev-iterations.md`: run name, F1, the
-        false-alarm rate, the two new metrics, the change made) for the report.
-      - Freeze: commit the prompt (`feat: freeze extraction prompt v5`). The version stays 5,
-        and the iterations are uncommitted edits whose dev headers show `git_dirty`.
+      - Edit `extraction.md` (and `match_check.md` if the dev misses point at it) on dev
+        failures only, and stop at five iterations or once both pass every threshold on dev.
+      - Record every iteration in `specs/018-extraction-evaluation-v2/dev-iterations.md` (run
+        name, F1, the false-alarm rate, the two new metrics, the change made), not in the
+        session scratchpad: an escalation restarts the implementer in a new session, and step
+        15 reads this log.
+      - Freeze: commit the prompts and the log (`feat: freeze extraction prompt v5`). The
+        versions stay 5 and 1 (AC9 names match check 1), and the iterations are uncommitted
+        edits whose dev headers show `git_dirty`.
 
       Automatic verification:
       `uv run pytest -q tests/content tests/extraction -n auto`, and
@@ -716,7 +735,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 - [ ] 15. **The report `docs/reports/extraction-eval-v2.md` (AC22, AC15).** The sections:
       - "Set composition": the table per split, as in v1, plus the tagged cases, the
         `compare-labels` output against v1 and the pilot;
-      - "Dev iterations": from `$S/dev-iterations.md`;
+      - "Dev iterations": from `specs/018-extraction-evaluation-v2/dev-iterations.md`;
       - "Test results": per model, F1, linking, false alarms, `other_match_false_alarms`,
         `lineups_dropped_by_check`, PLN a month, and p50/p95 latency with the match check;
       - "The 60 h filter alone": `other_match_caught_by_lead_only` of
@@ -725,7 +744,10 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       - "Total spend", with the `spend` output;
       - "Threats to validity": the Claude pre-labels against the `claude-haiku-4.5`
         candidate, the noise on about 150 test cases, the judge model and the owner's partial
-        review of v1;
+        review of v1; the two #23 posts in the test split (2106010889262436608 and
+        2104158837540622748) that the v5 rules were written from; and the test split's
+        over-sampling of line-up posts, which overstates the match check's share of the cost
+        a month and of the latency against production;
       - "Re-extraction", the expected effect of the owner's optional `reextract`.
 
       Tests first:
@@ -816,7 +838,8 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
   boundary. Every time is aware UTC.
 - **The `other_match_lineup` flag in the verdict** goes beyond `ExtractionOutput` by one field
   (approach item 9). The events still validate as the extraction output schema. The plan review
-  should confirm that this reading of AC17 is acceptable.
+  accepted this reading of AC17: the flag carries the SPEC's new tag, which the extraction
+  output cannot express.
 - **The judge prompt includes `extraction.md` as it was at export time (v5 before the dev
   iterations).** `set.json`'s `prelabels` entry records the git commit, so the labels' rules can
   be traced after the prompt is tuned.
@@ -880,7 +903,64 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+2026-10-25 — /pipeline:plan-review
+
+Findings:
+
+- `major` — The new `other_match_lineup` tag overlapped the v1 tags `cup_european_lineup` and
+  `national_lineup` without a stated relation, so v1's other-match line-ups could go untagged
+  and escape `other_match_false_alarms`, and `compare-labels` listed event changes only, so a
+  tag-only change would be unreviewed but unlisted (AC12). Approach item 8 now defines the tag
+  as every line-up of Premier League players for a match other than the club's next Premier
+  League match, beside the v1 tags and outside `NO_EVENT_TAGS`; `compare-labels` lists tag
+  changes; step 7's test covers it.
+- `major` — The import's "unchanged" rule used `compare_events` as it is, which counts a
+  differently spelled mention (an empty-field relabel) and an ambiguous name the import cannot
+  link (`fpl_id` null against v1's id) as changes. That would send unchanged v1 cases to the
+  owner and depress the pilot gate's 80% and F1 figures. Approach item 9 now carries v1's
+  `fpl_id` onto an unlinked paired event and ignores empty-field relabels; step 8's test
+  covers both.
+- `major` — Step 12 bumped `match_check.md` to version 2 on any dev edit, which contradicts
+  AC9 ("match check 1") and step 6's test asserting `match_check@1`. The match-check prompt now
+  follows the extraction prompt: uncommitted dev edits, frozen at version 1.
+- `minor` — The dev-iteration log lived in the session scratchpad, which a restarted
+  implementer (after the step 11 or step 13 escalation) cannot read, and step 15 needs it for
+  AC15. It now lives in `specs/018-extraction-evaluation-v2/dev-iterations.md`, committed with
+  the freeze.
+- `minor` — The import validated events with `ExtractedEvent`, which ignores unknown keys, so
+  step 8's "extra key" test could pass only at the top level. Events are now validated with an
+  `extra="forbid"` subclass.
+- `minor` — The report's threats to validity missed two #23 posts that fall in the test split
+  (x_id % 10 = 8) and shaped the v5 rules, and the line-up over-sampling of the test split,
+  which overstates the match check's cost a month and latency. Step 15 now names both.
+
+Checked and found correct:
+
+- Coverage: every AC1–AC25 has a step and a proving test, and the matrix matches the steps.
+- Order: no forward dependency (step 1 before step 5's `prelabel` edit; steps 3, 4 before 5
+  and 6; prompt v5 in step 9 before the judge export of step 10; `snapshot-fixtures` in step
+  6 before step 10).
+- Code claims: `call` traces a raised call and a `NoParsedResult` with its error class, so
+  the fail-open node meets AC6; `spend` uses `rglob`, so `results/v2/dev/` counts toward AC20;
+  `current_extractions` filters only under `fresh_lineups_only`, and `claimed_post_ids` reads
+  unfiltered, so the 2026-10-24 "still counts as claimed" rule holds; the v1 result tests glob
+  `results/*.json` only, so `results/v2/` does not disturb them; `test_adr_0006_names_the_defaults`
+  is handled in step 14; migration 0013 is the head; `export-corpus` takes `--set`, `--since`
+  and `--until` (Europe/Warsaw); extraction may not import `app.retrieval`, and the plan reads
+  the corpus through its own model.
+- Decisions: 2026-09-28 (set format, split, thresholds, cheapest passing default), 2026-09-29
+  (pair rule, OpenRouter only), 2026-10-12 (session judge, blind ids, mapping outside),
+  2026-10-15 (one tracing path, `eval_results`, `current_extractions` as the read API, module
+  boundaries), 2026-10-24 (the 60 h filter at read time, unchanged) are kept. The `data:`
+  commit type follows the repository's practice for evaluation data.
+- The `other_match_lineup` flag in the verdict is an acceptable reading of AC17.
+- Step 11 is the implementer's escalation for the review the SPEC gives the owner, not owner
+  work placed in `## Steps`.
+- Owner summary: no new dependency; migration 0014 accepted in SPEC → Owner decisions; the
+  manual scenario has a `Pass when:` line; the plan is in English.
+
+The plan is ready: every finding was fixable in the plan and is fixed, and the only migration
+is the one the owner accepted in the SPEC.
 
 ## Deviations
 

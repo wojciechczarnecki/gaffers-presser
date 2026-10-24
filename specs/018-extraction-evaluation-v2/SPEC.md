@@ -1,15 +1,19 @@
 ---
-status: plan-draft
+status: plan-approved
 stage_history:
   - "spec-draft — 2026-10-25"
   - "spec-ready — 2026-10-25"
   - "plan-draft — 2026-10-25"
+  - "plan-approved — 2026-10-25"
 metrics:
   started_at: 2026-10-25T01:04
   plan_steps: 17
+  plan_changes: 10
   escalations: 0
   escalations_permission: 0
   escalations_tooling: 0
+  plan_review_blockers: 0
+  plan_review_majors: 3
 ---
 
 # SPEC 018 — Extraction evaluation v2: GW6 line-up leaks, prompt v5 and a match check
