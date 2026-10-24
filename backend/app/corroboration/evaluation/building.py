@@ -18,7 +18,7 @@ from app.corroboration.evaluation.cases import (
 )
 from app.corroboration.judge import Judge, JudgeInput
 from app.corroboration.schemas import Claim, PlayerRef, PostRef
-from app.corroboration.sources import retrieval_candidates
+from app.corroboration.sources import claimed_post_ids, retrieval_candidates
 from app.extraction.linking import load_aliases, load_players
 from app.extraction.store import current_extractions
 from app.llm.pricing import Price
@@ -45,7 +45,7 @@ class Candidate:
 def _claims_by_player(engine: Engine) -> dict[PlayerRef, list[Claim]]:
     with Session(engine) as session:
         players, teams = load_players(session)
-        rows = current_extractions(session)
+        rows = current_extractions(session, fresh_lineups_only=True)
     team_names = {team.fpl_id: team.name for team in teams}
     refs = {
         (p.season, p.fpl_id): PlayerRef(
@@ -95,7 +95,8 @@ def build_candidates(
     aliases = load_aliases()[0]
     candidates: list[Candidate] = []
     for player, claims in sorted(_claims_by_player(engine).items(), key=lambda i: i[0].fpl_id):
-        claimed = {c.post.x_id for c in claims}
+        with Session(engine) as session:
+            claimed = claimed_post_ids(session, player, first, as_of)
         for anchor in _anchors(claims):
             found = retrieval_candidates(
                 engine,

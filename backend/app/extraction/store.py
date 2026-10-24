@@ -274,39 +274,38 @@ def current_extractions(
     if not rows:
         return []
     events: dict[int, list[EventRecord]] = {row["id"]: [] for row in rows}
-    created_at = {row["id"]: row["created_at"] for row in rows}
-    next_kickoff = (
-        select(func.min(Fixture.kickoff_at))
-        .where(
-            Fixture.season == Player.season,
-            or_(
-                Fixture.team_h_fpl_id == Player.team_fpl_id,
-                Fixture.team_a_fpl_id == Player.team_fpl_id,
-            ),
-            Fixture.kickoff_at > Tweet.created_at,
-        )
-        .correlate(Player, Tweet)
-        .scalar_subquery()
+    stmt = select(ExtractionEvent, Player.web_name).join(
+        Player,
+        and_(
+            Player.season == ExtractionEvent.player_season,
+            Player.fpl_id == ExtractionEvent.player_fpl_id,
+        ),
+        isouter=True,
     )
-    event_rows = session.exec(
-        select(ExtractionEvent, Player.web_name, next_kickoff)
-        .join(Extraction, Extraction.id == ExtractionEvent.extraction_id)
-        .join(Tweet, Tweet.x_id == Extraction.tweet_x_id)
-        .join(
-            Player,
-            and_(
-                Player.season == ExtractionEvent.player_season,
-                Player.fpl_id == ExtractionEvent.player_fpl_id,
-            ),
-            isouter=True,
+    if fresh_lineups_only:
+        next_kickoff = (
+            select(func.min(Fixture.kickoff_at))
+            .where(
+                Fixture.season == Player.season,
+                or_(
+                    Fixture.team_h_fpl_id == Player.team_fpl_id,
+                    Fixture.team_a_fpl_id == Player.team_fpl_id,
+                ),
+                Fixture.kickoff_at > Tweet.created_at,
+            )
+            .correlate(Player, Tweet)
+            .scalar_subquery()
         )
-        .where(ExtractionEvent.extraction_id.in_(list(events)))
-        .order_by(ExtractionEvent.id)
+        stmt = (
+            stmt.add_columns(Tweet.created_at, next_kickoff)
+            .join(Extraction, Extraction.id == ExtractionEvent.extraction_id)
+            .join(Tweet, Tweet.x_id == Extraction.tweet_x_id)
+        )
+    event_rows = session.exec(
+        stmt.where(ExtractionEvent.extraction_id.in_(list(events))).order_by(ExtractionEvent.id)
     ).all()
-    for event, web_name, kickoff in event_rows:
-        if fresh_lineups_only and is_stale_lineup(
-            event.event_type, event.certainty, created_at[event.extraction_id], kickoff
-        ):
+    for event, web_name, *lineup_check in event_rows:
+        if lineup_check and is_stale_lineup(event.event_type, event.certainty, *lineup_check):
             continue
         events[event.extraction_id].append(
             EventRecord(

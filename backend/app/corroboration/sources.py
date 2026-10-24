@@ -131,6 +131,21 @@ def sql_claims(
     return claims
 
 
+def claimed_post_ids(
+    session: Session, player: PlayerRef, start: datetime, as_of: datetime
+) -> set[int]:
+    # Unfiltered: a post whose only event about the player is a stale line-up must not come back
+    # through retrieval either.
+    rows = current_extractions(
+        session,
+        created_from=start,
+        created_until=as_of,
+        player=(player.season, player.fpl_id),
+        sources_only=True,
+    )
+    return {row.tweet_x_id for row in rows}
+
+
 def _query_text(
     engine: Engine, player: PlayerRef, variant: Variant, aliases: list[PlayerAlias] | None
 ) -> str:
