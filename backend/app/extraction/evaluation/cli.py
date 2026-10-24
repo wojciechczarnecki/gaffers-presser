@@ -47,6 +47,7 @@ from app.extraction.evaluation.review import (
     run_editor,
 )
 from app.extraction.evaluation.runner import run_evaluation
+from app.extraction.fixtures import FixtureIndex, load_fixtures
 from app.extraction.flow import build_flow
 from app.extraction.linking import PlayerIndex, load_aliases, load_players, load_snapshot
 from app.extraction.service import run_with_retries
@@ -106,8 +107,11 @@ def prelabel(
     with Session(db_engine(deps)) as session:
         posts = posts_for_reextract(session, since=since_dt, until=until_dt)
         players, teams = load_players(session)
+        fixtures = FixtureIndex(load_fixtures(session))
     player_aliases, team_aliases = load_aliases()
-    flow = build_flow(spec, PlayerIndex(players, teams, player_aliases, team_aliases))
+    flow = build_flow(
+        spec, PlayerIndex(players, teams, player_aliases, team_aliases), fixtures=fixtures
+    )
 
     skipped = sum(1 for post in posts if str(post.x_id) in known_ids)
     pending = [post for post in posts if str(post.x_id) not in known_ids]

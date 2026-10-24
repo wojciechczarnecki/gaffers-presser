@@ -1,12 +1,20 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.extraction.flow import ExtractionOutputError, build_flow
+from app.content import load_prompt
+from app.extraction.fixtures import FixtureIndex, FixtureRecord
+from app.extraction.flow import PROMPT_VERSION, ExtractionOutputError, build_flow
 from app.extraction.linking import PlayerIndex, PlayerRecord, TeamRecord
-from app.extraction.schemas import Disambiguation, ExtractedEvent, ExtractionOutput, PostInput
+from app.extraction.schemas import (
+    Disambiguation,
+    ExtractedEvent,
+    ExtractionOutput,
+    MatchCheck,
+    PostInput,
+)
 from app.llm.chat import ChatModelSpec
-from tests.extraction.fakes import FakeChatModel
+from tests.extraction.fakes import FakeChatModel, RecordingExtractionTracer
 
 SEASON = "2026/27"
 
@@ -254,3 +262,180 @@ def test_answered_model_and_host_from_extraction_call():
 
     assert result.answered_model == "b/fallback"
     assert result.host == "DeepInfra"
+
+
+TEAM_THREE = TeamRecord(season=SEASON, fpl_id=3, name="Team Three", short_name="THR")
+KICKOFF = POST.created_at
+
+
+def _fixture(fpl_id, kickoff, home, away) -> FixtureRecord:
+    return FixtureRecord(
+        season=SEASON,
+        fpl_id=fpl_id,
+        gameweek=fpl_id,
+        kickoff_at=kickoff,
+        team_h_fpl_id=home,
+        team_a_fpl_id=away,
+    )
+
+
+FIXTURES = FixtureIndex(
+    [
+        _fixture(1, KICKOFF - timedelta(days=5), home=3, away=1),
+        _fixture(2, KICKOFF + timedelta(days=2), home=1, away=3),
+        _fixture(3, KICKOFF - timedelta(days=6), home=2, away=3),
+        _fixture(4, KICKOFF + timedelta(days=3), home=3, away=2),
+    ]
+)
+CHECK_INDEX = PlayerIndex([HAALAND, SMITH_ONE, SMITH_TWO, JONES], [TEAM_ONE, TEAM_TWO, TEAM_THREE])
+
+
+def _checked_flow(*responses, fixtures=FIXTURES):
+    spec = _spec(*responses)
+    return build_flow(spec, CHECK_INDEX, fixtures=fixtures), spec.chat_model
+
+
+def _lineup(*players, event_type="confirmed_starter") -> ExtractionOutput:
+    return ExtractionOutput(events=[_event(p, event_type) for p in players])
+
+
+def test_match_check_one_call_per_club():
+    flow, chat = _checked_flow(
+        _lineup("Haaland", "Jones", "John Smith"), MatchCheck(for_next_pl_match=False)
+    )
+
+    result = flow.run(POST)
+
+    assert result.llm_calls == 2
+    assert len(chat.received_messages) == 2
+    assert [e.for_next_pl_match for e in result.events] == [False, False, False]
+
+
+def test_no_match_check_without_lineup_events():
+    flow, chat = _checked_flow(_lineup("Haaland", "Jones", event_type="out"))
+
+    result = flow.run(POST)
+
+    assert result.llm_calls == 1
+    assert len(chat.received_messages) == 1
+    assert [e.for_next_pl_match for e in result.events] == [None, None]
+
+
+def test_match_check_two_clubs_two_calls():
+    flow, chat = _checked_flow(
+        _lineup("Haaland", "J.Smith", "Jones"),
+        MatchCheck(for_next_pl_match=False),
+        MatchCheck(for_next_pl_match=True),
+    )
+
+    result = flow.run(POST)
+
+    assert result.llm_calls == 3
+    assert len(chat.received_messages) == 3
+    assert [e.for_next_pl_match for e in result.events] == [False, True, False]
+
+
+def test_match_check_input_from_fixture_data():
+    output = ExtractionOutput(
+        events=[
+            ExtractedEvent(
+                player="Haaland", team="Real Madrid", event_type="benched", certainty="likely"
+            )
+        ]
+    )
+    flow, chat = _checked_flow(output, MatchCheck(for_next_pl_match=True))
+
+    flow.run(POST)
+
+    system, human = chat.received_messages[1]
+    assert system.content == load_prompt("match_check").text
+    sent = human.content
+    assert "Post: Haaland starts today." in sent
+    assert "Posted at: 2026-09-28T12:00:00+00:00" in sent
+    assert "Club: Team One" in sent
+    assert "Previous PL fixture: v Team Three (A), 2026-09-23T12:00Z" in sent
+    assert "Next PL fixture: v Team Three (H), 2026-09-30T12:00Z" in sent
+    assert "Real Madrid" not in sent
+
+
+def test_match_check_answer_on_that_clubs_lineup_events_only():
+    output = ExtractionOutput(
+        events=[
+            _event("Haaland", "benched"),
+            _event("Jones", "out"),
+            _event("J.Smith", "confirmed_starter"),
+        ]
+    )
+    flow, _ = _checked_flow(
+        output, MatchCheck(for_next_pl_match=False), MatchCheck(for_next_pl_match=True)
+    )
+
+    result = flow.run(POST)
+
+    assert [(e.mention, e.for_next_pl_match) for e in result.events] == [
+        ("Haaland", False),
+        ("Jones", None),
+        ("J.Smith", True),
+    ]
+
+
+def test_no_call_for_unlinked_or_club_without_next_fixture():
+    past_only = FixtureIndex([_fixture(1, KICKOFF - timedelta(days=5), home=3, away=1)])
+    flow, chat = _checked_flow(_lineup("Haaland"), fixtures=past_only)
+    result = flow.run(POST)
+    assert len(chat.received_messages) == 1
+    assert [e.for_next_pl_match for e in result.events] == [None]
+
+    flow, chat = _checked_flow(_lineup("Nobody"))
+    result = flow.run(POST)
+    assert len(chat.received_messages) == 1
+    assert [e.for_next_pl_match for e in result.events] == [None]
+
+    flow = build_flow(_spec(_lineup("Haaland")), CHECK_INDEX)
+    assert [e.for_next_pl_match for e in flow.run(POST).events] == [None]
+
+
+def test_match_check_failure_is_fail_open():
+    tracer = RecordingExtractionTracer()
+    spec = _spec(_lineup("Haaland"), RuntimeError("boom"))
+    flow = build_flow(spec, CHECK_INDEX, tracer, fixtures=FIXTURES)
+
+    result = flow.run(POST)
+
+    assert [e.for_next_pl_match for e in result.events] == [None]
+    assert result.llm_calls == 1
+    assert tracer.generations[-1]["error_class"] == "RuntimeError"
+
+    tracer = RecordingExtractionTracer()
+    spec = _spec(_lineup("Haaland"), {"for_next_pl_match": "not a bool"})
+    flow = build_flow(spec, CHECK_INDEX, tracer, fixtures=FIXTURES)
+
+    result = flow.run(POST)
+
+    assert [e.for_next_pl_match for e in result.events] == [None]
+    assert tracer.generations[-1]["error_class"] is not None
+
+
+def test_prompt_version_names_three_prompts():
+    assert PROMPT_VERSION.count("@") == 3
+    assert "extraction@" in PROMPT_VERSION
+    assert "+link_disambiguation@" in PROMPT_VERSION
+    assert PROMPT_VERSION.endswith(f"+match_check@{load_prompt('match_check').version}")
+
+
+def test_every_call_uses_the_flow_model():
+    fake = FakeChatModel(
+        responses=[
+            ExtractionOutput(events=[_event("Smith", "benched"), _event("Haaland", "benched")]),
+            Disambiguation(fpl_id=SMITH_ONE.fpl_id),
+            MatchCheck(for_next_pl_match=True),
+        ]
+    )
+    spec = ChatModelSpec(provider="fake", model="fake", chat_model=fake)
+    flow = build_flow(spec, CHECK_INDEX, fixtures=FIXTURES)
+
+    result = flow.run(POST)
+
+    assert result.llm_calls == 3
+    assert len(fake.received_messages) == 3
+    assert [e.for_next_pl_match for e in result.events] == [True, True]

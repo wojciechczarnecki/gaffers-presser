@@ -10,6 +10,7 @@ from sqlmodel import Session
 from app.core.clock import Clock
 from app.core.errors import ConfigError
 from app.core.retry import RetryOutcome, with_retries
+from app.extraction.fixtures import FixtureIndex, load_fixtures
 from app.extraction.flow import PROMPT_VERSION, Flow, build_flow
 from app.extraction.linking import (
     PlayerAlias,
@@ -83,9 +84,10 @@ def extract_post(
     try:
         with Session(engine) as session:
             players, teams = load_players(session)
+            fixtures = FixtureIndex(load_fixtures(session))
         player_aliases, team_aliases = runtime.aliases
         index = PlayerIndex(players, teams, player_aliases, team_aliases)
-        flow = build_flow(runtime.make_spec(), index, tracer, runtime.prices)
+        flow = build_flow(runtime.make_spec(), index, tracer, runtime.prices, fixtures)
         trace_input = span_input(post.x_id, PROMPT_VERSION, runtime.provider, runtime.model)
         with tracer.span("extraction", trace_input) as span:
             retry = run_with_retries(flow, post, clock, stop_event)

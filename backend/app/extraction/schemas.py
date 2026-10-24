@@ -25,6 +25,10 @@ class Disambiguation(BaseModel):
     fpl_id: int | None = None
 
 
+class MatchCheck(BaseModel):
+    for_next_pl_match: bool
+
+
 @dataclass(frozen=True)
 class PostInput:
     x_id: int

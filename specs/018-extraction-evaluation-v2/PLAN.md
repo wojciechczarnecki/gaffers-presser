@@ -438,7 +438,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/extraction/test_fixtures.py tests/extraction/test_linking.py`,
       then Verify. `iterations: 1`
-- [ ] 5. **The match-check node (AC3–AC6, AC9 storage, AC10, AC20 one model).** Files:
+- [x] 5. **The match-check node (AC3–AC6, AC9 storage, AC10, AC20 one model).** Files:
       - new: `app/content/prompts/match_check.md` (`version: 1`). It describes the input
         fields and asks whether the line-up the post gives or reports for the club is for the
         club's next Premier League match. A line-up for another competition, a match already
@@ -476,7 +476,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
         `load_prompt("match_check").text`).
 
       Automatic verification:
-      `uv run pytest -q tests/extraction tests/content -n auto`, then Verify.
+      `uv run pytest -q tests/extraction tests/content -n auto`, then Verify. `iterations: 0`
 - [ ] 6. **The set directory, `snapshot-fixtures` and the evaluation on the whole flow (AC9
       header, AC14, AC19).** Files:
       - new: `app/extraction/evaluation/dataset.py` (`SetManifest`, `EvalSet`, `load_set`);
