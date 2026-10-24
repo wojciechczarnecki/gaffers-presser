@@ -342,7 +342,7 @@
 All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/backend`).
 "Verify" = `uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto`.
 
-- [ ] 1. **The evaluation entry point (AC1, move only).** Files:
+- [x] 1. **The evaluation entry point (AC1, move only).** Files:
       - new: `app/extraction/evaluation/cli.py`, `app/extraction/evaluation/__main__.py`
         (`main()` with `prog_name="python -m app.extraction.evaluation"`);
       - changed: `app/extraction/cli.py`.
@@ -372,7 +372,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       - `tests/test_readme.py`'s `EXTRACTION_COMMANDS` keeps the old strings until step 16.
 
       Automatic verification:
-      `uv run pytest -q tests/extraction -n auto && uv run python -m app.extraction.evaluation --help && uv run python -m app.extraction --help`, then Verify.
+      `uv run pytest -q tests/extraction -n auto && uv run python -m app.extraction.evaluation --help && uv run python -m app.extraction --help`, then Verify. `iterations: 1`
 - [ ] 2. **Migration 0014 (AC8): the data migration on its own.** Files:
       - new: `migrations/versions/0014_match_check.py` (`revision "0014"`, `down_revision
         "0013"`; `op.add_column("extraction_event", sa.Column("for_next_pl_match",
@@ -965,6 +965,9 @@ is the one the owner accepted in the SPEC.
 ## Deviations
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+
+- `minor` — `tests/test_docs.py::test_backlog_window_row_and_017_018_renumbering` was already red on the branch (the SPEC commit removed "planned as 018" from the roadmap); step 1 changed its roadmap assertion to the SPEC link so Verify is green, and step 16 rewrites the test as the plan says.
+- `minor` — `app/extraction/cli.py` keeps a no-op `_callback`, because with `reextract` as the only command typer would otherwise collapse the group into that command.
 
 ## Final review
 

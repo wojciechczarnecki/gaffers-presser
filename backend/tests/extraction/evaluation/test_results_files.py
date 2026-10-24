@@ -2,7 +2,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from app.extraction.cli import DEFAULT_RESULTS_DIR
+from app.extraction.evaluation.cli import DEFAULT_RESULTS_DIR
 from app.llm import chat as config
 from tests.extraction.candidates import CANDIDATES
 

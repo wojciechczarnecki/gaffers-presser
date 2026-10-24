@@ -1,5 +1,5 @@
-from app.extraction.cli import DEFAULT_CASES_PATH, DEFAULT_PLAYERS_PATH
 from app.extraction.evaluation.cases import composition_problems, load_cases
+from app.extraction.evaluation.cli import DEFAULT_CASES_PATH, DEFAULT_PLAYERS_PATH
 from app.extraction.linking import load_snapshot
 
 

@@ -171,7 +171,7 @@ def test_backlog_window_row_and_017_018_renumbering():
     (row,) = [row for row in rows if row.startswith("| 49 |")]
     assert "specs 016–018" in row
     roadmap = (ROOT / "docs" / "ROADMAP.md").read_text(encoding="utf-8")
-    assert "planned as 018" in roadmap and "planned as 017" not in roadmap
+    assert "018-extraction-evaluation-v2/SPEC.md" in roadmap and "planned as 017" not in roadmap
 
 
 def test_decisions_cover_retrieval_set_v2_and_results_header():

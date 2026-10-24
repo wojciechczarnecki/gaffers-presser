@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 import pytest
 from typer.testing import CliRunner
 
-from app.extraction.cli import app
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
+from app.extraction.evaluation.cli import app
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
 # A season no alias in aliases.toml points at, so the real aliases never reach these players.
