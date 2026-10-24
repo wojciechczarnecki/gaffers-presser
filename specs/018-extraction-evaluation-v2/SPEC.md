@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-25"
   - "spec-ready — 2026-10-25"
+metrics:
+  started_at: 2026-10-25T01:04
 ---
 
 # SPEC 018 — Extraction evaluation v2: GW6 line-up leaks, prompt v5 and a match check
