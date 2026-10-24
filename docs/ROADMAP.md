@@ -82,8 +82,10 @@ and each LLM step that produces data has an evaluation set with recorded results
       model comparison re-run and the default model revisited (ADR 0006); the owner's review of
       the corroboration judge set v1 and a pass threshold for the judge, `contradicts` cases in
       the judge set and the judge evaluation re-run on the retrieval chosen above; the
-      extraction evaluation's own entry point and the session judge for other schemas
-      (BACKLOG #12, #23, #46 (the extraction entry point), #47) (spec: TBD, planned as 018)
+      extraction evaluation's own entry point and the session judge for other schemas; the
+      next Premier League match in the extraction prompt, so line-ups from other matches give no
+      event whatever their certainty
+      (BACKLOG #12, #23, #46 (the extraction entry point), #47, #54) (spec: TBD, planned as 018)
 - [ ] README rewritten for the portfolio once the two evaluations above have results: what
       it does and why, an architecture diagram, a results table linking the reports, the
       engineering process (specs, ADRs, evaluation, tracing), a sample presser on made-up

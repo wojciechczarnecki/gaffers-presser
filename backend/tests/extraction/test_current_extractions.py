@@ -1,8 +1,16 @@
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from app.extraction.schemas import LinkedEvent
-from app.extraction.store import ExtractionRecord, current_extractions, save_extraction
-from app.fpl.models.reference import Player, Season, Team
+from app.extraction.store import (
+    LINEUP_MAX_LEAD,
+    ExtractionRecord,
+    current_extractions,
+    is_stale_lineup,
+    save_extraction,
+)
+from app.fpl.models.reference import Fixture, Player, Season, Team
 from app.tweets.models import Tweet
 from tests.tweets.membership_helpers import set_members
 
@@ -37,14 +45,19 @@ def _record(x_id: int, status: str = "extracted", finished: int = 0) -> Extracti
     )
 
 
-def _event(event_type: str = "out", fpl_id: int | None = 7, mention: str = "Saka") -> LinkedEvent:
+def _event(
+    event_type: str = "out",
+    fpl_id: int | None = 7,
+    mention: str = "Saka",
+    certainty: str = "likely",
+) -> LinkedEvent:
     return LinkedEvent(
         mention=mention,
         team=None,
         player_season=SEASON if fpl_id is not None else None,
         player_fpl_id=fpl_id,
         event_type=event_type,
-        certainty="likely",
+        certainty=certainty,
     )
 
 
@@ -214,3 +227,102 @@ def test_sources_only_drops_context_posts(db_session):
 
     assert [r.tweet_x_id for r in everything] == [1, 2, 3]
     assert [r.tweet_x_id for r in sources] == [1, 3]
+
+
+@pytest.mark.parametrize(
+    ("event_type", "certainty", "lead", "stale"),
+    [
+        ("confirmed_starter", "confirmed", LINEUP_MAX_LEAD + timedelta(minutes=1), True),
+        ("benched", "confirmed", LINEUP_MAX_LEAD + timedelta(minutes=1), True),
+        ("confirmed_starter", "confirmed", LINEUP_MAX_LEAD, False),
+        ("confirmed_starter", "confirmed", timedelta(minutes=75), False),
+        ("confirmed_starter", "likely", timedelta(days=4), False),
+        ("benched", "rumour", timedelta(days=4), False),
+        ("out", "confirmed", timedelta(days=4), False),
+        ("doubt", "confirmed", timedelta(days=4), False),
+    ],
+)
+def test_a_confirmed_lineup_far_from_the_next_kickoff_is_stale(event_type, certainty, lead, stale):
+    assert is_stale_lineup(event_type, certainty, NOW, NOW + lead) is stale
+
+
+def test_a_lineup_with_no_known_next_kickoff_is_kept():
+    assert not is_stale_lineup("confirmed_starter", "confirmed", NOW, None)
+
+
+def _fixture(fpl_id: int, kickoff: datetime | None, home: int = 1, away: int = 2) -> Fixture:
+    return Fixture(
+        season=SEASON,
+        fpl_id=fpl_id,
+        kickoff_at=kickoff,
+        team_h_fpl_id=home,
+        team_a_fpl_id=away,
+        finished=False,
+    )
+
+
+def test_fresh_lineups_only_drops_a_midweek_lineup_and_keeps_the_rest(db_session):
+    _seed(db_session)
+    db_session.add(Team(season=SEASON, fpl_id=2, name="Chelsea", short_name="CHE"))
+    db_session.add(Team(season=SEASON, fpl_id=3, name="Fulham", short_name="FUL"))
+    db_session.flush()
+    saturday = NOW + timedelta(days=3)
+    # the next kickoff is Arsenal's away match, the one after it must not count
+    db_session.add(_fixture(1, saturday, home=3, away=1))
+    db_session.add(_fixture(2, saturday + timedelta(days=7), home=1, away=2))
+    # an earlier match of another club is not Arsenal's next one
+    db_session.add(_fixture(3, NOW + timedelta(hours=2), home=2, away=3))
+    db_session.add(_tweet(1, NOW, text="Saka starts against PSG"))
+    db_session.add(_tweet(2, saturday - timedelta(minutes=75), text="Saka starts"))
+    db_session.commit()
+    save_extraction(
+        db_session,
+        _record(1),
+        [
+            _event("confirmed_starter", certainty="confirmed"),
+            _event("confirmed_starter", certainty="likely"),
+            _event("out", certainty="confirmed"),
+        ],
+    )
+    save_extraction(db_session, _record(2), [_event("confirmed_starter", certainty="confirmed")])
+
+    everything = {r.tweet_x_id: r for r in current_extractions(db_session)}
+    fresh = {r.tweet_x_id: r for r in current_extractions(db_session, fresh_lineups_only=True)}
+
+    assert len(everything[1].events) == 3
+    assert [(e.event_type, e.certainty) for e in fresh[1].events] == [
+        ("confirmed_starter", "likely"),
+        ("out", "confirmed"),
+    ]
+    assert [(e.event_type, e.certainty) for e in fresh[2].events] == [
+        ("confirmed_starter", "confirmed")
+    ]
+
+
+def test_fresh_lineups_only_keeps_a_lineup_when_the_club_has_no_fixture_ahead(db_session):
+    _seed(db_session)
+    db_session.add(Team(season=SEASON, fpl_id=2, name="Chelsea", short_name="CHE"))
+    db_session.flush()
+    db_session.add(_fixture(1, NOW - timedelta(days=1)))
+    db_session.add(_fixture(2, None))
+    db_session.add(_tweet(1, NOW))
+    db_session.commit()
+    save_extraction(db_session, _record(1), [_event("benched", certainty="confirmed")])
+
+    [row] = current_extractions(db_session, fresh_lineups_only=True)
+
+    assert [e.event_type for e in row.events] == ["benched"]
+
+
+def test_a_post_left_with_no_fresh_event_keeps_its_row_without_events(db_session):
+    _seed(db_session)
+    db_session.add(Team(season=SEASON, fpl_id=2, name="Chelsea", short_name="CHE"))
+    db_session.flush()
+    db_session.add(_fixture(1, NOW + timedelta(days=4)))
+    db_session.add(_tweet(1, NOW, text="Saka on the bench"))
+    db_session.commit()
+    save_extraction(db_session, _record(1), [_event("benched", certainty="confirmed")])
+
+    [row] = current_extractions(db_session, fresh_lineups_only=True)
+
+    assert row.events == []

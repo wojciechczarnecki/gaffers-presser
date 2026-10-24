@@ -13,6 +13,7 @@ from tests.corroboration.helpers import (
     NOW,
     SAKA,
     add_claim,
+    add_fixture,
     seed_reference,
 )
 from tests.tweets.membership_helpers import set_members
@@ -159,3 +160,13 @@ def test_context_post_is_not_a_claim(db):
 
     assert only.claim_x_ids == (1, 2, 3)
     assert only.trending_accounts == 3
+
+
+def test_a_confirmed_lineup_days_before_the_next_kickoff_does_not_list_a_player(db):
+    seed_reference(db, {6: NOW + timedelta(days=3)})
+    set_ownership(db, {SAKA: "40.0", ISAK: "40.0"})
+    add_fixture(db, 1, 6, NOW + timedelta(days=3))
+    add_claim(db, 1, SAKA, "confirmed_starter", "confirmed", mention="Saka")
+    add_claim(db, 2, ISAK, "confirmed_starter", "likely", mention="Isak")
+
+    assert set(by_id(listed(db))) == {ISAK}

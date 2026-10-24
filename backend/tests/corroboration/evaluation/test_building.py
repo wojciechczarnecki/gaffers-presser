@@ -13,7 +13,7 @@ from app.corroboration.evaluation.building import (
 from app.corroboration.evaluation.cases import LABELS, is_known_miss, load_cases
 from tests.corroboration.evaluation.fakes import ScriptedJudge
 from tests.corroboration.evaluation.test_cases import make_case
-from tests.corroboration.helpers import ISAK, NOW, SAKA, add_claim, seed_reference
+from tests.corroboration.helpers import ISAK, NOW, SAKA, add_claim, add_fixture, seed_reference
 from tests.retrieval.fakes import FakeEmbedder
 from tests.retrieval.helpers import PRICES, add_tweet
 
@@ -193,3 +193,25 @@ def test_prelabel_model_is_catalogued_and_not_default():
     assert PRELABEL_MODEL in load_model_settings()
     assert PRELABEL_MODEL in load_prices()
     assert PRELABEL_MODEL != DEFAULT_MODEL
+
+
+def test_a_stale_lineup_is_neither_an_anchor_nor_a_candidate(db):
+    _corpus(db)
+    add_fixture(db, 1, None, NOW + timedelta(days=4))
+    add_claim(
+        db,
+        5,
+        SAKA,
+        "benched",
+        "confirmed",
+        created_at=NOW - timedelta(hours=1),
+        author="a5",
+        text="Saka on the bench tonight",
+    )
+    candidates = build_candidates(db, FakeEmbedder(), PRICES)
+    assert {(c.player.fpl_id, c.anchor.post.x_id) for c in candidates} == {
+        (SAKA, 3),
+        (SAKA, 2),
+        (ISAK, 4),
+    }
+    assert all(c.post.x_id != 5 for c in candidates)

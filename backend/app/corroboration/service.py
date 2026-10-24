@@ -27,6 +27,7 @@ from app.corroboration.schemas import (
 )
 from app.corroboration.sources import (
     EMBED_TIMEOUT_SECONDS,
+    claimed_post_ids,
     retrieval_candidates,
     sql_claims,
     window_start,
@@ -152,6 +153,7 @@ def corroborate(
     with Session(engine) as session:
         start = window_start(session, as_of, since)
         claims = sql_claims(session, player, start, as_of)
+        claimed = claimed_post_ids(session, player, start, as_of)
     new_since = new_since if new_since is not None else start
     tracer = runtime.tracer
     span_input = {
@@ -193,7 +195,7 @@ def corroborate(
             report = RetrievalReport("skipped", runtime.skipped_reason or SKIPPED_NOT_CONFIGURED)
         else:
             judged, report = _judge_candidates(
-                engine, runtime, player, anchor, start, as_of, {c.post.x_id for c in claims}
+                engine, runtime, player, anchor, start, as_of, claimed
             )
             labelled.extend(judged)
 

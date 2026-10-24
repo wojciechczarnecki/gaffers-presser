@@ -6,6 +6,7 @@ from app.corroboration.schemas import PlayerRef
 from app.corroboration.sources import (
     EMBED_TIMEOUT_SECONDS,
     MAX_JUDGED,
+    claimed_post_ids,
     resolve_player,
     retrieval_candidates,
     sql_claims,
@@ -22,6 +23,7 @@ from tests.corroboration.helpers import (
     SEASON,
     add_claim,
     add_extraction,
+    add_fixture,
     seed_reference,
 )
 from tests.retrieval.fakes import FakeEmbedder, RecordingTracer, SlowEmbedder
@@ -421,3 +423,22 @@ def test_judge_cut_constants_match_the_evaluation():
 
     assert JUDGE_CUT == sources.MAX_JUDGED
     assert sources.SEARCH_LIMIT in DEFAULT_DEPTHS
+
+
+def test_sql_claims_skip_a_confirmed_lineup_days_before_the_next_kickoff(db):
+    seed_reference(db, {6: NOW + timedelta(days=3)})
+    add_fixture(db, 1, 6, NOW + timedelta(days=3))
+    add_claim(db, 1, SAKA, "benched", "confirmed", created_at=NOW - timedelta(hours=2))
+    add_claim(db, 2, SAKA, "out", "confirmed", created_at=NOW - timedelta(hours=1))
+    with Session(db) as session:
+        claims = sql_claims(session, SAKA_REF, NOW - timedelta(days=1), NOW)
+    assert [(c.post.x_id, c.event_type) for c in claims] == [(2, "out")]
+
+
+def test_claimed_post_ids_keep_a_stale_lineup(db):
+    seed_reference(db, {6: NOW + timedelta(days=3)})
+    add_fixture(db, 1, 6, NOW + timedelta(days=3))
+    add_claim(db, 1, SAKA, "benched", "confirmed", created_at=NOW - timedelta(hours=2))
+    add_claim(db, 2, ISAK, "out", created_at=NOW - timedelta(hours=1), mention="Isak")
+    with Session(db) as session:
+        assert claimed_post_ids(session, SAKA_REF, NOW - timedelta(days=1), NOW) == {1}
