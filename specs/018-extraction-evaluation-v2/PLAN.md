@@ -530,7 +530,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/extraction/evaluation/test_cases.py tests/extraction/evaluation/test_compare.py tests/extraction/evaluation/test_cli.py`,
       then Verify. `iterations: 1`
-- [ ] 8. **The session judge for extraction (AC16–AC18, AC1 names).** Files:
+- [x] 8. **The session judge for extraction (AC16–AC18, AC1 names).** Files:
       - new: `app/extraction/evaluation/judging.py` (approach item 9) and
         `app/content/prompts/extraction_prelabel.md` (`version: 1`);
       - changed: `app/extraction/evaluation/cli.py` (`export-judge-inputs` (`--out`, `--set`, `--cases`,
@@ -569,7 +569,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/extraction/evaluation tests/test_session_judge.py -n auto`, then
-      Verify.
+      Verify. `iterations: 3`
 - [ ] 9. **Extraction prompt v5: the three #23 rules (AC11 prompt).** Files:
       `app/content/prompts/extraction.md`. Set `version: 5` and add:
       - to the relevance rule: an FPL manager writing about his own team, his transfers or a

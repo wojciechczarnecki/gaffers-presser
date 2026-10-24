@@ -10,6 +10,7 @@ from typing import Annotated
 import typer
 from sqlmodel import Session
 
+from app.core.clock import SystemClock
 from app.core.errors import AppError, ConfigError
 from app.core.eval_results import (
     ResultExistsError,
@@ -37,8 +38,20 @@ from app.extraction.evaluation.dataset import (
     DEFAULT_SET_DIR,
     FIXTURES_FILE,
     PLAYERS_FILE,
+    load_context,
     load_set,
     players_path,
+)
+from app.extraction.evaluation.judging import (
+    DEFAULT_QUOTAS,
+    JudgingError,
+    estimate_export,
+    export_inputs,
+    import_verdicts,
+    parse_quotas,
+    read_corpus,
+    sources_from_cases,
+    sources_from_corpus,
 )
 from app.extraction.evaluation.metrics import (
     MAX_FALSE_ALARM_RATE,
@@ -394,6 +407,117 @@ def compare_labels(
         )
         for line in comparison.changes:
             typer.echo(f"  changed {line}")
+
+
+@app.command("export-judge-inputs", help="Write one session-judge input per post.")
+def export_judge_inputs(
+    out: Annotated[Path, typer.Option("--out", help="An empty or new directory.")],
+    set_dir: SetOption = DEFAULT_SET_DIR,
+    cases_path: Annotated[
+        Path | None, typer.Option("--cases", help="Relabel the cases of this file.")
+    ] = None,
+    split: Annotated[
+        str | None, typer.Option("--split", help="Only this split of --cases.")
+    ] = None,
+    corpus: Annotated[Path | None, typer.Option("--corpus", help="A corpus.jsonl.")] = None,
+    since: Annotated[str | None, typer.Option("--since")] = None,
+    until: Annotated[str | None, typer.Option("--until")] = None,
+    keywords: Annotated[bool, typer.Option("--keywords", help="Line-up keyword posts.")] = False,
+    rest_sample: Annotated[int, typer.Option("--rest-sample")] = 0,
+    seed: Annotated[int, typer.Option("--seed")] = 18,
+    x_ids: Annotated[list[int] | None, typer.Option("--x-id", help="Always included.")] = None,
+    exclude_cases: Annotated[
+        Path | None, typer.Option("--exclude-cases", help="Leave out the ids of this file.")
+    ] = None,
+) -> None:
+    if (cases_path is None) == (corpus is None):
+        raise fail("exactly one of --cases and --corpus must be given")
+    if split not in (None, "dev", "test"):
+        raise fail("--split must be dev or test")
+    try:
+        players, teams, fixtures = load_context(set_dir)
+    except (OSError, ValueError, KeyError) as exc:
+        raise fail(f"cannot read the players and fixtures of {set_dir}: {exc}") from None
+    player_aliases, team_aliases = load_aliases()
+    index = PlayerIndex(players, teams, player_aliases, team_aliases)
+    if cases_path is not None:
+        cases = [c for c in load_cases(cases_path) if split is None or c.split == split]
+        sources = sources_from_cases(cases)
+    else:
+        excluded = {c.id for c in load_cases(exclude_cases)} if exclude_cases else set()
+        sources = sources_from_corpus(
+            read_corpus(corpus),
+            since=_parse_iso(since) if since else None,
+            until=_parse_iso(until) if until else None,
+            keywords=keywords,
+            rest_sample=rest_sample,
+            seed=seed,
+            x_ids=x_ids or [],
+            exclude=excluded,
+        )
+    try:
+        count = export_inputs(
+            sources, FixtureIndex(fixtures), index, out, seed=seed, cases_source=cases_path
+        )
+    except JudgingError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(f"exported {count} inputs to {out}")
+    _echo_estimate(out)
+
+
+def _echo_estimate(export: Path) -> None:
+    try:
+        estimate = estimate_export(export)
+    except JudgingError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(f"estimate: {estimate.calls} calls, about {estimate.tokens} tokens")
+
+
+@app.command(help="Print the calls and tokens of an export before judging it.")
+def estimate(
+    export: Annotated[Path, typer.Option("--export", help="The export directory.")],
+) -> None:
+    _echo_estimate(export)
+
+
+@app.command("import-judge", help="Store a session judge's verdicts as unreviewed cases.")
+def import_judge(
+    export: Annotated[Path, typer.Option("--export", help="The export directory.")],
+    judge_model: Annotated[str, typer.Option("--judge-model", help="Named in the manifest.")],
+    set_dir: SetOption = DEFAULT_SET_DIR,
+    select: Annotated[int | None, typer.Option("--select")] = None,
+    seed: Annotated[int, typer.Option("--seed")] = 18,
+    quota: Annotated[
+        str, typer.Option("--quota", help="other=,lineup=,event=,none= (tier caps).")
+    ] = ",".join(f"{k}={v}" for k, v in DEFAULT_QUOTAS.items()),
+    force: Annotated[
+        bool, typer.Option("--force", help="Replace cases already in the set.")
+    ] = False,
+) -> None:
+    try:
+        players, teams, _ = load_context(set_dir)
+        player_aliases, team_aliases = load_aliases()
+        index = PlayerIndex(players, teams, player_aliases, team_aliases)
+        report = import_verdicts(
+            export,
+            set_dir,
+            index,
+            judge_model,
+            select=select,
+            seed=seed,
+            quotas=parse_quotas(quota),
+            force=force,
+            now=SystemClock().now(),
+        )
+    except (JudgingError, OSError, ValueError, KeyError) as exc:
+        raise fail(str(exc)) from None
+    typer.echo(f"v1 cases copied unchanged: {report.copied}")
+    typer.echo(f"v1 cases changed (to review): {report.changed}")
+    typer.echo(f"new candidates: {report.candidates}, selected: {report.new}")
+    if report.skipped_in_set:
+        typer.echo(f"skipped, already in the set: {', '.join(report.skipped_in_set)}")
+    if report.skipped_without_verdict:
+        typer.echo(f"skipped, no verdict: {', '.join(report.skipped_without_verdict)}")
 
 
 REVIEW_ACTIONS = "[a]ccept  [e]dit  [f]ind player  [s]kip  [q]uit"

@@ -10,7 +10,8 @@
 # that fails validation is moved to raw/<id>.invalid.json (kept, its tokens still counted), so
 # the next run calls the judge again for that input only.
 # SCHEMA is the verdict format: presser (default) {"claims": [{"claim", "label"}]}, or
-# retrieval {"labels": {"P1": true, ...}} with one boolean for each [Pn] ID in the input.
+# retrieval {"labels": {"P1": true, ...}} with one boolean for each [Pn] ID in the input, or
+# extraction {"events": [{"player", "team", "event_type", "certainty"}], "other_match_lineup": bool}.
 # EFFORT, when given, is passed to `claude --effort`.
 # The judges count against the Claude subscription: about 15-30k tokens per item.
 set -euo pipefail
@@ -29,8 +30,11 @@ case "$SCHEMA" in
     retrieval)
         FORMAT='Reply with JSON only, no prose and no code fence: {"labels": {"P1": true, "P2": false}} with exactly one boolean for every post ID listed in the input.'
         ;;
+    extraction)
+        FORMAT='Reply with JSON only, no prose and no code fence: {"events": [{"player": "...", "team": "..." | null, "event_type": "out" | "doubt" | "benched" | "confirmed_starter", "certainty": "confirmed" | "likely" | "rumour"}], "other_match_lineup": true | false}'
+        ;;
     *)
-        echo "unknown schema: $SCHEMA (presser or retrieval)" >&2
+        echo "unknown schema: $SCHEMA (presser, retrieval or extraction)" >&2
         exit 2
         ;;
 esac
@@ -73,6 +77,16 @@ try:
     verdict = json.loads(text)
     if schema == "presser":
         assert all(c["label"] in ("supported", "unsupported") for c in verdict["claims"])
+    elif schema == "extraction":
+        assert isinstance(verdict, dict) and set(verdict) == {"events", "other_match_lineup"}, "keys"
+        assert isinstance(verdict["other_match_lineup"], bool), "other_match_lineup is not a boolean"
+        assert isinstance(verdict["events"], list), "events is not a list"
+        for event in verdict["events"]:
+            assert isinstance(event, dict) and set(event) <= {"player", "team", "event_type", "certainty"}, "event keys"
+            assert isinstance(event.get("player"), str) and event["player"], "player"
+            assert event.get("team") is None or isinstance(event["team"], str), "team"
+            assert event.get("event_type") in ("out", "doubt", "benched", "confirmed_starter"), "event_type"
+            assert event.get("certainty") in ("confirmed", "likely", "rumour"), "certainty"
     else:
         ids = re.findall(r"^\[(P\d+)\]", open(f"{directory}/inputs/{case_id}.md").read(), re.M)
         labels = verdict["labels"]

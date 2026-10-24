@@ -78,6 +78,15 @@ def write_manifest(directory: Path, manifest: SetManifest) -> None:
     (directory / MANIFEST_FILE).write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n")
 
 
+def load_context(
+    directory: Path,
+) -> tuple[list[PlayerRecord], list[TeamRecord], list[FixtureRecord]]:
+    players, teams = load_snapshot(players_path(directory))
+    fixtures_path = directory / FIXTURES_FILE
+    fixtures = load_fixtures_snapshot(fixtures_path) if fixtures_path.exists() else []
+    return players, teams, fixtures
+
+
 def load_set(directory: Path) -> EvalSet:
     directory = Path(directory)
     cases_path = directory / CASES_FILE

@@ -867,6 +867,10 @@ def test_help_lists_every_evaluation_command():
         "spend",
         "compare-labels",
         "review",
+        "snapshot-fixtures",
+        "export-judge-inputs",
+        "estimate",
+        "import-judge",
     ):
         assert command in result.stdout
 
@@ -1035,3 +1039,68 @@ def test_compare_labels_lists_each_changed_case(tmp_path):
     assert "changed a: relabelled Salah certainty" in result.stdout
     assert "changed b: added 1" in result.stdout
     assert "changed c: removed 1" in result.stdout
+
+
+def test_estimate_prints_calls_and_tokens(tmp_path):
+    set_dir = tmp_path / "set"
+    _write_v2_set(set_dir, [_benched_case("1")])
+    out = tmp_path / "export"
+
+    exported = CliRunner().invoke(
+        app,
+        [
+            "export-judge-inputs",
+            "--set",
+            str(set_dir),
+            "--cases",
+            str(set_dir / "cases.jsonl"),
+            "--out",
+            str(out),
+        ],
+    )
+    estimated = CliRunner().invoke(app, ["estimate", "--export", str(out)])
+
+    assert exported.exit_code == 0, exported.output
+    assert "exported 1 inputs" in exported.stdout
+    assert estimated.exit_code == 0, estimated.output
+    assert "estimate: 1 calls, about" in estimated.stdout
+    missing = CliRunner().invoke(app, ["estimate", "--export", str(tmp_path / "none")])
+    assert missing.exit_code == 1
+
+
+def test_export_and_import_through_the_cli(tmp_path):
+    set_dir = tmp_path / "set"
+    _write_v2_set(set_dir, [_benched_case("1")])
+    out = tmp_path / "export"
+    runner = CliRunner()
+
+    runner.invoke(
+        app,
+        [
+            "export-judge-inputs",
+            "--set",
+            str(set_dir),
+            "--cases",
+            str(set_dir / "cases.jsonl"),
+            "--out",
+            str(out),
+        ],
+    )
+    (out / "verdicts").mkdir()
+    (out / "verdicts" / "I0001.json").write_text(
+        json.dumps({"events": [], "other_match_lineup": True})
+    )
+    target = tmp_path / "v2"
+    target.mkdir()
+    for name in ("players.json", "fixtures.json"):
+        (target / name).write_text((set_dir / name).read_text())
+
+    result = runner.invoke(
+        app,
+        ["import-judge", "--export", str(out), "--set", str(target), "--judge-model", "j"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "v1 cases changed (to review): 1" in result.stdout
+    refused = runner.invoke(app, ["export-judge-inputs", "--set", str(set_dir), "--out", str(out)])
+    assert refused.exit_code == 1
