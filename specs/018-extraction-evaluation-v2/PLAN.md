@@ -420,7 +420,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/extraction/test_lineups.py tests/extraction/test_current_extractions.py tests/extraction/test_store.py tests/alerts tests/corroboration -n auto`,
       then Verify. `iterations: 1`
-- [ ] 4. **Fixture data (AC4 data, AC14 snapshot format).** Files:
+- [x] 4. **Fixture data (AC4 data, AC14 snapshot format).** Files:
       - new: `app/extraction/fixtures.py` (approach item 4);
       - changed: `app/extraction/linking.py` (`PlayerIndex.player(fpl_id)`).
 
@@ -437,7 +437,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/extraction/test_fixtures.py tests/extraction/test_linking.py`,
-      then Verify.
+      then Verify. `iterations: 1`
 - [ ] 5. **The match-check node (AC3–AC6, AC9 storage, AC10, AC20 one model).** Files:
       - new: `app/content/prompts/match_check.md` (`version: 1`). It describes the input
         fields and asks whether the line-up the post gives or reports for the club is for the

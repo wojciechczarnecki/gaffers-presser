@@ -136,6 +136,7 @@ class PlayerIndex:
         team_aliases: list[TeamAlias] = (),
     ) -> None:
         self._by_key: dict[str, set[PlayerRecord]] = defaultdict(set)
+        self._player_by_fpl_id: dict[int, PlayerRecord] = {p.fpl_id: p for p in players}
         for player in players:
             for key in _player_keys(player):
                 self._by_key[key].add(player)
@@ -170,6 +171,12 @@ class PlayerIndex:
             key = normalise(team_alias.alias)
             if key:
                 self._teams_by_key.setdefault(key, team)
+
+    def player(self, fpl_id: int) -> PlayerRecord | None:
+        return self._player_by_fpl_id.get(fpl_id)
+
+    def teams(self) -> list[TeamRecord]:
+        return sorted(self._team_by_fpl_id.values(), key=lambda t: t.fpl_id)
 
     def team_for(self, team_fpl_id: int) -> TeamRecord | None:
         return self._team_by_fpl_id.get(team_fpl_id)
