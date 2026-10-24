@@ -85,7 +85,7 @@ and each LLM step that produces data has an evaluation set with recorded results
       extraction evaluation's own entry point and the session judge for other schemas; the
       next Premier League match in the extraction prompt, so line-ups from other matches give no
       event whatever their certainty
-      (BACKLOG #12, #23, #46 (the extraction entry point), #47, #54) (spec: TBD, planned as 018)
+      (BACKLOG #12, #23, #46 (the extraction entry point), #47, #54) (spec: [018](../specs/018-extraction-evaluation-v2/SPEC.md))
 - [ ] README rewritten for the portfolio once the two evaluations above have results: what
       it does and why, an architecture diagram, a results table linking the reports, the
       engineering process (specs, ADRs, evaluation, tracing), a sample presser on made-up
