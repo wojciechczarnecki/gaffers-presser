@@ -14,6 +14,10 @@ metrics:
   escalations_tooling: 0
   plan_review_blockers: 0
   plan_review_majors: 3
+  implement_steps: 10
+  implement_iterations: 12
+  deviations_minor: 8
+  deviations_major: 0
 ---
 
 # SPEC 018 — Extraction evaluation v2: GW6 line-up leaks, prompt v5 and a match check
