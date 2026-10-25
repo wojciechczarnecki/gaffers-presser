@@ -176,7 +176,7 @@ def test_export_keywords_rest_sample_and_required_ids():
         _row(5, "Third quiet post"),
         _row(6, "Early line-up leak", created_at=AT - timedelta(days=30)),
         _row(7, "Repost of nothing", is_source=False),
-        _row(8, "Required quiet post"),
+        _row(8, "Required quiet post", created_at=AT - timedelta(days=40)),
         _row(9, "Excluded XI"),
     ]
 
@@ -414,3 +414,33 @@ def test_parse_quotas():
     assert parse_quotas("other=1")["lineup"] == 35
     with pytest.raises(JudgingError):
         parse_quotas("bogus=1")
+
+
+def test_unwatched_authors_are_left_out_at_export_and_at_import(tmp_path):
+    rows = [
+        _row(5001, "XI of a watched account"),
+        _row(5002, "XI of a stranger").model_copy(update={"author_handle": "stranger"}),
+    ]
+    sources = sources_from_corpus(
+        rows,
+        since=None,
+        until=None,
+        keywords=False,
+        rest_sample=0,
+        seed=1,
+        x_ids=[],
+        exclude=set(),
+        authors=["Reporter"],
+    )
+    assert [s.post.x_id for s in sources] == [5001]
+
+    out = _post_export(tmp_path, rows)
+    _write_verdicts(out, {"5001": _verdict(), "5002": _verdict()})
+    set_dir = tmp_path / "set"
+    set_dir.mkdir()
+    (set_dir / "set.json").write_text(json.dumps({"version": "v2", "list_handles": ["reporter"]}))
+
+    report = _import(out, set_dir)
+
+    assert [c.id for c in load_cases(set_dir / "cases.jsonl")] == ["5001"]
+    assert report.skipped_unwatched == ["5002"]

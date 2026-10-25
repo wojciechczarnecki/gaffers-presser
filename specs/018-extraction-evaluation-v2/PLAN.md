@@ -585,7 +585,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/content tests/extraction/test_flow.py`, then Verify. `iterations: 0`
-- [ ] 10. **Build set v2 with session pre-labels (AC11–AC14 data, AC18).** The spec owner
+- [x] 10. **Build set v2 with session pre-labels (AC11–AC14 data, AC18).** The spec owner
       approved these read-only Compose reads (`DATABASE_URL` from `backend/.env`); no command
       here writes to Compose. Prefix every command with `env -u TWEET_SOURCE`.
       `$S` = a `018/` directory in the implementer's session scratchpad (never in the
@@ -641,7 +641,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       `uv run pytest -q tests/extraction/evaluation/test_eval_set_v2.py -k "schema or every_v1 or fixtures"`
       green, and `-k composition` failing only on unreviewed cases or labels the owner will
       settle, recorded in `## Deviations`. Then Verify with `test_eval_set_v2.py` deselected
-      (`--deselect tests/extraction/evaluation/test_eval_set_v2.py`).
+      (`--deselect tests/extraction/evaluation/test_eval_set_v2.py`). `iterations: 2`
 - [ ] 11. **The owner's review of set v2 (AC12, AC13, AC18): the implementer stops here.**
       - End the run with `RESULT: ESCALATE` (`KIND: decision`) and wait. The message gives:
         - the counts: changed v1 cases and new cases per split;
@@ -970,6 +970,10 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 - `minor` — `app/extraction/cli.py` keeps a no-op `_callback`, because with `reextract` as the only command typer would otherwise collapse the group into that command.
 - `minor` — The `other_match_lineup` tag was added to `Tag` in step 6 instead of step 7, because the runner and its tests already use it; step 7 adds its composition rules.
 - `minor` — `prelabel` keeps `--output` (default `<set>/cases.jsonl`) and `--eval-set` beside the new `--set`, so the paid pre-labelling command keeps its shape; `PlayerIndex` also gained a `teams()` accessor for the judge's fixtures context.
+- `minor` — Step 10 pilot (Sonnet, medium effort, v1 dev split, 45 cases): 38 cases unchanged (84%, gate 80%), 7 changed (5 of them only gained the `other_match_lineup` tag); pre-label F1 against v1's reviewed dev labels 0.884 (gate 0.85, v1's paid pre-labels scored 0.739). Sonnet judges the rest. Sonnet failed to return bare JSON for a few inputs on every retry (it reasoned aloud before the JSON): those inputs (1 of 45 in the pilot, 2 of 91 v1 test, 14 of 350 corpus candidates) were judged by Opus with the same prompt and are named in the manifest's judge string.
+- `minor` — Step 10 import: `import-judge` leaves out posts whose author is not in the manifest's `list_handles` (the retrieval corpus holds some posts of accounts that are not on the watched list); `export-judge-inputs` does the same when the set has a manifest. Both are additions to the plan (AC25: only watched accounts).
+- `minor` — Step 10 labels set by the implementer from the SPEC, all left `reviewed: false` for the owner: the two BACKLOG #23 posts 2104646876389650860 and 2106010889262436608 have no events (AC11; the judge had labelled `doubt` events), and 2112602884491678165 ("Haaland on the bench" during City v AEK, BACKLOG #54) has no events and the `other_match_lineup` tag. The tag was removed (events kept) from 2112611917852553331, 2112610754742399225 and 2110427492662096205, mixed posts with genuine availability or next-match events, so that no tagged case has an event (AC13). `backlog_54_lineups` lists 2110427109139136724, 2112601543853605108, 2112602127180644718, 2112602884491678165 and 2110791630110195870.
+- `minor` — Step 10 composition: the candidates pass `composition_problems_v2`; only `test_eval_set_v2.py::test_every_case_reviewed` is red until the owner's review (114 of 228 cases are unreviewed: 22 changed v1 cases and 92 new ones). The 15 v1 test-split cases the judge changed removed 21 events against v1's labels (test pre-label F1 0.716 against v1), so the owner's review of the changed v1 cases matters.
 
 ## Final review
 

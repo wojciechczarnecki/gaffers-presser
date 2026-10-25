@@ -119,15 +119,23 @@ def sources_from_corpus(
     seed: int,
     x_ids: Collection[int],
     exclude: Collection[str],
+    authors: Collection[str] | None = None,
 ) -> list[JudgeSource]:
     wanted = set(x_ids)
+    watched = {a.casefold() for a in authors} if authors is not None else None
     pool = [
         row
         for row in rows
-        if (row.x_id in wanted or row.is_source)
-        and (since is None or row.created_at >= since)
-        and (until is None or row.created_at < until)
-        and str(row.x_id) not in exclude
+        if str(row.x_id) not in exclude
+        and (watched is None or row.author_handle.casefold() in watched)
+        and (
+            row.x_id in wanted
+            or (
+                row.is_source
+                and (since is None or row.created_at >= since)
+                and (until is None or row.created_at < until)
+            )
+        )
     ]
     if keywords:
         matching = [row for row in pool if row.x_id in wanted or LINEUP_KEYWORDS.search(row.text)]
@@ -272,6 +280,7 @@ class ImportReport:
     candidates: int = 0
     skipped_without_verdict: list[str] = field(default_factory=list)
     skipped_in_set: list[str] = field(default_factory=list)
+    skipped_unwatched: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -394,6 +403,8 @@ def import_verdicts(
     if missing_cases:
         raise JudgingError("cases without a verdict, nothing imported: " + ", ".join(missing_cases))
 
+    manifest = load_manifest(set_dir) or SetManifest(version=set_dir.name)
+    watched = {h.casefold() for h in manifest.list_handles}
     cases_path = set_dir / CASES_FILE
     existing = load_cases(cases_path) if cases_path.exists() else []
     existing_ids = {case.id for case in existing}
@@ -424,6 +435,9 @@ def import_verdicts(
             )
             report.changed += 1
         else:
+            if watched and entry.item["post"]["author_handle"].casefold() not in watched:
+                report.skipped_unwatched.append(str(entry.item["post"]["x_id"]))
+                continue
             if str(entry.item["post"]["x_id"]) in existing_ids and not force:
                 report.skipped_in_set.append(str(entry.item["post"]["x_id"]))
                 continue
@@ -454,7 +468,6 @@ def import_verdicts(
     kept = [case for case in existing if case.id not in replaced]
     write_cases(cases_path, [*kept, *case_results, *new_posts])
 
-    manifest = load_manifest(set_dir) or SetManifest(version=set_dir.name)
     versions = mapping.get("prompts") or {}
     manifest.prelabels.append(
         PrelabelEntry(

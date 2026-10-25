@@ -39,6 +39,7 @@ from app.extraction.evaluation.dataset import (
     FIXTURES_FILE,
     PLAYERS_FILE,
     load_context,
+    load_manifest,
     load_set,
     players_path,
 )
@@ -445,6 +446,7 @@ def export_judge_inputs(
         sources = sources_from_cases(cases)
     else:
         excluded = {c.id for c in load_cases(exclude_cases)} if exclude_cases else set()
+        manifest = load_manifest(set_dir)
         sources = sources_from_corpus(
             read_corpus(corpus),
             since=_parse_iso(since) if since else None,
@@ -454,6 +456,7 @@ def export_judge_inputs(
             seed=seed,
             x_ids=x_ids or [],
             exclude=excluded,
+            authors=manifest.list_handles if manifest and manifest.list_handles else None,
         )
     try:
         count = export_inputs(
@@ -516,6 +519,8 @@ def import_judge(
     typer.echo(f"new candidates: {report.candidates}, selected: {report.new}")
     if report.skipped_in_set:
         typer.echo(f"skipped, already in the set: {', '.join(report.skipped_in_set)}")
+    if report.skipped_unwatched:
+        typer.echo(f"skipped, author not on the watched list: {len(report.skipped_unwatched)}")
     if report.skipped_without_verdict:
         typer.echo(f"skipped, no verdict: {', '.join(report.skipped_without_verdict)}")
 
