@@ -901,6 +901,8 @@ Results are recorded here by the implementer.
 
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
+- 2026-10-25 — implement — `decision` — Step 11: how to handle the owner's review of set v2 (114 unreviewed cases)? — The owner reviews every case with `review --set evals/extraction/v2`, then the implementer resumes with steps 12–17
+
 ## Review log
 
 2026-10-25 — /pipeline:plan-review
