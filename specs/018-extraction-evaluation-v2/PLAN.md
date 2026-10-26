@@ -994,3 +994,59 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 ## Final review
 
 _(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
+
+2026-10-26 — /pipeline:final-review (report). Three perspectives (compliance, quality, tests) ran
+as separate subagents. The tests perspective ran 31 mutations: 24 were killed and 7 survived. The
+working tree was restored after them.
+
+AC → evidence:
+
+| AC | Evidence | Status |
+|----|----------|--------|
+| AC1 | `app/extraction/evaluation/{cli,__main__}.py`; `test_cli.py::test_help_lists_every_evaluation_command`; `tests/extraction/test_cli.py::test_help` | met |
+| AC2 | README, `docs/EVALUATION.md`, `docs/DEPLOYMENT.md`; `test_readme.py::test_extraction_evaluation_commands_use_the_new_module` | met |
+| AC3 | `flow.py::match_check_node`; `test_flow.py::test_match_check_one_call_per_club`, `::test_no_match_check_without_lineup_events`, `::test_match_check_two_clubs_two_calls` | met |
+| AC4 | `flow.py::_render_match_check`, `fixtures.py::FixtureIndex.around`; `test_flow.py::test_match_check_input_from_fixture_data`; `test_fixtures.py::test_around_previous_and_next` | met |
+| AC5 | `flow.py` (`replace` on that club's line-up events), `store.py::save_extraction`; `test_flow.py::test_match_check_answer_on_that_clubs_lineup_events_only`, `::test_no_call_for_unlinked_or_club_without_next_fixture`; `test_store.py::test_save_extraction_stores_the_match_check_answer` | met |
+| AC6 | the node catches the error and `call` traces its error class; `test_flow.py::test_match_check_failure_is_fail_open`; `test_service.py::test_failed_match_check_keeps_the_extraction_extracted` | met |
+| AC7 | `lineups.py::kept_at_read`, `store.py::current_extractions`; `test_lineups.py::test_kept_at_read`; three new `test_current_extractions.py` tests | met |
+| AC8 | `migrations/versions/0014_match_check.py`; `test_migrations.py::test_match_check_migration_leaves_existing_events_null`; `test_docs.py::test_deployment_lists_migration_0014` | met |
+| AC9 | `flow.py::PROMPT_VERSION`; `test_flow.py::test_prompt_version_names_three_prompts`; `test_cli.py::test_evaluate_header_names_the_three_prompts`; the v2 headers | met |
+| AC10 | `content/prompts/match_check.md`; `test_prompts.py::test_match_check_prompt_has_a_version`, `::test_flow_sends_the_loaded_match_check_prompt` | met |
+| AC11 | `extraction.md` v5; `test_prompts.py::test_extraction_prompt_v5_rules`; `test_eval_set_v2.py::test_backlog_23_cases_labelled` | met |
+| AC12 | `compare.py::describe_change`; `test_compare.py::test_changed_cases_listed`; `test_cli.py::test_compare_labels_lists_each_changed_case`, `::test_evaluate_refuses_unreviewed`; `test_eval_set_v2.py::test_every_v1_case_in_v2`, `::test_every_case_reviewed` | met (F1) |
+| AC13 | `cases.py::composition_problems_v2` returns `[]` on v2: 92 new real cases, 43 tagged (29 in test); `test_cases.py::test_composition_v2_*`; `test_eval_set_v2.py::test_composition_v2` | met |
+| AC14 | `evals/extraction/v2/fixtures.json`, `dataset.py::load_set`; `test_cli.py::test_evaluate_reads_the_set_directory_without_a_database`; `test_eval_set_v2.py::test_fixtures_snapshot_covers_every_case` | met |
+| AC15 | `dev-iterations.md`, the report's "Dev iterations"; `test_results_files.py::test_v2_test_runs_share_one_prompt` | met |
+| AC16 | `judging.py::export_inputs`, `::estimate_export`; `test_judging.py::test_export_one_input_per_post_with_neutral_ids`, `::test_mapping_outside_inputs`, `::test_estimate_counts_calls_and_tokens` | met |
+| AC17 | `scripts/session_judge.sh` `extraction` schema; `test_session_judge.py::test_extraction_*`; `test_judging.py::test_import_refuses_an_invalid_verdict` | met (F3) |
+| AC18 | `judging.py::import_verdicts`; `test_judging.py::test_imported_cases_unreviewed_with_the_judge_in_the_manifest`; `test_review_cli.py::test_review_shows_an_imported_case` | met |
+| AC19 | `runner.py` uses `kept_at_read`; `metrics.py`; `test_runner.py::test_scores_the_events_kept_at_read`, `::test_runner_and_store_share_the_predicate`; `test_metrics.py::test_other_match_false_alarms`, `::test_lineups_dropped_by_check` | met (F8) |
+| AC20 | `results/v2/*.json` (six models and `glm-…-r2`); `test_results_files.py::test_v2_one_test_run_per_candidate`, `::test_v2_test_spend_within_cap`; `test_flow.py::test_every_call_uses_the_flow_model`; spend 1.16 USD | met |
+| AC21 | `selection.py::choose_models`; `test_selection.py`; `test_results_files.py::test_v2_rule_picks_the_configured_defaults`, `::test_adr_0010_names_the_defaults` | met (F7) |
+| AC22 | `docs/reports/extraction-eval-v2.md`; `test_docs.py::test_extraction_report_v2_has_every_section`; `test_results_files.py::test_report_v2_names_every_test_run` | partly (F4) |
+| AC23 | four DECISIONS rows of 2026-10-26; ADR 0010 (A, C, D); `test_docs.py::test_decisions_cover_match_check_and_set_v2`, `::test_adr_0010_weighs_alternatives_a_c_d` | met |
+| AC24 | ROADMAP 018 ticked and 019 open; BACKLOG #23, #46 and #54 removed, #12 narrowed; `test_docs.py::test_roadmap_018_ticked_and_019_open`, `::test_backlog_23_46_54_removed_and_12_narrowed` | met |
+| AC25 | the full verification and the step 17 greps (end-to-end results); the authors rule in `composition_problems_v2` | met |
+
+Findings:
+
+- **F1** `worth-fixing` — backend/app/extraction/evaluation/cli.py:360,382 — a bare `compare-labels`, as `docs/DEPLOYMENT.md` shows it, now defaults to `--set evals/extraction/v2` but keeps `DEFAULT_BASELINE_REVISION = "dc02d98"`, v1's pre-label commit. `v2/cases.jsonl` does not exist at that commit, so the command always fails with "cannot read cases.jsonl at revision dc02d98". — Take the default revision from the manifest's last `prelabels` `git_commit`, or require `--revision`/`--baseline` for a set other than v1. Add a test of the default call.
+- **F2** `worth-fixing` — backend/app/extraction/evaluation/cli.py:92,112,139 — `snapshot-players`, `snapshot-fixtures` and `prelabel` now default to the committed set (`evals/extraction/v2`), where main required `--output`. A bare `snapshot-fixtures` overwrites the reviewed set's `fixtures.json` or `players.json` from the live database. It has no overwrite guard and no atomic write. A bare `prelabel` appends unreviewed paid candidates to `v2/cases.jsonl`. — Require `--set` or `--output` for these writes, or refuse an existing file without `--force`, and write with `write_json_atomic`.
+- **F3** `worth-fixing` — backend/app/extraction/evaluation/judging.py:66-74 — `PrelabelVerdict` validates in lax mode. `{"events":[{"player":"","event_type":"out","certainty":"likely"}],"other_match_lineup":"yes"}` imports with the flag `True` and an empty player, so a verdict edited by hand passes the import that AC17 says refuses an invalid file. The shell validator and the retrieval import do check `bool`. — Use `strict=True` on both models, and `min_length=1` on `player`.
+- **F4** `worth-fixing` — docs/reports/extraction-eval-v2.md:112,138; docs/adr/0010-extraction-match-check-and-default-model.md:79-81 — the report says the remaining raw events the 60 h filter alone misses "are the other-match line-ups inside its 60 h window". The committed test files show something else. Every linked tagged line-up the check answered false was also `confirmed` and more than 60 h before kickoff. The survivors are an unlinked `benched` event and `out` events, which neither filter targets. So on test the check removed no tagged case beyond the 60 h filter, except one in `glm-…-r2`. The set does not hold the other-match line-ups at `likely`/`rumour` or inside 60 h that the SPEC's goal names. — State this in "The 60 h filter alone" and "Threats to validity", and reword the expected effect at :138 and in the ADR's consequences.
+- **F5** `worth-fixing` — backend/app/extraction/aliases.toml:29-32 (commit e8d1625) — the `Savinho` → 403 alias is outside the plan. It has no Deviations entry and no test, and every later run uses it. The owner decision of 2026-10-26 (5) moves linker fixes to BACKLOG #57 after this spec. — Add a `minor` Deviations entry with the reason, and an alias test, or revert it to #57.
+- **F6** `worth-fixing` — backend/app/extraction/evaluation/judging.py:427-428 — no test covers a v1 case whose events are unchanged and whose `other_match_lineup` flag changed. With `and tags_same` removed, the tests stay green (a mutation survived). A regression would copy such a case as `reviewed: true` without the tag. — Add a test of a flag-only change in both directions, asserting `changed`, `reviewed is False` and the tags.
+- **F7** `worth-fixing` — backend/app/extraction/evaluation/selection.py:49 — "most thresholds first, then F1" is not pinned. In `test_with_none_passing_the_most_thresholds_then_f1_wins`, the winner also has the highest F1, so swapping the key order survives. — Add a case where the model with the most thresholds has the lower F1.
+- **F8** `worth-fixing` — backend/app/extraction/evaluation/metrics.py:232 — `lineups_dropped_by_check` is not tested against a fail-open `null` answer. Changing `is False` to `is not True` survives, which would count failed checks as drops. — Add an expected line-up paired with `for_next_pl_match=None` to `test_lineups_dropped_by_check`.
+- **F9** `nit` — backend/app/extraction/store.py:286 — the SQL `Fixture.kickoff_at > Tweet.created_at` has no boundary test (`>=` survives). AC19's parity with `FixtureIndex.around` at a kickoff equal to the post time is unguarded. — Add a `current_extractions` test with a kickoff exactly at `created_at`.
+- **F10** `nit` — backend/app/extraction/evaluation/cli.py:186-194 — `prelabel` now runs the match check, but it writes every event as an expected label, including line-ups the check answered false (a Champions League XI becomes `benched`/`confirmed_starter` labels). — Keep only events `kept_at_read` keeps, or build the flow without fixtures.
+- **F11** `nit` — backend/app/extraction/evaluation/compare.py:129 — `cases_changed` still counts a case whose only relabel has an empty field tuple, which `describe_change` and the import treat as no change. So "cases changed: N" can exceed the number of "changed" lines printed. — Count `bool(added or removed or any(c.fields for c in relabelled))`.
+- **F12** `nit` — backend/app/extraction/evaluation/selection.py:1-7,34 — a module docstring and a function docstring in new code, against CONVENTIONS ("No docstrings"). — Remove them, or keep one comment for the rule.
+- **F13** `nit` — docs/BACKLOG.md:32 — row #24's trigger is still "after #23", and #23 is removed. — Reword the trigger, e.g. "after spec 018's prompt v5".
+
+Rejected: none. The findings each perspective reported were checked in the code and the
+result files. The compare-labels default came from two perspectives and was merged into F1, and
+the snapshot and prelabel defaults were merged into F2.
+
+Left out: 18 nit findings
