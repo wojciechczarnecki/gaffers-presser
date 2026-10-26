@@ -46,7 +46,7 @@ Most changes in the test split are `fpl_id` fixes of unlinked mentions (19 of th
 
 ## Dev iterations
 
-Prompt work used the dev split only: 72 cases, 140 expected events, two models (`openai/gpt-6-luna`, `google/gemini-3.1-flash-lite`), a baseline i0 and three edits, stopped before the five-iteration limit. The runs predate the re-dating of the synthetic line-up cases (owner decision 2026-10-26), so they are reported as run.
+Prompt work used the dev split only: 72 cases, 140 expected events, two models (`openai/gpt-6-luna`, `google/gemini-3.1-flash-lite`), a baseline i0 and three edits, stopped before the five-iteration limit. The runs predate the re-dating of the synthetic line-up cases (owner decision 2026-10-26), so they are reported as run. One later run of the frozen prompts with the winner on the re-dated dev split (`e2e-018`, `openai/gpt-6-luna`) gave F1 0.895, linking 0.961, false alarms 0.000, other-match false alarms 0 of 14, no line-up dropped by the check, and passed every threshold.
 
 | Run | F1 | Precision | Recall | Linking | False alarms | Other-match false alarms | Line-ups dropped by the check | Change made before the run |
 |-----|----|-----------|--------|---------|--------------|--------------------------|-------------------------------|----------------------------|

@@ -805,7 +805,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/test_readme.py tests/test_docs.py`, then Verify.
-- [ ] 17. **Full verification and the spec's own checks (AC25).**
+- [x] 17. **Full verification and the spec's own checks (AC25).** `iterations: 0`
       - Run Verify.
       - Run `git grep -nE "python -m app\.extraction (evaluate|review|prelabel)" -- '*.md' ':!specs'`,
         which must print nothing.
@@ -876,7 +876,15 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
   prompt versions.
 - The full verification command passes.
 
-Results are recorded here by the implementer.
+Results (2026-10-26, implementer):
+
+- `python -m app.extraction.evaluation --help` lists the ten commands; `python -m app.extraction --help` lists `reextract` only.
+- `compare-labels --set evals/extraction/v2 --baseline evals/extraction/v1/cases.jsonl`: `ids only in the baseline: -` for dev and test.
+- `test_eval_set_v2.py` passes (inside the full run).
+- `spend --results-dir evals/extraction/results/v2`: 1.16 USD (prices.toml), within the 5 USD cap.
+- `evaluate --split dev --model openai/gpt-6-luna --run-name e2e-018`: 0 errored cases, F1 0.895, linking 0.961, false alarms 0.000, `other match false alarms: 0 of 14`, `line-ups dropped by the check: 0`, passes thresholds.
+- The grep for the old command lines in `*.md` outside `specs/` and the grep for manager or league data in `backend/evals/extraction/v2` print nothing.
+- `test_migrations.py` and the full verification command pass (2300+ tests).
 
 ### Manual (performed by the owner)
 
@@ -890,12 +898,12 @@ Results are recorded here by the implementer.
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, ADR 0010, `docs/EVALUATION.md`,
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, ADR 0010, `docs/EVALUATION.md`,
       `docs/DEPLOYMENT.md`, README and BACKLOG updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
