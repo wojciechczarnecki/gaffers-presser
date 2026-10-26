@@ -902,6 +902,7 @@ Results are recorded here by the implementer.
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
 - 2026-10-25 — implement — `decision` — Step 11: how to handle the owner's review of set v2 (114 unreviewed cases)? — The owner reviews every case with `review --set evals/extraction/v2`, then the implementer resumes with steps 12–17
+- 2026-10-26 — implement — `decision` — Labelling rules settled in the owner's review of set v2 that prompt v5 must follow (dev iterations of step 12) — (1) a player left out of the squad or line-up for the next Premier League match with no reason given ("No Mykolenko", "miss out altogether", "not in squad") is `out`, certainty from the source as usual; (2) a player returning from injury and ready for some minutes is no event (no positive type, BACKLOG #24), while one the manager says is weeks away is `out`; (3) a remark on fatigue or workload is no event; a post about a fake leak after the fact is no event; an FPL manager's own team ("definitely starting Palmer") is no event; (4) every unlinked mention the context resolves gets its `fpl_id` (one stays null: Angulo in 2108903022474535173, Nilson or Juan Angulo, both Sunderland); (5) the linker fixes found in the review are BACKLOG #57, after spec 018, and do not change this spec's scope
 
 ## Review log
 
