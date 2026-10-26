@@ -306,6 +306,7 @@
       `pair_compatible` with the default.
     - It reads the v2 result files, and a test over the committed files asserts the result
       equals `DEFAULT_MODEL` and `DEFAULT_FALLBACK_MODEL` in `app/llm/chat.py`.
+- 2026-10-26 — final-review — `gate` — Which final review findings to accept? — `accepted`: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13; `rejected`: none
 
 ## AC → steps matrix
 
