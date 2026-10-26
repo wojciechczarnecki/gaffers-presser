@@ -87,10 +87,12 @@ below; agents never touch production.
    slow provider never delays tweet polls or FPL jobs; a failed post is stored as `failed`,
    never blocks the rest and is retried after 10 minutes, up to 5 extractions in total.
    Re-extraction and evaluation run from a shell with the production variables, or locally:
-   `python -m app.extraction reextract --failed`, `python -m app.extraction prelabel`,
-   `python -m app.extraction evaluate --split dev --model <OpenRouter model ID>`,
-   `python -m app.extraction compare-labels`, `python -m app.extraction spend` (see the
-   README's Development section).
+   `python -m app.extraction reextract --failed`, and the evaluation from its own module:
+   `python -m app.extraction.evaluation prelabel`,
+   `python -m app.extraction.evaluation evaluate --set evals/extraction/v2 --split dev --model <OpenRouter model ID>`,
+   `python -m app.extraction.evaluation compare-labels`, `python -m app.extraction.evaluation spend`
+   (see the README's Development section). The match check (migration 0014) is part of the
+   extraction flow and needs no setting of its own.
 9. **Retrieval indexing.** Indexing runs whenever `OPENROUTER_API_KEY` is set (the same key as
    extraction); without it the worker logs `retrieval indexing disabled` and every other loop
    runs as before.

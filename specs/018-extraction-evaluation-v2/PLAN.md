@@ -758,7 +758,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/test_docs.py tests/extraction/evaluation/test_results_files.py`,
       then Verify.
-- [ ] 16. **The documents (AC2, AC23, AC24).**
+- [x] 16. **The documents (AC2, AC23, AC24).** `iterations: 0`
       - `README.md`:
         - the extraction development section uses only `python -m app.extraction.evaluation`
           and set v2 (`--set`), lists the new commands, and states the match check and its

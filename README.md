@@ -63,6 +63,27 @@ labelling, the misses and the limits are in the
 [report](docs/reports/retrieval-eval-v2.md), and the choice in
 [ADR 0009](docs/adr/0009-default-embedding-model.md).
 
+## Extraction results
+
+Set v2, test split (156 cases, 311 events), prompts `extraction@5`, `link_disambiguation@1` and
+`match_check@1`, every step with the model under test. Details:
+[report](docs/reports/extraction-eval-v2.md), decision:
+[ADR 0010](docs/adr/0010-extraction-match-check-and-default-model.md).
+
+| model | F1 | linking | false alarms | other-match false alarms | PLN / month | passes |
+|---|---|---|---|---|---|---|
+| `openai/gpt-6-luna` | 0.863 | 0.977 | 4.1% | 2 of 29 | 0.84 | yes |
+| `qwen/qwen3.8-flash` | 0.869 | 0.970 | 3.1% | 2 of 29 | 1.37 | yes |
+| `google/gemini-3.1-flash-lite` | 0.918 | 0.980 | 7.2% | 2 of 29 | 2.39 | no |
+| `anthropic/claude-haiku-4.5` | 0.911 | 0.976 | 4.1% | 2 of 29 | 14.30 | no |
+| `z-ai/glm-5.3-flash` | 0.902 | 0.979 | 6.5% | 3 of 28 | 2.21 | no |
+| `z-ai/glm-5.3-flash` (repeat) | 0.923 | 0.980 | 5.4% | 2 of 29 | 2.11 | no |
+| `deepseek/deepseek-v4-flash` | 0.493 | 0.948 | 5.2% | 2 of 29 | 1.35 | no |
+
+The default is `openai/gpt-6-luna`, the cheapest model that passes every threshold (F1 ≥ 0.85,
+linking ≥ 0.95, false alarms ≤ 5%, ≤ 5 PLN a month, no errored case); the fallback is
+`google/gemini-3.1-flash-lite`.
+
 ## Documentation
 
 | Document | Contents |
@@ -154,37 +175,53 @@ uv run python -m app.extraction reextract --since 2026-09-25T00:00:00Z --until 2
 uv run python -m app.extraction reextract --failed --model google/gemini-3.1-flash-lite
 ```
 
-The evaluation set lives in `backend/evals/extraction/v1/` (`cases.jsonl` plus a snapshot of
-the players it refers to). Its labels start as a model's candidates with `"reviewed": false`;
-review each case (fix the expected events, set `"reviewed": true`) before evaluating —
-`evaluate` refuses unreviewed cases. `review` walks the unreviewed cases in file order (no
-database or LLM key needed): it shows the post and its expected events with each `fpl_id`
-resolved to the player and club from the snapshot, then takes one key — `a` accepts
-(`reviewed: true`), `e` edits the case as JSON in `$EDITOR` (validated before it is saved),
-`f` finds a player's `fpl_id` by name and optional club, `s` skips, `q` quits. Every change is
-saved at once, so a rerun resumes at the first unreviewed case; `--split dev|test` narrows the
-run and `--id <case id>` reopens one case, reviewed or not. The commands, none of them run by
-`pytest`:
+The flow has three steps: extract the events, link the players, and a match check. The match
+check makes one call per post and club for the linked line-up events (`confirmed_starter`,
+`benched`), gives it the club's previous and next Premier League fixture, and stores whether
+the line-up is for the club's next Premier League match in `extraction_event.for_next_pl_match`
+(true, false or null). Reading with `current_extractions(fresh_lineups_only=True)` drops a false
+answer, beside the 60 h filter; a failed check stores null and keeps the event.
+
+The evaluation lives in its own module, `python -m app.extraction.evaluation`, and its set is
+`backend/evals/extraction/v2/` (`cases.jsonl`, `set.json`, and snapshots of the players and the
+fixtures). The labels start as the Claude Code session judge's candidates with
+`"reviewed": false` (`docs/EVALUATION.md`, "The extraction procedure"); review each case (fix
+the expected events, set `"reviewed": true`) before evaluating — `evaluate` refuses unreviewed
+cases. `review` walks the unreviewed cases in file order (no database or LLM key needed): it
+shows the post and its expected events with each `fpl_id` resolved to the player and club from
+the snapshot, then takes one key — `a` accepts (`reviewed: true`), `e` edits the case as JSON
+in `$EDITOR` (validated before it is saved), `f` finds a player's `fpl_id` by name and optional
+club, `s` skips, `q` quits. Every change is saved at once, so a rerun resumes at the first
+unreviewed case; `--split dev|test` narrows the run and `--id <case id>` reopens one case,
+reviewed or not. The commands, none of them run by `pytest`:
 
 ```bash
-uv run python -m app.extraction snapshot-players --output evals/extraction/v1/players-2026-27.json
-uv run python -m app.extraction prelabel --output evals/extraction/v1/cases.jsonl \
-  --model google/gemini-3.1-flash-lite       # appends candidates for posts not in the set yet
-uv run python -m app.extraction review --split test   # interactive; --id <case id> for one case
-uv run python -m app.extraction spend             # total cost of every run file, dev included
-uv run python -m app.extraction compare-labels     # reviewed labels against the pre-labels (git rev dc02d98)
-uv run python -m app.extraction evaluate --split dev --model google/gemini-3.1-flash-lite
-uv run python -m app.extraction evaluate --split test --model openai/gpt-6-luna \
-  --run-name gpt-6-luna-test-1               # needs USD_PLN_RATE; tune the prompt on dev only
+uv run python -m app.extraction.evaluation snapshot-players --set evals/extraction/v2
+uv run python -m app.extraction.evaluation snapshot-fixtures --set evals/extraction/v2
+uv run python -m app.extraction.evaluation prelabel --set evals/extraction/v2 \
+  --model google/gemini-3.1-flash-lite       # paid pre-labels; v2 used the session judge instead
+uv run python -m app.extraction.evaluation export-judge-inputs --set evals/extraction/v2 --out $SCRATCH/judge
+uv run python -m app.extraction.evaluation estimate --export $SCRATCH/judge
+uv run python -m app.extraction.evaluation import-judge --export $SCRATCH/judge \
+  --judge-model "claude-sonnet-5-5 (Claude Code session)"
+uv run python -m app.extraction.evaluation review --set evals/extraction/v2 --split test
+uv run python -m app.extraction.evaluation spend --results-dir evals/extraction/results/v2
+uv run python -m app.extraction.evaluation compare-labels --set evals/extraction/v2 --revision f6ced46
+uv run python -m app.extraction.evaluation evaluate --set evals/extraction/v2 --split dev \
+  --model google/gemini-3.1-flash-lite
+uv run python -m app.extraction.evaluation evaluate --set evals/extraction/v2 --split test \
+  --model openai/gpt-6-luna --run-name test-v2-gpt-6-luna   # needs USD_PLN_RATE; tune on dev only
 ```
 
-`evaluate` writes `backend/evals/extraction/results/<run-name>.json` for the test split and
-`backend/evals/extraction/results/dev/<run-name>.json` (gitignored) for dev runs. A file holds
-precision, recall, F1, linking accuracy, false-alarm rate, the certainty confusion table, latency,
-tokens (with reasoning tokens), cost, the serving hosts and the projected monthly cost in PLN, and
-the run is traced in Langfuse under the run name. Prices for the cost figures come from
-`backend/app/llm/prices.toml`; `uv run python -m app.extraction spend` sums the cost of
-every run file under `results/`, dev runs included.
+`evaluate` runs the whole flow with the model under test and scores the events the read-time
+filter would keep. It writes `backend/evals/extraction/results/v2/<run-name>.json` for the test
+split and `backend/evals/extraction/results/v2/dev/<run-name>.json` (gitignored) for dev runs. A
+file holds precision, recall, F1, linking accuracy, false-alarm rate, the other-match false alarms
+and the line-ups the match check dropped, the certainty confusion table, latency, tokens (with
+reasoning tokens), cost, the serving hosts and the projected monthly cost in PLN, and the run is
+traced in Langfuse under the run name. Prices for the cost figures come from
+`backend/app/llm/prices.toml`; `spend` sums the cost of every run file under the results
+directory, dev runs included.
 
 Retrieval — a fourth loop inside the worker embeds every stored post (`EMBEDDING_MODEL`, default
 `openai/text-embedding-3-large` through OpenRouter; it needs `OPENROUTER_API_KEY`), and search
