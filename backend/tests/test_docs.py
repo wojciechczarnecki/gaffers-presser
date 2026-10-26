@@ -264,3 +264,20 @@ def test_readme_results_free_slice_row_and_roadmap():
     evaluation = (ROOT / "docs" / "EVALUATION.md").read_text(encoding="utf-8")
     assert "2026-10-10T10:00" in evaluation and "2026-10-10T18:30" not in evaluation
     assert "not judged until Stage 4" in evaluation
+
+
+def test_extraction_report_v2_has_every_section():
+    report = (ROOT / "docs" / "reports" / "extraction-eval-v2.md").read_text(encoding="utf-8")
+    for heading in (
+        "## Set composition",
+        "## Dev iterations",
+        "## Test results",
+        "## The 60 h filter alone",
+        "## Choice",
+        "## Total spend",
+        "## Threats to validity",
+        "## Re-extraction",
+    ):
+        assert heading in report, heading
+    for needle in ("60 h", "claude-haiku-4.5", "total spend"):
+        assert needle in report.lower() or needle in report, needle

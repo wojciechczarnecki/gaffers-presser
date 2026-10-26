@@ -732,7 +732,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/extraction tests/test_docs.py -n auto`, then Verify.
-- [ ] 15. **The report `docs/reports/extraction-eval-v2.md` (AC22, AC15).** The sections:
+- [x] 15. **The report `docs/reports/extraction-eval-v2.md` (AC22, AC15).** `iterations: 0` The sections:
       - "Set composition": the table per split, as in v1, plus the tagged cases, the
         `compare-labels` output against v1 and the pilot;
       - "Dev iterations": from `specs/018-extraction-evaluation-v2/dev-iterations.md`;

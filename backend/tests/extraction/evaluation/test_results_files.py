@@ -114,3 +114,12 @@ def test_adr_0010_names_the_defaults():
     assert f"`{config.DEFAULT_FALLBACK_MODEL}`" in text
     for run in _v2_test_runs():
         assert f"`{run['model']}`" in text, run["model"]
+
+
+def test_report_v2_names_every_test_run():
+    report = (ADR_0006.parents[1] / "reports" / "extraction-eval-v2.md").read_text()
+    names = [run["run_name"] for run in _v2_test_runs()]
+    assert names
+    for name in names:
+        assert name in report, name
+    assert "total spend" in report.lower()
