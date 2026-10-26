@@ -1162,7 +1162,7 @@ def test_snapshots_need_a_set(command):
     result = CliRunner().invoke(app, [command], obj=_no_db_deps(build_spec))
 
     assert result.exit_code == 2
-    assert "--set" in result.output
+    assert "--set" in re.sub(r"\x1b\[[0-9;]*m", "", result.output)
 
 
 def test_snapshot_players_refuses_an_existing_file_without_force(db, tmp_path):
