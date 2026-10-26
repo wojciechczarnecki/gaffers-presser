@@ -677,7 +677,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       `uv run pytest -q tests/content tests/extraction -n auto`, and
       `uv run python -m app.extraction.evaluation spend --results-dir evals/extraction/results/v2`
       prints at most 4.00 USD. Then Verify. `iterations: 0`
-- [ ] 13. **The six test runs (AC20).**
+- [x] 13. **The six test runs (AC20).** `iterations: 0`
       - Write `tests/extraction/evaluation/test_results_files.py::test_v2_one_test_run_per_candidate`
         first:
         - `results/v2/*.json` has one run per `CANDIDATES` model, plus at most one `-r2`;
@@ -979,6 +979,7 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 - `minor` — Step 10 import: `import-judge` leaves out posts whose author is not in the manifest's `list_handles` (the retrieval corpus holds some posts of accounts that are not on the watched list); `export-judge-inputs` does the same when the set has a manifest. Both are additions to the plan (AC25: only watched accounts).
 - `minor` — Step 10 labels set by the implementer from the SPEC, all left `reviewed: false` for the owner: the two BACKLOG #23 posts 2104646876389650860 and 2106010889262436608 have no events (AC11; the judge had labelled `doubt` events), and 2112602884491678165 ("Haaland on the bench" during City v AEK, BACKLOG #54) has no events and the `other_match_lineup` tag. The tag was removed (events kept) from 2112611917852553331, 2112610754742399225 and 2110427492662096205, mixed posts with genuine availability or next-match events, so that no tagged case has an event (AC13). `backlog_54_lineups` lists 2110427109139136724, 2112601543853605108, 2112602127180644718, 2112602884491678165 and 2110791630110195870.
 - `minor` — Step 10 composition: the candidates pass `composition_problems_v2`; only `test_eval_set_v2.py::test_every_case_reviewed` is red until the owner's review (114 of 228 cases are unreviewed: 22 changed v1 cases and 92 new ones). The 15 v1 test-split cases the judge changed removed 21 events against v1's labels (test pre-label F1 0.716 against v1), so the owner's review of the changed v1 cases matters.
+- `minor` — Step 13: the synthetic line-up cases were re-dated per the 2026-10-26 owner decision (commit 53356cb) after the dev iterations; the dev runs i0 to i3 predate that and are reported as run. Six test runs plus `test-v2-glm-5.3-flash-r2` (GLM had errored cases in the first run and again in the repeat); test and dev spend 1.14 USD in total (cap 5).
 - `minor` — Step 12 dev iterations: three prompt edits (i1 to i3) after the baseline i0; luna ends at dev F1 0.847 and gemini at 0.821, neither passes the F1 threshold on dev (log in `specs/018-extraction-evaluation-v2/dev-iterations.md`, 0.20 USD spent). The ceiling is set by data and the linker, not the prompt: three synthetic v1 line-up cases dated 2026-09-27 (no Premier League match for 13 days) lose their 9 expected events (6.4 % of dev; 12 of 301 test events are in the same position) to the match check in every run, and the linking misses are BACKLOG #57. The reviewed labels and timestamps are left as they are (changing them to fit the runs would be fitting the data); the report states the effect. The owner's labelling rules of 2026-10-26 were added to the prompt in i1.
 
 ## Final review
