@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-25"
   - "spec-ready — 2026-10-25"
   - "plan-draft — 2026-10-25"
   - "plan-approved — 2026-10-25"
   - "implemented — 2026-10-26"
+  - "done — 2026-10-26"
 metrics:
   started_at: 2026-10-25T01:04
   plan_steps: 17
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 5
   findings_accepted: 13
   findings_rejected: 0
+  cost_plan_cents: 337
+  cost_plan_review_cents: 181
+  cost_implement_cents: 1331
+  cost_final_review_cents: 925
+  finished_at: 2026-10-26T23:18
 ---
 
 # SPEC 018 — Extraction evaluation v2: GW6 line-up leaks, prompt v5 and a match check
