@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.content import load_prompt
 from app.core.errors import AppError
@@ -64,11 +64,13 @@ class CorpusRow(BaseModel):
 
 
 class StrictEvent(ExtractedEvent):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    player: str = Field(min_length=1)
 
 
 class PrelabelVerdict(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     events: list[StrictEvent]
     other_match_lineup: bool

@@ -109,7 +109,7 @@ For each run: the tagged cases with a raw event before any filter (`other_match_
 | `test-v2-glm-5.3-flash-r2` | 4 | 1 |
 | `test-v2-deepseek-v4-flash` | 3 | 1 |
 
-The match check is on top of the 60 h filter in all models, and the remaining raw events the filter alone would miss are the other-match line-ups inside its 60 h window.
+On this test split the match check removed no tagged event beyond the 60 h filter, except in `test-v2-glm-5.3-flash-r2` (four line-up events of one case). Every linked line-up event in a tagged case that the check answered false was also `confirmed` and more than 60 h before the club's next kickoff, so the 60 h filter alone would have dropped it. The tagged events that survive both filters are an unlinked `benched` event (no club, so no check) and `out` events, which neither filter targets; in `test-v2-glm-5.3-flash` the check also answered true for four `likely` `confirmed_starter` events of an other-match line-up. The set holds no other-match line-up at `likely` or `rumour` certainty, or inside the 60 h window, that the check catches and the filter misses, so this run does not measure the case the check was built for (the SPEC's goal).
 
 ## Choice
 
@@ -131,8 +131,9 @@ The paid spend of the spec's runs (`python -m app.extraction.evaluation spend --
 - **Rules written from the test split.** Two of the BACKLOG #23 posts that shaped the v5 rules fall in the test split (2106010889262436608 and 2104158837540622748), since the split is by `x_id % 10`.
 - **Line-up over-sampling.** The test split holds far more line-up posts than the production stream, which overstates the match check's share of the cost a month and of the latency.
 - **Dev ceiling.** On dev, neither model passed the F1 threshold; the three synthetic line-up cases were dated inside an international break and the linker misses are BACKLOG #57. The synthetic cases were re-dated afterwards, and the test runs use the re-dated set.
+- **The check's own effect is not measured.** No tagged case on test is an other-match line-up the 60 h filter misses and the check catches (see "The 60 h filter alone"), so the test runs show the check costs nothing in real line-ups but not how much it adds over the filter. Measuring that needs other-match line-ups at `likely`/`rumour` certainty or inside 60 h of the next Premier League kickoff in the set.
 - **The check is model-dependent.** The 146 drops of deepseek show a model can break the check, and a fail-open rule does not cover a wrong answer.
 
 ## Re-extraction
 
-Posts stored before prompt v5 have `for_next_pl_match` null, so only the 60 h filter protects the alerts that read them. The owner's optional `reextract` of the stored GW8+ posts (a write to the Compose database, outside this spec) would give them the check's answer and the v5 rules. Expected effect: other-match line-ups inside the 60 h window disappear from the alerts, at the cost of the match-check calls for the line-up posts among them, about 0.84 PLN a month for the stream at this volume.
+Posts stored before prompt v5 have `for_next_pl_match` null, so only the 60 h filter protects the alerts that read them. The owner's optional `reextract` of the stored GW8+ posts (a write to the Compose database, outside this spec) would give them the check's answer and the v5 rules. Expected effect: other-match line-ups the 60 h filter misses (at `likely` or `rumour` certainty, or inside its window) should disappear from the alerts, though set v2 has no such case to confirm it, at the cost of the match-check calls for the line-up posts among them, about 0.84 PLN a month for the stream at this volume.

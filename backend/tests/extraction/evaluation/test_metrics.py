@@ -326,6 +326,11 @@ def test_lineups_dropped_by_check():
                 predicted=[ev(event_type="benched")],
                 raw_predicted=[raw(answer=True)],
             ),
+            CaseResult(
+                expected=[ev("Rice", 8, event_type="benched")],
+                predicted=[ev("Rice", 8, event_type="benched")],
+                raw_predicted=[raw("Rice", 8, answer=None)],
+            ),
         ]
     )
     assert metrics.lineups_dropped_by_check == 1

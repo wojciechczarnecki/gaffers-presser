@@ -88,9 +88,9 @@ below; agents never touch production.
    never blocks the rest and is retried after 10 minutes, up to 5 extractions in total.
    Re-extraction and evaluation run from a shell with the production variables, or locally:
    `python -m app.extraction reextract --failed`, and the evaluation from its own module:
-   `python -m app.extraction.evaluation prelabel`,
+   `python -m app.extraction.evaluation prelabel --set <set directory>`,
    `python -m app.extraction.evaluation evaluate --set evals/extraction/v2 --split dev --model <OpenRouter model ID>`,
-   `python -m app.extraction.evaluation compare-labels`, `python -m app.extraction.evaluation spend`
+   `python -m app.extraction.evaluation compare-labels --set evals/extraction/v2 --revision <pre-label commit>`, `python -m app.extraction.evaluation spend`
    (see the README's Development section). The match check (migration 0014) is part of the
    extraction flow and needs no setting of its own.
 9. **Retrieval indexing.** Indexing runs whenever `OPENROUTER_API_KEY` is set (the same key as

@@ -306,7 +306,6 @@
       `pair_compatible` with the default.
     - It reads the v2 result files, and a test over the committed files asserts the result
       equals `DEFAULT_MODEL` and `DEFAULT_FALLBACK_MODEL` in `app/llm/chat.py`.
-- 2026-10-26 — final-review — `gate` — Which final review findings to accept? — `accepted`: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13; `rejected`: none
 
 ## AC → steps matrix
 
@@ -914,6 +913,7 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 - 2026-10-26 — implement — `decision` — Labelling rules settled in the owner's review of set v2 that prompt v5 must follow (dev iterations of step 12) — (1) a player left out of the squad or line-up for the next Premier League match with no reason given ("No Mykolenko", "miss out altogether", "not in squad") is `out`, certainty from the source as usual; (2) a player returning from injury and ready for some minutes is no event (no positive type, BACKLOG #24), while one the manager says is weeks away is `out`; (3) a remark on fatigue or workload is no event; a post about a fake leak after the fact is no event; an FPL manager's own team ("definitely starting Palmer") is no event; (4) every unlinked mention the context resolves gets its `fpl_id` (one stays null: Angulo in 2108903022474535173, Nilson or Juan Angulo, both Sunderland); (5) the linker fixes found in the review are BACKLOG #57, after spec 018, and do not change this spec's scope
 - 2026-10-26 — implement — `tooling` — Step 13: OpenRouter returns HTTP 402 for the test runs — The owner tops up the OpenRouter key in `backend/.env`; the implementer resumes at step 13
 - 2026-10-26 — implement — `decision` — Synthetic line-up cases dated 2026-09-27 (international break, 13 days before any PL match) are dropped by the match check: how to fix? — Move each synthetic line-up case's `created_at` to shortly before the Premier League match its text describes (labels unchanged; syn-001 gets its v1 labels back); the owner approves the list of dates before the commit
+- 2026-10-26 — final-review — `gate` — Which final review findings to accept? — `accepted`: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13; `rejected`: none
 
 ## Review log
 
@@ -991,6 +991,7 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 - `minor` — Step 13: the synthetic line-up cases were re-dated per the 2026-10-26 owner decision (commit 53356cb) after the dev iterations; the dev runs i0 to i3 predate that and are reported as run. Six test runs plus `test-v2-glm-5.3-flash-r2` (GLM had errored cases in the first run and again in the repeat); test and dev spend 1.14 USD in total (cap 5).
 - `minor` — Step 14: the rule keeps `openai/gpt-6-luna` (cheapest of the two passing models, luna and qwen) and `google/gemini-3.1-flash-lite` (qwen is pair-incompatible), so `chat.py`, `.env.example` and ADR 0006 stay as they are; ADR 0010 "confirms" ADR 0006 instead of marking it superseded. `choose_models` returns a `Selection(default, fallback)` (fallback `None` with no compatible model) and `None` when no model is within 5 PLN.
 - `minor` — Step 12 dev iterations: three prompt edits (i1 to i3) after the baseline i0; luna ends at dev F1 0.847 and gemini at 0.821, neither passes the F1 threshold on dev (log in `specs/018-extraction-evaluation-v2/dev-iterations.md`, 0.20 USD spent). The ceiling is set by data and the linker, not the prompt: three synthetic v1 line-up cases dated 2026-09-27 (no Premier League match for 13 days) lose their 9 expected events (6.4 % of dev; 12 of 301 test events are in the same position) to the match check in every run, and the linking misses are BACKLOG #57. The reviewed labels and timestamps are left as they are (changing them to fit the runs would be fitting the data); the report states the effect. The owner's labelling rules of 2026-10-26 were added to the prompt in i1.
+- `minor` — Step 13 (commit e8d1625): the player alias `Savinho` → 403 (Sávio, listed in FPL by that name) was added to `app/extraction/aliases.toml` before the test runs, because the owner's review labelled "Savinho" mentions with 403 and no rule could link the nickname; it is one data row, not a linker change, so it stays here rather than in BACKLOG #57, and every v2 test run uses it. Its test is `tests/extraction/test_linking.py::test_committed_savinho_alias_links_savio` (added in the final review, F5).
 
 ## Final review
 
@@ -1051,3 +1052,19 @@ result files. The compare-labels default came from two perspectives and was merg
 the snapshot and prelabel defaults were merged into F2.
 
 Left out: 18 nit findings
+
+Fixed (2026-10-26, /pipeline:final-review apply; all 13 findings accepted):
+
+- F1 → `compare-labels` has no default revision except for set v1 (`V1_BASELINE_REVISION`); for any other set it fails with "pass --revision or --baseline". Tests: `test_compare_labels_needs_a_baseline_for_a_set_other_than_v1`, `test_compare_labels_defaults_to_the_v1_prelabel_revision`; `docs/DEPLOYMENT.md` shows the options.
+- F2 → `snapshot-players` and `snapshot-fixtures` require `--set`, refuse an existing file without `--force` and write atomically (`write_text_atomic`); `prelabel` requires `--set` or `--output`. Tests: `test_snapshots_need_a_set`, `test_snapshot_players_refuses_an_existing_file_without_force`, `test_prelabel_needs_a_set_or_an_output`.
+- F3 → `StrictEvent` and `PrelabelVerdict` validate in strict mode and `player` has `min_length=1`; `test_import_refuses_an_invalid_verdict` covers a string flag and an empty player.
+- F4 → the report's "The 60 h filter alone", "Threats to validity" and "Re-extraction", and ADR 0010's consequences, state that on test the check removed no tagged event beyond the 60 h filter (except four in `glm-…-r2`), what the survivors are, and that the set has no other-match line-up the filter misses.
+- F5 → a `minor` Deviations entry for the `Savinho` alias and `test_linking.py::test_committed_savinho_alias_links_savio`.
+- F6 → `test_judging.py::test_a_flag_only_change_makes_the_v1_case_unreviewed` (both directions; the `and tags_same` mutation now fails it).
+- F7 → `test_selection.py::test_with_none_passing_more_thresholds_beat_a_higher_f1` (the swapped key order now fails it).
+- F8 → `test_lineups_dropped_by_check` has an expected line-up paired with a `null` answer (`is not True` now fails it).
+- F9 → `test_current_extractions.py::test_a_kickoff_at_the_post_time_is_not_the_next_match`, which also asserts `FixtureIndex.next_kickoff` gives the same answer (`>=` now fails it).
+- F10 → `prelabel` keeps only the events `kept_at_read` keeps; `test_prelabel_leaves_out_a_lineup_the_check_answers_false`.
+- F11 → `cases_changed` counts the cases `describe_change` lists, so it equals the number of "changed" lines (tag-only changes included); asserted in `test_changed_cases_listed`.
+- F12 → the module and function docstrings of `selection.py` removed, one comment kept for the repeat-run rule.
+- F13 → BACKLOG #24's trigger reads "after spec 018's prompt v5 (it delivered #23)".

@@ -41,6 +41,14 @@ def test_with_none_passing_the_most_thresholds_then_f1_wins():
     assert choose_models(runs, CATALOGUE).default == "a/other"
 
 
+def test_with_none_passing_more_thresholds_beat_a_higher_f1():
+    runs = [
+        run("a/cheap", f1=0.8),
+        run("a/other", f1=0.84, false_alarms=0.09),
+    ]
+    assert choose_models(runs, CATALOGUE).default == "a/cheap"
+
+
 def test_a_model_over_five_pln_never_wins():
     runs = [run("a/over", f1=0.99, pln=8.0), run("a/cheap", f1=0.5, linking=0.5, pln=1.0)]
     assert choose_models(runs, CATALOGUE).default == "a/cheap"

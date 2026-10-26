@@ -77,8 +77,12 @@ the check is model-dependent and its F1 collapses.
 ## Consequences
 
 - Other-match line-ups are filtered where the post is read, with a trace in `review` and in
-  SQL. In most runs two of the 29 tagged cases still leave a surviving event; the report counts what the 60 h
-  filter alone would have caught.
+  SQL. In most runs two of the 29 tagged cases still leave a surviving event (an unlinked
+  `benched` event and an `out` event, which neither filter targets). On set v2's test split
+  every tagged line-up the check dropped was one the 60 h filter alone would also have
+  dropped (one exception, in a repeat run of GLM), so the check's gain over the filter is not
+  yet measured: the set has no other-match line-up at `likely`/`rumour` certainty or inside
+  60 h of the next kickoff.
 - The synthetic line-up cases were re-dated before their match (owner decision 2026-10-26),
   otherwise the check rightly dropped them.
 - Linking misses that cost F1 are BACKLOG #57.

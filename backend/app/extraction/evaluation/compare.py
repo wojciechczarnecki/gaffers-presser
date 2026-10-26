@@ -126,9 +126,9 @@ def compare_sets(
         for change in relabelled:
             for field_name in change.fields:
                 b["by_field"][field_name] += 1
-        b["changed"] += bool(added or removed or relabelled)
         line = describe_change(case, added, removed, relabelled, other)
         if line is not None:
+            b["changed"] += 1
             b["changes"].append(line)
         b["results"].append(
             CaseResult(expected=case.expected_events, predicted=other.expected_events)

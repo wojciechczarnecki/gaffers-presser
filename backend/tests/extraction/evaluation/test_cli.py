@@ -12,11 +12,16 @@ from typer.testing import CliRunner
 from app.extraction.cli import ExtractionCliDeps, build_spec_from_settings
 from app.extraction.config import ExtractionSettings
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
-from app.extraction.evaluation.cli import DEFAULT_RESULTS_DIR, app, default_output_dir
+from app.extraction.evaluation.cli import (
+    DEFAULT_RESULTS_DIR,
+    V1_BASELINE_REVISION,
+    app,
+    default_output_dir,
+)
 from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.fixtures import load_fixtures_snapshot
 from app.extraction.linking import PlayerIndex, PlayerRecord, load_snapshot
-from app.extraction.schemas import ExtractedEvent, ExtractionOutput
+from app.extraction.schemas import ExtractedEvent, ExtractionOutput, MatchCheck
 from app.fpl.models.reference import Fixture, Player, Season, Team
 from app.llm.chat import ChatModelSpec
 from app.llm.models import ModelSettings
@@ -1104,3 +1109,106 @@ def test_export_and_import_through_the_cli(tmp_path):
     assert "v1 cases changed (to review): 1" in result.stdout
     refused = runner.invoke(app, ["export-judge-inputs", "--set", str(set_dir), "--out", str(out)])
     assert refused.exit_code == 1
+
+
+def test_prelabel_leaves_out_a_lineup_the_check_answers_false(db, tmp_path):
+    with Session(db) as session:
+        _seed_haaland(session)
+        session.add(Team(season="2026/27", fpl_id=2, name="Arsenal", short_name="ARS"))
+        session.flush()
+        session.add(
+            Fixture(
+                season="2026/27",
+                fpl_id=1,
+                kickoff_at=NOW + timedelta(days=1),
+                team_h_fpl_id=1,
+                team_a_fpl_id=2,
+                finished=False,
+            )
+        )
+        session.add(_tweet(10))
+        session.commit()
+    output_with_lineup = ExtractionOutput(
+        events=[
+            ExtractedEvent(player="Haaland", team=None, event_type="benched", certainty="likely"),
+            ExtractedEvent(player="Haaland", team=None, event_type="doubt", certainty="likely"),
+        ]
+    )
+    build_spec, _ = _build_spec(output_with_lineup, MatchCheck(for_next_pl_match=False))
+    output = tmp_path / "cases.jsonl"
+
+    result = CliRunner().invoke(
+        app, ["prelabel", "--output", str(output)], obj=_deps(db, build_spec)
+    )
+
+    assert result.exit_code == 0, result.output
+    [case] = load_cases(output)
+    assert [(e.fpl_id, e.event_type) for e in case.expected_events] == [(5, "doubt")]
+
+
+def test_prelabel_needs_a_set_or_an_output(tmp_path):
+    build_spec, _ = _build_spec()
+
+    result = CliRunner().invoke(app, ["prelabel"], obj=_no_db_deps(build_spec))
+
+    assert result.exit_code == 1
+    assert "pass --set or --output" in result.stderr
+
+
+@pytest.mark.parametrize("command", ["snapshot-players", "snapshot-fixtures"])
+def test_snapshots_need_a_set(command):
+    build_spec, _ = _build_spec()
+
+    result = CliRunner().invoke(app, [command], obj=_no_db_deps(build_spec))
+
+    assert result.exit_code == 2
+    assert "--set" in result.output
+
+
+def test_snapshot_players_refuses_an_existing_file_without_force(db, tmp_path):
+    with Session(db) as session:
+        _seed_players(session, "2026/27", 2, "Current")
+    build_spec, _ = _build_spec()
+    output = tmp_path / "players.json"
+    output.write_text("reviewed snapshot\n")
+
+    refused = CliRunner().invoke(
+        app, ["snapshot-players", "--set", str(tmp_path)], obj=_deps(db, build_spec)
+    )
+
+    assert refused.exit_code == 1
+    assert "pass --force" in refused.stderr
+    assert output.read_text() == "reviewed snapshot\n"
+
+    forced = CliRunner().invoke(
+        app, ["snapshot-players", "--set", str(tmp_path), "--force"], obj=_deps(db, build_spec)
+    )
+
+    assert forced.exit_code == 0, forced.output
+    assert [p.web_name for p in load_snapshot(output)[0]] == ["Current"]
+
+
+def test_compare_labels_needs_a_baseline_for_a_set_other_than_v1(tmp_path):
+    reviewed, _ = _reviewed_and_baseline()
+    set_dir = tmp_path / "v2"
+    set_dir.mkdir()
+    write_cases(set_dir / "cases.jsonl", reviewed)
+    (set_dir / "set.json").write_text(json.dumps({"version": "v2"}))
+
+    result = CliRunner().invoke(app, ["compare-labels", "--set", str(set_dir)])
+
+    assert result.exit_code == 1
+    assert "pass --revision or --baseline" in result.stderr
+
+
+def test_compare_labels_defaults_to_the_v1_prelabel_revision(tmp_path):
+    reviewed, _ = _reviewed_and_baseline()
+    set_dir = tmp_path / "v1"
+    set_dir.mkdir()
+    write_cases(set_dir / "cases.jsonl", reviewed)
+    subprocess.run(["git", "init", "-q"], cwd=set_dir, check=True, capture_output=True)
+
+    result = CliRunner().invoke(app, ["compare-labels", "--set", str(set_dir)])
+
+    assert result.exit_code == 1
+    assert f"cannot read cases.jsonl at revision {V1_BASELINE_REVISION}" in result.stderr

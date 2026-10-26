@@ -17,11 +17,13 @@ metrics:
   plan_review_majors: 3
   implement_steps: 17
   implement_iterations: 13
-  deviations_minor: 11
+  deviations_minor: 12
   deviations_major: 0
   final_review_blockers: 0
   final_review_worth_fixing: 8
   final_review_nits: 5
+  findings_accepted: 13
+  findings_rejected: 0
 ---
 
 # SPEC 018 — Extraction evaluation v2: GW6 line-up leaks, prompt v5 and a match check

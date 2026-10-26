@@ -1,11 +1,3 @@
-"""The default and fallback model rule of SPEC 018 (ADR 0010), applied to the result files.
-
-The cheapest model passing every threshold is the default. With none passing, it is the
-model passing the most thresholds, then the higher F1, among those at or under the cost
-limit. The fallback is the best other model within the limit that is pair-compatible with
-the default (ADR 0006).
-"""
-
 from dataclasses import dataclass
 
 from app.extraction.evaluation.metrics import MAX_MONTHLY_COST_PLN, threshold_flags
@@ -32,7 +24,7 @@ def _flags(run: dict) -> dict[str, bool]:
 
 
 def _final_runs(runs: list[dict]) -> dict[str, dict]:
-    """One run per model: the repeat, when there is one, replaces the first run."""
+    # A repeat run (REPEAT_SUFFIX) replaces the model's first run.
     final: dict[str, dict] = {}
     for run in sorted(runs, key=lambda r: r["run_name"].endswith(REPEAT_SUFFIX)):
         final[run["model"]] = run

@@ -136,3 +136,4 @@ def test_changed_cases_listed():
         "b: relabelled Kane certainty",
         "e: tags +other_match_lineup",
     ]
+    assert result.cases_changed == len(result.changes) == 3

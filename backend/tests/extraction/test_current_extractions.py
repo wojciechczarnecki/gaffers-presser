@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from app.extraction.fixtures import FixtureIndex, FixtureRecord
 from app.extraction.schemas import LinkedEvent
 from app.extraction.store import (
     LINEUP_MAX_LEAD,
@@ -388,3 +389,25 @@ def test_unfiltered_read_returns_every_event(db_session):
     [row] = current_extractions(db_session)
 
     assert [e.for_next_pl_match for e in row.events] == [False, None]
+
+
+def test_a_kickoff_at_the_post_time_is_not_the_next_match(db_session):
+    _seed(db_session)
+    db_session.add(Team(season=SEASON, fpl_id=2, name="Chelsea", short_name="CHE"))
+    db_session.flush()
+    db_session.add(_fixture(1, NOW))
+    db_session.add(_fixture(2, NOW + timedelta(days=4), home=2, away=1))
+    db_session.add(_tweet(1, NOW, text="Saka on the bench"))
+    db_session.commit()
+    save_extraction(db_session, _record(1), [_event("benched", certainty="confirmed")])
+
+    [row] = current_extractions(db_session, fresh_lineups_only=True)
+
+    assert row.events == []
+    fixtures = FixtureIndex(
+        [
+            FixtureRecord(SEASON, 1, None, NOW, 1, 2),
+            FixtureRecord(SEASON, 2, None, NOW + timedelta(days=4), 2, 1),
+        ]
+    )
+    assert fixtures.next_kickoff(1, NOW) == NOW + timedelta(days=4)

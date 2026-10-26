@@ -233,6 +233,11 @@ def test_import_refuses_an_invalid_verdict(tmp_path):
             "events": [{"player": "Haaland", "event_type": "out", "certainty": "likely", "x": 1}],
             "other_match_lineup": False,
         },
+        {**good, "other_match_lineup": "yes"},
+        {
+            "events": [{"player": "", "event_type": "out", "certainty": "likely"}],
+            "other_match_lineup": False,
+        },
     ]
     for bad in bad_variants:
         _write_verdicts(out, {"101": good, "102": bad})
@@ -293,6 +298,31 @@ def test_changed_v1_case_unreviewed_with_the_tag(tmp_path):
     assert by_id["101"].tags == ["cup_european_lineup", "other_match_lineup"]
     assert by_id["102"].reviewed is False
     assert [(e.mention, e.fpl_id) for e in by_id["102"].expected_events] == [("Saka", 7)]
+
+
+def test_a_flag_only_change_makes_the_v1_case_unreviewed(tmp_path):
+    gains = _case("101", ("Haaland", 5, "out", "confirmed"))
+    loses = _case("102", ("Haaland", 5, "out", "confirmed"), tags=["other_match_lineup"])
+    out = _export_cases(tmp_path, [gains, loses])
+    _write_verdicts(
+        out,
+        {
+            "101": _verdict(("Haaland", "out", "confirmed"), flag=True),
+            "102": _verdict(("Haaland", "out", "confirmed"), flag=False),
+        },
+    )
+    set_dir = tmp_path / "set"
+    set_dir.mkdir()
+
+    report = _import(out, set_dir)
+
+    assert (report.copied, report.changed) == (0, 2)
+    by_id = {c.id: c for c in load_cases(set_dir / "cases.jsonl")}
+    assert by_id["101"].reviewed is False
+    assert by_id["101"].tags == ["other_match_lineup"]
+    assert by_id["102"].reviewed is False
+    assert by_id["102"].tags == []
+    assert [(e.fpl_id, e.event_type) for e in by_id["101"].expected_events] == [(5, "out")]
 
 
 def _post_export(tmp_path, rows, **kwargs):

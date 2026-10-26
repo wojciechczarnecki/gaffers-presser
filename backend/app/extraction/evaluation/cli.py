@@ -17,6 +17,7 @@ from app.core.eval_results import (
     check_new_result,
     make_header,
     write_json_atomic,
+    write_text_atomic,
 )
 from app.extraction.cli import (
     _parse_iso,
@@ -72,7 +73,9 @@ from app.extraction.evaluation.review import (
 from app.extraction.evaluation.runner import run_evaluation
 from app.extraction.fixtures import FixtureIndex, fixtures_snapshot, load_fixtures
 from app.extraction.flow import build_flow
+from app.extraction.lineups import kept_at_read
 from app.extraction.linking import PlayerIndex, load_aliases, load_players, load_snapshot
+from app.extraction.schemas import LinkedEvent
 from app.extraction.service import run_with_retries
 from app.extraction.store import posts_for_reextract
 from app.extraction.tracing import make_extraction_tracer
@@ -84,12 +87,25 @@ app = typer.Typer(
 )
 
 SetOption = Annotated[Path, typer.Option("--set", help="The evaluation set directory.")]
+TargetSetOption = Annotated[
+    Path, typer.Option("--set", help="The evaluation set directory to write into.")
+]
+ForceOption = Annotated[bool, typer.Option("--force", help="Overwrite an existing snapshot.")]
+
+
+def _write_snapshot(path: Path, payload: dict, force: bool) -> None:
+    try:
+        check_new_result(path, force)
+    except ResultExistsError as exc:
+        raise fail(str(exc)) from None
+    write_text_atomic(path, json.dumps(payload, ensure_ascii=False, indent=1) + "\n")
 
 
 @app.command("snapshot-players", help="Write the latest season's players and teams as JSON.")
 def snapshot_players(
     ctx: typer.Context,
-    set_dir: SetOption = DEFAULT_SET_DIR,
+    set_dir: TargetSetOption,
+    force: ForceOption = False,
 ) -> None:
     deps = get_deps(ctx)
     with Session(db_engine(deps)) as session:
@@ -101,40 +117,40 @@ def snapshot_players(
         "players": [asdict(p) for p in sorted(players, key=lambda p: p.fpl_id)],
         "teams": [asdict(t) for t in sorted(teams, key=lambda t: t.fpl_id)],
     }
-    set_dir.mkdir(parents=True, exist_ok=True)
-    (set_dir / PLAYERS_FILE).write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n")
+    _write_snapshot(set_dir / PLAYERS_FILE, payload, force)
     typer.echo(f"players: {len(players)}")
 
 
 @app.command("snapshot-fixtures", help="Write the current season's fixtures as JSON.")
 def snapshot_fixtures(
     ctx: typer.Context,
-    set_dir: SetOption = DEFAULT_SET_DIR,
+    set_dir: TargetSetOption,
+    force: ForceOption = False,
 ) -> None:
     deps = get_deps(ctx)
     with Session(db_engine(deps)) as session:
         fixtures = load_fixtures(session)
     if not fixtures:
         raise fail("no fixtures in the database")
-    set_dir.mkdir(parents=True, exist_ok=True)
-    payload = fixtures_snapshot(fixtures)
-    (set_dir / FIXTURES_FILE).write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n")
+    _write_snapshot(set_dir / FIXTURES_FILE, fixtures_snapshot(fixtures), force)
     typer.echo(f"fixtures: {len(fixtures)}")
 
 
 @app.command(help="Pre-label local posts with a model into candidate evaluation cases.")
 def prelabel(
     ctx: typer.Context,
-    set_dir: SetOption = DEFAULT_SET_DIR,
-    output: Annotated[
-        Path | None, typer.Option("--output", help="Default: cases.jsonl of the set.")
+    set_dir: Annotated[
+        Path | None, typer.Option("--set", help="Append to cases.jsonl of this set.")
     ] = None,
+    output: Annotated[Path | None, typer.Option("--output", help="A cases file instead.")] = None,
     since: str | None = typer.Option(None, "--since"),
     until: str | None = typer.Option(None, "--until"),
     limit: int | None = typer.Option(None, "--limit"),
     model: str | None = typer.Option(None, "--model"),
     eval_set: Annotated[Path | None, typer.Option("--eval-set")] = None,
 ) -> None:
+    if output is None and set_dir is None:
+        raise fail("pass --set or --output")
     deps = get_deps(ctx)
     output = output or set_dir / CASES_FILE
     try:
@@ -154,9 +170,8 @@ def prelabel(
         players, teams = load_players(session)
         fixtures = FixtureIndex(load_fixtures(session))
     player_aliases, team_aliases = load_aliases()
-    flow = build_flow(
-        spec, PlayerIndex(players, teams, player_aliases, team_aliases), fixtures=fixtures
-    )
+    index = PlayerIndex(players, teams, player_aliases, team_aliases)
+    flow = build_flow(spec, index, fixtures=fixtures)
 
     skipped = sum(1 for post in posts if str(post.x_id) in known_ids)
     pending = [post for post in posts if str(post.x_id) not in known_ids]
@@ -191,6 +206,7 @@ def prelabel(
                         certainty=event.certainty,
                     )
                     for event in outcome.result.events
+                    if _kept_at_read(event, post.created_at, index, fixtures)
                 ],
             )
         )
@@ -200,6 +216,16 @@ def prelabel(
     typer.echo(f"cases written: {len(new_cases)}")
     typer.echo(f"skipped: {skipped}")
     typer.echo(f"failures: {failures}")
+
+
+def _kept_at_read(
+    event: LinkedEvent, created_at: datetime, index: PlayerIndex, fixtures: FixtureIndex
+) -> bool:
+    player = index.player(event.player_fpl_id) if event.player_fpl_id is not None else None
+    next_kickoff = fixtures.next_kickoff(player.team_fpl_id, created_at) if player else None
+    return kept_at_read(
+        event.event_type, event.certainty, created_at, next_kickoff, event.for_next_pl_match
+    )
 
 
 THRESHOLD_LABELS = {
@@ -358,7 +384,8 @@ def _default_run_name(split: str, spec: ChatModelSpec, now: datetime) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "-", raw)
 
 
-DEFAULT_BASELINE_REVISION = "dc02d98"
+# The pre-label commit of set v1; any other set names its baseline with --revision or --baseline.
+V1_BASELINE_REVISION = "dc02d98"
 
 
 def _read_baseline(cases_path: Path, revision: str) -> list[EvalCase]:
@@ -379,13 +406,18 @@ def _read_baseline(cases_path: Path, revision: str) -> list[EvalCase]:
 )
 def compare_labels(
     set_dir: SetOption = DEFAULT_SET_DIR,
-    revision: Annotated[str, typer.Option("--revision")] = DEFAULT_BASELINE_REVISION,
+    revision: Annotated[str | None, typer.Option("--revision")] = None,
     baseline_path: Annotated[
         Path | None, typer.Option("--baseline", help="A cases file instead of a git revision.")
     ] = None,
 ) -> None:
     # Needs no database and no LLM key, so it never builds ExtractionCliDeps.
     cases_path = set_dir / CASES_FILE
+    if baseline_path is None and revision is None:
+        manifest = load_manifest(set_dir)
+        if (manifest.version if manifest else set_dir.name) != "v1":
+            raise fail("pass --revision or --baseline: only set v1 has a default baseline")
+        revision = V1_BASELINE_REVISION
     reviewed = load_cases(cases_path)
     baseline = load_cases(baseline_path) if baseline_path else _read_baseline(cases_path, revision)
     for comparison in compare_sets(reviewed, baseline):
