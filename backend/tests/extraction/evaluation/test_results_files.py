@@ -91,3 +91,26 @@ def test_v2_test_runs_share_one_prompt():
 def test_v2_test_spend_within_cap():
     total = sum(run["metrics"]["total_cost_usd"] for run in _v2_test_runs())
     assert total <= 5
+
+
+ADR_0010 = ADR_0006.with_name("0010-extraction-match-check-and-default-model.md")
+
+
+def test_v2_rule_picks_the_configured_defaults():
+    from app.extraction.evaluation.selection import choose_models
+    from app.llm.models import load_model_settings
+
+    selection = choose_models(_v2_test_runs(), load_model_settings())
+    assert selection is not None
+    assert (selection.default, selection.fallback) == (
+        config.DEFAULT_MODEL,
+        config.DEFAULT_FALLBACK_MODEL,
+    )
+
+
+def test_adr_0010_names_the_defaults():
+    text = ADR_0010.read_text()
+    assert f"`{config.DEFAULT_MODEL}`" in text
+    assert f"`{config.DEFAULT_FALLBACK_MODEL}`" in text
+    for run in _v2_test_runs():
+        assert f"`{run['model']}`" in text, run["model"]

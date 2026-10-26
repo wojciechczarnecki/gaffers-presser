@@ -230,6 +230,14 @@ def test_adr_0009_and_decisions_row_for_the_retrieval_winner():
         assert needle in row, needle
 
 
+def test_adr_0010_weighs_alternatives_a_c_d():
+    adr = (ROOT / "docs" / "adr" / "0010-extraction-match-check-and-default-model.md").read_text(
+        encoding="utf-8"
+    )
+    for needle in ("**A:", "**B", "**C:", "**D:", "fail-open", "kept_at_read", "no model passes"):
+        assert needle.lower() in adr.lower(), needle
+
+
 def test_decisions_supersede_the_previous_deadline_window():
     decisions = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")
     (row,) = [line for line in decisions.splitlines() if "previous_gameweek_end" in line]
