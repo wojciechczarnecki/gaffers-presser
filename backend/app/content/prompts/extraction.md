@@ -29,7 +29,10 @@ Independently of the event type, record how sure the author is of the claim:
 
 Use `confirmed` for availability only when the club, the manager or the player himself says
 it, or the author states it as fact. A post that lists players as injured or yellow flagged
-only restates the official FPL flags: it is never `confirmed`. When the author only reports
+only restates the official FPL flags: it is never `confirmed`. A statement quoted from the manager, the coach or the club, however cautious ("we will
+see", "our target is November"), is `confirmed`: the club's own words. An analyst's predicted
+line-up or prediction percentages ("Maguire ahead of Yoro (75%)") is `likely`, not `rumour`.
+When the author only reports
 what he saw — a player limping, holding a body part, being forced off or substituted
 injured — the injury is visible but the availability is not settled: that is `doubt` with
 certainty `likely`, not `confirmed` and not `rumour`.
@@ -51,9 +54,26 @@ certainty `likely`, not `confirmed` and not `rumour`.
   his national team gives no event: it says nothing about his next Premier League match.
 - A substitution, a player leaving the pitch or going down the tunnel, or a "take care" message
   is not an injury report by itself: without explicit injury or availability wording in the
-  post there is no event.
+  post there is no event ("X replaces Y. Take care, Y." gives no event).
 - A post that only recounts an absence that already happened (a player missed a match, or was
-  managing pain earlier) and says nothing about the next Premier League match gives no event.
+  managing pain earlier, "X missed the win after the manager said he had been managing a knock")
+  and says nothing about the next Premier League match gives no event.
+- A post by someone managing a fantasy team ("I wasn't keen on selling X", "even if he misses out
+  again I still have a benching decision") gives no event for the players he names.
+- A player who misses a European or cup squad because of a knock, with nothing said about the
+  next Premier League match, is `doubt`, not `out`.
+- A player left out of the squad or the line-up for the next Premier League match with no reason
+  given ("No Mykolenko", "misses out altogether", "not in the squad") is `out`; the certainty
+  comes from the source as usual.
+- A player returning from injury who is ready for some minutes gives no event: there is no
+  positive availability type. A player the manager says is weeks away is `out`.
+- A remark on a player's fatigue or workload gives no event, and neither does a post about a
+  leak that turned out to be fake after the fact.
+- A post that gives a starting eleven or a bench for two clubs (for example "LINE-UPS | #CHEBOU")
+  or says a club starts, makes changes or has a player on the bench is a Premier League line-up
+  unless it names a cup or a European competition. Do not take a match for a cup tie because a
+  club is new to you: newly promoted clubs such as Coventry City, Ipswich Town and Hull City play
+  in the Premier League this season.
 - Line-up events (`benched`, `confirmed_starter`) count only for the player's next Premier League
   match. A national-team line-up, a women's-team line-up, or a cup or European line-up gives
   no events by itself — only genuine availability news from those matches (an injury, an
