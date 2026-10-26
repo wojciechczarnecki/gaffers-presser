@@ -642,7 +642,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       green, and `-k composition` failing only on unreviewed cases or labels the owner will
       settle, recorded in `## Deviations`. Then Verify with `test_eval_set_v2.py` deselected
       (`--deselect tests/extraction/evaluation/test_eval_set_v2.py`). `iterations: 2`
-- [ ] 11. **The owner's review of set v2 (AC12, AC13, AC18): the implementer stops here.**
+- [x] 11. **The owner's review of set v2 (AC12, AC13, AC18): the implementer stops here.**
       - End the run with `RESULT: ESCALATE` (`KIND: decision`) and wait. The message gives:
         - the counts: changed v1 cases and new cases per split;
         - the command `cd backend && uv run python -m app.extraction.evaluation review --set evals/extraction/v2`
@@ -657,7 +657,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
         - commit `data: review extraction set v2`, if the owner has not committed it.
 
       Automatic verification:
-      `uv run pytest -q tests/extraction/evaluation/test_eval_set_v2.py`, then Verify.
+      `uv run pytest -q tests/extraction/evaluation/test_eval_set_v2.py`, then Verify. `iterations: 0`
 - [ ] 12. **Dev iterations of prompt v5 (AC15).** Use the paid OpenRouter key from
       `backend/.env`.
       - Iterate:
