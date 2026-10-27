@@ -5,6 +5,12 @@ from datetime import datetime, timedelta
 from sqlalchemy import Engine, and_, func, or_, text
 from sqlmodel import Session, select
 
+from app.extraction.lineups import (  # noqa: F401  (re-exported)
+    LINEUP_EVENTS,
+    LINEUP_MAX_LEAD,
+    is_stale_lineup,
+    kept_at_read,
+)
 from app.extraction.models import Extraction, ExtractionEvent
 from app.extraction.schemas import LinkedEvent, PostInput
 from app.fpl.models.reference import Fixture, Player
@@ -15,11 +21,6 @@ RETRY_AFTER = timedelta(minutes=10)
 # 5 passes of up to 3 model calls: a post that still fails is left failed until
 # `reextract --failed` is run by hand.
 MAX_EXTRACTIONS = 5
-# A confirmed line-up this long before the club's next Premier League kickoff is about another
-# match (a European or cup tie, or one already played): the managers' own team news comes up to
-# about 54 hours before kickoff, the stray line-ups from 67 hours (GW6-GW8 data, BACKLOG #54).
-LINEUP_MAX_LEAD = timedelta(hours=60)
-LINEUP_EVENTS = ("confirmed_starter", "benched")
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,7 @@ class EventRecord:
     event_type: str
     certainty: str
     player_web_name: str | None = None
+    for_next_pl_match: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -82,17 +84,6 @@ class ExtractionStatus:
     failed_posts: int  # given up by the loop; `reextract --failed` takes them
     retrying: int  # failed so far; the loop takes them back after RETRY_AFTER
     latest: LatestExtraction | None
-
-
-def is_stale_lineup(
-    event_type: str, certainty: str, created_at: datetime, next_kickoff: datetime | None
-) -> bool:
-    return (
-        event_type in LINEUP_EVENTS
-        and certainty == "confirmed"
-        and next_kickoff is not None
-        and next_kickoff - created_at > LINEUP_MAX_LEAD
-    )
 
 
 def _latest_per_post(columns: str, where: str = "") -> str:
@@ -141,6 +132,7 @@ def save_extraction(session: Session, record: ExtractionRecord, events: list[Lin
                 player_fpl_id=event.player_fpl_id,
                 event_type=event.event_type,
                 certainty=event.certainty,
+                for_next_pl_match=event.for_next_pl_match,
             )
         )
     session.commit()
@@ -305,7 +297,9 @@ def current_extractions(
         stmt.where(ExtractionEvent.extraction_id.in_(list(events))).order_by(ExtractionEvent.id)
     ).all()
     for event, web_name, *lineup_check in event_rows:
-        if lineup_check and is_stale_lineup(event.event_type, event.certainty, *lineup_check):
+        if lineup_check and not kept_at_read(
+            event.event_type, event.certainty, *lineup_check, event.for_next_pl_match
+        ):
             continue
         events[event.extraction_id].append(
             EventRecord(
@@ -316,6 +310,7 @@ def current_extractions(
                 event_type=event.event_type,
                 certainty=event.certainty,
                 player_web_name=web_name,
+                for_next_pl_match=event.for_next_pl_match,
             )
         )
     return [

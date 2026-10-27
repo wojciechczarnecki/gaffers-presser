@@ -8,9 +8,11 @@ from app.extraction.evaluation.cases import (
     EvalCase,
     ExpectedEvent,
     composition_problems,
+    composition_problems_v2,
     load_cases,
     write_cases,
 )
+from app.extraction.evaluation.dataset import SetManifest
 from app.extraction.linking import PlayerRecord
 
 EVENT_TYPES = ["out", "doubt", "benched", "confirmed_starter"]
@@ -242,3 +244,136 @@ def test_each_composition_rule_fails_on_a_crafted_set(name):
     mutate, keyword = _mutations()[name]
     problems = composition_problems(mutate(compliant_cases()), SNAPSHOT)
     assert any(keyword in problem for problem in problems), problems
+
+
+IN_WINDOW = datetime(2026, 10, 8, 12, 0, tzinfo=UTC)
+NO_EVENT_23 = ("2104646876389650860", "2106010889262436608")
+NOT_CONFIRMED_23 = "2104158837540622748"
+
+
+def v2_set() -> tuple[list[EvalCase], SetManifest, set[str]]:
+    cases = compliant_cases()
+    v1_ids = {c.id for c in cases}
+    special = {
+        NO_EVENT_23[0]: [],
+        NO_EVENT_23[1]: [],
+        NOT_CONFIRMED_23: [_event(1, "doubt", "likely")],
+    }
+    new: list[EvalCase] = []
+    for case_id, events in special.items():
+        new.append(
+            _case(
+                case_id,
+                author_handle="Watched",
+                created_at=IN_WINDOW,
+                split="dev" if int(case_id) % 10 < 3 else "test",
+                expected_events=events,
+            )
+        )
+    other_ids = []
+    for i in range(77):
+        case_id = str(2200000000000000000 + i * 7)
+        split = "dev" if int(case_id) % 10 < 3 else "test"
+        tags = []
+        events = []
+        tagged = {"test": 6, "dev": 3}[split]
+        if sum(1 for c in new if c.split == split and c.tags) < tagged:
+            tags = ["other_match_lineup"]
+            other_ids.append(case_id)
+        elif split == "test" and i % 2 == 0:
+            events = [_event(1, "benched", "likely")]
+        new.append(
+            _case(
+                case_id,
+                author_handle="watched",
+                created_at=IN_WINDOW,
+                split=split,
+                tags=tags,
+                expected_events=events,
+            )
+        )
+    manifest = SetManifest(
+        version="v2",
+        list_handles=["Watched"],
+        backlog_cases={"23": list(special), "54": other_ids[:1]},
+        backlog_54_lineups=other_ids[:1],
+    )
+    return [*cases, *new], manifest, v1_ids
+
+
+def _problems(cases, manifest, v1_ids):
+    return composition_problems_v2(cases, SNAPSHOT, manifest, v1_ids)
+
+
+def test_composition_v2_accepts_a_valid_set():
+    assert _problems(*v2_set()) == []
+
+
+def test_composition_v2_missing_v1_id():
+    cases, manifest, v1_ids = v2_set()
+    cases = [c for c in cases if c.id != "1000"]
+    assert any("v1 cases missing" in p for p in _problems(cases, manifest, v1_ids))
+
+
+def test_composition_v2_too_few_new_cases():
+    cases, manifest, v1_ids = v2_set()
+    for case in cases[-30:]:
+        case.created_at = datetime(2026, 9, 1, tzinfo=UTC)
+    assert any("new real cases" in p for p in _problems(cases, manifest, v1_ids))
+
+
+def test_composition_v2_too_few_lineups_in_the_window():
+    cases, manifest, v1_ids = v2_set()
+    for case in cases:
+        for event in case.expected_events:
+            if event.event_type == "benched" and case.id not in v1_ids:
+                event.event_type = "out"
+    assert any("GW6-GW7" in p for p in _problems(cases, manifest, v1_ids))
+
+
+def test_composition_v2_too_few_tagged_cases():
+    cases, manifest, v1_ids = v2_set()
+    for case in cases:
+        if case.tags == ["other_match_lineup"]:
+            case.tags = []
+    problems = _problems(cases, manifest, v1_ids)
+    assert any("other_match_lineup cases: 0" in p for p in problems)
+    assert any("other_match_lineup cases in test: 0" in p for p in problems)
+
+
+def test_composition_v2_tagged_case_with_an_event():
+    cases, manifest, v1_ids = v2_set()
+    tagged = next(c for c in cases if "other_match_lineup" in c.tags)
+    tagged.expected_events = [_event(1, "benched", "likely")]
+    assert any("must have no expected events" in p for p in _problems(cases, manifest, v1_ids))
+
+
+def test_composition_v2_wrong_23_label():
+    cases, manifest, v1_ids = v2_set()
+    by_id = {c.id: c for c in cases}
+    by_id[NO_EVENT_23[0]].expected_events = [_event(1, "out", "likely")]
+    by_id[NOT_CONFIRMED_23].expected_events = [_event(1, "doubt", "confirmed")]
+    problems = _problems(cases, manifest, v1_ids)
+    assert any(NO_EVENT_23[0] in p and "no expected events" in p for p in problems)
+    assert any(NOT_CONFIRMED_23 in p and "confirmed" in p for p in problems)
+
+
+def test_composition_v2_untagged_54_lineup():
+    cases, manifest, v1_ids = v2_set()
+    plain = next(c for c in cases if c.id not in v1_ids and not c.tags and c.id not in NO_EVENT_23)
+    manifest.backlog_54_lineups.append(plain.id)
+    assert any("not tagged" in p for p in _problems(cases, manifest, v1_ids))
+
+
+def test_composition_v2_wrong_split():
+    cases, manifest, v1_ids = v2_set()
+    new = next(c for c in cases if c.id not in v1_ids and c.split == "test")
+    new.split = "dev"
+    assert any(new.id in p and "split" in p for p in _problems(cases, manifest, v1_ids))
+
+
+def test_composition_v2_unknown_author():
+    cases, manifest, v1_ids = v2_set()
+    new = next(c for c in cases if c.id not in v1_ids)
+    new.author_handle = "stranger"
+    assert any(new.id in p and "watched list" in p for p in _problems(cases, manifest, v1_ids))

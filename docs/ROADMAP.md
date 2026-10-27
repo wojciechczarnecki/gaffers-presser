@@ -77,15 +77,17 @@ and each LLM step that produces data has an evaluation set with recorded results
       ([report](reports/retrieval-eval-v2.md), [ADR 0009](adr/0009-default-embedding-model.md))
       (spec: [017](../specs/017-retrieval-evaluation-run/SPEC.md)); before the next item, because the corroboration judge reads retrieval's output —
       **portfolio MVP**
-- [ ] Extraction and corroboration evaluation v2 on the GW6 window: real pre-deadline leaks
-      in the extraction set, the rehearsal e-mail cases added before the prompt fixes, the
-      model comparison re-run and the default model revisited (ADR 0006); the owner's review of
-      the corroboration judge set v1 and a pass threshold for the judge, `contradicts` cases in
-      the judge set and the judge evaluation re-run on the retrieval chosen above; the
-      extraction evaluation's own entry point and the session judge for other schemas; the
-      next Premier League match in the extraction prompt, so line-ups from other matches give no
-      event whatever their certainty
-      (BACKLOG #12, #23, #46 (the extraction entry point), #47, #54) (spec: TBD, planned as 018)
+- [x] Extraction evaluation v2 on the GW6 window: real pre-deadline leaks in the extraction set,
+      the rehearsal e-mail cases, prompt v5 and a match check after linking that stores whether a
+      line-up is for the club's next Premier League match (migration 0014) and filters it at read
+      time, the model comparison re-run on set v2 with the default model confirmed, the
+      extraction evaluation's own entry point and the session judge for the extraction schema
+      ([report](reports/extraction-eval-v2.md),
+      [ADR 0010](adr/0010-extraction-match-check-and-default-model.md)) (BACKLOG #12 (the
+      extraction half), #23, #46, #54) (spec: [018](../specs/018-extraction-evaluation-v2/SPEC.md))
+- [ ] Corroboration evaluation v2: the owner's review of the corroboration judge set v1 and a pass
+      threshold for the judge, `contradicts` cases in the judge set, and the judge evaluation
+      re-run on the retrieval chosen above (BACKLOG #12 (the corroboration half), #47) (spec 019)
 - [ ] README rewritten for the portfolio once the two evaluations above have results: what
       it does and why, an architecture diagram, a results table linking the reports, the
       engineering process (specs, ADRs, evaluation, tracing), a sample presser on made-up

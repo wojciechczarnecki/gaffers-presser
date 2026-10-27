@@ -35,10 +35,10 @@ EXTRACTION_VARIABLES = [
 
 EXTRACTION_COMMANDS = [
     "app.extraction reextract",
-    "app.extraction prelabel",
-    "app.extraction evaluate",
-    "app.extraction compare-labels",
-    "app.extraction spend",
+    "app.extraction.evaluation prelabel",
+    "app.extraction.evaluation evaluate",
+    "app.extraction.evaluation compare-labels",
+    "app.extraction.evaluation spend",
 ]
 
 REMOVED_VARIABLES = ["LLM_PROVIDER", "GOOGLE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"]
@@ -80,7 +80,7 @@ def test_development_section_lists_commands():
         assert variable in section, f"{variable!r} missing from the README Development section"
     for command in EXTRACTION_COMMANDS:
         assert command in section, f"{command!r} missing from the README Development section"
-    assert "app.extraction snapshot-players" in section
+    assert "app.extraction.evaluation snapshot-players" in section
 
 
 def test_deployment_doc_is_a_runbook():
@@ -236,3 +236,20 @@ def test_presser_documented():
             assert command in text, command
     assert "0011" in deployment
     assert "Presser:" in deployment
+
+
+def test_extraction_evaluation_commands_use_the_new_module():
+    import subprocess
+
+    old = re.compile(r"python -m app\.extraction (evaluate|review|prelabel)")
+    files = subprocess.run(
+        ["git", "ls-files", "*.md"], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout.split()
+    for name in files:
+        if name.startswith("specs/"):
+            continue
+        text = (ROOT / name).read_text(encoding="utf-8")
+        assert not old.search(text), name
+    evaluation = (ROOT / "docs" / "EVALUATION.md").read_text(encoding="utf-8")
+    for text in (README.read_text(encoding="utf-8"), evaluation):
+        assert "app.extraction.evaluation evaluate" in text

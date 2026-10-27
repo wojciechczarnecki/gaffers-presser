@@ -112,3 +112,28 @@ def test_f1_equals_compute_metrics_on_the_same_pairs():
     assert result.recall == pytest.approx(expected.recall)
     assert result.f1 == pytest.approx(expected.f1)
     assert result.f1 == pytest.approx(2 / 3)
+
+
+def test_changed_cases_listed():
+    reviewed = [
+        case("a", [event("Salah", 1), event("Haaland", 2)]),
+        case("b", [event("Kane", 4, certainty="likely")]),
+        case("c", [event("Palmer", 5)]),
+        case("d", [event("Saka", 3)]),
+        case("e"),
+    ]
+    reviewed[4].tags = ["other_match_lineup"]
+    baseline = [
+        case("a", [event("Salah", 1)]),
+        case("b", [event("Kane", 4, certainty="confirmed")]),
+        case("c", [event("Cole Palmer", 5)]),  # only the spelling of the mention differs
+        case("d", [event("Saka", 3)]),
+        case("e"),
+    ]
+    result = by_split(compare_sets(reviewed, baseline))["dev"]
+    assert result.changes == [
+        "a: added 1",
+        "b: relabelled Kane certainty",
+        "e: tags +other_match_lineup",
+    ]
+    assert result.cases_changed == len(result.changes) == 3

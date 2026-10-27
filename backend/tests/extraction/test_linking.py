@@ -1,5 +1,6 @@
 import logging
 
+from app.extraction.evaluation.dataset import DEFAULT_SET_DIR, PLAYERS_FILE
 from app.extraction.linking import (
     DEFAULT_ALIASES_PATH,
     PlayerAlias,
@@ -8,6 +9,7 @@ from app.extraction.linking import (
     TeamAlias,
     TeamRecord,
     load_aliases,
+    load_snapshot,
     normalise,
 )
 
@@ -145,3 +147,17 @@ def test_committed_aliases_parse():
     for alias in team_aliases:
         assert alias.alias
         assert alias.short_name
+
+
+def test_player_by_fpl_id():
+    index = _index()
+    assert index.player(4) == FERNANDES
+    assert index.player(99) is None
+    assert [t.fpl_id for t in index.teams()] == [1, 2]
+
+
+def test_committed_savinho_alias_links_savio():
+    players, teams = load_snapshot(DEFAULT_SET_DIR / PLAYERS_FILE)
+    index = PlayerIndex(players, teams, *load_aliases(DEFAULT_ALIASES_PATH))
+    [player] = index.resolve("Savinho", None)
+    assert (player.fpl_id, player.web_name) == (403, "Sávio")

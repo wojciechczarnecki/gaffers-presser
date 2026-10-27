@@ -87,10 +87,12 @@ below; agents never touch production.
    slow provider never delays tweet polls or FPL jobs; a failed post is stored as `failed`,
    never blocks the rest and is retried after 10 minutes, up to 5 extractions in total.
    Re-extraction and evaluation run from a shell with the production variables, or locally:
-   `python -m app.extraction reextract --failed`, `python -m app.extraction prelabel`,
-   `python -m app.extraction evaluate --split dev --model <OpenRouter model ID>`,
-   `python -m app.extraction compare-labels`, `python -m app.extraction spend` (see the
-   README's Development section).
+   `python -m app.extraction reextract --failed`, and the evaluation from its own module:
+   `python -m app.extraction.evaluation prelabel --set <set directory>`,
+   `python -m app.extraction.evaluation evaluate --set evals/extraction/v2 --split dev --model <OpenRouter model ID>`,
+   `python -m app.extraction.evaluation compare-labels --set evals/extraction/v2 --revision <pre-label commit>`, `python -m app.extraction.evaluation spend`
+   (see the README's Development section). The match check (migration 0014) is part of the
+   extraction flow and needs no setting of its own.
 9. **Retrieval indexing.** Indexing runs whenever `OPENROUTER_API_KEY` is set (the same key as
    extraction); without it the worker logs `retrieval indexing disabled` and every other loop
    runs as before.
@@ -232,6 +234,10 @@ below; agents never touch production.
       payload stays without stats until its next results sync, and the fact sheet then leaves
       out the breakdowns and the other new facts for it. It runs through the pre-deploy and
       downgrades cleanly.
+    - Migration `0014` adds the nullable boolean `for_next_pl_match` to `extraction_event` (the
+      match check's answer: is the line-up for the club's next Premier League match). Existing
+      rows stay `null` and keep depending on the 60 h filter until they are re-extracted. It
+      downgrades cleanly; the owner runs it on the Compose database.
     - From a Railway shell (`railway ssh`), with `--league <id> --gameweek <n>`:
       `python -m app.presser facts` prints the fact sheet, `python -m app.presser preview`
       generates and prints without sending, `python -m app.presser send` sends by hand, also

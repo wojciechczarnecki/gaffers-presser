@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -139,6 +140,12 @@ def test_deployment_lists_migration_0013():
         assert needle in text, needle
 
 
+def test_deployment_lists_migration_0014():
+    text = (ROOT / "docs" / "DEPLOYMENT.md").read_text(encoding="utf-8")
+    for needle in ("0014", "for_next_pl_match", "nullable"):
+        assert needle in text, needle
+
+
 def test_evaluation_md_describes_the_retrieval_procedure():
     text = (ROOT / "docs" / "EVALUATION.md").read_text(encoding="utf-8")
     for needle in (
@@ -165,13 +172,13 @@ def test_backlog_window_row_and_017_018_renumbering():
     assert not [row for row in rows if "last match" in row and "window_floor" in row]
     (docstrings,) = [row for row in rows if row.startswith("| 50 |")]
     assert "alerts/config.py:55" not in docstrings
-    for number in ("46", "47"):
-        (row,) = [row for row in rows if row.startswith(f"| {number} |")]
-        assert "spec 018" in row and "spec 017" not in row, number
+    assert not [row for row in rows if row.startswith("| 46 |")]
+    (row,) = [row for row in rows if row.startswith("| 47 |")]
+    assert "spec 019" in row and "spec 017" not in row
     (row,) = [row for row in rows if row.startswith("| 49 |")]
     assert "specs 016–018" in row
     roadmap = (ROOT / "docs" / "ROADMAP.md").read_text(encoding="utf-8")
-    assert "planned as 018" in roadmap and "planned as 017" not in roadmap
+    assert "018-extraction-evaluation-v2/SPEC.md" in roadmap and "planned as 017" not in roadmap
 
 
 def test_decisions_cover_retrieval_set_v2_and_results_header():
@@ -224,6 +231,14 @@ def test_adr_0009_and_decisions_row_for_the_retrieval_winner():
         assert needle in row, needle
 
 
+def test_adr_0010_weighs_alternatives_a_c_d():
+    adr = (ROOT / "docs" / "adr" / "0010-extraction-match-check-and-default-model.md").read_text(
+        encoding="utf-8"
+    )
+    for needle in ("**A:", "**B", "**C:", "**D:", "fail-open", "kept_at_read", "no model passes"):
+        assert needle.lower() in adr.lower(), needle
+
+
 def test_decisions_supersede_the_previous_deadline_window():
     decisions = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")
     (row,) = [line for line in decisions.splitlines() if "previous_gameweek_end" in line]
@@ -250,3 +265,56 @@ def test_readme_results_free_slice_row_and_roadmap():
     evaluation = (ROOT / "docs" / "EVALUATION.md").read_text(encoding="utf-8")
     assert "2026-10-10T10:00" in evaluation and "2026-10-10T18:30" not in evaluation
     assert "not judged until Stage 4" in evaluation
+
+
+def test_extraction_report_v2_has_every_section():
+    report = (ROOT / "docs" / "reports" / "extraction-eval-v2.md").read_text(encoding="utf-8")
+    for heading in (
+        "## Set composition",
+        "## Dev iterations",
+        "## Test results",
+        "## The 60 h filter alone",
+        "## Choice",
+        "## Total spend",
+        "## Threats to validity",
+        "## Re-extraction",
+    ):
+        assert heading in report, heading
+    for needle in ("60 h", "claude-haiku-4.5", "total spend"):
+        assert needle in report.lower() or needle in report, needle
+
+
+def test_decisions_cover_match_check_and_set_v2():
+    decisions = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8")
+    rows = decisions.splitlines()
+    (check,) = [line for line in rows if "for_next_pl_match" in line and "adr/0010-" in line]
+    for needle in ("match check", "read time", "60 h"):
+        assert needle in check, needle
+    (open_,) = [line for line in rows if "fail-open" in line and "match check" in line]
+    assert "null" in open_
+    (set_v2,) = [line for line in rows if "Extraction evaluation set v2" in line]
+    for needle in ("session", "other_match_lineup", "reviews only"):
+        assert needle in set_v2, needle
+    (default,) = [line for line in rows if "adr/0010-" in line and "no model passes" in line]
+    assert "openai/gpt-6-luna" in default and "google/gemini-3.1-flash-lite" in default
+
+
+def test_roadmap_018_ticked_and_019_open():
+    roadmap = (ROOT / "docs" / "ROADMAP.md").read_text(encoding="utf-8")
+    items = ["- [" + block for block in re.split(r"(?m)^- \[", roadmap)[1:]]
+    (done,) = [line for line in items if "018-extraction-evaluation-v2/SPEC.md" in line]
+    assert done.startswith("- [x]")
+    assert "extraction-eval-v2.md" in roadmap and "adr/0010-" in roadmap
+    (todo,) = [line for line in items if line.startswith("- [ ]") and "spec 019" in line]
+    assert "corroboration" in todo and "contradicts" in todo
+
+
+def test_backlog_23_46_54_removed_and_12_narrowed():
+    rows = _rows()
+    for number in ("23", "46", "54"):
+        assert not [row for row in rows if row.startswith(f"| {number} |")], number
+    (twelve,) = [row for row in rows if row.startswith("| 12 |")]
+    assert "contradicts" in twelve and "spec 019" in twelve
+    assert "revisit the default model" not in twelve
+    (fifty_five,) = [row for row in rows if row.startswith("| 55 |")]
+    assert "#54" not in fifty_five and "match check (spec 018)" in fifty_five

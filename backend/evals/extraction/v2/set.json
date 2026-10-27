@@ -1,0 +1,79 @@
+{
+ "version": "v2",
+ "list_handles": [
+  "bendinnery",
+  "city_xtra",
+  "ffh_hq",
+  "ffscout",
+  "fpl__raptor",
+  "fpl_harry",
+  "fpl_heisenberg",
+  "fpl_rockstar",
+  "fpl_salah",
+  "fplfocal",
+  "fplgeneral",
+  "fplgoat7",
+  "fplmattw",
+  "gafferpresser",
+  "jumpthewave",
+  "leaked_fpl",
+  "letstalk_fpl",
+  "pras_fpl",
+  "teamnewsandtix"
+ ],
+ "prelabels": [
+  {
+   "judge": "claude-sonnet-5-5 (Claude Code session, medium effort; Opus for inputs Sonnet could not format)",
+   "prompt_versions": "extraction@5+extraction_prelabel@1",
+   "git_commit": "f6eea84",
+   "inputs": 45,
+   "imported_at": "2026-10-25T00:06:48.334122Z"
+  },
+  {
+   "judge": "claude-sonnet-5-5 (Claude Code session, medium effort; Opus for inputs Sonnet could not format)",
+   "prompt_versions": "extraction@5+extraction_prelabel@1",
+   "git_commit": "f6eea84",
+   "inputs": 91,
+   "imported_at": "2026-10-25T00:06:49.491050Z"
+  },
+  {
+   "judge": "claude-sonnet-5-5 (Claude Code session, medium effort; Opus for inputs Sonnet could not format)",
+   "prompt_versions": "extraction@5+extraction_prelabel@1",
+   "git_commit": "f6eea84",
+   "inputs": 13,
+   "imported_at": "2026-10-25T00:06:50.679973Z"
+  },
+  {
+   "judge": "claude-sonnet-5-5 (Claude Code session, medium effort; Opus for inputs Sonnet could not format)",
+   "prompt_versions": "extraction@5+extraction_prelabel@1",
+   "git_commit": "f6eea84",
+   "inputs": 350,
+   "imported_at": "2026-10-25T00:06:51.817133Z"
+  }
+ ],
+ "backlog_cases": {
+  "23": [
+   "2104646876389650860",
+   "2106010889262436608",
+   "2104158837540622748"
+  ],
+  "54": [
+   "2110427492662096205",
+   "2110427109139136724",
+   "2110791630110195870",
+   "2112602127180644718",
+   "2112602884491678165",
+   "2112601543853605108",
+   "2112611917852553331",
+   "2112610754742399225"
+  ]
+ },
+ "backlog_54_lineups": [
+  "2110427109139136724",
+  "2112601543853605108",
+  "2112602127180644718",
+  "2112602884491678165",
+  "2110791630110195870"
+ ],
+ "selection": null
+}

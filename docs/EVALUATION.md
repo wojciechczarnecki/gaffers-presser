@@ -211,14 +211,71 @@ uv run python -m app.retrieval.evaluation compare evals/retrieval/results/test-v
   two hours). Under either rule a claimed post published before that end is flagged stale, and
   the run reports stale claims and stale anchors.
 
+## The extraction procedure
+
+Extraction's labels come from the session judge too (spec 018; DECISIONS 2026-10-26): the judge
+pre-labels, the owner reviews every changed v1 case and every new case, and the models under test
+run through OpenRouter on the reviewed set. Commands run from `backend/` as
+`python -m app.extraction.evaluation <command>`; a set lives in a directory (`--set`, here
+`evals/extraction/v2`) with `cases.jsonl`, `set.json` (the version, the watched `list_handles` and
+one `prelabels` entry per import), `players.json` and `fixtures.json`. The same rules as above
+apply: the versioned prompt, a fresh context per call, blind inputs under neutral ids, a validated
+schema, the judge named. The unit of a call is **one post**.
+
+```bash
+# 1. Snapshots: the players and the fixtures (read-only on the Compose database)
+uv run python -m app.extraction.evaluation snapshot-players --set evals/extraction/v2
+uv run python -m app.extraction.evaluation snapshot-fixtures --set evals/extraction/v2
+
+# 2. Export: v1's cases to relabel, and candidates from the retrieval corpus
+uv run python -m app.extraction.evaluation export-judge-inputs --set evals/extraction/v2 \
+    --cases evals/extraction/v1/cases.jsonl --out $SCRATCH/judge-v1
+uv run python -m app.extraction.evaluation export-judge-inputs --set evals/extraction/v2 \
+    --corpus evals/retrieval/v2/corpus.jsonl --keywords --rest-sample 40 --out $SCRATCH/judge-new
+
+# 3. Estimate, then judge, one headless call per input
+uv run python -m app.extraction.evaluation estimate --export $SCRATCH/judge-new
+../scripts/session_judge.sh $SCRATCH/judge-new 6 sonnet extraction medium
+
+# 4. Import as unreviewed cases, then the owner's review of the changed and new cases
+uv run python -m app.extraction.evaluation import-judge --export $SCRATCH/judge-new \
+    --judge-model "claude-sonnet-5-5 (Claude Code session)"
+uv run python -m app.extraction.evaluation compare-labels --set evals/extraction/v2 --revision REV
+uv run python -m app.extraction.evaluation review --set evals/extraction/v2
+
+# 5. Dev iterations, then one test run per model
+uv run python -m app.extraction.evaluation evaluate --set evals/extraction/v2 --split dev --model MODEL
+uv run python -m app.extraction.evaluation evaluate --set evals/extraction/v2 --split test \
+    --model MODEL --run-name test-v2-MODEL
+uv run python -m app.extraction.evaluation spend --results-dir evals/extraction/results/v2
+```
+
+- **Neutral ids and the mapping.** Each input is named by a neutral id, not the post's X id; the
+  mapping from ids to posts is `mapping.json` in the export directory, outside every `inputs/`
+  directory, and `import-judge` reads it.
+- **The estimate comes first.** `estimate` prints the calls and the tokens of an export before one
+  call is made (lesson 1). `scripts/session_judge.sh DIR PARALLEL MODEL extraction [EFFORT]`
+  judges only the inputs without a verdict.
+- **The schema.** The judge replies with the `extraction` schema: `{"events": [{"player", "team",
+  "event_type", "certainty"}], "other_match_lineup": bool}`, validated on import (unknown keys
+  fail it). Inputs that fail are judged again by a fresh call; a model that cannot return bare
+  JSON may be replaced by a stronger one for those inputs, named in the manifest.
+- **The pilot.** Judge v1's dev split first and compare with the owner's labels: switch to the
+  cheaper judge when at least 80% of the cases stay unchanged and the F1 against them holds (spec
+  018: 84% and 0.884 for Sonnet at medium effort).
+- **The owner reviews only what changed.** `review` walks the unreviewed cases, which are the
+  changed v1 cases and the new ones; an unchanged v1 case keeps `reviewed: true`.
+- **Paid runs only for the models under test.** The judge counts against the Claude subscription;
+  the six test runs and the dev iterations cost 1.14 USD in spec 018 (cap 5 USD).
+
 ## Other evaluations
 
-The corroboration judge (`app/corroboration/evaluation/`) and extraction have no
-`--no-judge` / export / import commands yet: their evaluations compare a model's labels
-with the owner's reviewed labels, so a judge is only needed where a model pre-labels a set.
-To judge in the session there, add the same three pieces to that evaluation's CLI: a flag
-that skips the API judge, an export of the prompt and the exact rendered input per item,
-and an import that validates the verdicts with the judge's schema and recomputes the totals.
+The corroboration judge (`app/corroboration/evaluation/`) has no `--no-judge` / export / import
+commands yet: its evaluation compares a model's labels with the owner's reviewed labels, so a judge
+is only needed where a model pre-labels a set. To judge in the session there, add the same three
+pieces to that evaluation's CLI: a flag that skips the API judge, an export of the prompt and the
+exact rendered input per item, and an import that validates the verdicts with the judge's schema
+and recomputes the totals.
 
-`scripts/session_judge.sh` takes the verdict schema as its fourth argument (`presser`, the
-default, or `retrieval`), so another evaluation adds a schema there instead of a script.
+`scripts/session_judge.sh` takes the verdict schema as its fourth argument (`presser`, the default,
+`retrieval` or `extraction`), so another evaluation adds a schema there instead of a script.

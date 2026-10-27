@@ -8,7 +8,7 @@ from app.core.errors import ConfigError
 from app.core.retry import RETRY_BACKOFF_SECONDS
 from app.extraction.flow import PROMPT_VERSION
 from app.extraction.models import Extraction
-from app.extraction.schemas import ExtractedEvent, ExtractionOutput, PostInput
+from app.extraction.schemas import ExtractedEvent, ExtractionOutput, MatchCheck, PostInput
 from app.extraction.service import (
     ExtractionRuntime,
     extract_post,
@@ -16,6 +16,7 @@ from app.extraction.service import (
 )
 from app.extraction.store import current_extractions
 from app.extraction.tracing import NULL_EXTRACTION_TRACER
+from app.fpl.models.reference import Fixture, Player, Season, Team
 from app.llm.chat import ChatModelSpec
 from app.llm.pricing import Price, load_prices
 from app.tweets.models import Tweet
@@ -443,3 +444,68 @@ def test_failed_row_keeps_the_configured_model(db_session):
     outcome = _extract(db_session, runtime, clock)
 
     assert _row(db_session, outcome.extraction_id).model == "fake-model"
+
+
+def _seed_haaland_with_a_fixture(db_session) -> None:
+    season = "2026/27"
+    db_session.add(Season(label=season))
+    db_session.flush()
+    db_session.add(Team(season=season, fpl_id=1, name="Man City", short_name="MCI"))
+    db_session.add(Team(season=season, fpl_id=2, name="Arsenal", short_name="ARS"))
+    db_session.flush()
+    db_session.add(
+        Player(
+            season=season,
+            fpl_id=5,
+            web_name="Haaland",
+            first_name="Erling",
+            second_name="Haaland",
+            team_fpl_id=1,
+            position=4,
+        )
+    )
+    db_session.add(
+        Fixture(
+            season=season,
+            fpl_id=1,
+            kickoff_at=NOW + timedelta(days=2),
+            team_h_fpl_id=1,
+            team_a_fpl_id=2,
+            finished=False,
+        )
+    )
+    db_session.commit()
+
+
+def _haaland_benched() -> ExtractionOutput:
+    return ExtractionOutput(
+        events=[
+            ExtractedEvent(player="Haaland", team=None, event_type="benched", certainty="likely")
+        ]
+    )
+
+
+def test_extract_post_passes_the_seasons_fixtures_to_the_match_check(db_session):
+    _seed_tweet(db_session)
+    _seed_haaland_with_a_fixture(db_session)
+    runtime = _runtime(_haaland_benched(), MatchCheck(for_next_pl_match=False))
+
+    outcome = _extract(db_session, runtime, RecordingClock([NOW, NOW + timedelta(seconds=1)]))
+
+    assert outcome is not None and outcome.status == "extracted"
+    [row] = current_extractions(db_session, x_ids=[1])
+    assert [e.for_next_pl_match for e in row.events] == [False]
+    assert row.prompt_version == PROMPT_VERSION
+    assert current_extractions(db_session, x_ids=[1], fresh_lineups_only=True)[0].events == []
+
+
+def test_failed_match_check_keeps_the_extraction_extracted(db_session):
+    _seed_tweet(db_session)
+    _seed_haaland_with_a_fixture(db_session)
+    runtime = _runtime(_haaland_benched(), RuntimeError("boom"))
+
+    outcome = _extract(db_session, runtime, RecordingClock([NOW, NOW + timedelta(seconds=1)]))
+
+    assert outcome is not None and outcome.status == "extracted"
+    [row] = current_extractions(db_session, x_ids=[1])
+    assert [(e.event_type, e.for_next_pl_match) for e in row.events] == [("benched", None)]

@@ -1,6 +1,7 @@
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import UTC
 from typing import Any, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -8,12 +9,15 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel
 
 from app.content import load_prompt
-from app.extraction.linking import PlayerIndex, PlayerRecord
+from app.extraction.fixtures import FixtureIndex, FixtureRecord, render_fixture
+from app.extraction.lineups import LINEUP_EVENTS
+from app.extraction.linking import PlayerIndex, PlayerRecord, TeamRecord
 from app.extraction.schemas import (
     Disambiguation,
     ExtractionOutput,
     FlowResult,
     LinkedEvent,
+    MatchCheck,
     PostInput,
 )
 from app.llm.chat import ChatModelSpec
@@ -25,10 +29,12 @@ logger = logging.getLogger(__name__)
 
 EXTRACTION_PROMPT = load_prompt("extraction")
 LINK_DISAMBIGUATION_PROMPT = load_prompt("link_disambiguation")
+MATCH_CHECK_PROMPT = load_prompt("match_check")
 
 PROMPT_VERSION = (
     f"extraction@{EXTRACTION_PROMPT.version}"
     f"+link_disambiguation@{LINK_DISAMBIGUATION_PROMPT.version}"
+    f"+match_check@{MATCH_CHECK_PROMPT.version}"
 )
 
 
@@ -84,6 +90,25 @@ def _render_disambiguation(
     return "\n".join(lines)
 
 
+def _render_match_check(
+    post: PostInput,
+    team: TeamRecord,
+    previous: FixtureRecord | None,
+    following: FixtureRecord,
+    index: PlayerIndex,
+) -> str:
+    before = render_fixture(previous, team.fpl_id, index) if previous is not None else "none"
+    return "\n".join(
+        [
+            f"Post: {post.text}",
+            f"Posted at: {post.created_at.astimezone(UTC).isoformat()}",
+            f"Club: {team.name}",
+            f"Previous PL fixture: {before}",
+            f"Next PL fixture: {render_fixture(following, team.fpl_id, index)}",
+        ]
+    )
+
+
 @dataclass(frozen=True)
 class _Reply:
     parsed: Any
@@ -131,6 +156,7 @@ def build_flow(
     index: PlayerIndex,
     tracer: GenerationTracer | None = None,
     prices: dict[str, Price] | None = None,
+    fixtures: FixtureIndex | None = None,
 ) -> Flow:
     traced = tracer or NullGenerationTracer()
     known_prices = prices or {}
@@ -235,10 +261,50 @@ def build_flow(
 
         return {"events": events, "usage": usage, "llm_calls": llm_calls}
 
+    def match_check_node(state: FlowState) -> dict[str, Any]:
+        if fixtures is None:
+            return {}
+        post = state["post"]
+        events = list(state["events"])
+        usage = state["usage"]
+        llm_calls = state["llm_calls"]
+
+        by_club: dict[int, list[int]] = {}
+        for position, event in enumerate(events):
+            if event.event_type not in LINEUP_EVENTS or event.player_fpl_id is None:
+                continue
+            player = index.player(event.player_fpl_id)
+            if player is not None:
+                by_club.setdefault(player.team_fpl_id, []).append(position)
+
+        for club, positions in by_club.items():
+            team = index.team_for(club)
+            previous, following = fixtures.around(club, post.created_at)
+            if team is None or following is None:
+                continue
+            human = _render_match_check(post, team, previous, following, index)
+            try:
+                reply = call(MatchCheck, MATCH_CHECK_PROMPT.text, human)
+            except Exception as exc:
+                logger.warning("match check call failed: %s", type(exc).__name__)
+                continue
+            llm_calls += 1
+            usage = usage + reply.usage
+            if reply.parsed is None:
+                continue
+            for position in positions:
+                events[position] = replace(
+                    events[position], for_next_pl_match=reply.parsed.for_next_pl_match
+                )
+
+        return {"events": events, "usage": usage, "llm_calls": llm_calls}
+
     graph: StateGraph = StateGraph(FlowState)
     graph.add_node("extract", extract_node)
     graph.add_node("link", link_node)
+    graph.add_node("match_check", match_check_node)
     graph.set_entry_point("extract")
     graph.add_edge("extract", "link")
-    graph.add_edge("link", END)
+    graph.add_edge("link", "match_check")
+    graph.add_edge("match_check", END)
     return Flow(graph.compile())

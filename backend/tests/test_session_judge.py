@@ -156,3 +156,56 @@ def test_an_unknown_schema_is_refused(judge):
     done = judge.run("1", "sonnet", "other")
     assert done.returncode == 2
     assert "unknown schema" in done.stderr
+
+
+def test_extraction_writes_a_valid_verdict(judge):
+    judge.add_input("I0001", "# Post\ntext")
+    reply = {
+        "events": [
+            {"player": "Haaland", "team": None, "event_type": "benched", "certainty": "likely"}
+        ],
+        "other_match_lineup": False,
+    }
+    judge.reply(1, json.dumps(reply))
+    done = judge.run("1", "sonnet", "extraction")
+    assert done.returncode == 0, done.stderr
+    assert judge.verdict("I0001") == reply
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        '{"events": []}',
+        '{"events": [], "other_match_lineup": "no"}',
+        '{"events": [{"player": "X", "event_type": "injured", "certainty": "likely"}],'
+        ' "other_match_lineup": false}',
+        '{"events": [{"player": "X", "event_type": "out", "certainty": "likely", "extra": 1}],'
+        ' "other_match_lineup": false}',
+        '{"events": [], "other_match_lineup": false, "extra": 1}',
+    ],
+)
+def test_extraction_rejects_an_invalid_verdict(judge, reply):
+    judge.add_input("I0001", "text")
+    judge.reply(1, reply)
+    judge.run("1", "sonnet", "extraction")
+    assert judge.verdict("I0001") is None
+    assert (judge.dir / "raw" / "I0001.invalid.json").exists()
+    assert not (judge.dir / "raw" / "I0001.json").exists()
+
+    judge.reply(2, '{"events": [], "other_match_lineup": true}')
+    judge.run("1", "sonnet", "extraction")
+    assert len(judge.calls()) == 2
+    assert judge.verdict("I0001") == {"events": [], "other_match_lineup": True}
+
+
+def test_extraction_sends_the_extraction_reply_format(judge):
+    from app.extraction.evaluation.judging import REPLY_FORMAT
+
+    judge.add_input("I0001", "text")
+    judge.reply(1, '{"events": [], "other_match_lineup": false}')
+    judge.run("1", "sonnet", "extraction")
+    call = judge.calls()[0]
+    system = call[call.index("--system-prompt") + 1]
+    assert system.startswith("prompt")
+    assert REPLY_FORMAT in system
+    assert "claims" not in system

@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 import pytest
 from typer.testing import CliRunner
 
-from app.extraction.cli import app
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases, write_cases
+from app.extraction.evaluation.cli import app
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
 # A season no alias in aliases.toml points at, so the real aliases never reach these players.
@@ -82,7 +82,7 @@ class Files:
         )
 
     def run(self, *actions, extra=()):
-        args = ["review", "--cases", str(self.cases), "--players", str(self.players), *extra]
+        args = ["review", "--set", str(self.cases.parent), *extra]
         return CliRunner().invoke(app, args, input="".join(f"{a}\n" for a in actions))
 
     def loaded(self):
@@ -283,3 +283,16 @@ def test_unparsable_editor_is_reported_and_the_run_continues(tmp_path, monkeypat
     assert "error: EDITOR cannot be parsed" in result.output
     assert files.cases.read_bytes() != before
     assert files.loaded()[0].reviewed is True
+
+
+def test_review_shows_an_imported_case(tmp_path):
+    imported = _case("77", events=[], tags=["other_match_lineup"], reviewed=False)
+    files = Files(tmp_path, [_case("1", reviewed=True), imported])
+
+    result = files.run("a")
+
+    assert result.exit_code == 0, result.output
+    assert "id: 77" in result.output
+    assert "tags: other_match_lineup" in result.output
+    assert "expected events: no events" in result.output
+    assert [c.reviewed for c in files.loaded()] == [True, True]

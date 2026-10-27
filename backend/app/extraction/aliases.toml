@@ -26,6 +26,11 @@ alias = "The General"
 season = "2026/27"
 fpl_id = 15
 
+[[player]]
+alias = "Savinho"
+season = "2026/27"
+fpl_id = 403
+
 [[team]]
 alias = "Man United"
 short_name = "MUN"

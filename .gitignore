@@ -46,4 +46,5 @@ Thumbs.db
 
 # Extraction evaluation: dev-split runs are working iterations
 backend/evals/extraction/results/dev/
+backend/evals/extraction/results/*/dev/
 backend/evals/retrieval/results/dev/

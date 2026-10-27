@@ -1,6 +1,9 @@
-from app.extraction.cli import DEFAULT_CASES_PATH, DEFAULT_PLAYERS_PATH
 from app.extraction.evaluation.cases import composition_problems, load_cases
+from app.extraction.evaluation.dataset import EVALS_DIR, players_path
 from app.extraction.linking import load_snapshot
+
+DEFAULT_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
+DEFAULT_PLAYERS_PATH = players_path(EVALS_DIR / "v1")
 
 
 def test_schema():

@@ -26,6 +26,19 @@ def test_load_prompt_missing_header_raises(tmp_path, monkeypatch):
 def test_prompts_directory_has_both_files():
     assert (PROMPTS_DIR / "extraction.md").exists()
     assert (PROMPTS_DIR / "link_disambiguation.md").exists()
+    assert (PROMPTS_DIR / "match_check.md").exists()
+
+
+def test_match_check_prompt_has_a_version():
+    prompt = load_prompt("match_check")
+    assert prompt.version >= 1
+    assert "for_next_pl_match" in prompt.text
+
+
+def test_flow_sends_the_loaded_match_check_prompt():
+    from app.extraction import flow
+
+    assert flow.MATCH_CHECK_PROMPT == load_prompt("match_check")
 
 
 @pytest.mark.parametrize(
@@ -57,3 +70,11 @@ def test_retrieval_prompts_load_with_a_version(name):
     prompt = load_prompt(name)
     assert prompt.version >= 1
     assert prompt.text.strip()
+
+
+def test_extraction_prompt_v5_rules():
+    prompt = load_prompt("extraction")
+    normalised = " ".join(prompt.text.lower().split())
+    assert prompt.version == 5
+    for phrase in ("own team", "hypothetical", "national team", "flag", "never `confirmed`"):
+        assert phrase in normalised, phrase

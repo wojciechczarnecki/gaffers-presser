@@ -25,6 +25,10 @@ class Disambiguation(BaseModel):
     fpl_id: int | None = None
 
 
+class MatchCheck(BaseModel):
+    for_next_pl_match: bool
+
+
 @dataclass(frozen=True)
 class PostInput:
     x_id: int
@@ -43,6 +47,7 @@ class LinkedEvent:
     player_fpl_id: int | None
     event_type: EventType
     certainty: Certainty
+    for_next_pl_match: bool | None = None
 
 
 @dataclass(frozen=True)
