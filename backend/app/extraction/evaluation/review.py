@@ -50,7 +50,7 @@ class PlayerDirectory:
         needle = normalise(query)
         if not needle:
             return []
-        found = self._index.resolve(query, club or None)
+        found = self._index.resolve(query, club or None, every_tier=True)
         if not found:
             found = [
                 p

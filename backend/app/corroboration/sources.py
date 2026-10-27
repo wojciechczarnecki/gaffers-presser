@@ -67,7 +67,7 @@ def resolve_player(session: Session, text: str, aliases: Aliases | None = None) 
     if stripped.isdigit():
         found = [player for player in players if player.fpl_id == int(stripped)]
     else:
-        found = index.resolve(stripped, None)
+        found = index.resolve(stripped, None, every_tier=True)
     refs = []
     for player in found:
         team = index.team_for(player.team_fpl_id)

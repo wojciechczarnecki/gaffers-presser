@@ -1,0 +1,23 @@
+# Short forms of FPL first names that posts use instead of the full one ("Ben White" for
+# Benjamin White). Keys are FPL first names; a short form links only together with a surname
+# or on its own as a first-name-only match — see `app/extraction/linking.py::_player_keys`.
+
+[forms]
+"Alexander" = ["Alex"]
+"Andrew" = ["Andy"]
+"Benjamin" = ["Ben"]
+"Daniel" = ["Dan", "Danny"]
+"Jacob" = ["Jake"]
+"José María" = ["Chema"]
+"Joshua" = ["Josh"]
+"Michael" = ["Mike", "Micky"]
+"Nicolas" = ["Nico"]
+"Oliver" = ["Ollie", "Oli"]
+"Patrick" = ["Paddy"]
+"Robert" = ["Rob", "Bobby"]
+"Samuel" = ["Sam"]
+"Stephen" = ["Steve"]
+"Steven" = ["Steve"]
+"Thomas" = ["Tom", "Tommy"]
+"Timothy" = ["Tim"]
+"William" = ["Will", "Billy"]
