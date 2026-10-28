@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-28"
   - "spec-ready — 2026-10-28"
+metrics:
+  started_at: 2026-10-28T10:42
 ---
 
 # SPEC 019 — Corroboration evaluation v2: a reviewed judge set, contradictions and a pass threshold
