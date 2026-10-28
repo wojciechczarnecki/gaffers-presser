@@ -9,6 +9,7 @@ from tests.corroboration.evaluation.test_cases import make_case
 COMMANDS = (
     "build-cases",
     "build-scratch",
+    "build-candidates",
     "export-judge-inputs",
     "estimate",
     "import-judge",

@@ -506,7 +506,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation/test_scratch.py tests/test_module_boundaries.py`,
       then Verify.
-- [ ] 6. **The GW6/GW7 candidates and the build metadata (AC1, AC3).**
+- [x] 6. **The GW6/GW7 candidates and the build metadata (AC1, AC3).** `iterations: 1`
       - Files: `app/corroboration/evaluation/building.py` (`build_window_candidates`,
         `sample_candidates`, `AVAILABILITY_KEYWORDS`, the volume constants) and `cli.py`
         (`build-candidates`) (approach item 8). The v1 functions stay.
@@ -525,7 +525,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation/test_building.py`, then Verify.
-- [ ] 7. **The selection rule (AC12 rule).**
+- [x] 7. **The selection rule (AC12 rule).** `iterations: 0`
       - Files: new `app/corroboration/evaluation/selection.py` (approach item 9).
       - Tests first, in `tests/corroboration/evaluation/test_selection.py`:
         - `test_cheapest_passing_wins`;

@@ -8,18 +8,25 @@ from typing import Annotated
 
 import typer
 from sqlalchemy import Engine
+from sqlmodel import Session
 
 from app.core.clock import Clock, SystemClock
 from app.core.errors import AppError, ConfigError
 from app.core.eval_results import ResultExistsError, check_new_result, make_header
 from app.core.settings import load_settings
 from app.corroboration.config import CorroborationSettings
-from app.corroboration.evaluation.building import TARGET_SIZE, build_cases
+from app.corroboration.evaluation.building import (
+    MAX_INPUTS,
+    TARGET_SIZE,
+    build_cases,
+    write_candidate_files,
+)
 from app.corroboration.evaluation.cases import (
     DEFAULT_CASES_PATH,
     LABELS,
     PRELABEL_MODEL,
     V1_CASES_PATH,
+    V2_SET_DIR,
     JudgeCase,
     composition_problems,
     load_candidates,
@@ -47,6 +54,7 @@ from app.corroboration.evaluation.scratch import (
     ScratchError,
     guard_scratch_url,
     run_build_scratch,
+    window_for,
 )
 from app.corroboration.judge import PROMPT_VERSION, Judge, build_judge
 from app.db.engine import make_engine
@@ -270,6 +278,56 @@ def build_scratch(
     typer.echo(f"extraction cost: {_cost(summary.extraction_cost_usd)}")
     if summary.extract.stopped_by_cap:
         raise fail(f"the cost cap of ${max_cost_usd:.2f} stopped the extraction before the end")
+
+
+@app.command(
+    name="build-candidates",
+    help="Draw the anchors and retrieved posts of the GW windows from the scratch database.",
+)
+def build_candidates_command(
+    ctx: typer.Context,
+    database_url: Annotated[str, typer.Option("--database-url")],
+    out: Annotated[Path, typer.Option("--out")],
+    set_dir: Annotated[Path, typer.Option("--set")] = V2_SET_DIR,
+    retrieval_set: Annotated[Path, typer.Option("--retrieval-set")] = RETRIEVAL_V2_DIR,
+    gameweeks: Annotated[list[int] | None, typer.Option("--gameweek")] = None,
+    max_inputs: Annotated[int, typer.Option("--max-inputs", min=1)] = MAX_INPUTS,
+    seed: Annotated[int, typer.Option("--seed")] = 19,
+    force: Annotated[bool, typer.Option("--force")] = False,
+) -> None:
+    engine = _scratch_engine(database_url)
+    try:
+        settings = (
+            ctx.obj.settings if ctx.obj is not None else load_llm_settings(CorroborationSettings)
+        )
+        embedding = resolve_embedding(settings)
+        if embedding is None:
+            raise ConfigError("OPENROUTER_API_KEY is not set")
+        with Session(engine) as session:
+            windows = [window_for(session, gameweek) for gameweek in (gameweeks or [6, 7])]
+        embedder = build_embedder(embedding)
+        count, info = write_candidate_files(
+            engine,
+            embedder,
+            embedding.prices,
+            windows=windows,
+            set_dir=set_dir,
+            out=out,
+            list_handles=json.loads((retrieval_set / "set.json").read_text())["list_handles"],
+            corpus="evals/retrieval/v2/corpus.jsonl",
+            max_inputs=max_inputs,
+            seed=seed,
+            force=force,
+        )
+    except AppError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(f"candidates: {info.candidates}  written: {count} to {out}")
+    typer.echo(f"judge calls a month: {info.judge_calls_per_month:.0f}")
+    typer.echo(
+        f"build cost: embeddings {_cost(info.embeddings_cost_usd)}"
+        f"  extraction {_cost(info.extraction_cost_usd)}"
+        f"  queries {_cost(info.query_embeddings_cost_usd)}"
+    )
 
 
 @app.command(name="export-judge-inputs", help="Export the session judge's inputs.")

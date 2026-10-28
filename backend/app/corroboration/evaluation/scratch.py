@@ -271,3 +271,30 @@ def run_build_scratch(
     )
     embeddings, extraction_cost = build_costs(engine)
     return ScratchSummary(seeded, indexed.embedded, windows, extract, embeddings, extraction_cost)
+
+
+@dataclass(frozen=True)
+class ScratchModels:
+    embedding_model: str | None
+    extraction_model: str | None
+    extraction_prompt_version: str | None
+
+
+def scratch_models(engine: Engine) -> ScratchModels:
+    with Session(engine) as session:
+        embedding = session.exec(
+            select(PostEmbedding.model, func.count())
+            .group_by(PostEmbedding.model)
+            .order_by(func.count().desc())
+        ).first()
+        extraction = session.exec(
+            select(Extraction.model, Extraction.prompt_version, func.count())
+            .where(Extraction.status == "extracted")
+            .group_by(Extraction.model, Extraction.prompt_version)
+            .order_by(func.count().desc())
+        ).first()
+    return ScratchModels(
+        embedding[0] if embedding else None,
+        extraction[0] if extraction else None,
+        extraction[1] if extraction else None,
+    )
