@@ -213,8 +213,10 @@
      3. Candidates go through `select_new_cases` (below), then `assign_split` (the existing
         seeded stratified 30% dev), with `labelled_by = judge`, `prelabel = expected` and
         `reviewed = False`.
-     4. Ids already in the set are skipped unless `--force`. A `prelabels` entry is appended
-        to `set.json`, and `composition_problems` is printed.
+     4. Ids already in the set are dropped before step 3's selection (so an extra draw selects
+        only cases not yet in the set), unless `--force`. A `prelabels` entry is appended to
+        `set.json`, and `composition_problems` is printed.
+     5. The import refuses a selection that would take the set above `MAX_CASES` (130).
    - `select_new_cases(cases, size=55, seed, min_contradicts=12, unrelated_cap=0.4)` in
      `building.py` takes, in order:
      1. every `contradicts` with `has_player_event: false`;
@@ -222,6 +224,9 @@
         flips);
      3. the other labels in turn, known misses first, with `unrelated` capped at 40% of
         `size`. A short label leaves its places to the next.
+
+     With `size` at or below the `contradicts` available, it therefore takes `contradicts`
+     only, which is how an extra draw (step 8) tops up a shortfall without other labels.
    - `scripts/session_judge.sh` gets the `corroboration` schema: the `FORMAT` sentence and a
      check that the verdict is a dict with exactly the key `label` and one of the four
      values. An invalid reply goes to `raw/<id>.invalid.json`, and the header comment names
@@ -314,7 +319,9 @@
      evals/corroboration/v2 --out FILE [--max-inputs 250] [--seed 19] [--force]`. It writes
      the candidates file and `set.json` (`version`, `list_handles`, `build`). The costs come
      from `build_costs` plus the query embeddings, the models from the scratch rows. It
-     refuses an existing `build` without `--force`.
+     refuses an existing `build` without `--force`. With `--force` (an extra draw) it keeps
+     the recorded windows and volume and adds the new draw's query-embedding cost to
+     `query_embeddings_cost_usd`, so no spend drops out of the record.
 9. **The rule (AC12).** A new `app/corroboration/evaluation/selection.py` holds
    `choose_judge(runs) -> str | None`:
    - a `-r2` run replaces the model's first run;
@@ -357,7 +364,7 @@
 | AC | Steps | Proving test |
 |----|-------|--------------|
 | AC1 | 6, 8 | `tests/corroboration/evaluation/test_eval_set_v2.py::test_every_v1_case_in_v2_with_its_split`, `::test_at_least_45_new_cases_inside_their_window`; `tests/corroboration/evaluation/test_scratch.py::test_windows_from_the_seeded_calendar` |
-| AC2 | 1, 8, 9 | `tests/corroboration/evaluation/test_cases.py::test_a_set_missing_contradicts_is_reported`, `::test_too_few_contradicts_overall_and_in_test`, `::test_size_out_of_range`; `tests/corroboration/evaluation/test_eval_set_v2.py::test_composition` |
+| AC2 | 1, 4, 8, 9 | `tests/corroboration/evaluation/test_cases.py::test_a_set_missing_contradicts_is_reported`, `::test_too_few_contradicts_overall_and_in_test`, `::test_size_out_of_range`; `tests/corroboration/evaluation/test_judging.py::test_extra_draw_selects_only_new_contradicts_within_the_size_cap`; `tests/corroboration/evaluation/test_eval_set_v2.py::test_composition` |
 | AC3 | 5, 6, 8 | `tests/corroboration/evaluation/test_scratch.py::test_refuses_the_configured_database_url`, `::test_refuses_port_5432`, `::test_extraction_stays_in_the_window_and_stops_at_the_cap`; `tests/corroboration/evaluation/test_building.py::test_candidates_use_the_production_retrieval_and_fresh_lineups`; `tests/corroboration/evaluation/test_eval_set_v2.py::test_build_recorded_and_within_one_dollar` |
 | AC4 | 1, 4, 8 | `tests/corroboration/evaluation/test_cases.py::test_v2_fields_round_trip`; `tests/corroboration/evaluation/test_judging.py::test_v1_case_keeps_split_and_haiku_label_unreviewed`, `::test_manifest_names_the_judge_prompt_and_commit`; `tests/corroboration/evaluation/test_eval_set_v2.py::test_every_case_records_its_prelabels` |
 | AC5 | 4 | `tests/corroboration/evaluation/test_judging.py::test_export_one_input_per_case_with_neutral_ids`, `::test_mapping_outside_inputs`, `::test_estimate_counts_calls_and_tokens`; `tests/corroboration/evaluation/test_cli.py::test_estimate_prints_calls_and_tokens` |
@@ -366,7 +373,7 @@
 | AC8 | 3, 9, 13 | `tests/corroboration/evaluation/test_eval_set_v2.py::test_every_case_reviewed`; `tests/corroboration/evaluation/test_review_cli.py::test_agreement_counts_differences_per_prelabeller`; `tests/test_docs.py::test_corroboration_report_v2_has_every_section` (agreement section) |
 | AC9 | 2 | `tests/corroboration/evaluation/test_metrics.py::test_threshold_verdict_passes`, `::test_threshold_verdict_fails_on_accuracy`, `::test_threshold_verdict_fails_on_false_support`, `::test_threshold_verdict_fails_on_contradicts_recall`, `::test_threshold_verdict_fails_on_an_errored_run`; `tests/corroboration/evaluation/test_runner.py::test_evaluate_prints_and_writes_the_verdict` |
 | AC10 | 2 | `tests/corroboration/evaluation/test_runner.py::test_the_result_carries_the_production_slice` |
-| AC11 | 11 | `tests/corroboration/evaluation/test_results_files.py::test_v2_one_test_run_per_candidate`, `::test_v2_spend_within_cap` |
+| AC11 | 10, 11 | `tests/corroboration/evaluation/test_results_files.py::test_v2_one_test_run_per_candidate`, `::test_v2_spend_within_cap` |
 | AC12 | 7, 12 | `tests/corroboration/evaluation/test_selection.py`; `tests/corroboration/evaluation/test_results_files.py::test_v2_rule_picks_the_judge_default`; `tests/corroboration/test_runtime.py::test_the_judge_runs_on_its_default_model` |
 | AC13 | 10, 11 | `tests/corroboration/evaluation/test_results_files.py::test_v2_test_runs_share_one_prompt`; `tests/test_docs.py::test_corroboration_report_v2_has_every_section` (dev iterations) |
 | AC14 | 13 | `tests/test_docs.py::test_corroboration_report_v2_has_every_section`; `tests/corroboration/evaluation/test_results_files.py::test_report_v2_names_every_test_run` |
@@ -460,6 +467,9 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
         - `test_v1_case_keeps_split_and_haiku_label_unreviewed`;
         - `test_new_cases_selected_split_and_unreviewed`;
         - `test_selection_prefers_retrieved_contradicts_then_sql_pairs`;
+        - `test_extra_draw_selects_only_new_contradicts_within_the_size_cap` (ids already in
+          the set are dropped before selection; `--select 3` takes 3 `contradicts` only; a
+          selection above 130 cases is refused);
         - `test_manifest_names_the_judge_prompt_and_commit`.
       - Tests first, elsewhere:
         - in `tests/test_session_judge.py`: `test_corroboration_writes_a_valid_verdict`,
@@ -509,8 +519,9 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
         - `test_tiers_and_sampling_deterministic` (every `sql-contradicts` kept, the cap
           honoured);
         - `test_volume_counts_newest_anchor_candidates_times_slots`;
-        - `test_build_candidates_writes_the_build_section` (windows, costs, models, volume)
-          and `test_build_candidates_refuses_an_existing_build_without_force`.
+        - `test_build_candidates_writes_the_build_section` (windows, costs, models, volume),
+          `test_build_candidates_refuses_an_existing_build_without_force` and
+          `test_build_candidates_force_adds_the_query_cost`.
 
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation/test_building.py`, then Verify.
@@ -548,7 +559,9 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
         ```
         Wait for `docker exec presser-eval-019 pg_isready -U eval`. Then run
         `DATABASE_URL=postgresql+psycopg://eval:eval@localhost:55433/eval uv run alembic upgrade head`.
-        Below, `URL` = that URL.
+        Below, `URL` = that URL. In spec 017 a permission rule refused this migration on the
+        scratch container (PLAN 017, Owner decisions 2026-10-22); a refusal here → escalate
+        (`permission`), never migrate any other way.
       - The build:
         - `env -u TWEET_SOURCE uv run python -m app.corroboration.evaluation build-scratch --database-url $URL --max-cost-usd 0.90`
           runs in the background, about an hour, and can be resumed;
@@ -570,15 +583,18 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
         - `import-judge --export $S/judge-v1 --set evals/corroboration/v2 --judge-model "claude-opus-5-5 (Claude Code session)"`;
         - `import-judge --export $S/judge-new --set evals/corroboration/v2 --judge-model "claude-opus-5-5 (Claude Code session)" --select 55 --seed 19`.
       - If `composition_problems` reports a `contradicts` shortfall on the pre-labels, draw one
-        more candidate export (`build-candidates --force --seed 20 --max-inputs 150`, judged
-        and imported the same way). More than two extra draws → escalate (`decision`).
+        more candidate export (`build-candidates --force --seed 20 --max-inputs 150`, exported
+        and judged the same way) and import it with `--select` equal to the shortfall plus 2,
+        capped so the set stays at or under 130 cases. Selection then takes only new
+        `contradicts`. More than two extra draws → escalate (`decision`).
       - Commit the set unreviewed (`data: build corroboration set v2 candidates`).
       - Keep the container running until step 15. The data steps use only the files.
 
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation/test_eval_set_v2.py --deselect tests/corroboration/evaluation/test_eval_set_v2.py::test_every_case_reviewed`
-      green (`test_composition` may fail only on labels you will settle, recorded in
-      `## Deviations`), then Verify with `--deselect tests/corroboration/evaluation/test_eval_set_v2.py`.
+      green, `test_composition` included (the extra draws above exist to make it pass on the
+      pre-labels; if they cannot, the step has already escalated), then Verify with
+      `--deselect tests/corroboration/evaluation/test_eval_set_v2.py::test_every_case_reviewed`.
 - [ ] 9. **Your review of set v2 (AC7, AC8): the implementer stops here.**
       - End the run with `RESULT: ESCALATE` (`KIND: decision`) and wait. The message gives:
         - the counts: v1 cases, new cases per split, and the v1 cases where the two
@@ -591,8 +607,11 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       - On resume:
         - run `test_eval_set_v2.py` in full;
         - if the composition fails after the review (fewer than 8 `contradicts`, or 5 in
-          test), draw more as in step 8 and escalate again for their review;
-        - run `agreement` and save its output for the report;
+          test), draw more as in step 8 (the session scratchpad `$S` of step 8 does not survive
+          the restart, so the draw is rebuilt from the still running container) and escalate
+          again for their review;
+        - run `agreement` as a check; step 13 runs it again for the report, because `$S` may
+          not survive a later restart;
         - commit `data: review corroboration set v2`, unless the owner has committed it.
 
       Automatic verification:
@@ -609,7 +628,10 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
         models that failed, per iteration (`-iN`).
       - Record every run in `specs/019-corroboration-evaluation-v2/dev-iterations.md`: the
         iteration, model, accuracy, false-support, `contradicts` recall, verdict, cost and the
-        change made. Escalation restarts the implementer, and step 13 reads this log.
+        change made, and keep one line `Dev spend: <x> USD` (the sum of every dev result
+        file's `cost_usd`) up to date, because the dev result files are gitignored and
+        `test_v2_spend_within_cap` reads this line. Escalation restarts the implementer, and
+        step 13 reads this log.
       - If the prompt changed, adapt `tests/content/test_prompts.py` to the version and
         commit `feat: freeze corroboration judge prompt v2`. Otherwise commit the log alone,
         with "no change". If the build plus the dev runs reach $4, escalate (`decision`).
@@ -624,8 +646,10 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
           `git_dirty false`. Each file has `verdict` and `production`;
         - `test_v2_test_runs_share_one_prompt`: one `prompt_version`, equal to
           `PROMPT_VERSION`;
-        - `test_v2_spend_within_cap`: `set.json` build costs plus every test file's
-          `cost_usd`, at most 5.00.
+        - `test_v2_spend_within_cap`: `set.json` build costs plus the `Dev spend: <x> USD`
+          line of `specs/019-corroboration-evaluation-v2/dev-iterations.md` plus every test
+          file's `cost_usd`, at most 5.00 (AC11 counts the build, the dev runs and the test
+          runs).
       - Run, for each model:
         `env -u TWEET_SOURCE uv run python -m app.corroboration.evaluation evaluate --split test --model M`.
         A run with an errored case gets one repeat,
@@ -664,8 +688,8 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
         - Summary;
         - The set: labels by split, `has_player_event`, the source windows, the build and its
           spend;
-        - Pre-labels and the owner's agreement: the `agreement` output, Opus against you and
-          haiku against you on v1;
+        - Pre-labels and the owner's agreement: the output of a fresh `agreement` run, Opus
+          against you and haiku against you on v1;
         - Threshold;
         - Dev iterations, from `dev-iterations.md`;
         - Test results: one row per model with accuracy, per-label precision and recall,
@@ -794,7 +818,68 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+### 2026-10-28 — plan review
+
+Findings:
+
+- `major` — Extra draws could break AC2's size bound and add the wrong labels: step 8 imported
+  an extra draw "the same way" (`--select 55`), which would push the set past 130 cases and
+  add non-`contradicts` cases, and the import skipped ids already in the set only after
+  selection, so a re-draw could select only cases already present. Also `build-candidates
+  --force` rewrote the `build` section, so the first draw's query-embedding spend dropped out.
+  Changed: approach item 6 drops existing ids before selection and refuses a set above 130;
+  a `size` at or below the available `contradicts` takes `contradicts` only; item 8's
+  `--force` keeps windows and volume and adds the query cost; step 8 imports an extra draw
+  with `--select` = shortfall + 2, capped at 130; new tests
+  `test_extra_draw_selects_only_new_contradicts_within_the_size_cap` (step 4, AC2 row) and
+  `test_build_candidates_force_adds_the_query_cost` (step 6).
+- `major` — AC11's proving test missed the dev spend: AC11 caps the build, dev and test runs
+  at $5, but `test_v2_spend_within_cap` summed only the build and the test files, and the dev
+  result files are gitignored. Changed: step 10 keeps a `Dev spend: <x> USD` line in
+  `dev-iterations.md`, step 11's test adds it, and the matrix row for AC11 names step 10.
+- `minor` — Step 8 ran `alembic upgrade head` on the scratch container without the spec 017
+  precedent, where a permission rule refused exactly that. Changed: a refusal escalates
+  (`permission`), and no other migration route is used.
+- `minor` — Step 8's automatic verification was self-contradictory ("green", yet
+  `test_composition` "may fail") and its Verify deselected the whole v2 test file. Changed:
+  `test_composition` must be green after step 8, and Verify deselects only
+  `test_every_case_reviewed`.
+- `minor` — Step 9 saved the `agreement` output in the session scratchpad, which a restart
+  (the step 9 and step 10 escalations) does not carry over, and an extra draw after the
+  review relied on step 8's `$S` files. Changed: step 13 runs `agreement` afresh, and step 9
+  says the draw is rebuilt from the running container.
+
+Checked and found correct:
+
+- Every AC1–AC17 has steps and a proving test; the matrix matches the steps after the changes
+  above.
+- The cited code exists with the signatures the plan uses: `current_extractions(created_from,
+  created_until, sources_only, fresh_lineups_only)`, `claimed_post_ids`,
+  `retrieval_candidates`, `_anchors`, `assign_split`, `runner._judge_input`, `extract_post`
+  (`record_latency`), `index_missing`, `gameweek_window(..., "alerts")` (built on
+  `previous_gameweek_end` and `window_floor`, the production floor), `session_judge.sh DIR
+  PARALLEL MODEL SCHEMA`.
+- The scratch database: the build commands take `--database-url`, refuse port 5432 and the
+  configured `DATABASE_URL`, and `alembic/env.py` takes the `DATABASE_URL` env variable over
+  `.env` through `load_settings`; the Compose database is never touched.
+- The token estimate formula and the 3M-token escalation follow spec 018
+  (`CALL_OVERHEAD_TOKENS = 3000`); about 300 calls fit under it.
+- The dev results gitignore follows the existing `backend/evals/extraction/results/*/dev/`
+  pattern.
+- Composition checks only `labelled_by` against the judge's default; AC4 separates "its
+  pre-label" from haiku's original label, so `v1_prelabel` is a comparison, and the vendor
+  overlap is a named threat (AC14).
+- The owner's review is a step 9 escalation, as in spec 018, and the manual section is a
+  justified `n/a`.
+- The owner summary is consistent: no new dependency, no data migration (alembic runs only on
+  a throwaway container), `LLM_JUDGE_MODEL` only in case 2. The plan is in English, as
+  `language` requires.
+- Spend: embeddings (~$0.02) plus extraction capped at $0.90 stays under $1; the $4
+  build-plus-dev escalation keeps the $5 cap.
+
+Decision: the plan is ready for implementation — every AC is covered by a step and a proving
+test, the fixes above were made in the plan itself, and it adds no dependency or migration
+that the owner has not ruled out.
 
 ## Deviations
 
