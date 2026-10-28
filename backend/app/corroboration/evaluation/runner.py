@@ -1,11 +1,17 @@
-import json
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from app.core.eval_results import write_json_atomic
-from app.corroboration.evaluation.cases import DEFAULT_RESULTS_DIR, JudgeCase
+from app.corroboration.evaluation.cases import (
+    DEFAULT_RESULTS_DIR,
+    CaseAnchor,
+    CasePlayer,
+    CasePost,
+    JudgeCase,
+)
+from app.corroboration.evaluation.dataset import load_manifest
 from app.corroboration.evaluation.metrics import Outcome, compute_metrics, threshold_verdict
 from app.corroboration.judge import Judge, JudgeInput
 from app.corroboration.schemas import Claim, PlayerRef, PostRef
@@ -24,14 +30,10 @@ def default_result_path(split: str, model: str, set_version: str = "v1") -> Path
     return DEFAULT_RESULTS_DIR / set_version / name
 
 
-def judge_input(case: JudgeCase) -> JudgeInput:
-    anchor, post = case.anchor, case.post
+def judge_input(player: CasePlayer, anchor: CaseAnchor, post: CasePost) -> JudgeInput:
     return JudgeInput(
         player=PlayerRef(
-            season="",
-            fpl_id=case.player.fpl_id,
-            web_name=case.player.web_name,
-            team_name=case.player.team,
+            season="", fpl_id=player.fpl_id, web_name=player.web_name, team_name=player.team
         ),
         anchor=Claim(
             post=PostRef(
@@ -75,7 +77,7 @@ def run_evaluation(
     production_ids = {case.id for case in chosen if not case.has_player_event}
     for case in chosen:
         try:
-            reply = judge.run(judge_input(case))
+            reply = judge.run(judge_input(case.player, case.anchor, case.post))
         except Exception as exc:
             outcomes.append(Outcome(case.id, case.expected, None, error_class=type(exc).__name__))
             continue
@@ -121,11 +123,8 @@ def run_evaluation(
 
 
 def calls_per_month(set_dir: Path) -> float | None:
-    path = set_dir / "set.json"
-    if not path.is_file():
-        return None
-    build = json.loads(path.read_text()).get("build") or {}
-    return build.get("judge_calls_per_month")
+    manifest = load_manifest(set_dir)
+    return manifest.build.judge_calls_per_month if manifest and manifest.build else None
 
 
 def write_result(path: Path, data: dict[str, Any]) -> None:

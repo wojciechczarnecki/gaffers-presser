@@ -20,11 +20,18 @@ from app.corroboration.evaluation.cases import (
     V1_CASES_PATH,
     JudgeCase,
     composition_problems,
+    load_candidates,
     load_cases,
     prelabel_agreement,
     render_case,
     review_order,
     write_cases,
+)
+from app.corroboration.evaluation.judging import (
+    JudgingError,
+    estimate_export,
+    export_inputs,
+    import_verdicts,
 )
 from app.corroboration.evaluation.runner import (
     EvaluationError,
@@ -157,6 +164,77 @@ def build_cases_command(
     for problem in composition_problems(built.cases):
         typer.echo(f"problem: {problem}")
     typer.echo(f"written: {output}")
+
+
+@app.command(name="export-judge-inputs", help="Export the session judge's inputs.")
+def export_judge_inputs(
+    out: Annotated[Path, typer.Option("--out")],
+    seed: Annotated[int, typer.Option("--seed")] = 19,
+    cases_path: Annotated[Path | None, typer.Option("--cases")] = None,
+    candidates_path: Annotated[Path | None, typer.Option("--candidates")] = None,
+) -> None:
+    if (cases_path is None) == (candidates_path is None):
+        raise fail("pass exactly one of --cases and --candidates")
+    try:
+        if cases_path is not None:
+            count = export_inputs(
+                cases=load_cases(cases_path),
+                candidates=[],
+                out=out,
+                seed=seed,
+                cases_source=cases_path.resolve(),
+            )
+        else:
+            assert candidates_path is not None
+            count = export_inputs(
+                cases=[],
+                candidates=load_candidates(candidates_path),
+                out=out,
+                seed=seed,
+                candidates_source=candidates_path.resolve(),
+            )
+    except JudgingError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(f"exported {count} inputs to {out}")
+
+
+@app.command(help="Print the calls and tokens the session judge needs for an export.")
+def estimate(export: Annotated[Path, typer.Option("--export")]) -> None:
+    try:
+        result = estimate_export(export)
+    except JudgingError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(f"calls: {result.calls}  estimated tokens: {result.tokens}")
+
+
+@app.command(name="import-judge", help="Import the session judge's verdicts into a set.")
+def import_judge(
+    export: Annotated[Path, typer.Option("--export")],
+    set_dir: Annotated[Path, typer.Option("--set")],
+    judge_model: Annotated[str, typer.Option("--judge-model")],
+    select: Annotated[int | None, typer.Option("--select", min=1)] = None,
+    seed: Annotated[int, typer.Option("--seed")] = 19,
+    force: Annotated[bool, typer.Option("--force")] = False,
+) -> None:
+    try:
+        report = import_verdicts(
+            export, set_dir, judge_model, select=select, seed=seed, force=force
+        )
+    except JudgingError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(
+        f"v1 cases pre-labelled: {report.copied}  candidates: {report.candidates}"
+        f"  new cases: {report.new}"
+    )
+    if report.skipped_without_verdict:
+        typer.echo(f"skipped without a verdict: {len(report.skipped_without_verdict)}")
+    if report.skipped_in_set:
+        typer.echo(f"skipped, already in the set: {len(report.skipped_in_set)}")
+    cases = load_cases(set_dir / "cases.jsonl")
+    counts = Counter(case.expected for case in cases)
+    typer.echo("labels: " + "  ".join(f"{label} {counts[label]}" for label in LABELS))
+    for problem in composition_problems(cases):
+        typer.echo(f"problem: {problem}")
 
 
 REVIEW_ACTIONS = "[a]ccept  [c]hange  [s]kip  [q]uit"

@@ -77,12 +77,35 @@ class JudgeCase(BaseModel):
     v1_prelabel: Label | None = None
 
 
+class CandidateCase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    player: CasePlayer
+    anchor: CaseAnchor
+    post: CasePost
+    has_player_event: bool
+    tier: str
+
+
 def parse_cases(text: str) -> list[JudgeCase]:
     return [JudgeCase.model_validate_json(line) for line in text.splitlines() if line.strip()]
 
 
 def load_cases(path: Path) -> list[JudgeCase]:
     return parse_cases(Path(path).read_text())
+
+
+def load_candidates(path: Path) -> list[CandidateCase]:
+    return [
+        CandidateCase.model_validate_json(line)
+        for line in Path(path).read_text().splitlines()
+        if line.strip()
+    ]
+
+
+def write_candidates(path: Path, candidates: Sequence[CandidateCase]) -> None:
+    write_lines_atomic(path, [candidate.model_dump_json() for candidate in candidates])
 
 
 def write_cases(path: Path, cases: Sequence[JudgeCase]) -> None:

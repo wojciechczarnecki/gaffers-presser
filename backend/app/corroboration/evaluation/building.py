@@ -32,6 +32,8 @@ DEV_SHARE = 0.3
 UNRELATED_CAP = 0.4
 SQL_CONTEXT_PER_ANCHOR = 3
 ANCHORS_PER_PLAYER = 2
+NEW_CASES_SIZE = 55
+MIN_NEW_CONTRADICTS = 12
 
 
 @dataclass(frozen=True)
@@ -217,6 +219,52 @@ def select_cases(
         if not progressed:
             break
     return sorted((c for v in chosen.values() for c in v), key=lambda c: c.id)
+
+
+def select_new_cases(
+    cases: Sequence[JudgeCase],
+    size: int = NEW_CASES_SIZE,
+    seed: int = 7,
+    min_contradicts: int = MIN_NEW_CONTRADICTS,
+    unrelated_cap: float = UNRELATED_CAP,
+) -> list[JudgeCase]:
+    rng = random.Random(seed)
+    ordered = sorted(cases, key=lambda c: c.id)
+    retrieved = [c for c in ordered if c.expected == "contradicts" and not c.has_player_event]
+    sql_pairs = [c for c in ordered if c.expected == "contradicts" and c.has_player_event]
+    rng.shuffle(retrieved)
+    rng.shuffle(sql_pairs)
+    chosen: list[JudgeCase] = retrieved[:size]
+    for case in sql_pairs:
+        if len(chosen) >= min(min_contradicts, size):
+            break
+        chosen.append(case)
+
+    buckets: dict[str, list[JudgeCase]] = {
+        label: [c for c in ordered if c.expected == label]
+        for label in LABELS
+        if label != "contradicts"
+    }
+    for bucket in buckets.values():
+        rng.shuffle(bucket)
+        bucket.sort(key=lambda c: not is_known_miss(c))
+    unrelated_limit = int(size * unrelated_cap)
+    taken = {label: 0 for label in buckets}
+    while len(chosen) < size:
+        progressed = False
+        for label, bucket in buckets.items():
+            if len(chosen) >= size:
+                break
+            if taken[label] >= len(bucket):
+                continue
+            if label == "unrelated" and taken[label] >= unrelated_limit:
+                continue
+            chosen.append(bucket[taken[label]])
+            taken[label] += 1
+            progressed = True
+        if not progressed:
+            break
+    return sorted(chosen, key=lambda c: c.id)
 
 
 def assign_split(

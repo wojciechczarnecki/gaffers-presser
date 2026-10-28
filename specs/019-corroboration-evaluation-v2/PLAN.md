@@ -444,8 +444,8 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation/test_review_cli.py tests/corroboration/evaluation/test_cases.py`,
       then Verify.
-- [ ] 4. **The session judge: export, estimate, import and the shell schema (AC4 manifest,
-      AC5, AC6).**
+- [x] 4. **The session judge: export, estimate, import and the shell schema (AC4 manifest,
+      AC5, AC6).** `iterations: 1`
       - Files:
         - new: `app/corroboration/evaluation/dataset.py` (`SetManifest`, `PrelabelEntry`,
           `BuildInfo`, `Selection`, `load_manifest`, `write_manifest`) and `judging.py`
