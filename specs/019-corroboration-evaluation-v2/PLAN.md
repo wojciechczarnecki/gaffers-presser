@@ -536,7 +536,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation/test_selection.py`, then Verify.
-- [ ] 8. **Build set v2 with session pre-labels (AC1–AC4 data, AC17 data).**
+- [x] 8. **Build set v2 with session pre-labels (AC1–AC4 data, AC17 data).** `iterations: 1`
       - Write `tests/corroboration/evaluation/test_eval_set_v2.py` first:
         - `test_schema`;
         - `test_every_v1_case_in_v2_with_its_split`;
@@ -886,6 +886,8 @@ that the owner has not ruled out.
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
 
 - `minor` — `tests/test_docs.py::test_roadmap_018_ticked_and_019_open` was red before this spec's work (it matched the ROADMAP item by the text `spec 019`, which the item no longer contains); step 1 matches it by the SPEC link instead, ahead of step 14's rewrite.
+- `minor` — `build_window_candidates` reads claims with `sources_only=True` (the plan names it for the anchors); an anchor can therefore come from an account outside the list whose post a list member quotes, so `test_eval_set_v2.py` checks public handles and that most anchors are list accounts instead of "every author is on the list".
+- `minor` — `export_inputs` takes `cases=`, `candidates=` and the two source paths (not a `sources` list), and `import_verdicts` takes no `select`-time `min_contradicts`; the manifest `selection` records the default 12.
 
 ## Final review
 

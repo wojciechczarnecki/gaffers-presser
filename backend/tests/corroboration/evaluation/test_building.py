@@ -397,3 +397,16 @@ def test_build_candidates_force_adds_the_query_cost(db, tmp_path):
 
 def test_a_datetime_import_is_used():
     assert isinstance(START, datetime)
+
+
+def test_a_claim_from_outside_the_list_is_not_an_anchor(db):
+    from tests.tweets.membership_helpers import set_members
+
+    seed_reference(db)
+    add_claim(db, 1, SAKA, "doubt", created_at=NOW - timedelta(hours=8), author="member")
+    add_claim(db, 2, SAKA, "out", created_at=NOW - timedelta(hours=2), author="stranger")
+    add_tweet(db, 3, "Saka injury news", created_at=NOW - timedelta(hours=3), author="member")
+    set_members(db, ["member"])
+    built = build_window_candidates(db, FakeEmbedder(), [WINDOW], PRICES)
+    assert {c.anchor.x_id for c in built.candidates} == {1}
+    assert 2 not in {c.post.x_id for c in built.candidates}

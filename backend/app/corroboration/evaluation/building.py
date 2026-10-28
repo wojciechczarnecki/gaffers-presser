@@ -74,12 +74,19 @@ class Candidate:
 
 
 def _claims_by_player(
-    engine: Engine, start: datetime | None = None, until: datetime | None = None
+    engine: Engine,
+    start: datetime | None = None,
+    until: datetime | None = None,
+    sources_only: bool = False,
 ) -> dict[PlayerRef, list[Claim]]:
     with Session(engine) as session:
         players, teams = load_players(session)
         rows = current_extractions(
-            session, created_from=start, created_until=until, fresh_lineups_only=True
+            session,
+            created_from=start,
+            created_until=until,
+            sources_only=sources_only,
+            fresh_lineups_only=True,
         )
     team_names = {team.fpl_id: team.name for team in teams}
     refs = {
@@ -208,7 +215,7 @@ def build_window_candidates(
     candidates: list[CandidateCase] = []
     newest_anchor_posts = 0
     for window in windows:
-        claims_by_player = _claims_by_player(engine, window.start, window.end)
+        claims_by_player = _claims_by_player(engine, window.start, window.end, sources_only=True)
         for player, claims in sorted(claims_by_player.items(), key=lambda i: i[0].fpl_id):
             with Session(engine) as session:
                 claimed = claimed_post_ids(session, player, window.start, window.end)
