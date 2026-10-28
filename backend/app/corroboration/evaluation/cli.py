@@ -21,7 +21,9 @@ from app.corroboration.evaluation.cases import (
     JudgeCase,
     composition_problems,
     load_cases,
+    prelabel_agreement,
     render_case,
+    review_order,
     write_cases,
 )
 from app.corroboration.evaluation.runner import (
@@ -175,7 +177,7 @@ def review(
     if case_id is not None:
         positions = [i for i, case in enumerate(cases) if case.id == case_id]
     else:
-        positions = [i for i, case in enumerate(cases) if not case.reviewed]
+        positions = review_order(cases, [i for i, case in enumerate(cases) if not case.reviewed])
     if split is not None:
         positions = [i for i in positions if cases[i].split == split]
     if case_id is not None and not positions:
@@ -242,6 +244,20 @@ def _review_cases(
             if action == "q":
                 return
             typer.echo(f"unknown action {action!r}")
+
+
+@app.command(help="Count how often the owner's reviewed labels differ from each pre-labeller.")
+def agreement(
+    cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
+) -> None:
+    result = prelabel_agreement(load_cases(cases_path))
+    typer.echo(f"reviewed: {result.reviewed}")
+    for judge, (total, differ) in result.by_judge.items():
+        typer.echo(f"{judge}: {differ} of {total} differ")
+    total, differ = result.v1
+    typer.echo(f"{PRELABEL_MODEL}: {differ} of {total} differ")
+    for line in result.differing:
+        typer.echo(line)
 
 
 @app.command(help="Run the judge over a split of a set and report its metrics and the verdict.")

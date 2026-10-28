@@ -122,3 +122,60 @@ def test_an_interrupted_review_exits_130_with_the_decisions_saved(tmp_path, inpu
     assert result.exit_code == 130
     assert {c.id: c for c in load_cases(path)}["jc-001"].reviewed is True
     assert "reviewed:" in result.stdout
+
+
+def _v2(n, expected, prelabel, v1_prelabel=None, reviewed=False):
+    return make_case(n, expected, reviewed=reviewed).model_copy(
+        update={
+            "prelabel": prelabel,
+            "v1_prelabel": v1_prelabel,
+            "labelled_by": "claude-opus-5-5 (Claude Code session)",
+        }
+    )
+
+
+def test_review_shows_disagreements_first(tmp_path):
+    cases = [
+        _v2(1, "supports", "supports"),
+        _v2(2, "related", "related", v1_prelabel="related"),
+        _v2(3, "supports", "supports", v1_prelabel="unrelated"),
+        _v2(4, "related", "related", v1_prelabel="supports", reviewed=True),
+    ]
+    path = _files(tmp_path, cases)
+    result = _review(path, input_text="a\na\na\n")
+    assert result.exit_code == 0, result.output
+    positions = [result.stdout.index(f"id: jc-00{n}") for n in (3, 2, 1)]
+    assert positions == sorted(positions)
+    assert "id: jc-004" not in result.stdout
+
+
+def test_review_shows_both_prelabels_for_a_v1_case(tmp_path):
+    path = _files(tmp_path, [_v2(3, "supports", "supports", v1_prelabel="unrelated")])
+    result = _review(path, input_text="q\n")
+    assert "pre-label: supports  (by claude-opus-5-5 (Claude Code session))" in result.stdout
+    assert "v1 pre-label: unrelated  (by anthropic/claude-haiku-4.5)  DISAGREE" in result.stdout
+
+
+def test_a_new_case_shows_one_prelabel(tmp_path):
+    path = _files(tmp_path, [_v2(1, "supports", "supports")])
+    result = _review(path, input_text="q\n")
+    assert "pre-label: supports" in result.stdout
+    assert "v1 pre-label" not in result.stdout
+
+
+def test_agreement_counts_differences_per_prelabeller(tmp_path):
+    cases = [
+        _v2(1, "supports", "supports", reviewed=True),
+        _v2(2, "contradicts", "supports", reviewed=True),
+        _v2(3, "related", "related", v1_prelabel="supports", reviewed=True),
+        _v2(4, "supports", "supports", v1_prelabel="supports", reviewed=True),
+        _v2(5, "supports", "related"),
+    ]
+    path = _files(tmp_path, cases)
+    result = CliRunner().invoke(app, ["agreement", "--cases", str(path)])
+    assert result.exit_code == 0, result.output
+    assert "reviewed: 4" in result.stdout
+    assert "claude-opus-5-5 (Claude Code session): 1 of 4 differ" in result.stdout
+    assert "anthropic/claude-haiku-4.5: 1 of 2 differ" in result.stdout
+    assert "jc-002: owner contradicts, session supports" in result.stdout
+    assert "jc-005" not in result.stdout

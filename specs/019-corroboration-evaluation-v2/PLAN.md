@@ -429,7 +429,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation/test_metrics.py tests/corroboration/evaluation/test_runner.py`,
       then Verify.
-- [ ] 3. **The review order, both pre-labels and `agreement` (AC7, AC8 tooling).**
+- [x] 3. **The review order, both pre-labels and `agreement` (AC7, AC8 tooling).** `iterations: 0`
       - Files: `app/corroboration/evaluation/cases.py` (`render_case`, `prelabel_agreement`)
         and `cli.py` (`review` ordering, the new `agreement` command) (approach item 5).
       - Tests first, in `tests/corroboration/evaluation/test_review_cli.py`:

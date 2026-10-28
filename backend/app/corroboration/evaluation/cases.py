@@ -1,5 +1,6 @@
 from collections import Counter
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Literal, get_args
@@ -157,6 +158,53 @@ def render_case(case: JudgeCase, progress: str) -> str:
         f"post: {_who(post.author_handle, post.reposted_author_handle)}"
         f" at {format_local(post.created_at)}",
         f"    {' '.join(post.text.split())}",
-        f"pre-label: {case.expected}  (by {case.labelled_by})",
+        f"pre-label: {case.prelabel or case.expected}  (by {case.labelled_by})",
     ]
+    if case.v1_prelabel is not None:
+        marker = "  DISAGREE" if case.prelabel and case.prelabel != case.v1_prelabel else ""
+        lines.append(f"v1 pre-label: {case.v1_prelabel}  (by {PRELABEL_MODEL}){marker}")
     return "\n".join(lines)
+
+
+def review_order(cases: Sequence[JudgeCase], positions: Sequence[int]) -> list[int]:
+    def group(i: int) -> int:
+        case = cases[i]
+        if case.v1_prelabel is None:
+            return 2
+        if case.prelabel is not None and case.prelabel != case.v1_prelabel:
+            return 0
+        return 1
+
+    return sorted(positions, key=lambda i: (group(i), i))
+
+
+@dataclass(frozen=True)
+class Agreement:
+    reviewed: int
+    by_judge: dict[str, tuple[int, int]]
+    v1: tuple[int, int]
+    differing: list[str]
+
+
+def prelabel_agreement(cases: Sequence[JudgeCase]) -> Agreement:
+    reviewed = [case for case in cases if case.reviewed]
+    by_judge: dict[str, list[int]] = {}
+    differing: list[str] = []
+    for case in reviewed:
+        if case.prelabel is None:
+            continue
+        counts = by_judge.setdefault(case.labelled_by, [0, 0])
+        counts[0] += 1
+        if case.expected != case.prelabel:
+            counts[1] += 1
+            differing.append(
+                f"{case.id}: owner {case.expected}, session {case.prelabel}"
+                + (f", haiku {case.v1_prelabel}" if case.v1_prelabel else "")
+            )
+    v1 = [case for case in reviewed if case.v1_prelabel is not None]
+    return Agreement(
+        len(reviewed),
+        {judge: (counts[0], counts[1]) for judge, counts in by_judge.items()},
+        (len(v1), sum(1 for case in v1 if case.expected != case.v1_prelabel)),
+        differing,
+    )
