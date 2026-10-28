@@ -100,6 +100,66 @@ def test_the_default_output_path_names_the_split_and_the_model():
     assert path == DEFAULT_RESULTS_DIR / "test-openai-gpt-6-luna.json"
 
 
+def _run_with_cost(cases, judge, calls=None, rate=None):
+    return run_evaluation(
+        cases,
+        judge,
+        "test",
+        True,
+        "fake/model",
+        "judge@1",
+        NOW,
+        calls_per_month=calls,
+        usd_pln_rate=rate,
+    )
+
+
+def test_the_result_carries_the_production_slice():
+    cases = [
+        make_case(1, "supports", has_player_event=False),
+        make_case(2, "unrelated", has_player_event=False),
+        make_case(3, "supports", has_player_event=True),
+    ]
+    judge = ScriptedJudge(lambda item: "supports")
+    data = _run(cases, judge, include=True)
+    assert data["metrics"]["cases"] == 3
+    assert data["production"]["cases"] == 2
+    assert data["production"]["accuracy"] == 0.5
+    assert data["production"]["false_support"]["numerator"] == 1
+    assert data["verdict"]["passed"] is False
+
+
+def test_projected_monthly_cost():
+    cases = [make_case(1, "supports")]
+    judge = ScriptedJudge("supports", cost_usd=0.002)
+    data = _run_with_cost(cases, judge, calls=1000, rate=4.0)
+    assert data["projected_monthly_cost_pln"] == pytest.approx(0.002 * 1000 * 4.0)
+    assert _run_with_cost(cases, judge, calls=None, rate=4.0)["projected_monthly_cost_pln"] is None
+    assert _run_with_cost(cases, judge, calls=1000, rate=None)["projected_monthly_cost_pln"] is None
+
+
+def test_evaluate_prints_and_writes_the_verdict(tmp_path):
+    result = _invoke(tmp_path, _deps(), "--split", "test")
+    assert result.exit_code == 0, result.output
+    assert "threshold accuracy: pass" in result.stdout
+    assert "threshold false_support: fail" in result.stdout
+    assert "threshold contradicts_recall: fail" in result.stdout
+    assert "verdict: FAIL" in result.stdout
+    assert "production slice" in result.stdout
+    data = json.loads((tmp_path / "result.json").read_text())
+    assert data["verdict"]["passed"] is False
+    assert "production" in data
+
+
+def test_v2_result_paths():
+    assert default_result_path("test", "a/b", "v1") == DEFAULT_RESULTS_DIR / "test-a-b.json"
+    assert default_result_path("test", "a/b", "v2") == DEFAULT_RESULTS_DIR / "v2" / "test-a-b.json"
+    assert (
+        default_result_path("dev", "a/b", "v2")
+        == DEFAULT_RESULTS_DIR / "v2" / "dev" / "dev-a-b.json"
+    )
+
+
 def _deps(judge=None, models=None, settings=None):
     models = models if models is not None else {}
 

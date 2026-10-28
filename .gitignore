@@ -48,3 +48,4 @@ Thumbs.db
 backend/evals/extraction/results/dev/
 backend/evals/extraction/results/*/dev/
 backend/evals/retrieval/results/dev/
+backend/evals/corroboration/results/*/dev/

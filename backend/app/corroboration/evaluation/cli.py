@@ -26,6 +26,7 @@ from app.corroboration.evaluation.cases import (
 )
 from app.corroboration.evaluation.runner import (
     EvaluationError,
+    calls_per_month,
     default_result_path,
     format_metrics,
     run_evaluation,
@@ -243,7 +244,7 @@ def _review_cases(
             typer.echo(f"unknown action {action!r}")
 
 
-@app.command(help="Run the judge over a split of set v1 and report its metrics.")
+@app.command(help="Run the judge over a split of a set and report its metrics and the verdict.")
 def evaluate(
     ctx: typer.Context,
     split: Annotated[str, typer.Option("--split")] = "test",
@@ -257,7 +258,7 @@ def evaluate(
         raise fail("--split must be dev or test")
     deps = get_deps(ctx)
     chosen_model = model or deps.settings.llm_model or DEFAULT_MODEL
-    path = output or default_result_path(split, chosen_model)
+    path = output or default_result_path(split, chosen_model, cases_path.parent.name)
     try:
         check_new_result(path, force)
     except ResultExistsError as exc:
@@ -276,6 +277,8 @@ def evaluate(
             chosen_model,
             PROMPT_VERSION,
             deps.clock.now(),
+            calls_per_month=calls_per_month(cases_path.parent),
+            usd_pln_rate=deps.settings.usd_pln_rate,
         )
     except EvaluationError as exc:
         raise fail(str(exc)) from None

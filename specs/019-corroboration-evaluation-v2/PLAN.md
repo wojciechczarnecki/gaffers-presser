@@ -407,7 +407,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation -n auto`, then Verify.
-- [ ] 2. **Metrics, the verdict, the cost a month and the per-set result paths (AC9, AC10).**
+- [x] 2. **Metrics, the verdict, the cost a month and the per-set result paths (AC9, AC10).** `iterations: 1`
       - Files: `app/corroboration/evaluation/metrics.py`, `runner.py`, `cli.py` (`evaluate`)
         (approach item 4) and `/home/czarny/Projects/gaffers-presser/.gitignore`.
       - Tests first, in `tests/corroboration/evaluation/test_metrics.py`:

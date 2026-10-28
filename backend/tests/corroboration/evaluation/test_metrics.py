@@ -1,6 +1,11 @@
 import pytest
 
-from app.corroboration.evaluation.metrics import Outcome, compute_metrics
+from app.corroboration.evaluation.metrics import (
+    THRESHOLDS,
+    Outcome,
+    compute_metrics,
+    threshold_verdict,
+)
 
 
 def _o(n, expected, predicted, error=None):
@@ -63,3 +68,46 @@ def test_no_outcomes():
     metrics = compute_metrics([])
     assert metrics["accuracy"] is None
     assert metrics["cases"] == 0
+
+
+def _metrics(accuracy=0.8, false_support=0.1, recall=0.7, errored=0):
+    return {
+        "errored": errored,
+        "accuracy": accuracy,
+        "false_support": {"rate": false_support},
+        "per_label": {"contradicts": {"recall": recall}},
+    }
+
+
+def test_threshold_verdict_passes():
+    assert THRESHOLDS == {"accuracy": 0.80, "false_support": 0.10, "contradicts_recall": 0.70}
+    assert threshold_verdict(_metrics()) == {
+        "accuracy": True,
+        "false_support": True,
+        "contradicts_recall": True,
+        "no_errors": True,
+        "passed": True,
+    }
+
+
+def test_threshold_verdict_fails_on_accuracy():
+    verdict = threshold_verdict(_metrics(accuracy=0.79))
+    assert verdict["accuracy"] is False and verdict["passed"] is False
+
+
+def test_threshold_verdict_fails_on_false_support():
+    verdict = threshold_verdict(_metrics(false_support=0.11))
+    assert verdict["false_support"] is False and verdict["passed"] is False
+
+
+def test_threshold_verdict_fails_on_contradicts_recall():
+    verdict = threshold_verdict(_metrics(recall=0.69))
+    assert verdict["contradicts_recall"] is False and verdict["passed"] is False
+    none = threshold_verdict(_metrics(recall=None))
+    assert none["contradicts_recall"] is False and none["passed"] is False
+
+
+def test_threshold_verdict_fails_on_an_errored_run():
+    verdict = threshold_verdict(_metrics(errored=1))
+    assert verdict["no_errors"] is False and verdict["passed"] is False
+    assert verdict["accuracy"] is True

@@ -7,6 +7,9 @@ from app.corroboration.evaluation.cases import LABELS
 FALSE_SUPPORT_EXPECTED = ("unrelated", "related", "contradicts")
 
 
+THRESHOLDS = {"accuracy": 0.80, "false_support": 0.10, "contradicts_recall": 0.70}
+
+
 @dataclass(frozen=True)
 class Outcome:
     id: str
@@ -48,3 +51,17 @@ def compute_metrics(outcomes: Sequence[Outcome]) -> dict[str, Any]:
             "rate": _ratio(false_supports, len(at_risk)),
         },
     }
+
+
+def threshold_verdict(metrics: dict[str, Any]) -> dict[str, bool]:
+    accuracy = metrics["accuracy"]
+    false_support = metrics["false_support"]["rate"]
+    recall = metrics["per_label"]["contradicts"]["recall"]
+    verdict = {
+        "accuracy": accuracy is not None and accuracy >= THRESHOLDS["accuracy"],
+        "false_support": false_support is not None and false_support <= THRESHOLDS["false_support"],
+        "contradicts_recall": recall is not None and recall >= THRESHOLDS["contradicts_recall"],
+        "no_errors": metrics["errored"] == 0,
+    }
+    verdict["passed"] = all(verdict.values())
+    return verdict
