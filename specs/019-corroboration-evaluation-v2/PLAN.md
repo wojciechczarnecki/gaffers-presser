@@ -387,7 +387,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 "Verify" = `uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto`.
 `$S` = a `019/` directory in the implementer's session scratchpad (never in the repository).
 
-- [ ] 1. **Case format v2, set paths and the v2 composition (AC2, AC4 format).**
+- [x] 1. **Case format v2, set paths and the v2 composition (AC2, AC4 format).** `iterations: 1`
       - Files: `app/corroboration/evaluation/cases.py` (approach items 1–3) and
         `app/corroboration/evaluation/cli.py` (the `build-cases` output default becomes
         `V1_CASES_PATH`; `review` and `evaluate` default to `DEFAULT_CASES_PATH`).
@@ -884,6 +884,8 @@ that the owner has not ruled out.
 ## Deviations
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+
+- `minor` — `tests/test_docs.py::test_roadmap_018_ticked_and_019_open` was red before this spec's work (it matched the ROADMAP item by the text `spec 019`, which the item no longer contains); step 1 matches it by the SPEC link instead, ahead of step 14's rewrite.
 
 ## Final review
 

@@ -12,7 +12,9 @@ from app.corroboration.schemas import Label
 from app.llm.chat import DEFAULT_MODEL
 
 EVALS_DIR = Path(__file__).resolve().parents[3] / "evals" / "corroboration"
-DEFAULT_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
+V1_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
+V2_SET_DIR = EVALS_DIR / "v2"
+DEFAULT_CASES_PATH = V2_SET_DIR / "cases.jsonl"
 DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
 
 # A tier above the flash class and from another vendor than the default judge, so its
@@ -21,13 +23,10 @@ PRELABEL_MODEL = "anthropic/claude-haiku-4.5"
 
 LABELS: tuple[str, ...] = get_args(Label)
 
-# The development corpus holds no genuine reversal, so set v1 has no `contradicts` case
-# (final review F1 of spec 007). BACKLOG #12 (the GW6 deadline window) brings real line-up
-# leaks against availability news; once the set has such cases, this exemption goes.
-LABELS_NOT_YET_REQUIRED: frozenset[str] = frozenset({"contradicts"})
-
-MIN_CASES = 50
-MAX_CASES = 70
+MIN_CASES = 90
+MAX_CASES = 130
+MIN_CONTRADICTS = 8
+MIN_TEST_CONTRADICTS = 5
 DEV_SHARE_RANGE = (0.25, 0.35)
 
 
@@ -73,6 +72,8 @@ class JudgeCase(BaseModel):
     labelled_by: str
     reviewed: bool
     has_player_event: bool
+    prelabel: Label | None = None
+    v1_prelabel: Label | None = None
 
 
 def parse_cases(text: str) -> list[JudgeCase]:
@@ -110,12 +111,20 @@ def composition_problems(cases: Sequence[JudgeCase]) -> list[str]:
     overall = Counter(case.expected for case in cases)
     in_test = Counter(case.expected for case in cases if case.split == "test")
     for label in LABELS:
-        if label in LABELS_NOT_YET_REQUIRED:
-            continue
         if overall[label] == 0:
             problems.append(f"no case with the label {label}")
         if in_test[label] == 0:
             problems.append(f"the test split has no case with the label {label}")
+
+    if overall["contradicts"] < MIN_CONTRADICTS:
+        problems.append(
+            f"contradicts cases: {overall['contradicts']}, need at least {MIN_CONTRADICTS}"
+        )
+    if in_test["contradicts"] < MIN_TEST_CONTRADICTS:
+        problems.append(
+            f"contradicts cases in the test split: {in_test['contradicts']},"
+            f" need at least {MIN_TEST_CONTRADICTS}"
+        )
 
     same_as_judge = sorted({case.id for case in cases if case.labelled_by == DEFAULT_MODEL})
     if same_as_judge:

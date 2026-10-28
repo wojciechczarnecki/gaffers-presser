@@ -17,6 +17,7 @@ from app.corroboration.evaluation.cases import (
     DEFAULT_CASES_PATH,
     LABELS,
     PRELABEL_MODEL,
+    V1_CASES_PATH,
     JudgeCase,
     composition_problems,
     load_cases,
@@ -121,7 +122,7 @@ def _cost(value: float | None) -> str:
 @app.command(name="build-cases", help="Build set v1 from the stored posts and pre-label it.")
 def build_cases_command(
     ctx: typer.Context,
-    output: Annotated[Path, typer.Option("--output")] = DEFAULT_CASES_PATH,
+    output: Annotated[Path, typer.Option("--output")] = V1_CASES_PATH,
     force: Annotated[bool, typer.Option("--force", help="Overwrite an existing file.")] = False,
     model: Annotated[str, typer.Option("--model", help="Pre-labelling model ID.")] = PRELABEL_MODEL,
     size: Annotated[int, typer.Option("--size", min=1)] = TARGET_SIZE,

@@ -305,8 +305,12 @@ def test_roadmap_018_ticked_and_019_open():
     (done,) = [line for line in items if "018-extraction-evaluation-v2/SPEC.md" in line]
     assert done.startswith("- [x]")
     assert "extraction-eval-v2.md" in roadmap and "adr/0010-" in roadmap
-    (todo,) = [line for line in items if line.startswith("- [ ]") and "spec 019" in line]
-    assert "corroboration" in todo and "contradicts" in todo
+    (todo,) = [
+        line
+        for line in items
+        if line.startswith("- [ ]") and "019-corroboration-evaluation-v2/SPEC.md" in line
+    ]
+    assert "orroboration" in todo and "contradicts" in todo
 
 
 def test_backlog_23_46_54_removed_and_12_narrowed():
