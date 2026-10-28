@@ -816,6 +816,8 @@ n/a — the only hands-on part, the review of set v2, is requested by the step 9
 
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
+- 2026-10-28 — implement — `decision` — Step 9: how to review set v2 (106 cases, all `reviewed: false`)? — The owner reviews all 106 cases now with `review` (disagreements first); `agreement` follows, then the implementation resumes from step 10
+
 ## Review log
 
 ### 2026-10-28 — plan review
