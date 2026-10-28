@@ -87,7 +87,8 @@ and each LLM step that produces data has an evaluation set with recorded results
       extraction half), #23, #46, #54) (spec: [018](../specs/018-extraction-evaluation-v2/SPEC.md))
 - [ ] Corroboration evaluation v2: the owner's review of the corroboration judge set v1 and a pass
       threshold for the judge, `contradicts` cases in the judge set, and the judge evaluation
-      re-run on the retrieval chosen above (BACKLOG #12 (the corroboration half), #47) (spec 019)
+      re-run on the retrieval chosen above (BACKLOG #12 (the corroboration half), #47)
+      (spec: [019](../specs/019-corroboration-evaluation-v2/SPEC.md))
 - [ ] README rewritten for the portfolio once the two evaluations above have results: what
       it does and why, an architecture diagram, a results table linking the reports, the
       engineering process (specs, ADRs, evaluation, tracing), a sample presser on made-up
