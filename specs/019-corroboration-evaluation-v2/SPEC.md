@@ -1,10 +1,15 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-10-28"
   - "spec-ready — 2026-10-28"
+  - "plan-draft — 2026-10-28"
 metrics:
   started_at: 2026-10-28T10:42
+  plan_steps: 15
+  escalations: 0
+  escalations_permission: 0
+  escalations_tooling: 0
 ---
 
 # SPEC 019 — Corroboration evaluation v2: a reviewed judge set, contradictions and a pass threshold
