@@ -1,3 +1,5 @@
+import json
+import threading
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -41,15 +43,30 @@ from app.corroboration.evaluation.runner import (
     run_evaluation,
     write_result,
 )
+from app.corroboration.evaluation.scratch import (
+    ScratchError,
+    guard_scratch_url,
+    run_build_scratch,
+)
 from app.corroboration.judge import PROMPT_VERSION, Judge, build_judge
 from app.db.engine import make_engine
-from app.llm.chat import DEFAULT_MODEL, build_chat_model, single_model_config
+from app.extraction.evaluation.dataset import load_context
+from app.extraction.service import ExtractionRuntime, load_reference_files
+from app.llm.chat import (
+    DEFAULT_MODEL,
+    PROVIDER,
+    build_chat_model,
+    resolve_llm,
+    single_model_config,
+)
 from app.llm.models import reasoning_effort_of
 from app.llm.pricing import Price, load_prices
 from app.llm.settings import load_llm_settings
 from app.llm.structured import StructuredCaller
 from app.retrieval.config import resolve_embedding
 from app.retrieval.embedder import Embedder, build_embedder
+from app.retrieval.evaluation.dataset import load_corpus
+from app.retrieval.indexing import IndexingRuntime
 
 app = typer.Typer(
     add_completion=False,
@@ -164,6 +181,95 @@ def build_cases_command(
     for problem in composition_problems(built.cases):
         typer.echo(f"problem: {problem}")
     typer.echo(f"written: {output}")
+
+
+RETRIEVAL_V2_DIR = Path(__file__).resolve().parents[3] / "evals" / "retrieval" / "v2"
+EXTRACTION_V2_DIR = Path(__file__).resolve().parents[3] / "evals" / "extraction" / "v2"
+
+
+def _scratch_engine(url: str) -> Engine:
+    try:
+        configured: str | None = load_settings().database_url
+    except ConfigError:
+        configured = None
+    try:
+        guard_scratch_url(url, configured)
+    except ScratchError as exc:
+        raise fail(str(exc)) from None
+    return make_engine(url)
+
+
+@app.command(
+    name="build-scratch",
+    help="Load the retrieval v2 corpus into a throwaway database, embed and extract it.",
+)
+def build_scratch(
+    ctx: typer.Context,
+    database_url: Annotated[str, typer.Option("--database-url")],
+    corpus_path: Annotated[Path, typer.Option("--corpus")] = RETRIEVAL_V2_DIR / "corpus.jsonl",
+    context_dir: Annotated[Path, typer.Option("--context")] = EXTRACTION_V2_DIR,
+    retrieval_set: Annotated[Path, typer.Option("--retrieval-set")] = RETRIEVAL_V2_DIR,
+    gameweeks: Annotated[list[int] | None, typer.Option("--gameweek")] = None,
+    max_cost_usd: Annotated[float, typer.Option("--max-cost-usd")] = 0.90,
+) -> None:
+    engine = _scratch_engine(database_url)
+    try:
+        settings = (
+            ctx.obj.settings if ctx.obj is not None else load_llm_settings(CorroborationSettings)
+        )
+        embedding = resolve_embedding(settings)
+        llm_config = resolve_llm(settings)
+        if embedding is None or llm_config is None:
+            raise ConfigError("OPENROUTER_API_KEY is not set")
+        prices, aliases = load_reference_files()
+    except AppError as exc:
+        raise fail(str(exc)) from None
+    players, teams, fixtures = load_context(context_dir)
+    handles = json.loads((retrieval_set / "set.json").read_text())["list_handles"]
+    clock = SystemClock()
+    embedder = build_embedder(embedding)
+    try:
+        summary = run_build_scratch(
+            engine,
+            load_corpus(corpus_path),
+            handles,
+            players,
+            teams,
+            fixtures,
+            embedder=embedder,
+            indexing=IndexingRuntime(
+                model=embedding.model,
+                make_embedder=lambda: embedder,
+                prices=embedding.prices,
+                tracing=None,
+                clock=clock,
+            ),
+            extraction=ExtractionRuntime(
+                provider=PROVIDER,
+                model=llm_config.model,
+                fallback_model=llm_config.fallback_model,
+                make_spec=lambda: build_chat_model(llm_config),
+                tracing=None,
+                prices=prices,
+                aliases=aliases,
+            ),
+            gameweeks=gameweeks or [6, 7],
+            max_cost_usd=max_cost_usd,
+            clock=clock,
+            stop=threading.Event(),
+        )
+    except AppError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(f"seeded: {summary.seeded}  embedded: {summary.embedded}")
+    for window in summary.windows:
+        typer.echo(
+            f"window GW{window.gameweek}: {window.start.isoformat()} .. {window.end.isoformat()}"
+        )
+    typer.echo(f"extracted: {summary.extract.extracted}  failed: {summary.extract.failed}")
+    typer.echo(f"embeddings cost: {_cost(summary.embeddings_cost_usd)}")
+    typer.echo(f"extraction cost: {_cost(summary.extraction_cost_usd)}")
+    if summary.extract.stopped_by_cap:
+        raise fail(f"the cost cap of ${max_cost_usd:.2f} stopped the extraction before the end")
 
 
 @app.command(name="export-judge-inputs", help="Export the session judge's inputs.")

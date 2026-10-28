@@ -483,7 +483,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation tests/test_session_judge.py -n auto`,
       then Verify.
-- [ ] 5. **The scratch database: guard, seed, index and extract (AC3, AC17 guard).**
+- [x] 5. **The scratch database: guard, seed, index and extract (AC3, AC17 guard).** `iterations: 1`
       - Files: new `app/corroboration/evaluation/scratch.py` (approach item 7) and `cli.py`
         (`build-scratch`).
       - Tests first, in `tests/corroboration/evaluation/test_scratch.py`, on the `db` fixture
