@@ -226,8 +226,8 @@ def build_flow(
         usage = state["usage"]
         llm_calls = state["llm_calls"]
 
-        for item in extracted.events:
-            candidates = index.resolve(item.player, item.team)
+        resolved = index.resolve_post([(item.player, item.team) for item in extracted.events])
+        for item, candidates in zip(extracted.events, resolved, strict=True):
             player: PlayerRecord | None = None
 
             if len(candidates) == 1:

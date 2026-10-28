@@ -168,6 +168,16 @@ def test_disambiguation_picks_candidate():
     assert result.llm_calls == 2
 
 
+def test_club_of_another_linked_player_skips_disambiguation():
+    output = ExtractionOutput(events=[_event("Smith"), _event("Jones")])
+    flow = build_flow(_spec(output), INDEX)
+
+    result = flow.run(POST)
+
+    assert [e.player_fpl_id for e in result.events] == [SMITH_ONE.fpl_id, JONES.fpl_id]
+    assert result.llm_calls == 1
+
+
 def test_disambiguation_outside_list_unlinked():
     output = ExtractionOutput(events=[_event("Smith")])
     disambiguation = Disambiguation(fpl_id=999)
@@ -426,7 +436,7 @@ def test_prompt_version_names_three_prompts():
 def test_every_call_uses_the_flow_model():
     fake = FakeChatModel(
         responses=[
-            ExtractionOutput(events=[_event("Smith", "benched"), _event("Haaland", "benched")]),
+            ExtractionOutput(events=[_event("Smith", "benched")]),
             Disambiguation(fpl_id=SMITH_ONE.fpl_id),
             MatchCheck(for_next_pl_match=True),
         ]
@@ -438,4 +448,4 @@ def test_every_call_uses_the_flow_model():
 
     assert result.llm_calls == 3
     assert len(fake.received_messages) == 3
-    assert [e.for_next_pl_match for e in result.events] == [True, True]
+    assert [e.for_next_pl_match for e in result.events] == [True]

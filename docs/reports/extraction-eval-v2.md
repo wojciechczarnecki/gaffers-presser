@@ -69,7 +69,9 @@ Prompt work used the dev split only: 72 cases, 140 expected events, two models (
     in every run, which is its designed behaviour (6.4 % of the dev events; 12 of 301 test events
     are in the same position);
   - the linking misses (Ben White, Guimarães, Nico González, Andy Robertson, Pedro, Thomas) are
-    the linker's, BACKLOG #57, outside this spec.
+    the linker's, BACKLOG #57, outside this spec. Fixed on 2026-10-27 (DECISIONS): resolving the
+    reviewed labels of set v2 with no team, the misses fell from 11 to 0 and the unique links rose
+    from 385 to 439 of 450; the model runs above were not repeated.
 - Only 1 of the 14 other-match cases had a raw event in any run, so the 60 h filter caught it;
   the match check was not under pressure on dev.
 - Stopped after three prompt iterations: the remaining misses are single-case wording noise
