@@ -617,7 +617,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation/test_eval_set_v2.py && uv run python -m app.corroboration.evaluation agreement`,
       then Verify.
-- [ ] 10. **Dev iterations and the frozen prompt (AC13).** Use the paid key from
+- [x] 10. **Dev iterations and the frozen prompt (AC13).** `iterations: 0` Use the paid key from
       `backend/.env` (with `USD_PLN_RATE` set).
       - Iteration 0: for each model in `tests/extraction/candidates.py::CANDIDATES`, run
         `env -u TWEET_SOURCE uv run python -m app.corroboration.evaluation evaluate --split dev --model M --output evals/corroboration/results/v2/dev/dev-<slug>-i0.json`.
