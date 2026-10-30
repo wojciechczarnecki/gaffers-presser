@@ -317,7 +317,7 @@ session scratchpad (never in the repository).
       `uv run pytest -q tests/extraction/test_flow.py tests/content tests/corroboration/test_service.py tests/alerts/test_breaking.py tests/extraction/evaluation/test_cli.py`,
       then Verify.
 
-- [ ] 3. **Extraction prompt v6 (AC1, AC2).** Files: `app/content/prompts/extraction.md`
+- [x] 3. **Extraction prompt v6 (AC1, AC2).** Files: `app/content/prompts/extraction.md` `iterations: 0`
       (version 6, design item 4).
 
       Tests first:

@@ -349,6 +349,16 @@ def test_no_match_check_for_available_only():
     assert flow.run(POST).llm_calls == 2
 
 
+def test_available_event_passes_through_without_a_match_check():
+    flow, chat = _checked_flow(_lineup("Haaland", event_type="available"))
+
+    result = flow.run(POST)
+
+    assert [(e.event_type, e.for_next_pl_match) for e in result.events] == [("available", None)]
+    assert result.llm_calls == 1
+    assert len(chat.received_messages) == 1
+
+
 def test_match_check_two_clubs_two_calls():
     flow, chat = _checked_flow(
         _lineup("Haaland", "J.Smith", "Jones"),

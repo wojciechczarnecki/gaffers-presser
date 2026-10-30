@@ -65,6 +65,7 @@ def test_flow_sends_the_loaded_match_check_prompt():
         "doubt",
         "benched",
         "confirmed_starter",
+        "available",
         "confirmed",
         "likely",
         "rumour",
@@ -89,9 +90,22 @@ def test_retrieval_prompts_load_with_a_version(name):
     assert prompt.text.strip()
 
 
-def test_extraction_prompt_v5_rules():
+def test_extraction_prompt_v6_rules():
     prompt = load_prompt("extraction")
     normalised = " ".join(prompt.text.lower().split())
-    assert prompt.version == 5
-    for phrase in ("own team", "hypothetical", "national team", "flag", "never `confirmed`"):
+    assert prompt.version == 6
+    for phrase in (
+        "own team",
+        "hypothetical",
+        "national team",
+        "flag",
+        "never `confirmed`",
+        "`available`",
+        "trained",
+        "not suspended",
+        "fatigue",
+        "fake",
+        "one of the five types",
+    ):
         assert phrase in normalised, phrase
+    assert "there is no positive availability type" not in normalised

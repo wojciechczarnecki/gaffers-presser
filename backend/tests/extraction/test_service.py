@@ -509,3 +509,24 @@ def test_failed_match_check_keeps_the_extraction_extracted(db_session):
     assert outcome is not None and outcome.status == "extracted"
     [row] = current_extractions(db_session, x_ids=[1])
     assert [(e.event_type, e.for_next_pl_match) for e in row.events] == [("benched", None)]
+
+
+def test_an_available_event_is_stored_and_read_back(db_session):
+    _seed_tweet(db_session)
+    _seed_haaland_with_a_fixture(db_session)
+    available = ExtractionOutput(
+        events=[
+            ExtractedEvent(
+                player="Haaland", team=None, event_type="available", certainty="confirmed"
+            )
+        ]
+    )
+    runtime = _runtime(available)
+
+    outcome = _extract(db_session, runtime, RecordingClock([NOW, NOW + timedelta(seconds=1)]))
+
+    assert outcome is not None and outcome.status == "extracted"
+    [row] = current_extractions(db_session, x_ids=[1], fresh_lineups_only=True)
+    assert [(e.event_type, e.certainty, e.for_next_pl_match) for e in row.events] == [
+        ("available", "confirmed", None)
+    ]
