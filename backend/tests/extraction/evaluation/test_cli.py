@@ -1096,6 +1096,45 @@ def test_estimate_prints_calls_and_tokens(tmp_path):
     assert missing.exit_code == 1
 
 
+def test_export_with_availability_keywords(tmp_path):
+    set_dir = tmp_path / "set"
+    _write_v2_set(set_dir, [_benched_case("1")])
+    corpus = tmp_path / "corpus.jsonl"
+    rows = [
+        {"x_id": 11, "text": "Palmer is NOT suspended"},
+        {"x_id": 12, "text": "the weather is nice"},
+    ]
+    corpus.write_text(
+        "\n".join(
+            json.dumps(
+                {
+                    "author_handle": "reporter",
+                    "created_at": NOW.isoformat(),
+                    "is_repost": False,
+                    "is_reply": False,
+                    "is_source": True,
+                    **row,
+                }
+            )
+            for row in rows
+        )
+    )
+
+    def export(*flags):
+        return CliRunner().invoke(
+            app,
+            ["export-judge-inputs", "--set", str(set_dir), "--corpus", str(corpus), *flags]
+            + ["--out", str(tmp_path / f"export{len(flags)}")],
+        )
+
+    plain = export("--keywords")
+    both = export("--keywords", "--availability-keywords")
+
+    assert plain.exit_code == 0 and "exported 0 inputs" in plain.stdout
+    assert both.exit_code == 0, both.output
+    assert "exported 1 inputs" in both.stdout
+
+
 def test_export_and_import_through_the_cli(tmp_path):
     set_dir = tmp_path / "set"
     _write_v2_set(set_dir, [_benched_case("1")])

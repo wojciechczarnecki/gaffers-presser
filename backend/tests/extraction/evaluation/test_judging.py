@@ -8,6 +8,7 @@ from app.content import load_prompt
 from app.extraction.evaluation.cases import EvalCase, ExpectedEvent, load_cases
 from app.extraction.evaluation.dataset import load_manifest
 from app.extraction.evaluation.judging import (
+    REPLY_FORMAT,
     CorpusRow,
     JudgingError,
     estimate_export,
@@ -89,12 +90,13 @@ def _case(case_id, *events, tags=(), split="dev", reviewed=True) -> EvalCase:
     )
 
 
-def _verdict(*events, flag=False) -> dict:
+def _verdict(*events, flag=False, **flags) -> dict:
     return {
         "events": [
             {"player": p, "team": None, "event_type": t, "certainty": c} for p, t, c in events
         ],
         "other_match_lineup": flag,
+        **flags,
     }
 
 
@@ -474,3 +476,108 @@ def test_unwatched_authors_are_left_out_at_export_and_at_import(tmp_path):
 
     assert [c.id for c in load_cases(set_dir / "cases.jsonl")] == ["5001"]
     assert report.skipped_unwatched == ["5002"]
+
+
+def test_reply_format_lists_five_types():
+    for event_type in ("out", "doubt", "benched", "confirmed_starter", "available"):
+        assert f'"{event_type}"' in REPLY_FORMAT
+    assert '"other_match_absence"' in REPLY_FORMAT and '"cup_injury"' in REPLY_FORMAT
+
+
+def test_flags_become_tags(tmp_path):
+    v1 = _case("101", ("Haaland", 5, "out", "confirmed"))
+    out = _export_cases(tmp_path, [v1])
+    _write_verdicts(out, {"101": _verdict(other_match_absence=True, cup_injury=True)})
+    set_dir = tmp_path / "set"
+    set_dir.mkdir()
+
+    report = _import(out, set_dir)
+
+    assert (report.copied, report.changed) == (0, 1)
+    [case] = load_cases(set_dir / "cases.jsonl")
+    assert case.tags == ["other_match_absence", "cup_injury"]
+    assert case.reviewed is False
+
+
+def test_unchanged_case_needs_all_three_flag_tags_equal(tmp_path):
+    same = _case(
+        "101", ("Haaland", 5, "out", "confirmed"), tags=["other_match_absence", "cup_injury"]
+    )
+    differs = _case("102", ("Haaland", 5, "out", "confirmed"), tags=["cup_injury"])
+    out = _export_cases(tmp_path, [same, differs])
+    verdict = ("Haaland", "out", "confirmed")
+    _write_verdicts(
+        out,
+        {
+            "101": _verdict(verdict, other_match_absence=True, cup_injury=True),
+            "102": _verdict(verdict),
+        },
+    )
+    set_dir = tmp_path / "set"
+    set_dir.mkdir()
+
+    report = _import(out, set_dir)
+
+    assert (report.copied, report.changed) == (1, 1)
+    by_id = {c.id: c for c in load_cases(set_dir / "cases.jsonl")}
+    assert by_id["101"].reviewed is True
+    assert by_id["102"].tags == [] and by_id["102"].reviewed is False
+
+
+def test_old_verdict_without_new_flags_imports(tmp_path):
+    out = _post_export(tmp_path, [_row(5001, "x")])
+    _write_verdicts(out, {"5001": {"events": [], "other_match_lineup": False}})
+    set_dir = tmp_path / "set"
+    set_dir.mkdir()
+
+    _import(out, set_dir)
+
+    [case] = load_cases(set_dir / "cases.jsonl")
+    assert case.tags == []
+
+
+def test_availability_keywords_keep_fitness_posts():
+    rows = [
+        _row(6001, "Palmer is NOT suspended"),
+        _row(6002, "Evanilson rested for GW9"),
+        _row(6003, "weather is nice"),
+        _row(6004, "Haaland starts today"),
+    ]
+    common = dict(since=None, until=None, rest_sample=0, seed=1, x_ids=[], exclude=set())
+    lineup_only = sources_from_corpus(rows, keywords=True, **common)
+    both = sources_from_corpus(rows, keywords=True, availability_keywords=True, **common)
+    only_availability = sources_from_corpus(
+        rows, keywords=False, availability_keywords=True, **common
+    )
+    assert {s.post.x_id for s in lineup_only} == {6004}
+    assert {s.post.x_id for s in both} == {6001, 6002, 6004}
+    assert {s.post.x_id for s in only_availability} == {6001, 6002}
+
+
+def test_absence_and_available_tiers(tmp_path):
+    rows = [_row(7000 + i, f"post {i}") for i in range(30)]
+    out = _post_export(tmp_path, rows)
+    verdicts = {}
+    for i in range(30):
+        x_id = str(7000 + i)
+        if i < 8:
+            verdicts[x_id] = _verdict(other_match_absence=True)
+        elif i < 14:
+            verdicts[x_id] = _verdict(("Haaland", "available", "likely"))
+        elif i < 24:
+            verdicts[x_id] = _verdict(("Haaland", "out", "likely"))
+        else:
+            verdicts[x_id] = _verdict()
+    _write_verdicts(out, verdicts)
+    set_dir = tmp_path / "set"
+    set_dir.mkdir()
+
+    _import(out, set_dir, select=10, seed=2, quotas=parse_quotas("absence=3,available=2,event=5"))
+
+    cases = load_cases(set_dir / "cases.jsonl")
+    absence = [c for c in cases if "other_match_absence" in c.tags]
+    available = [c for c in cases if any(e.event_type == "available" for e in c.expected_events)]
+    assert (len(cases), len(absence), len(available)) == (10, 3, 2)
+    with pytest.raises(JudgingError):
+        parse_quotas("bogus=1")
+    assert parse_quotas("other=1")["absence"] == 15

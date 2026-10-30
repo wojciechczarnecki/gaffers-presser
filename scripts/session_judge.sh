@@ -11,7 +11,8 @@
 # the next run calls the judge again for that input only.
 # SCHEMA is the verdict format: presser (default) {"claims": [{"claim", "label"}]}, or
 # retrieval {"labels": {"P1": true, ...}} with one boolean for each [Pn] ID in the input, or
-# extraction {"events": [{"player", "team", "event_type", "certainty"}], "other_match_lineup": bool},
+# extraction {"events": [{"player", "team", "event_type", "certainty"}], "other_match_lineup": bool,
+# "other_match_absence": bool, "cup_injury": bool} (the last two optional when validating),
 # or corroboration {"label": "supports" | "contradicts" | "related" | "unrelated"}.
 # EFFORT, when given, is passed to `claude --effort`.
 # The judges count against the Claude subscription: about 15-30k tokens per item.
@@ -32,7 +33,7 @@ case "$SCHEMA" in
         FORMAT='Reply with JSON only, no prose and no code fence: {"labels": {"P1": true, "P2": false}} with exactly one boolean for every post ID listed in the input.'
         ;;
     extraction)
-        FORMAT='Reply with JSON only, no prose and no code fence: {"events": [{"player": "...", "team": "..." | null, "event_type": "out" | "doubt" | "benched" | "confirmed_starter", "certainty": "confirmed" | "likely" | "rumour"}], "other_match_lineup": true | false}'
+        FORMAT='Reply with JSON only, no prose and no code fence: {"events": [{"player": "...", "team": "..." | null, "event_type": "out" | "doubt" | "benched" | "confirmed_starter" | "available", "certainty": "confirmed" | "likely" | "rumour"}], "other_match_lineup": true | false, "other_match_absence": true | false, "cup_injury": true | false}'
         ;;
     corroboration)
         FORMAT='Reply with JSON only, no prose and no code fence: {"label": "supports" | "contradicts" | "related" | "unrelated"}'
@@ -85,14 +86,16 @@ try:
         assert isinstance(verdict, dict) and set(verdict) == {"label"}, "keys"
         assert verdict["label"] in ("supports", "contradicts", "related", "unrelated"), "label"
     elif schema == "extraction":
-        assert isinstance(verdict, dict) and set(verdict) == {"events", "other_match_lineup"}, "keys"
-        assert isinstance(verdict["other_match_lineup"], bool), "other_match_lineup is not a boolean"
+        flags = ("other_match_lineup", "other_match_absence", "cup_injury")
+        assert isinstance(verdict, dict) and {"events", "other_match_lineup"} <= set(verdict) <= {"events", *flags}, "keys"
+        for flag in flags:
+            assert flag not in verdict or isinstance(verdict[flag], bool), f"{flag} is not a boolean"
         assert isinstance(verdict["events"], list), "events is not a list"
         for event in verdict["events"]:
             assert isinstance(event, dict) and set(event) <= {"player", "team", "event_type", "certainty"}, "event keys"
             assert isinstance(event.get("player"), str) and event["player"], "player"
             assert event.get("team") is None or isinstance(event["team"], str), "team"
-            assert event.get("event_type") in ("out", "doubt", "benched", "confirmed_starter"), "event_type"
+            assert event.get("event_type") in ("out", "doubt", "benched", "confirmed_starter", "available"), "event_type"
             assert event.get("certainty") in ("confirmed", "likely", "rumour"), "certainty"
     else:
         ids = re.findall(r"^\[(P\d+)\]", open(f"{directory}/inputs/{case_id}.md").read(), re.M)

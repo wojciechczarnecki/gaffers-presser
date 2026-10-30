@@ -198,6 +198,29 @@ def test_extraction_rejects_an_invalid_verdict(judge, reply):
     assert judge.verdict("I0001") == {"events": [], "other_match_lineup": True}
 
 
+def test_extraction_accepts_the_available_type_and_the_new_flags(judge):
+    judge.add_input("I0001", "# Post\ntext")
+    reply = {
+        "events": [
+            {"player": "Palmer", "team": None, "event_type": "available", "certainty": "confirmed"}
+        ],
+        "other_match_lineup": False,
+        "other_match_absence": True,
+        "cup_injury": False,
+    }
+    judge.reply(1, json.dumps(reply))
+    done = judge.run("1", "sonnet", "extraction")
+    assert done.returncode == 0, done.stderr
+    assert judge.verdict("I0001") == reply
+
+
+def test_extraction_rejects_a_non_boolean_new_flag(judge):
+    judge.add_input("I0001", "text")
+    judge.reply(1, '{"events": [], "other_match_lineup": false, "cup_injury": "yes"}')
+    judge.run("1", "sonnet", "extraction")
+    assert judge.verdict("I0001") is None
+
+
 def test_extraction_sends_the_extraction_reply_format(judge):
     from app.extraction.evaluation.judging import REPLY_FORMAT
 

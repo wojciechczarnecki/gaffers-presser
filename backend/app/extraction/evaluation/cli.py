@@ -468,6 +468,10 @@ def export_judge_inputs(
     since: Annotated[str | None, typer.Option("--since")] = None,
     until: Annotated[str | None, typer.Option("--until")] = None,
     keywords: Annotated[bool, typer.Option("--keywords", help="Line-up keyword posts.")] = False,
+    availability_keywords: Annotated[
+        bool,
+        typer.Option("--availability-keywords", help="Also keep availability keyword posts."),
+    ] = False,
     rest_sample: Annotated[int, typer.Option("--rest-sample")] = 0,
     seed: Annotated[int, typer.Option("--seed")] = 18,
     x_ids: Annotated[list[int] | None, typer.Option("--x-id", help="Always included.")] = None,
@@ -496,6 +500,7 @@ def export_judge_inputs(
             since=_parse_iso(since) if since else None,
             until=_parse_iso(until) if until else None,
             keywords=keywords,
+            availability_keywords=availability_keywords,
             rest_sample=rest_sample,
             seed=seed,
             x_ids=x_ids or [],
@@ -535,7 +540,10 @@ def import_judge(
     select: Annotated[int | None, typer.Option("--select")] = None,
     seed: Annotated[int, typer.Option("--seed")] = 18,
     quota: Annotated[
-        str, typer.Option("--quota", help="other=,lineup=,event=,none= (tier caps).")
+        str,
+        typer.Option(
+            "--quota", help="other=,absence=,available=,lineup=,event=,none= (tier caps)."
+        ),
     ] = ",".join(f"{k}={v}" for k, v in DEFAULT_QUOTAS.items()),
     force: Annotated[
         bool, typer.Option("--force", help="Replace cases already in the set.")

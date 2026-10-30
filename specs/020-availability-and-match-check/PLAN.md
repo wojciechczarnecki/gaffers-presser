@@ -499,7 +499,7 @@ session scratchpad (never in the repository).
       Automatic verification:
       `uv run pytest -q tests/extraction/evaluation -n auto`, then Verify.
 
-- [ ] 13. **Set v3 tooling (AC16 code).** Files:
+- [x] 13. **Set v3 tooling (AC16 code).** Files: `iterations: 0`
       - `app/extraction/evaluation/cases.py` (`composition_problems_v3`, the constants
         `MIN_OTHER_MATCH_ABSENCE = 8`, `MIN_OTHER_MATCH_ABSENCE_IN_TEST = 5`,
         `MIN_CUP_INJURY = 3`, `BACKLOG_24 = "24"`);
@@ -842,6 +842,8 @@ SPEC gap remains, and it adds neither a dependency nor a migration.
 
 - `minor` — Step 1: the `test_an_out_event_answered_false_is_not_predicted` runner test moved to step 2, because the evaluation runner only gets a match-check answer for `out` once step 2 changes `match_check_node`; in step 1 it could not be seen red-then-green.
 - `minor` — Step 1: the existing `test_fresh_lineups_only_drops_a_lineup_the_check_answered_false` expected a false-answered `out` kept; it now expects an `available` event kept instead (the plan's rule change for `kept_at_read`). `tests/corroboration/helpers.py` gained a `for_next_pl_match` argument.
+- `minor` — Step 13: `DEFAULT_SET_DIR` stays `v2` until step 14 creates `evals/extraction/v3` (`tests/extraction/test_linking.py` reads the default set's `players.json`); the switch to `v3` moves to step 14.
+- `minor` — Step 13: `session_judge.sh` asks the extraction judge for all four keys, but its validation requires `events` and `other_match_lineup` and accepts the two new flags as optional booleans, so the existing two-key verdict tests stay valid.
 - `minor` — Step 2: `test_prelabel_leaves_out_a_lineup_the_check_answers_false` kept a false-answered `doubt`, which the new rule drops; the test now keeps an `available` event instead.
 
 ## Final review

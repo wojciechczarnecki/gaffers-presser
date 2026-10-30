@@ -235,3 +235,71 @@ def composition_problems_v2(
             problems.append(f"case {case.id}: author is not on the watched list")
 
     return problems
+
+
+MIN_OTHER_MATCH_ABSENCE = 8
+MIN_OTHER_MATCH_ABSENCE_IN_TEST = 5
+MIN_CUP_INJURY = 3
+BACKLOG_24 = "24"
+ABSENCE_TYPES = ("out", "doubt")
+
+
+def composition_problems_v3(
+    cases: Sequence[EvalCase],
+    snapshot: Sequence[PlayerRecord],
+    manifest: "SetManifest",
+    v2_ids: Collection[str],
+) -> list[str]:
+    problems = composition_problems(cases, snapshot, EVENT_TYPES)
+    by_id = {case.id: case for case in cases}
+
+    missing = sorted(set(v2_ids) - set(by_id))
+    if missing:
+        problems.append(f"v2 cases missing from v3: {', '.join(missing)}")
+
+    absence = [c for c in cases if "other_match_absence" in c.tags]
+    if len(absence) < MIN_OTHER_MATCH_ABSENCE:
+        problems.append(
+            f"other_match_absence cases: {len(absence)}, need {MIN_OTHER_MATCH_ABSENCE}"
+        )
+    absence_test = [c for c in absence if c.split == "test"]
+    if len(absence_test) < MIN_OTHER_MATCH_ABSENCE_IN_TEST:
+        problems.append(
+            f"other_match_absence cases in test: {len(absence_test)}, "
+            f"need {MIN_OTHER_MATCH_ABSENCE_IN_TEST}"
+        )
+    for case in absence:
+        if any(e.event_type in ABSENCE_TYPES for e in case.expected_events):
+            problems.append(f"other_match_absence case {case.id} must have no out or doubt event")
+
+    cup_injury = [c for c in cases if "cup_injury" in c.tags]
+    if len(cup_injury) < MIN_CUP_INJURY:
+        problems.append(f"cup_injury cases: {len(cup_injury)}, need {MIN_CUP_INJURY}")
+    for case in cup_injury:
+        if not any(e.event_type in ABSENCE_TYPES for e in case.expected_events):
+            problems.append(f"cup_injury case {case.id} needs an out or doubt event")
+
+    with_events = [c.id for c in cases if "other_match_lineup" in c.tags and c.expected_events]
+    if with_events:
+        problems.append(
+            f"other_match_lineup cases must have no expected events: {', '.join(with_events)}"
+        )
+
+    listed_24 = manifest.backlog_cases.get(BACKLOG_24, [])
+    if not listed_24:
+        problems.append(f"set.json backlog_cases {BACKLOG_24} is empty")
+    for case_id in listed_24:
+        if case_id not in by_id:
+            problems.append(f"BACKLOG #24 case {case_id} is missing")
+
+    watched = {handle.casefold() for handle in manifest.list_handles}
+    for case in cases:
+        if case.id in v2_ids or case.synthetic:
+            continue
+        expected_split = "dev" if int(case.id) % 10 < 3 else "test"
+        if case.split != expected_split:
+            problems.append(f"case {case.id}: split {case.split}, the rule gives {expected_split}")
+        if case.author_handle.casefold() not in watched:
+            problems.append(f"case {case.id}: author is not on the watched list")
+
+    return problems
