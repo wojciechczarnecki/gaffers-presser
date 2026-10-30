@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-10-30"
   - "spec-ready — 2026-10-30"
+metrics:
+  started_at: 2026-10-30T22:06
 ---
 
 # SPEC 020 — Positive availability and the match check for absences
