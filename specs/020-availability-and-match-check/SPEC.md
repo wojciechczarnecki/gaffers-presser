@@ -1,10 +1,15 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-10-30"
   - "spec-ready — 2026-10-30"
+  - "plan-draft — 2026-10-30"
 metrics:
   started_at: 2026-10-30T22:06
+  plan_steps: 19
+  escalations: 0
+  escalations_permission: 0
+  escalations_tooling: 0
 ---
 
 # SPEC 020 — Positive availability and the match check for absences
