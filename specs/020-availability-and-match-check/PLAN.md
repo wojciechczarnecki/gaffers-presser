@@ -250,8 +250,8 @@ Commands run from `backend/` unless shown otherwise. Each step writes its tests 
 sees them fail, then makes the change. `$S` = a `020/` directory in the implementer's
 session scratchpad (never in the repository).
 
-- [ ] 1. **The `available` type and the read-time rule (AC3 schema and templates, AC4, AC7
-      reads, AC8).** Files:
+- [ ] 1. **The `available` type and the read-time rule (AC3 schema and templates, AC4, AC7,
+      AC8).** Files:
       - `app/extraction/schemas.py` (`EventType` + `"available"`);
       - `app/extraction/lineups.py` (`MATCH_CHECKED_EVENTS`, `kept_at_read`);
       - `app/extraction/evaluation/cases.py`: `LEGACY_EVENT_TYPES`, and `composition_problems`
@@ -279,13 +279,17 @@ session scratchpad (never in the repository).
         (raw keeps it with `kept=False`).
       - `tests/retrieval/evaluation/test_templates.py::test_available_templates` (the two
         exact strings). The existing set-equality test then covers five types.
+      - `tests/corroboration/test_service.py::test_an_absence_for_another_match_is_neither_a_claim_nor_judged`
+        (shaped like `test_a_stale_lineup_is_neither_a_claim_nor_judged`: an `out` stored with
+        `for_next_pl_match=False` is not a claim, and its post is in `claimed_post_ids`) and
+        `tests/alerts/test_breaking.py::test_an_absence_for_another_match_never_breaks`. Both
+        prove this step's `kept_at_read` change, so they are written and seen red here.
 
       Automatic verification:
-      `uv run pytest -q tests/extraction tests/retrieval/evaluation/test_templates.py -n auto`
+      `uv run pytest -q tests/extraction tests/retrieval/evaluation/test_templates.py tests/corroboration/test_service.py tests/alerts/test_breaking.py -n auto`
       (the v1 and v2 composition tests stay green through `LEGACY_EVENT_TYPES`), then Verify.
 
-- [ ] 2. **The match check for absences, prompt `match_check` v2 (AC5, AC6 text, AC7
-      claims).** Files:
+- [ ] 2. **The match check for absences, prompt `match_check` v2 (AC5, AC6 text).** Files:
       - `app/extraction/flow.py`: the filter becomes `MATCH_CHECKED_EVENTS`;
         `_render_match_check` gets an `Events:` block with one `- <mention>: <event_type>`
         line per event of that club;
@@ -306,11 +310,8 @@ session scratchpad (never in the repository).
       `tests/content/test_prompts.py::test_match_check_prompt_v2_rules` checks version 2 and
       the phrases "rest", "rotat", "suspension", "injury", "illness", "cup", "european" and
       "national". Update `tests/extraction/evaluation/test_cli.py` line 1000 to
-      `"match_check@2"`. Write
-      `tests/corroboration/test_service.py::test_an_absence_for_another_match_is_neither_a_claim_nor_judged`
-      (shaped like `test_a_stale_lineup_is_neither_a_claim_nor_judged`: an `out` stored with
-      `for_next_pl_match=False` is not a claim, and its post is in `claimed_post_ids`). Write
-      `tests/alerts/test_breaking.py::test_an_absence_for_another_match_never_breaks`.
+      `"match_check@2"`. (The AC7 reader tests moved to step 1, which makes the read-time
+      change.)
 
       Automatic verification:
       `uv run pytest -q tests/extraction/test_flow.py tests/content tests/corroboration/test_service.py tests/alerts/test_breaking.py tests/extraction/evaluation/test_cli.py`,
@@ -475,6 +476,9 @@ session scratchpad (never in the repository).
       Automatic verification: `uv run pytest -q tests/alerts -n auto`, then Verify.
 
 - [ ] 12. **Evaluation metrics for the new type and the absences (AC17 code).** Files:
+      - `app/extraction/evaluation/cases.py`: `Tag` gets `other_match_absence` and
+        `cup_injury` here (moved from step 13 by the plan review: `Tag` is a `Literal`, so
+        this step's tests cannot build a case with the new tag without it);
       - `app/extraction/evaluation/metrics.py` (design item 8);
       - `app/extraction/evaluation/runner.py`: `other_match_absence` comes from the tag, on
         both the error and success paths;
@@ -496,7 +500,7 @@ session scratchpad (never in the repository).
       `uv run pytest -q tests/extraction/evaluation -n auto`, then Verify.
 
 - [ ] 13. **Set v3 tooling (AC16 code).** Files:
-      - `app/extraction/evaluation/cases.py` (`Tag`, `composition_problems_v3`, the constants
+      - `app/extraction/evaluation/cases.py` (`composition_problems_v3`, the constants
         `MIN_OTHER_MATCH_ABSENCE = 8`, `MIN_OTHER_MATCH_ABSENCE_IN_TEST = 5`,
         `MIN_CUP_INJURY = 3`, `BACKLOG_24 = "24"`);
       - `app/extraction/evaluation/judging.py` (the verdict fields, the tag mapping,
@@ -531,7 +535,9 @@ session scratchpad (never in the repository).
       Verify.
 
 - [ ] 14. **Build set v3 with session pre-labels (AC16 data).** AC16 asks for GW8–GW9 posts,
-      and the only source is Compose. These reads are read-only, and no command here writes to
+      and the only source is Compose. The owner-approved SPEC (AC16, the "Context" posts) is
+      the request for these reads; they are the only Compose reads of this plan: `export-corpus`,
+      `snapshot-players` and `snapshot-fixtures`, read-only, and no command here writes to
       Compose. Prefix each command with `env -u TWEET_SOURCE`.
       - Write `tests/extraction/evaluation/test_eval_set_v3.py` first:
         - `test_schema` (version `v3`, a manifest with `prelabels`);
@@ -663,7 +669,11 @@ session scratchpad (never in the repository).
       - `docs/DECISIONS.md`, rows dated 2026-10-30:
         - the type `available` (supersedes "FR-1.3 stays four event types" in 2026-09-28,
           and "should be available gives no event" in 2026-09-29);
-        - the match check for `out`/`doubt` and line-ups (extends 2026-10-26);
+        - the match check for `out`/`doubt` and line-ups (extends 2026-10-26; supersedes in
+          part the 2026-09-28 relevance rule that availability events count whatever the
+          competition: a rest, squad choice or suspension for another match is now dropped,
+          an injury still carries over; extends 2026-10-24, whose read-time filter now also
+          drops an absence answered false);
         - the AC10 anchor rule (extends 2026-09-30);
         - the group "✅ Wraca do gry" and breaking only on a reversal (extends 2026-10-06 and
           2026-10-02);
@@ -774,7 +784,59 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+2026-10-30 — plan review (fresh eye, `/pipeline:ship`).
+
+Findings:
+
+- `major` — Step 12 had a forward dependency on step 13: its runner and metrics tests build a
+  case tagged `other_match_absence`, but `Tag` (a `Literal` in
+  `app/extraction/evaluation/cases.py`) only got the new tags in step 13, so step 12 could not
+  go green. Moved the `Tag` change to step 12's files.
+- `minor` — Step 2 wrote the AC7 reader tests (`test_an_absence_for_another_match_is_neither_a_claim_nor_judged`,
+  `test_an_absence_for_another_match_never_breaks`), but the behaviour they prove is step 1's
+  `kept_at_read` change, so they would never be seen red. Moved both to step 1 and added their
+  files to step 1's verification command.
+- `minor` — Step 19 did not name the 2026-09-28 relevance rule ("availability events count
+  whatever the competition") or the 2026-10-24 read filter among the entries the match check
+  for absences supersedes or extends, which AC20 requires to be marked. Added both.
+- `minor` — Step 14 read Compose (production) without stating the basis; CLAUDE.md allows
+  agent reads only when asked. Stated that AC16 of the approved SPEC is the request and listed
+  the three read-only commands as the only Compose reads.
+
+Checked and found correct:
+
+- Coverage: every AC1–AC21 has steps and a named proving test; the matrix matches the steps
+  (AC21 is manual by the SPEC).
+- `kept_at_read` is the single read-time rule: every reader (`alerts/players.py`,
+  `alerts/breaking.py`, `corroboration/sources.py`, corroboration and retrieval evaluation,
+  the extraction evaluation runner and CLI) goes through it with `fresh_lineups_only=True`,
+  and `claimed_post_ids` reads unfiltered, so AC7's "still counts as claimed" holds.
+- `label_claim` today gives `related` for `available`×`out`, so the explicit check before the
+  existing branch is needed; `available`×`confirmed_starter` already falls to `related`.
+- `LEGACY_EVENT_TYPES` is needed: `composition_problems` loops over `EVENT_TYPES`, and
+  `composition_problems_v2` calls it, so five types would break the frozen v1/v2 sets.
+- Every CLI option the plan uses exists (`export-judge-inputs --cases/--corpus/--keywords/
+  --rest-sample/--x-id/--exclude-cases`, `import-judge --select`, `estimate --export`,
+  `compare-labels --baseline`, `evaluate --run-name`, `spend --results-dir`, corroboration
+  `evaluate --cases/--split/--model/--output/--force`, `export-corpus --since/--until/
+  --version`, `alerts preview --at --kind`, `extraction reextract --since --until`).
+- Dev results under `results/v3/dev/` are gitignored, so the spend test reading the
+  `dev-iterations.md` lines is the right source; `spend` uses `rglob`, so step 16's 3 USD gate
+  includes dev runs.
+- The corroboration regression files under `results/regression/` do not collide with the
+  non-recursive `v2/test-*.json` globs of the existing results tests; the result JSON has
+  `prompt_version`, `metrics.accuracy` and `metrics.false_support.rate` as step 8 reads them.
+- Budget: the v2 test run of `openai/gpt-6-luna` cost 0.03 USD and a judge v2 run 0.017 USD,
+  so 5 USD with the 3 USD / 4.5 USD gates is realistic.
+- No new dependency and no migration, consistent with SPEC → "Owner decisions" and the owner
+  summary; the owner's review of set v3 and a failed threshold or regression are escalations,
+  not owner steps inside `## Steps`; the manual item has a `Pass when:` line.
+- The paid-run order (v1 judge runs on a committed tree before the v2 prompt edit) and the
+  docs-test single-row traps are handled.
+- Language: the plan is in English.
+
+The plan is ready: the one major finding was fixable in the plan and is fixed, no blocker or
+SPEC gap remains, and it adds neither a dependency nor a migration.
 
 ## Deviations
 
