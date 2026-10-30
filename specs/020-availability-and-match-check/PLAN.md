@@ -408,7 +408,7 @@ session scratchpad (never in the repository).
       Automatic verification:
       `uv run pytest -q tests/content tests/corroboration -n auto`, then Verify.
 
-- [ ] 8. **The regression: three runs of v2 and the check (AC12).** Paid, on a clean committed
+- [x] 8. **The regression: three runs of v2 and the check (AC12).** Paid, on a clean committed `iterations: 0`
       tree. Run the step 6 command with output `test-judge-v2-rN.json`, `N` = 1, 2, 3.
 
       Test first:
