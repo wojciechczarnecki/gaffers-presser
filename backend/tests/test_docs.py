@@ -173,8 +173,6 @@ def test_backlog_window_row_and_017_018_renumbering():
     (docstrings,) = [row for row in rows if row.startswith("| 50 |")]
     assert "alerts/config.py:55" not in docstrings
     assert not [row for row in rows if row.startswith("| 46 |")]
-    (row,) = [row for row in rows if row.startswith("| 47 |")]
-    assert "spec 019" in row and "spec 017" not in row
     (row,) = [row for row in rows if row.startswith("| 49 |")]
     assert "specs 016–018" in row
     roadmap = (ROOT / "docs" / "ROADMAP.md").read_text(encoding="utf-8")
@@ -299,22 +297,104 @@ def test_decisions_cover_match_check_and_set_v2():
     assert "openai/gpt-6-luna" in default and "google/gemini-3.1-flash-lite" in default
 
 
-def test_roadmap_018_ticked_and_019_open():
+def test_roadmap_018_ticked():
     roadmap = (ROOT / "docs" / "ROADMAP.md").read_text(encoding="utf-8")
     items = ["- [" + block for block in re.split(r"(?m)^- \[", roadmap)[1:]]
     (done,) = [line for line in items if "018-extraction-evaluation-v2/SPEC.md" in line]
     assert done.startswith("- [x]")
     assert "extraction-eval-v2.md" in roadmap and "adr/0010-" in roadmap
-    (todo,) = [line for line in items if line.startswith("- [ ]") and "spec 019" in line]
-    assert "corroboration" in todo and "contradicts" in todo
 
 
-def test_backlog_23_46_54_removed_and_12_narrowed():
+def test_roadmap_019_ticked():
+    roadmap = (ROOT / "docs" / "ROADMAP.md").read_text(encoding="utf-8")
+    items = ["- [" + block for block in re.split(r"(?m)^- \[", roadmap)[1:]]
+    (done,) = [line for line in items if "019-corroboration-evaluation-v2/SPEC.md" in line]
+    assert done.startswith("- [x]")
+    assert "corroboration-eval-v2.md" in done and "adr/0011-" in done
+
+
+def test_backlog_23_46_54_removed():
     rows = _rows()
     for number in ("23", "46", "54"):
         assert not [row for row in rows if row.startswith(f"| {number} |")], number
-    (twelve,) = [row for row in rows if row.startswith("| 12 |")]
-    assert "contradicts" in twelve and "spec 019" in twelve
-    assert "revisit the default model" not in twelve
     (fifty_five,) = [row for row in rows if row.startswith("| 55 |")]
     assert "#54" not in fifty_five and "match check (spec 018)" in fifty_five
+
+
+def test_backlog_12_and_47_removed():
+    rows = _rows()
+    for number in ("12", "47"):
+        assert not [row for row in rows if row.startswith(f"| {number} |")], number
+    text = "\n".join(rows)
+    assert "corroboration-eval-v2.md" in text
+
+
+def test_decisions_cover_corroboration_set_v2_threshold_and_default():
+    rows = [
+        line
+        for line in (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8").splitlines()
+        if line.startswith("| 2026-10-30 |")
+    ]
+    text = "\n".join(rows).lower()
+    for needle in (
+        "corroboration set v2",
+        "accuracy at least 0.80",
+        "llm_judge_model",
+        "adr/0011-",
+        "corroboration-eval-v2.md",
+    ):
+        assert needle in text, needle
+
+
+def test_evaluation_has_the_corroboration_procedure():
+    text = (ROOT / "docs" / "EVALUATION.md").read_text(encoding="utf-8")
+    assert "## The corroboration procedure" in text
+    for needle in (
+        "build-scratch",
+        "build-candidates",
+        "export-judge-inputs",
+        "import-judge",
+        "agreement",
+        "presser",
+        "retrieval",
+        "extraction",
+        "corroboration",
+    ):
+        assert needle in text, needle
+    other = text[text.index("## Other evaluations") :]
+    assert "no `--no-judge`" not in other
+
+
+def test_adr_0011_names_the_judge_default():
+    adr = (ROOT / "docs" / "adr" / "0011-corroboration-judge-model.md").read_text(encoding="utf-8")
+    for needle in (
+        "qwen/qwen3.8-flash",
+        "google/gemini-3.1-flash-lite",
+        "owner chose",
+        "LLM_JUDGE_MODEL",
+        "no model passes",
+        "5 PLN",
+        "docs/reports/corroboration-eval-v2.md".split("/")[-1],
+    ):
+        assert needle.lower() in adr.lower(), needle
+    readme = (ROOT / "docs" / "adr" / "README.md").read_text(encoding="utf-8")
+    assert "0011-corroboration-judge-model.md" in readme
+
+
+def test_corroboration_report_v2_has_every_section():
+    report = (ROOT / "docs" / "reports" / "corroboration-eval-v2.md").read_text(encoding="utf-8")
+    for heading in (
+        "## Summary",
+        "## The set",
+        "## Pre-labels and the owner's agreement",
+        "## Threshold",
+        "## Dev iterations",
+        "## Test results",
+        "## The rule and the winner",
+        "## Spend",
+        "## Threats to validity",
+        "## Recommendations",
+    ):
+        assert heading in report, heading
+    for needle in ("claude-opus-5-5", "claude-haiku-4.5", "PLN", "vendor overlap", "SQL-context"):
+        assert needle in report, needle

@@ -1,3 +1,6 @@
+import json
+import shutil
+import threading
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -6,39 +9,76 @@ from typing import Annotated
 
 import typer
 from sqlalchemy import Engine
+from sqlmodel import Session
 
 from app.core.clock import Clock, SystemClock
 from app.core.errors import AppError, ConfigError
 from app.core.eval_results import ResultExistsError, check_new_result, make_header
 from app.core.settings import load_settings
-from app.corroboration.config import CorroborationSettings
-from app.corroboration.evaluation.building import TARGET_SIZE, build_cases
+from app.corroboration.config import CorroborationSettings, judge_model
+from app.corroboration.evaluation.building import (
+    MAX_INPUTS,
+    TARGET_SIZE,
+    build_cases,
+    write_candidate_files,
+)
 from app.corroboration.evaluation.cases import (
     DEFAULT_CASES_PATH,
+    DEFAULT_WIDTH,
     LABELS,
     PRELABEL_MODEL,
+    V1_CASES_PATH,
+    V2_SET_DIR,
     JudgeCase,
     composition_problems,
+    load_candidates,
     load_cases,
+    prelabel_agreement,
+    prelabels_disagree,
     render_case,
+    review_order,
+    session_label,
     write_cases,
+)
+from app.corroboration.evaluation.judging import (
+    JudgingError,
+    estimate_export,
+    export_inputs,
+    import_verdicts,
 )
 from app.corroboration.evaluation.runner import (
     EvaluationError,
+    calls_per_month,
     default_result_path,
     format_metrics,
     run_evaluation,
     write_result,
 )
+from app.corroboration.evaluation.scratch import (
+    ScratchError,
+    check_scratch_sources,
+    guard_scratch_url,
+    run_build_scratch,
+    window_for,
+)
 from app.corroboration.judge import PROMPT_VERSION, Judge, build_judge
 from app.db.engine import make_engine
-from app.llm.chat import DEFAULT_MODEL, build_chat_model, single_model_config
+from app.extraction.evaluation.dataset import load_context
+from app.extraction.service import ExtractionRuntime, load_reference_files
+from app.llm.chat import (
+    PROVIDER,
+    build_chat_model,
+    resolve_llm,
+    single_model_config,
+)
 from app.llm.models import reasoning_effort_of
 from app.llm.pricing import Price, load_prices
 from app.llm.settings import load_llm_settings
 from app.llm.structured import StructuredCaller
 from app.retrieval.config import resolve_embedding
 from app.retrieval.embedder import Embedder, build_embedder
+from app.retrieval.evaluation.dataset import load_corpus
+from app.retrieval.indexing import IndexingRuntime
 
 app = typer.Typer(
     add_completion=False,
@@ -121,7 +161,7 @@ def _cost(value: float | None) -> str:
 @app.command(name="build-cases", help="Build set v1 from the stored posts and pre-label it.")
 def build_cases_command(
     ctx: typer.Context,
-    output: Annotated[Path, typer.Option("--output")] = DEFAULT_CASES_PATH,
+    output: Annotated[Path, typer.Option("--output")] = V1_CASES_PATH,
     force: Annotated[bool, typer.Option("--force", help="Overwrite an existing file.")] = False,
     model: Annotated[str, typer.Option("--model", help="Pre-labelling model ID.")] = PRELABEL_MODEL,
     size: Annotated[int, typer.Option("--size", min=1)] = TARGET_SIZE,
@@ -155,11 +195,227 @@ def build_cases_command(
     typer.echo(f"written: {output}")
 
 
-REVIEW_ACTIONS = "[a]ccept  [c]hange  [s]kip  [q]uit"
-LABEL_PROMPT = "label (supports, contradicts, related or unrelated)"
+RETRIEVAL_V2_DIR = Path(__file__).resolve().parents[3] / "evals" / "retrieval" / "v2"
+EXTRACTION_V2_DIR = Path(__file__).resolve().parents[3] / "evals" / "extraction" / "v2"
 
 
-@app.command(help="Review the pre-labelled cases one by one: accept or change the label.")
+def _scratch_engine(url: str) -> Engine:
+    try:
+        configured: str | None = load_settings().database_url
+    except ConfigError:
+        configured = None
+    try:
+        guard_scratch_url(url, configured)
+    except ScratchError as exc:
+        raise fail(str(exc)) from None
+    return make_engine(url)
+
+
+@app.command(
+    name="build-scratch",
+    help="Load the retrieval v2 corpus into a throwaway database, embed and extract it.",
+)
+def build_scratch(
+    ctx: typer.Context,
+    database_url: Annotated[str, typer.Option("--database-url")],
+    corpus_path: Annotated[Path, typer.Option("--corpus")] = RETRIEVAL_V2_DIR / "corpus.jsonl",
+    context_dir: Annotated[Path, typer.Option("--context")] = EXTRACTION_V2_DIR,
+    retrieval_set: Annotated[Path, typer.Option("--retrieval-set")] = RETRIEVAL_V2_DIR,
+    gameweeks: Annotated[list[int] | None, typer.Option("--gameweek")] = None,
+    max_cost_usd: Annotated[float, typer.Option("--max-cost-usd")] = 0.90,
+) -> None:
+    engine = _scratch_engine(database_url)
+    try:
+        settings = (
+            ctx.obj.settings if ctx.obj is not None else load_llm_settings(CorroborationSettings)
+        )
+        embedding = resolve_embedding(settings)
+        llm_config = resolve_llm(settings)
+        if embedding is None or llm_config is None:
+            raise ConfigError("OPENROUTER_API_KEY is not set")
+        prices, aliases = load_reference_files()
+    except AppError as exc:
+        raise fail(str(exc)) from None
+    players, teams, fixtures = load_context(context_dir)
+    handles = json.loads((retrieval_set / "set.json").read_text())["list_handles"]
+    clock = SystemClock()
+    embedder = build_embedder(embedding)
+    try:
+        summary = run_build_scratch(
+            engine,
+            load_corpus(corpus_path),
+            handles,
+            players,
+            teams,
+            fixtures,
+            embedder=embedder,
+            indexing=IndexingRuntime(
+                model=embedding.model,
+                make_embedder=lambda: embedder,
+                prices=embedding.prices,
+                tracing=None,
+                clock=clock,
+            ),
+            extraction=ExtractionRuntime(
+                provider=PROVIDER,
+                model=llm_config.model,
+                fallback_model=llm_config.fallback_model,
+                make_spec=lambda: build_chat_model(llm_config),
+                tracing=None,
+                prices=prices,
+                aliases=aliases,
+            ),
+            gameweeks=gameweeks or [6, 7],
+            max_cost_usd=max_cost_usd,
+            clock=clock,
+            stop=threading.Event(),
+        )
+    except AppError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(f"seeded: {summary.seeded}  embedded: {summary.embedded}")
+    for window in summary.windows:
+        typer.echo(
+            f"window GW{window.gameweek}: {window.start.isoformat()} .. {window.end.isoformat()}"
+        )
+    typer.echo(f"extracted: {summary.extract.extracted}  failed: {summary.extract.failed}")
+    typer.echo(f"embeddings cost: {_cost(summary.embeddings_cost_usd)}")
+    typer.echo(f"extraction cost: {_cost(summary.extraction_cost_usd)}")
+    if summary.extract.stopped_by_cap:
+        raise fail(f"the cost cap of ${max_cost_usd:.2f} stopped the extraction before the end")
+
+
+@app.command(
+    name="build-candidates",
+    help="Draw the anchors and retrieved posts of the GW windows from the scratch database.",
+)
+def build_candidates_command(
+    ctx: typer.Context,
+    database_url: Annotated[str, typer.Option("--database-url")],
+    out: Annotated[Path, typer.Option("--out")],
+    set_dir: Annotated[Path, typer.Option("--set")] = V2_SET_DIR,
+    retrieval_set: Annotated[Path, typer.Option("--retrieval-set")] = RETRIEVAL_V2_DIR,
+    gameweeks: Annotated[list[int] | None, typer.Option("--gameweek")] = None,
+    max_inputs: Annotated[int, typer.Option("--max-inputs", min=1)] = MAX_INPUTS,
+    seed: Annotated[int, typer.Option("--seed")] = 19,
+    force: Annotated[bool, typer.Option("--force")] = False,
+) -> None:
+    engine = _scratch_engine(database_url)
+    try:
+        check_scratch_sources(engine)
+        settings = (
+            ctx.obj.settings if ctx.obj is not None else load_llm_settings(CorroborationSettings)
+        )
+        embedding = resolve_embedding(settings)
+        if embedding is None:
+            raise ConfigError("OPENROUTER_API_KEY is not set")
+        with Session(engine) as session:
+            windows = [window_for(session, gameweek) for gameweek in (gameweeks or [6, 7])]
+        embedder = build_embedder(embedding)
+        count, info = write_candidate_files(
+            engine,
+            embedder,
+            embedding.prices,
+            windows=windows,
+            set_dir=set_dir,
+            out=out,
+            list_handles=json.loads((retrieval_set / "set.json").read_text())["list_handles"],
+            corpus="evals/retrieval/v2/corpus.jsonl",
+            max_inputs=max_inputs,
+            seed=seed,
+            force=force,
+        )
+    except AppError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(f"candidates: {info.candidates}  written: {count} to {out}")
+    typer.echo(f"judge calls a month: {info.judge_calls_per_month:.0f}")
+    typer.echo(
+        f"build cost: embeddings {_cost(info.embeddings_cost_usd)}"
+        f"  extraction {_cost(info.extraction_cost_usd)}"
+        f"  queries {_cost(info.query_embeddings_cost_usd)}"
+    )
+
+
+@app.command(name="export-judge-inputs", help="Export the session judge's inputs.")
+def export_judge_inputs(
+    out: Annotated[Path, typer.Option("--out")],
+    seed: Annotated[int, typer.Option("--seed")] = 19,
+    cases_path: Annotated[Path | None, typer.Option("--cases")] = None,
+    candidates_path: Annotated[Path | None, typer.Option("--candidates")] = None,
+) -> None:
+    if (cases_path is None) == (candidates_path is None):
+        raise fail("pass exactly one of --cases and --candidates")
+    try:
+        if cases_path is not None:
+            count = export_inputs(
+                cases=load_cases(cases_path),
+                candidates=[],
+                out=out,
+                seed=seed,
+                cases_source=cases_path.resolve(),
+            )
+        else:
+            assert candidates_path is not None
+            count = export_inputs(
+                cases=[],
+                candidates=load_candidates(candidates_path),
+                out=out,
+                seed=seed,
+                candidates_source=candidates_path.resolve(),
+            )
+    except JudgingError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(f"exported {count} inputs to {out}")
+
+
+@app.command(help="Print the calls and tokens the session judge needs for an export.")
+def estimate(export: Annotated[Path, typer.Option("--export")]) -> None:
+    try:
+        result = estimate_export(export)
+    except JudgingError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(f"calls: {result.calls}  estimated tokens: {result.tokens}")
+
+
+@app.command(name="import-judge", help="Import the session judge's verdicts into a set.")
+def import_judge(
+    export: Annotated[Path, typer.Option("--export")],
+    set_dir: Annotated[Path, typer.Option("--set")],
+    judge_model: Annotated[str, typer.Option("--judge-model")],
+    select: Annotated[int | None, typer.Option("--select", min=1)] = None,
+    seed: Annotated[int, typer.Option("--seed")] = 19,
+    force: Annotated[bool, typer.Option("--force")] = False,
+) -> None:
+    try:
+        report = import_verdicts(
+            export, set_dir, judge_model, select=select, seed=seed, force=force
+        )
+    except JudgingError as exc:
+        raise fail(str(exc)) from None
+    typer.echo(
+        f"v1 cases pre-labelled: {report.copied}  candidates: {report.candidates}"
+        f"  new cases: {report.new}"
+    )
+    if report.skipped_without_verdict:
+        typer.echo(f"skipped without a verdict: {len(report.skipped_without_verdict)}")
+    if report.skipped_in_set:
+        typer.echo(f"skipped, already in the set: {len(report.skipped_in_set)}")
+    cases = load_cases(set_dir / "cases.jsonl")
+    counts = Counter(case.expected for case in cases)
+    typer.echo("labels: " + "  ".join(f"{label} {counts[label]}" for label in LABELS))
+    for problem in composition_problems(cases):
+        typer.echo(f"problem: {problem}")
+
+
+REVIEW_ACTIONS = (
+    "[1] supports  [2] contradicts  [3] related  [4] unrelated"
+    "  [a]ccept session pre-label (or Enter)  [s]kip  [b]ack  [q]uit"
+)
+KEY_LABELS = {
+    str(n): label for n, label in enumerate(("supports", "contradicts", "related", "unrelated"), 1)
+}
+
+
+@app.command(help="Label cases with keys 1-4; a or Enter accepts the session pre-label.")
 def review(
     cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
     split: str | None = typer.Option(None, "--split"),
@@ -173,7 +429,7 @@ def review(
     if case_id is not None:
         positions = [i for i, case in enumerate(cases) if case.id == case_id]
     else:
-        positions = [i for i, case in enumerate(cases) if not case.reviewed]
+        positions = review_order(cases, [i for i, case in enumerate(cases) if not case.reviewed])
     if split is not None:
         positions = [i for i in positions if cases[i].split == split]
     if case_id is not None and not positions:
@@ -200,49 +456,64 @@ def review(
         raise typer.Exit(130)
 
 
-def _ask_label() -> str:
-    while True:
-        label = typer.prompt(LABEL_PROMPT).strip().lower()
-        if label in LABELS:
-            return label
-        typer.echo(f"unknown label {label!r}")
-
-
 def _review_cases(
     cases: list[JudgeCase], positions: list[int], cases_path: Path, counts: dict[str, int]
 ) -> None:
-    for done, i in enumerate(positions):
-        show = True
-        while True:
-            if show:
-                reviewed = sum(1 for case in cases if case.reviewed)
-                progress = (
-                    f"{reviewed}/{len(cases)} reviewed, {len(positions) - done} left in this run"
-                )
-                typer.echo(render_case(cases[i], progress))
-            show = False
-            action = typer.prompt(REVIEW_ACTIONS).strip().lower()
-            if action == "a":
-                cases[i] = cases[i].model_copy(update={"reviewed": True})
-                write_cases(cases_path, cases)
-                counts["accepted"] += 1
-                break
-            if action == "c":
-                label = _ask_label()
-                cases[i] = cases[i].model_copy(update={"expected": label, "reviewed": True})
-                write_cases(cases_path, cases)
-                counts["changed"] += 1
-                typer.echo("saved")
-                break
-            if action == "s":
-                counts["skipped"] += 1
-                break
-            if action == "q":
-                return
-            typer.echo(f"unknown action {action!r}")
+    width = min(shutil.get_terminal_size((DEFAULT_WIDTH, 24)).columns, 100)
+    done = 0
+    while done < len(positions):
+        i = positions[done]
+        reviewed = sum(1 for case in cases if case.reviewed)
+        progress = f"{reviewed}/{len(cases)} reviewed, {len(positions) - done} left in this run"
+        typer.echo(render_case(cases[i], progress, width))
+        typer.echo("")
+        pick = _ask(REVIEW_ACTIONS, {*KEY_LABELS, "a", "", "s", "b", "q"})
+        if pick == "q":
+            return
+        if pick == "s":
+            counts["skipped"] += 1
+            done += 1
+            continue
+        if pick == "b":
+            done = max(done - 1, 0)
+            continue
+        if pick in ("a", ""):
+            if prelabels_disagree(cases[i]):
+                typer.echo("the pre-labels disagree: accept is refused, pick with 1-4")
+                continue
+            label = session_label(cases[i])
+        else:
+            label = KEY_LABELS[pick]
+        counts["accepted" if label == session_label(cases[i]) else "changed"] += 1
+        cases[i] = cases[i].model_copy(update={"expected": label, "reviewed": True})
+        write_cases(cases_path, cases)
+        typer.echo(f"saved: {label}")
+        done += 1
 
 
-@app.command(help="Run the judge over a split of set v1 and report its metrics.")
+def _ask(prompt: str, valid: set[str]) -> str:
+    while True:
+        answer = typer.prompt(prompt, default="", show_default=False).strip().lower()
+        if answer in valid:
+            return answer
+        typer.echo(f"unknown key {answer!r}")
+
+
+@app.command(help="Count how often the owner's reviewed labels differ from each pre-labeller.")
+def agreement(
+    cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
+) -> None:
+    result = prelabel_agreement(load_cases(cases_path))
+    typer.echo(f"reviewed: {result.reviewed}")
+    for judge, (total, differ) in result.by_judge.items():
+        typer.echo(f"{judge}: {differ} of {total} differ")
+    total, differ = result.v1
+    typer.echo(f"{PRELABEL_MODEL}: {differ} of {total} differ")
+    for line in result.differing:
+        typer.echo(line)
+
+
+@app.command(help="Run the judge over a split of a set and report its metrics and the verdict.")
 def evaluate(
     ctx: typer.Context,
     split: Annotated[str, typer.Option("--split")] = "test",
@@ -255,8 +526,8 @@ def evaluate(
     if split not in ("dev", "test"):
         raise fail("--split must be dev or test")
     deps = get_deps(ctx)
-    chosen_model = model or deps.settings.llm_model or DEFAULT_MODEL
-    path = output or default_result_path(split, chosen_model)
+    chosen_model = model or judge_model(deps.settings)
+    path = output or default_result_path(split, chosen_model, cases_path.parent.name)
     try:
         check_new_result(path, force)
     except ResultExistsError as exc:
@@ -275,6 +546,8 @@ def evaluate(
             chosen_model,
             PROMPT_VERSION,
             deps.clock.now(),
+            calls_per_month=calls_per_month(cases_path.parent),
+            usd_pln_rate=deps.settings.usd_pln_rate,
         )
     except EvaluationError as exc:
         raise fail(str(exc)) from None

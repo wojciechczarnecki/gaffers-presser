@@ -4,8 +4,15 @@ from pathlib import Path
 from typing import Any
 
 from app.core.eval_results import write_json_atomic
-from app.corroboration.evaluation.cases import DEFAULT_RESULTS_DIR, JudgeCase
-from app.corroboration.evaluation.metrics import Outcome, compute_metrics
+from app.corroboration.evaluation.cases import (
+    DEFAULT_RESULTS_DIR,
+    CaseAnchor,
+    CasePlayer,
+    CasePost,
+    JudgeCase,
+)
+from app.corroboration.evaluation.dataset import load_manifest
+from app.corroboration.evaluation.metrics import Outcome, compute_metrics, threshold_verdict
 from app.corroboration.judge import Judge, JudgeInput
 from app.corroboration.schemas import Claim, PlayerRef, PostRef
 
@@ -14,18 +21,19 @@ class EvaluationError(Exception):
     pass
 
 
-def default_result_path(split: str, model: str) -> Path:
-    return DEFAULT_RESULTS_DIR / f"{split}-{model.replace('/', '-')}.json"
+def default_result_path(split: str, model: str, set_version: str = "v1") -> Path:
+    name = f"{split}-{model.replace('/', '-')}.json"
+    if set_version == "v1":
+        return DEFAULT_RESULTS_DIR / name
+    if split == "dev":
+        return DEFAULT_RESULTS_DIR / set_version / "dev" / name
+    return DEFAULT_RESULTS_DIR / set_version / name
 
 
-def _judge_input(case: JudgeCase) -> JudgeInput:
-    anchor, post = case.anchor, case.post
+def judge_input(player: CasePlayer, anchor: CaseAnchor, post: CasePost) -> JudgeInput:
     return JudgeInput(
         player=PlayerRef(
-            season="",
-            fpl_id=case.player.fpl_id,
-            web_name=case.player.web_name,
-            team_name=case.player.team,
+            season="", fpl_id=player.fpl_id, web_name=player.web_name, team_name=player.team
         ),
         anchor=Claim(
             post=PostRef(
@@ -53,6 +61,8 @@ def run_evaluation(
     model: str,
     prompt_version: str,
     now: datetime,
+    calls_per_month: float | None = None,
+    usd_pln_rate: float | None = None,
 ) -> dict[str, Any]:
     in_split = [case for case in cases if case.split == split]
     chosen = [case for case in in_split if case.reviewed or include_unreviewed]
@@ -64,9 +74,10 @@ def run_evaluation(
         raise EvaluationError(f"the {split} split has no cases")
 
     outcomes: list[Outcome] = []
+    production_ids = {case.id for case in chosen if not case.has_player_event}
     for case in chosen:
         try:
-            reply = judge.run(_judge_input(case))
+            reply = judge.run(judge_input(case.player, case.anchor, case.post))
         except Exception as exc:
             outcomes.append(Outcome(case.id, case.expected, None, error_class=type(exc).__name__))
             continue
@@ -81,6 +92,10 @@ def run_evaluation(
             )
         )
     costs = [o.cost_usd for o in outcomes if o.cost_usd is not None]
+    metrics = compute_metrics(outcomes)
+    projected = None
+    if costs and calls_per_month is not None and usd_pln_rate is not None:
+        projected = sum(costs) / len(costs) * calls_per_month * usd_pln_rate
     return {
         "model": model,
         "prompt_version": prompt_version,
@@ -88,7 +103,10 @@ def run_evaluation(
         "date": now.isoformat(),
         "include_unreviewed": include_unreviewed,
         "cost_usd": sum(costs) if costs else None,
-        "metrics": compute_metrics(outcomes),
+        "metrics": metrics,
+        "production": compute_metrics([o for o in outcomes if o.id in production_ids]),
+        "verdict": threshold_verdict(metrics),
+        "projected_monthly_cost_pln": projected,
         "outcomes": [
             {
                 "id": o.id,
@@ -104,28 +122,45 @@ def run_evaluation(
     }
 
 
+def calls_per_month(set_dir: Path) -> float | None:
+    manifest = load_manifest(set_dir)
+    return manifest.build.judge_calls_per_month if manifest and manifest.build else None
+
+
 def write_result(path: Path, data: dict[str, Any]) -> None:
     write_json_atomic(path, data)
 
 
-def format_metrics(data: dict[str, Any]) -> str:
-    metrics = data["metrics"]
+def _fmt(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.3f}"
 
-    def fmt(value: float | None) -> str:
-        return "n/a" if value is None else f"{value:.3f}"
 
+def _metric_lines(metrics: dict[str, Any]) -> list[str]:
     lines = [
-        f"model: {data['model']}  prompt: {data['prompt_version']}  split: {data['split']}",
         f"cases: {metrics['cases']}  errored: {metrics['errored']}",
-        f"accuracy: {fmt(metrics['accuracy'])}",
+        f"accuracy: {_fmt(metrics['accuracy'])}",
     ]
     for label, row in metrics["per_label"].items():
         lines.append(
-            f"{label}: precision {fmt(row['precision'])}  recall {fmt(row['recall'])}"
+            f"{label}: precision {_fmt(row['precision'])}  recall {_fmt(row['recall'])}"
             f"  (expected {row['expected']}, predicted {row['predicted']})"
         )
     fs = metrics["false_support"]
-    lines.append(f"false-support rate: {fmt(fs['rate'])} ({fs['numerator']}/{fs['denominator']})")
+    lines.append(f"false-support rate: {_fmt(fs['rate'])} ({fs['numerator']}/{fs['denominator']})")
+    return lines
+
+
+def format_metrics(data: dict[str, Any]) -> str:
+    lines = [f"model: {data['model']}  prompt: {data['prompt_version']}  split: {data['split']}"]
+    lines += _metric_lines(data["metrics"])
+    lines.append("production slice (has_player_event: false)")
+    lines += [f"  {line}" for line in _metric_lines(data["production"])]
+    verdict = data["verdict"]
+    for name in ("accuracy", "false_support", "contradicts_recall", "no_errors"):
+        lines.append(f"threshold {name}: {'pass' if verdict[name] else 'fail'}")
+    lines.append(f"verdict: {'PASS' if verdict['passed'] else 'FAIL'}")
     cost = data["cost_usd"]
     lines.append(f"cost: {'n/a' if cost is None else f'${cost:.6f}'}")
+    monthly = data.get("projected_monthly_cost_pln")
+    lines.append(f"projected cost a month: {'n/a' if monthly is None else f'{monthly:.2f} PLN'}")
     return "\n".join(lines)

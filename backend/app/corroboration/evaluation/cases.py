@@ -1,5 +1,7 @@
+import textwrap
 from collections import Counter
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Literal, get_args
@@ -8,11 +10,13 @@ from pydantic import BaseModel, ConfigDict
 
 from app.core.eval_results import write_lines_atomic
 from app.core.local_time import format_local
+from app.corroboration.config import DEFAULT_JUDGE_MODEL
 from app.corroboration.schemas import Label
-from app.llm.chat import DEFAULT_MODEL
 
 EVALS_DIR = Path(__file__).resolve().parents[3] / "evals" / "corroboration"
-DEFAULT_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
+V1_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
+V2_SET_DIR = EVALS_DIR / "v2"
+DEFAULT_CASES_PATH = V2_SET_DIR / "cases.jsonl"
 DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
 
 # A tier above the flash class and from another vendor than the default judge, so its
@@ -21,13 +25,10 @@ PRELABEL_MODEL = "anthropic/claude-haiku-4.5"
 
 LABELS: tuple[str, ...] = get_args(Label)
 
-# The development corpus holds no genuine reversal, so set v1 has no `contradicts` case
-# (final review F1 of spec 007). BACKLOG #12 (the GW6 deadline window) brings real line-up
-# leaks against availability news; once the set has such cases, this exemption goes.
-LABELS_NOT_YET_REQUIRED: frozenset[str] = frozenset({"contradicts"})
-
-MIN_CASES = 50
-MAX_CASES = 70
+MIN_CASES = 90
+MAX_CASES = 130
+MIN_CONTRADICTS = 8
+MIN_TEST_CONTRADICTS = 5
 DEV_SHARE_RANGE = (0.25, 0.35)
 
 
@@ -73,6 +74,19 @@ class JudgeCase(BaseModel):
     labelled_by: str
     reviewed: bool
     has_player_event: bool
+    prelabel: Label | None = None
+    v1_prelabel: Label | None = None
+
+
+class CandidateCase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    player: CasePlayer
+    anchor: CaseAnchor
+    post: CasePost
+    has_player_event: bool
+    tier: str
 
 
 def parse_cases(text: str) -> list[JudgeCase]:
@@ -81,6 +95,18 @@ def parse_cases(text: str) -> list[JudgeCase]:
 
 def load_cases(path: Path) -> list[JudgeCase]:
     return parse_cases(Path(path).read_text())
+
+
+def load_candidates(path: Path) -> list[CandidateCase]:
+    return [
+        CandidateCase.model_validate_json(line)
+        for line in Path(path).read_text().splitlines()
+        if line.strip()
+    ]
+
+
+def write_candidates(path: Path, candidates: Sequence[CandidateCase]) -> None:
+    write_lines_atomic(path, [candidate.model_dump_json() for candidate in candidates])
 
 
 def write_cases(path: Path, cases: Sequence[JudgeCase]) -> None:
@@ -110,14 +136,22 @@ def composition_problems(cases: Sequence[JudgeCase]) -> list[str]:
     overall = Counter(case.expected for case in cases)
     in_test = Counter(case.expected for case in cases if case.split == "test")
     for label in LABELS:
-        if label in LABELS_NOT_YET_REQUIRED:
-            continue
         if overall[label] == 0:
             problems.append(f"no case with the label {label}")
         if in_test[label] == 0:
             problems.append(f"the test split has no case with the label {label}")
 
-    same_as_judge = sorted({case.id for case in cases if case.labelled_by == DEFAULT_MODEL})
+    if overall["contradicts"] < MIN_CONTRADICTS:
+        problems.append(
+            f"contradicts cases: {overall['contradicts']}, need at least {MIN_CONTRADICTS}"
+        )
+    if in_test["contradicts"] < MIN_TEST_CONTRADICTS:
+        problems.append(
+            f"contradicts cases in the test split: {in_test['contradicts']},"
+            f" need at least {MIN_TEST_CONTRADICTS}"
+        )
+
+    same_as_judge = sorted({case.id for case in cases if case.labelled_by == DEFAULT_JUDGE_MODEL})
     if same_as_judge:
         problems.append(f"pre-labelled by the judge's own model: {', '.join(same_as_judge)}")
 
@@ -126,28 +160,167 @@ def composition_problems(cases: Sequence[JudgeCase]) -> list[str]:
     return problems
 
 
-RULE = "─" * 72
+EVENT_WORDS = {
+    "out": "OUT (injury, illness or suspension: will not play)",
+    "doubt": "a DOUBT (availability uncertain)",
+    "benched": "BENCHED (fit but not in the starting line-up)",
+    "confirmed_starter": "a STARTER (will start or is in the confirmed line-up)",
+}
+
+# One row per anchor event type: what the post says -> the label it earns.
+LABEL_TABLE: dict[str, tuple[tuple[str, str], ...]] = {
+    "out": (
+        ("out", "supports"),
+        ("doubt / benched", "related"),
+        ("starts or is fit", "contradicts"),
+    ),
+    "doubt": (
+        ("doubt", "supports"),
+        ("out / benched", "related"),
+        ("starts or is fit", "contradicts"),
+    ),
+    "benched": (
+        ("benched", "supports"),
+        ("out / doubt", "related"),
+        ("starts or is fit", "contradicts"),
+    ),
+    "confirmed_starter": (
+        ("starts", "supports"),
+        ("out / doubt / benched", "contradicts"),
+    ),
+}
+LABEL_RULES = (
+    "Line-up news counts only for the next Premier League match (a national team, cup,"
+    " European or women's match is unrelated).",
+    "Only the named player counts: a post about someone else is unrelated.",
+    "Another topic, or the player only in passing, is unrelated.",
+)
+ANCHOR_TEXT_LIMIT = 220
+DEFAULT_WIDTH = 80
 
 
 def _who(author: str, original: str | None) -> str:
     return f"@{author} (repost of @{original})" if original else f"@{author}"
 
 
-def render_case(case: JudgeCase, progress: str) -> str:
+def _wrap(text: str, width: int, indent: str = "    ") -> str:
+    return textwrap.fill(
+        " ".join(text.split()),
+        width=width,
+        initial_indent=indent,
+        subsequent_indent=indent,
+    )
+
+
+def label_table_row(event_type: str, width: int = DEFAULT_WIDTH) -> str:
+    row = LABEL_TABLE.get(event_type, ())
+    body = "; ".join(f"post says {says} -> {label}" for says, label in row)
+    return textwrap.fill(
+        f"If the anchor is {event_type}: {body}",
+        width=width,
+        subsequent_indent="    ",
+    )
+
+
+def render_case(case: JudgeCase, progress: str, width: int = DEFAULT_WIDTH) -> str:
     anchor, post, player = case.anchor, case.post, case.player
+    rule = "─" * width
     team = f" ({player.team})" if player.team else ""
+    anchor_text = " ".join(anchor.text.split())
+    if len(anchor_text) > ANCHOR_TEXT_LIMIT:
+        anchor_text = anchor_text[: ANCHOR_TEXT_LIMIT - 3].rstrip() + "..."
+    event = EVENT_WORDS.get(anchor.event_type, anchor.event_type)
     lines = [
-        RULE,
+        rule,
         progress,
         f"id: {case.id}  split: {case.split}  reviewed: {'yes' if case.reviewed else 'no'}",
-        f"player: {player.web_name}{team}, FPL ID {player.fpl_id}"
-        f"  extraction event for the player: {'yes' if case.has_player_event else 'no'}",
-        f"anchor: {anchor.event_type} ({anchor.certainty}) by @{anchor.author_handle}"
-        f" at {format_local(anchor.created_at)}",
-        f"    {' '.join(anchor.text.split())}",
-        f"post: {_who(post.author_handle, post.reposted_author_handle)}"
-        f" at {format_local(post.created_at)}",
-        f"    {' '.join(post.text.split())}",
-        f"pre-label: {case.expected}  (by {case.labelled_by})",
+        "",
+        textwrap.fill(f"LABEL THIS POST — what does it say about {player.web_name}{team}?", width),
+        textwrap.fill(
+            f"{_who(post.author_handle, post.reposted_author_handle)}"
+            f" at {format_local(post.created_at)}",
+            width,
+        ),
+        "",
+        _wrap(post.text, width),
+        "",
+        textwrap.fill(f"COMPARE WITH (anchor): {player.web_name} is {event}", width),
+        textwrap.fill(
+            f"by @{anchor.author_handle} at {format_local(anchor.created_at)},"
+            f" certainty {anchor.certainty}",
+            width,
+        ),
+        "",
+        _wrap(anchor_text, width),
+        "",
+        "HOW TO LABEL",
+        label_table_row(anchor.event_type, width),
+        *(
+            textwrap.fill(f"- {rule_text}", width, subsequent_indent="  ")
+            for rule_text in LABEL_RULES
+        ),
+        "",
+        *prelabel_lines(case),
     ]
     return "\n".join(lines)
+
+
+def session_label(case: JudgeCase) -> Label:
+    return case.prelabel or case.expected
+
+
+def prelabels_disagree(case: JudgeCase) -> bool:
+    return case.v1_prelabel is not None and case.v1_prelabel != session_label(case)
+
+
+def prelabel_lines(case: JudgeCase) -> list[str]:
+    lines = [f"session pre-label: {session_label(case)}  (by {case.labelled_by})"]
+    if case.v1_prelabel is not None:
+        lines.append(f"haiku pre-label: {case.v1_prelabel}  (by {PRELABEL_MODEL})")
+    if prelabels_disagree(case):
+        lines.append("DISAGREE: the two pre-labels differ, pick with 1-4")
+    return lines
+
+
+def review_order(cases: Sequence[JudgeCase], positions: Sequence[int]) -> list[int]:
+    def group(i: int) -> int:
+        case = cases[i]
+        if case.v1_prelabel is None:
+            return 2
+        if case.prelabel is not None and case.prelabel != case.v1_prelabel:
+            return 0
+        return 1
+
+    return sorted(positions, key=lambda i: (group(i), i))
+
+
+@dataclass(frozen=True)
+class Agreement:
+    reviewed: int
+    by_judge: dict[str, tuple[int, int]]
+    v1: tuple[int, int]
+    differing: list[str]
+
+
+def prelabel_agreement(cases: Sequence[JudgeCase]) -> Agreement:
+    reviewed = [case for case in cases if case.reviewed]
+    by_judge: dict[str, list[int]] = {}
+    differing: list[str] = []
+    for case in reviewed:
+        if case.prelabel is None:
+            continue
+        counts = by_judge.setdefault(case.labelled_by, [0, 0])
+        counts[0] += 1
+        if case.expected != case.prelabel:
+            counts[1] += 1
+            differing.append(
+                f"{case.id}: owner {case.expected}, session {case.prelabel}"
+                + (f", haiku {case.v1_prelabel}" if case.v1_prelabel else "")
+            )
+    v1 = [case for case in reviewed if case.v1_prelabel is not None]
+    return Agreement(
+        len(reviewed),
+        {judge: (counts[0], counts[1]) for judge, counts in by_judge.items()},
+        (len(v1), sum(1 for case in v1 if case.expected != case.v1_prelabel)),
+        differing,
+    )

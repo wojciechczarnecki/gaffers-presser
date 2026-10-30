@@ -268,14 +268,73 @@ uv run python -m app.extraction.evaluation spend --results-dir evals/extraction/
 - **Paid runs only for the models under test.** The judge counts against the Claude subscription;
   the six test runs and the dev iterations cost 1.14 USD in spec 018 (cap 5 USD).
 
+## The corroboration procedure
+
+The corroboration judge's set v2 (spec 019; DECISIONS 2026-10-30) follows the extraction pattern:
+the session judge pre-labels, the owner reviews every case, and the models under test run through
+OpenRouter on the reviewed set. Commands run from `backend/` as
+`python -m app.corroboration.evaluation <command>`; the set lives in `evals/corroboration/v2`
+(`cases.jsonl`, and `set.json` with the version, the watched `list_handles`, one `prelabels` entry
+per import, the `build` record and the `selection`). The unit of a call is **one (anchor, post)
+pair**, rendered by the production `render_input`.
+
+```bash
+# 1. A throwaway database (never Compose): port other than 5432, then the migration on it only
+docker run -d --rm --name presser-eval-019 -e POSTGRES_USER=eval -e POSTGRES_PASSWORD=eval \
+    -e POSTGRES_DB=eval -p 55433:5432 pgvector/pgvector:pg16
+DATABASE_URL=postgresql+psycopg://eval:eval@localhost:55433/eval uv run alembic upgrade head
+
+# 2. Build: the corpus, embeddings and extraction (capped), then the candidates of the windows
+env -u TWEET_SOURCE uv run python -m app.corroboration.evaluation build-scratch \
+    --database-url $URL --max-cost-usd 0.90
+env -u TWEET_SOURCE uv run python -m app.corroboration.evaluation build-candidates \
+    --database-url $URL --gameweek 6 --gameweek 7 --set evals/corroboration/v2 \
+    --out $SCRATCH/candidates.jsonl --max-inputs 250 --seed 19
+
+# 3. Export (v1's cases and the candidates), estimate, judge, import
+uv run python -m app.corroboration.evaluation export-judge-inputs \
+    --cases evals/corroboration/v1/cases.jsonl --out $SCRATCH/judge-v1 --seed 19
+uv run python -m app.corroboration.evaluation export-judge-inputs \
+    --candidates $SCRATCH/candidates.jsonl --out $SCRATCH/judge-new --seed 19
+uv run python -m app.corroboration.evaluation estimate --export $SCRATCH/judge-new
+../scripts/session_judge.sh $SCRATCH/judge-new 6 opus corroboration
+uv run python -m app.corroboration.evaluation import-judge --export $SCRATCH/judge-new \
+    --set evals/corroboration/v2 --judge-model "claude-opus-5-5 (Claude Code session)" \
+    --select 55 --seed 19
+
+# 4. The owner's review (posts first, keys 1-4, a accepts), then the agreement
+uv run python -m app.corroboration.evaluation review
+uv run python -m app.corroboration.evaluation agreement
+
+# 5. Dev iterations, then one test run per model; the verdict is in the result file
+uv run python -m app.corroboration.evaluation evaluate --split dev --model MODEL \
+    --output evals/corroboration/results/v2/dev/dev-MODEL-i0.json
+uv run python -m app.corroboration.evaluation evaluate --split test --model MODEL
+```
+
+- **The build never touches Compose.** `build-scratch` and `build-candidates` take
+  `--database-url` and refuse port 5432 and the configured `DATABASE_URL`; the corpus is loaded
+  into the throwaway database, embedded with the production embedding model and extracted with
+  the production extraction runtime, so the anchors are what production would have had.
+- **Selection.** `import-judge --select N` takes the `contradicts` of retrieved posts first, then
+  `contradicts` SQL-context pairs, then the other labels with `unrelated` capped. A shortfall of
+  `contradicts` after the review is filled by an extra draw (`build-candidates --force --seed`)
+  imported with `--select` equal to the shortfall.
+- **The schema.** `scripts/session_judge.sh DIR PARALLEL MODEL corroboration` expects
+  `{"label": "supports" | "contradicts" | "related" | "unrelated"}`; an invalid reply goes to
+  `raw/<id>.invalid.json` and is judged again. The import validates every verdict and refuses the
+  export on one invalid file.
+- **The threshold and the rule.** The verdict needs accuracy at least 0.80, false-support at most
+  10%, `contradicts` recall at least 0.70 and no errored case. The default judge is the cheapest
+  passing model; with none passing, among the runs at or under 5 PLN a month, the most thresholds,
+  then the lower false-support rate, then the cheaper (`evaluation/selection.py::choose_judge`).
+- **Commit before a test run.** Each result header records `git_dirty`; the test runs are
+  committed one by one so the next run starts from a clean tree. The dev results are gitignored,
+  so `specs/<NNN>/dev-iterations.md` keeps the log and the `Dev spend` line.
+- **Paid runs only for the models under test.** The judge counts against the Claude subscription;
+  the build, the dev runs and the six test runs cost about 0.86 USD in spec 019 (cap 5 USD).
+
 ## Other evaluations
 
-The corroboration judge (`app/corroboration/evaluation/`) has no `--no-judge` / export / import
-commands yet: its evaluation compares a model's labels with the owner's reviewed labels, so a judge
-is only needed where a model pre-labels a set. To judge in the session there, add the same three
-pieces to that evaluation's CLI: a flag that skips the API judge, an export of the prompt and the
-exact rendered input per item, and an import that validates the verdicts with the judge's schema
-and recomputes the totals.
-
 `scripts/session_judge.sh` takes the verdict schema as its fourth argument (`presser`, the default,
-`retrieval` or `extraction`), so another evaluation adds a schema there instead of a script.
+`retrieval`, `extraction` or `corroboration`), so another evaluation adds a schema there instead of a script.

@@ -84,7 +84,7 @@ Grouped by roadmap stage (`docs/ROADMAP.md`).
 - **Language:** product content in Polish FPL slang; repository, code, docs in English.
 - **Swappability:** the tweet source and the e-mail provider are adapters behind interfaces;
   switching one is a configuration change. The LLM is swapped by model through OpenRouter, the
-  only provider: a change of `LLM_MODEL` (extraction and the corroboration judge) or
+  only provider: a change of `LLM_MODEL` (extraction), `LLM_JUDGE_MODEL` (the corroboration judge) or
   `PRESSER_MODEL` (the presser writer); a model outside the compared set needs a row in
   `model_settings.toml` and `prices.toml`.
 - **Observability:** every LLM call is traced (inputs, outputs, tokens, cost, latency) from

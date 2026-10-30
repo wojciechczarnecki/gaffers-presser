@@ -195,3 +195,7 @@ def test_every_presser_variable_is_an_empty_placeholder():
             seen.add(name)
             assert value == "", f"{name} must be an empty placeholder in .env.example"
     assert seen == presser_variables
+
+
+def test_llm_judge_model_is_an_empty_placeholder_in_env_example():
+    assert "LLM_JUDGE_MODEL=" in _lines()

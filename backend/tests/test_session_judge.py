@@ -209,3 +209,42 @@ def test_extraction_sends_the_extraction_reply_format(judge):
     assert system.startswith("prompt")
     assert REPLY_FORMAT in system
     assert "claims" not in system
+
+
+def test_corroboration_writes_a_valid_verdict(judge):
+    judge.add_input("I0001", "Player: X")
+    judge.reply(1, '```json\n{"label": "contradicts"}\n```')
+    done = judge.run("1", "sonnet", "corroboration")
+    assert done.returncode == 0, done.stderr
+    assert judge.verdict("I0001") == {"label": "contradicts"}
+
+
+@pytest.mark.parametrize(
+    "reply",
+    ['{"label": "maybe"}', '{"label": "supports", "why": "x"}', '{"labels": {}}', '["supports"]'],
+)
+def test_corroboration_rejects_an_invalid_verdict(judge, reply):
+    judge.add_input("I0001", "text")
+    judge.reply(1, reply)
+    judge.run("1", "sonnet", "corroboration")
+    assert judge.verdict("I0001") is None
+    assert (judge.dir / "raw" / "I0001.invalid.json").exists()
+    assert not (judge.dir / "raw" / "I0001.json").exists()
+
+    judge.reply(2, '{"label": "related"}')
+    judge.run("1", "sonnet", "corroboration")
+    assert len(judge.calls()) == 2
+    assert judge.verdict("I0001") == {"label": "related"}
+
+
+def test_corroboration_sends_the_reply_format(judge):
+    from app.corroboration.evaluation.judging import REPLY_FORMAT
+
+    judge.add_input("I0001", "text")
+    judge.reply(1, '{"label": "supports"}')
+    judge.run("1", "sonnet", "corroboration")
+    call = judge.calls()[0]
+    system = call[call.index("--system-prompt") + 1]
+    assert system.startswith("prompt")
+    assert REPLY_FORMAT in system
+    assert "claims" not in system

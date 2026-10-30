@@ -1,16 +1,29 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from typer.testing import CliRunner
 
+from app.corroboration.evaluation import building
 from app.corroboration.evaluation.building import (
+    BuildExistsError,
     assign_split,
     build_candidates,
     build_cases,
+    build_window_candidates,
     prelabel,
+    sample_candidates,
     select_cases,
+    write_candidate_files,
 )
-from app.corroboration.evaluation.cases import LABELS, is_known_miss, load_cases
+from app.corroboration.evaluation.cases import (
+    LABELS,
+    CandidateCase,
+    is_known_miss,
+    load_candidates,
+    load_cases,
+)
+from app.corroboration.evaluation.dataset import BuildWindow, load_manifest
+from app.corroboration.sources import MAX_JUDGED
 from tests.corroboration.evaluation.fakes import ScriptedJudge
 from tests.corroboration.evaluation.test_cases import make_case
 from tests.corroboration.helpers import ISAK, NOW, SAKA, add_claim, add_fixture, seed_reference
@@ -215,3 +228,203 @@ def test_a_stale_lineup_is_neither_an_anchor_nor_a_candidate(db):
         (ISAK, 4),
     }
     assert all(c.post.x_id != 5 for c in candidates)
+
+
+START = NOW - timedelta(hours=24)
+WINDOW = BuildWindow(gameweek=6, start=START, end=NOW)
+
+
+def _window_corpus(db) -> None:
+    seed_reference(db, {7: NOW + timedelta(days=3, hours=22)})
+    add_fixture(db, 1, 7, NOW + timedelta(days=4))
+    # a stale confirmed line-up: neither an anchor nor a retrieval candidate
+    add_claim(
+        db,
+        1,
+        SAKA,
+        "confirmed_starter",
+        "confirmed",
+        created_at=NOW - timedelta(hours=9),
+        author="a1",
+    )
+    add_claim(db, 2, SAKA, "doubt", created_at=NOW - timedelta(hours=8), author="a2")
+    for n in range(14):
+        add_tweet(
+            db, 100 + n, f"Saka injury news {n}", created_at=NOW - timedelta(hours=5, minutes=n)
+        )
+    add_tweet(db, 200, "Saka injury news before the window", created_at=START - timedelta(hours=1))
+
+
+def test_candidates_use_the_production_retrieval_and_fresh_lineups(db):
+    _window_corpus(db)
+    built = build_window_candidates(db, FakeEmbedder(), [WINDOW], PRICES)
+    anchors = {c.anchor.x_id for c in built.candidates}
+    assert anchors == {2}
+    retrieved = [c for c in built.candidates if not c.has_player_event]
+    assert 0 < len(retrieved) <= MAX_JUDGED
+    assert all(c.post.x_id not in {1, 2} for c in retrieved)
+
+
+def test_candidates_inside_their_window(db):
+    _window_corpus(db)
+    built = build_window_candidates(db, FakeEmbedder(), [WINDOW], PRICES)
+    for c in built.candidates:
+        assert START <= c.anchor.created_at < NOW
+        assert START <= c.post.created_at < NOW
+    assert 200 not in {c.post.x_id for c in built.candidates}
+
+
+def test_sql_pairs_contradicts_first(db):
+    seed_reference(db)
+    add_claim(db, 1, SAKA, "confirmed_starter", created_at=NOW - timedelta(hours=1), author="a1")
+    add_claim(db, 2, SAKA, "out", created_at=NOW - timedelta(hours=9), author="a2")
+    add_claim(db, 3, SAKA, "doubt", created_at=NOW - timedelta(hours=8), author="a3")
+    for n in (4, 5, 6):
+        add_claim(
+            db, n, SAKA, "confirmed_starter", created_at=NOW - timedelta(hours=n), author=f"a{n}"
+        )
+    built = build_window_candidates(db, FakeEmbedder(), [WINDOW], PRICES)
+    pairs = [c for c in built.candidates if c.anchor.x_id == 1 and c.has_player_event]
+    assert len(pairs) == 3
+    assert {c.post.x_id for c in pairs if c.tier == "sql-contradicts"} == {2, 3}
+    assert {c.tier for c in pairs} == {"sql-contradicts", "sql"}
+
+
+def test_one_retrieval_search_per_player_whatever_the_anchors(db, monkeypatch):
+    seed_reference(db)
+    add_claim(db, 1, SAKA, "confirmed_starter", created_at=NOW - timedelta(hours=1), author="a1")
+    add_claim(db, 2, SAKA, "out", created_at=NOW - timedelta(hours=2), author="a2")
+    searched = []
+    real = building.retrieval_candidates
+
+    def counting(engine, player, *args, **kwargs):
+        searched.append(player.fpl_id)
+        return real(engine, player, *args, **kwargs)
+
+    monkeypatch.setattr(building, "retrieval_candidates", counting)
+    built = build_window_candidates(db, FakeEmbedder(), [WINDOW], PRICES)
+    assert len({c.anchor.x_id for c in built.candidates}) == 2
+    assert searched == [SAKA]
+
+
+def _cand(n, tier, has_event=False):
+    case = make_case(n, has_player_event=has_event)
+    return CandidateCase(
+        id=f"c-{n:04d}",
+        player=case.player,
+        anchor=case.anchor,
+        post=case.post,
+        has_player_event=has_event,
+        tier=tier,
+    )
+
+
+def test_tiers_and_sampling_deterministic():
+    pool = (
+        [_cand(i, "sql-contradicts", True) for i in range(5)]
+        + [_cand(100 + i, "retrieved-likely") for i in range(20)]
+        + [_cand(200 + i, "retrieved") for i in range(50)]
+        + [_cand(300 + i, "sql", True) for i in range(30)]
+    )
+    first = sample_candidates(pool, max_inputs=40, seed=3, likely_inputs=10)
+    assert first == sample_candidates(pool, max_inputs=40, seed=3, likely_inputs=10)
+    assert first != sample_candidates(pool, max_inputs=40, seed=4, likely_inputs=10)
+    assert len(first) == 40
+    tiers = [c.tier for c in first]
+    assert tiers.count("sql-contradicts") == 5
+    assert tiers.count("retrieved-likely") == 10
+    assert tiers.count("retrieved") == 25
+    assert tiers.count("sql") == 0
+
+
+def test_volume_counts_newest_anchor_candidates_times_slots(db):
+    seed_reference(db)
+    add_claim(db, 1, SAKA, "doubt", created_at=NOW - timedelta(hours=8), author="a1")
+    add_claim(db, 2, SAKA, "confirmed_starter", created_at=NOW - timedelta(hours=7), author="a2")
+    for n in range(3):
+        add_tweet(db, 100 + n, f"Saka injury news {n}", created_at=NOW - timedelta(hours=3))
+    built = build_window_candidates(db, FakeEmbedder(), [WINDOW], PRICES)
+    newest = [c for c in built.candidates if c.anchor.x_id == 2 and not c.has_player_event]
+    assert len(newest) == 3
+    assert built.judge_calls_per_month == 3 * 2 * 4
+
+
+def _index(db):
+    import threading
+
+    from app.retrieval.indexing import IndexingRuntime, index_missing
+    from app.retrieval.tracing import NULL_TRACER
+    from tests.retrieval.helpers import FixedClock
+
+    embedder = FakeEmbedder()
+    runtime = IndexingRuntime(
+        model=embedder.model,
+        make_embedder=lambda: embedder,
+        prices=PRICES,
+        tracing=None,
+        clock=FixedClock(),
+    )
+    index_missing(db, runtime, embedder, NULL_TRACER, FixedClock(), threading.Event())
+
+
+def _files(db, tmp_path, **kwargs):
+    _index(db)
+    set_dir = tmp_path / "v2"
+    return write_candidate_files(
+        db,
+        FakeEmbedder(),
+        PRICES,
+        windows=[WINDOW],
+        set_dir=set_dir,
+        out=tmp_path / "candidates.jsonl",
+        list_handles=["a1", "a2"],
+        corpus="evals/retrieval/v2/corpus.jsonl",
+        **kwargs,
+    )
+
+
+def test_build_candidates_writes_the_build_section(db, tmp_path):
+    _window_corpus(db)
+    count, info = _files(db, tmp_path)
+    manifest = load_manifest(tmp_path / "v2")
+    assert manifest.build == info
+    assert manifest.list_handles == ["a1", "a2"]
+    assert info.windows == [WINDOW]
+    assert info.extraction_model == "fake-model"
+    assert info.extraction_prompt_version.startswith("extraction@")
+    assert info.query_embeddings_cost_usd > 0
+    assert info.judge_calls_per_month > 0
+    assert len(load_candidates(tmp_path / "candidates.jsonl")) == count
+
+
+def test_build_candidates_refuses_an_existing_build_without_force(db, tmp_path):
+    _window_corpus(db)
+    _files(db, tmp_path)
+    with pytest.raises(BuildExistsError):
+        _files(db, tmp_path)
+
+
+def test_build_candidates_force_adds_the_query_cost(db, tmp_path):
+    _window_corpus(db)
+    _, first = _files(db, tmp_path)
+    _, second = _files(db, tmp_path, force=True, seed=20)
+    assert second.windows == first.windows
+    assert second.judge_calls_per_month == first.judge_calls_per_month
+    assert second.query_embeddings_cost_usd == pytest.approx(2 * first.query_embeddings_cost_usd)
+
+
+def test_a_datetime_import_is_used():
+    assert isinstance(START, datetime)
+
+
+def test_a_claim_from_outside_the_list_is_not_an_anchor(db):
+    from tests.tweets.membership_helpers import set_members
+
+    seed_reference(db)
+    add_claim(db, 1, SAKA, "doubt", created_at=NOW - timedelta(hours=8), author="member")
+    add_claim(db, 2, SAKA, "out", created_at=NOW - timedelta(hours=2), author="stranger")
+    add_tweet(db, 3, "Saka injury news", created_at=NOW - timedelta(hours=3), author="member")
+    set_members(db, ["member"])
+    built = build_window_candidates(db, FakeEmbedder(), [WINDOW], PRICES)
+    assert {c.anchor.x_id for c in built.candidates} == {1}
+    assert 2 not in {c.post.x_id for c in built.candidates}

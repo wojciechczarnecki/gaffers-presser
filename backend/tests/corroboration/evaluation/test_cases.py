@@ -2,9 +2,13 @@ from datetime import UTC, datetime
 
 import pytest
 
+from app.corroboration.config import DEFAULT_JUDGE_MODEL
 from app.corroboration.evaluation.cases import (
     LABELS,
-    LABELS_NOT_YET_REQUIRED,
+    MAX_CASES,
+    MIN_CASES,
+    MIN_CONTRADICTS,
+    MIN_TEST_CONTRADICTS,
     CaseAnchor,
     CasePlayer,
     CasePost,
@@ -15,7 +19,6 @@ from app.corroboration.evaluation.cases import (
     parse_cases,
     write_cases,
 )
-from app.llm.chat import DEFAULT_MODEL
 
 T = datetime(2026, 9, 29, 12, 0, tzinfo=UTC)
 
@@ -55,7 +58,7 @@ def make_case(
     )
 
 
-def valid_set(n: int = 60) -> list[JudgeCase]:
+def valid_set(n: int = 100) -> list[JudgeCase]:
     cases = []
     for i in range(n):
         label = LABELS[i % 4]
@@ -98,8 +101,28 @@ def test_a_valid_set_has_no_problems():
 
 
 def test_size_out_of_range():
-    assert any("cases: 40" in p for p in composition_problems(valid_set(40)))
+    assert (MIN_CASES, MAX_CASES) == (90, 130)
     assert any("cases: 80" in p for p in composition_problems(valid_set(80)))
+    assert any("cases: 140" in p for p in composition_problems(valid_set(140)))
+    assert not any("cases:" in p for p in composition_problems(valid_set(90)))
+    assert not any("cases:" in p for p in composition_problems(valid_set(130)))
+
+
+def test_v2_fields_round_trip(tmp_path):
+    case = make_case(1, "contradicts").model_copy(
+        update={"prelabel": "supports", "v1_prelabel": "related"}
+    )
+    path = tmp_path / "cases.jsonl"
+    write_cases(path, [case])
+    loaded = load_cases(path)[0]
+    assert (loaded.prelabel, loaded.v1_prelabel) == ("supports", "related")
+    assert loaded == case
+
+
+def test_a_v1_line_without_the_new_fields_loads():
+    line = make_case(1).model_dump_json(exclude={"prelabel", "v1_prelabel"})
+    case = parse_cases(line)[0]
+    assert case.prelabel is None and case.v1_prelabel is None
 
 
 def test_duplicate_ids():
@@ -125,21 +148,43 @@ def test_a_label_missing_overall_and_in_the_test_split():
     assert any("test split has no case with the label supports" in p for p in problems)
 
 
-def test_a_missing_contradicts_label_is_tolerated_until_backlog_12():
-    assert LABELS_NOT_YET_REQUIRED == {"contradicts"}
-    base = valid_set()
-    count = sum(1 for c in base if c.expected == "contradicts")
+def test_a_set_missing_contradicts_is_reported():
     relabelled = [
         c.model_copy(update={"expected": "related"}) if c.expected == "contradicts" else c
-        for c in base
+        for c in valid_set()
     ]
-    assert count > 0
-    assert composition_problems(relabelled) == []
+    problems = composition_problems(relabelled)
+    assert any("no case with the label contradicts" in p for p in problems)
+    assert any("the test split has no case with the label contradicts" in p for p in problems)
+
+
+def test_too_few_contradicts_overall_and_in_test():
+    assert (MIN_CONTRADICTS, MIN_TEST_CONTRADICTS) == (8, 5)
+    base = valid_set()
+    keep: list[JudgeCase] = []
+    kept = 0
+    for c in base:
+        if c.expected == "contradicts":
+            kept += 1
+            if kept > 7:
+                c = c.model_copy(update={"expected": "related"})
+        keep.append(c)
+    assert any("contradicts cases: 7, need at least 8" in p for p in composition_problems(keep))
+    in_test = 0
+    few_test = []
+    for c in base:
+        if c.expected == "contradicts" and c.split == "test":
+            in_test += 1
+            if in_test > 4:
+                c = c.model_copy(update={"split": "dev"})
+        few_test.append(c)
+    problems = composition_problems(few_test)
+    assert any("contradicts cases in the test split: 4" in p for p in problems)
 
 
 def test_labelled_by_the_default_model_is_reported():
     cases = valid_set()
-    cases[3] = cases[3].model_copy(update={"labelled_by": DEFAULT_MODEL})
+    cases[3] = cases[3].model_copy(update={"labelled_by": DEFAULT_JUDGE_MODEL})
     assert any("pre-labelled by the judge's own model" in p for p in composition_problems(cases))
 
 

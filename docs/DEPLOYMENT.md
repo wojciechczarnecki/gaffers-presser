@@ -77,6 +77,9 @@ below; agents never touch production.
      fallback is dropped (no fallback) under an `LLM_MODEL` it cannot answer for. A model
      outside `backend/app/llm/model_settings.toml` fails the worker on start with a
      message naming the variable, never a key; add a row there and in `backend/app/llm/prices.toml` first.
+   - `LLM_JUDGE_MODEL` — optional OpenRouter model ID of the corroboration judge; empty means
+     the default from [ADR 0011](adr/0011-corroboration-judge-model.md),
+     `google/gemini-3.1-flash-lite`. It has no fallback, and `LLM_MODEL` does not change it.
    - `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` from a Langfuse Cloud project in the EU
      region, and `LANGFUSE_HOST` (defaults to `https://cloud.langfuse.com`, the EU region).
      Without both keys extraction still runs, untraced, and the worker logs one warning.
@@ -123,12 +126,11 @@ below; agents never touch production.
       stored `raw` payload for the reposts already stored (twscrape, twitterapi.io and the X
       API shapes). It runs through the pre-deploy like the others. X API reposts stored before
       this migration keep an empty original author, so they count as their list account.
-    - The judge that labels posts only retrieval finds uses `OPENROUTER_API_KEY`, `LLM_MODEL`
-      and `LLM_FALLBACK_MODEL` (extraction's settings); without the key the command uses the
+    - The judge that labels posts only retrieval finds uses `OPENROUTER_API_KEY` and `LLM_JUDGE_MODEL`; without the key the command uses the
       extracted claims only and prints `Retrieval and judge: skipped`. Langfuse keys, when set,
       make each run one trace.
     - The judge's evaluation set is reviewed and run locally, never by the worker:
-      `python -m app.corroboration.evaluation build-cases | review | evaluate`.
+      `python -m app.corroboration.evaluation build-cases | build-scratch | build-candidates | export-judge-inputs | estimate | import-judge | review | agreement | evaluate`.
 11. **Delivery (optional).** Alerts and the presser leave through one delivery interface; this
     step sets its channel. With no `DELIVERY_PROVIDER` set, delivery is disabled: the worker and
     every loop run exactly as before and sending returns `disabled`. The only channel is `resend`;

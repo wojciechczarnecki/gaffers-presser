@@ -137,13 +137,26 @@ def test_corroboration_commands_documented():
     for command in (
         "app.corroboration",
         "app.corroboration.evaluation build-cases",
+        "app.corroboration.evaluation build-scratch",
+        "app.corroboration.evaluation build-candidates",
+        "app.corroboration.evaluation export-judge-inputs",
+        "app.corroboration.evaluation estimate",
+        "app.corroboration.evaluation import-judge",
         "app.corroboration.evaluation review",
+        "app.corroboration.evaluation agreement",
         "app.corroboration.evaluation evaluate",
     ):
         assert command in section, f"{command!r} missing from the README Development section"
         assert command.split(" ")[0] in deployment
     for term in ("build-cases", "review", "evaluate", "0006"):
         assert term in deployment, f"{term!r} missing from docs/DEPLOYMENT.md"
+
+
+def test_corroboration_section_links_the_report():
+    section = _development_section()
+    assert "docs/reports/corroboration-eval-v2.md" in section
+    assert "waiting for the" not in section
+    assert "LLM_JUDGE_MODEL" in section
 
 
 def test_deployment_documents_delivery():

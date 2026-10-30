@@ -1,0 +1,775 @@
+{
+  "model": "anthropic/claude-haiku-4.5",
+  "prompt_version": "corroboration_judge@1",
+  "split": "test",
+  "date": "2026-10-30T16:01:01.968055+00:00",
+  "include_unreviewed": false,
+  "cost_usd": 0.122622,
+  "metrics": {
+    "cases": 75,
+    "errored": 0,
+    "accuracy": 0.64,
+    "per_label": {
+      "supports": {
+        "precision": 0.41935483870967744,
+        "recall": 0.7647058823529411,
+        "expected": 17,
+        "predicted": 31
+      },
+      "contradicts": {
+        "precision": 0.5,
+        "recall": 0.5,
+        "expected": 6,
+        "predicted": 6
+      },
+      "related": {
+        "precision": 0.4,
+        "recall": 0.2,
+        "expected": 20,
+        "predicted": 10
+      },
+      "unrelated": {
+        "precision": 1.0,
+        "recall": 0.875,
+        "expected": 32,
+        "predicted": 28
+      }
+    },
+    "false_support": {
+      "numerator": 18,
+      "denominator": 58,
+      "rate": 0.3103448275862069
+    }
+  },
+  "production": {
+    "cases": 61,
+    "errored": 0,
+    "accuracy": 0.6721311475409836,
+    "per_label": {
+      "supports": {
+        "precision": 0.391304347826087,
+        "recall": 0.75,
+        "expected": 12,
+        "predicted": 23
+      },
+      "contradicts": {
+        "precision": 0.5,
+        "recall": 0.5,
+        "expected": 4,
+        "predicted": 4
+      },
+      "related": {
+        "precision": 0.42857142857142855,
+        "recall": 0.2,
+        "expected": 15,
+        "predicted": 7
+      },
+      "unrelated": {
+        "precision": 1.0,
+        "recall": 0.9,
+        "expected": 30,
+        "predicted": 27
+      }
+    },
+    "false_support": {
+      "numerator": 14,
+      "denominator": 49,
+      "rate": 0.2857142857142857
+    }
+  },
+  "verdict": {
+    "accuracy": false,
+    "false_support": false,
+    "contradicts_recall": false,
+    "no_errors": true,
+    "passed": false
+  },
+  "projected_monthly_cost_pln": 53.604779535999995,
+  "outcomes": [
+    {
+      "id": "jc-13-2104158837540622748-2103958805142978873",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1349,
+      "output_tokens": 34,
+      "cost_usd": 0.001519
+    },
+    {
+      "id": "jc-13-2104158837540622748-2104663854315958314",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1326,
+      "output_tokens": 34,
+      "cost_usd": 0.001496
+    },
+    {
+      "id": "jc-13-2104158837540622748-2104665370741326220",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1326,
+      "output_tokens": 34,
+      "cost_usd": 0.001496
+    },
+    {
+      "id": "jc-154-2104158837540622748-2104571410026791410",
+      "expected": "unrelated",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1397,
+      "output_tokens": 33,
+      "cost_usd": 0.001562
+    },
+    {
+      "id": "jc-165-2104158837540622748-2104646876389650860",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1400,
+      "output_tokens": 33,
+      "cost_usd": 0.001565
+    },
+    {
+      "id": "jc-25-2104124182170566816-2104121110841139241",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1487,
+      "output_tokens": 34,
+      "cost_usd": 0.001657
+    },
+    {
+      "id": "jc-26-2104177542324273565-2103436877860593885",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1371,
+      "output_tokens": 33,
+      "cost_usd": 0.001536
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104124182170566816",
+      "expected": "related",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 1465,
+      "output_tokens": 34,
+      "cost_usd": 0.001635
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104158837540622748",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1420,
+      "output_tokens": 33,
+      "cost_usd": 0.001585
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104487542066413950",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1465,
+      "output_tokens": 34,
+      "cost_usd": 0.001635
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104244495927972091",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1352,
+      "output_tokens": 33,
+      "cost_usd": 0.001517
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104270786454577468",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1335,
+      "output_tokens": 34,
+      "cost_usd": 0.001505
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104511766172467564",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1361,
+      "output_tokens": 33,
+      "cost_usd": 0.001526
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104612936534655146",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1393,
+      "output_tokens": 33,
+      "cost_usd": 0.001558
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104158837540622748",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1419,
+      "output_tokens": 33,
+      "cost_usd": 0.001584
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104173076380303608",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1404,
+      "output_tokens": 33,
+      "cost_usd": 0.001569
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104511766172467564",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1382,
+      "output_tokens": 33,
+      "cost_usd": 0.001547
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104516939213095099",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1413,
+      "output_tokens": 33,
+      "cost_usd": 0.001578
+    },
+    {
+      "id": "jc-397-2104158837540622748-2104462614600302750",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1378,
+      "output_tokens": 34,
+      "cost_usd": 0.0015480000000000001
+    },
+    {
+      "id": "jc-397-2104158837540622748-2104600493083529570",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1498,
+      "output_tokens": 33,
+      "cost_usd": 0.001663
+    },
+    {
+      "id": "jc-415-2104266398126014931-2104523734438588623",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1399,
+      "output_tokens": 33,
+      "cost_usd": 0.001564
+    },
+    {
+      "id": "jc-415-2104266398126014931-2104673537697186283",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1345,
+      "output_tokens": 34,
+      "cost_usd": 0.001515
+    },
+    {
+      "id": "jc-423-2103809666761531519-2104664507385799105",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1258,
+      "output_tokens": 34,
+      "cost_usd": 0.001428
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104158837540622748",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1424,
+      "output_tokens": 33,
+      "cost_usd": 0.001589
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104175133694804334",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1515,
+      "output_tokens": 33,
+      "cost_usd": 0.00168
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104531353307844990",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1611,
+      "output_tokens": 33,
+      "cost_usd": 0.001776
+    },
+    {
+      "id": "jc-501-2103771262233284892-2104665908933489005",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1383,
+      "output_tokens": 34,
+      "cost_usd": 0.001553
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103771262233284892",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1463,
+      "output_tokens": 33,
+      "cost_usd": 0.001628
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103809666761531519",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1341,
+      "output_tokens": 34,
+      "cost_usd": 0.001511
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103955750015905855",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1413,
+      "output_tokens": 34,
+      "cost_usd": 0.001583
+    },
+    {
+      "id": "jc-532-2104158837540622748-2104648476038430744",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1446,
+      "output_tokens": 33,
+      "cost_usd": 0.001611
+    },
+    {
+      "id": "jc-533-2103771262233284892-2104584617491669030",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1405,
+      "output_tokens": 34,
+      "cost_usd": 0.001575
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104273037319454995",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1425,
+      "output_tokens": 34,
+      "cost_usd": 0.001595
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104663313527472189",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1387,
+      "output_tokens": 34,
+      "cost_usd": 0.001557
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104671002722529406",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1384,
+      "output_tokens": 34,
+      "cost_usd": 0.001554
+    },
+    {
+      "id": "jc-552-2104158837540622748-2104452956900766117",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1439,
+      "output_tokens": 34,
+      "cost_usd": 0.001609
+    },
+    {
+      "id": "jc-112-2108549687368118553-2107062850434830510",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 1471,
+      "output_tokens": 34,
+      "cost_usd": 0.001641
+    },
+    {
+      "id": "jc-112-2108549687368118553-2107800387596026127",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1441,
+      "output_tokens": 33,
+      "cost_usd": 0.001606
+    },
+    {
+      "id": "jc-112-2108549687368118553-2108542659014885719",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1436,
+      "output_tokens": 33,
+      "cost_usd": 0.001601
+    },
+    {
+      "id": "jc-116-2108486798447907022-2108470513550918135",
+      "expected": "contradicts",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1436,
+      "output_tokens": 33,
+      "cost_usd": 0.001601
+    },
+    {
+      "id": "jc-116-2108498273572958546-2108486798447907022",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1526,
+      "output_tokens": 33,
+      "cost_usd": 0.001691
+    },
+    {
+      "id": "jc-121-2111044071879774566-2111030355020988582",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1381,
+      "output_tokens": 33,
+      "cost_usd": 0.001546
+    },
+    {
+      "id": "jc-123-2108486798447907022-2108498273572958546",
+      "expected": "contradicts",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1519,
+      "output_tokens": 33,
+      "cost_usd": 0.001684
+    },
+    {
+      "id": "jc-131-2108540871633240234-2108541502779482589",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1561,
+      "output_tokens": 33,
+      "cost_usd": 0.001726
+    },
+    {
+      "id": "jc-131-2108626432020922720-2107412084627562951",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1530,
+      "output_tokens": 34,
+      "cost_usd": 0.0017
+    },
+    {
+      "id": "jc-131-2108626432020922720-2108540871633240234",
+      "expected": "unrelated",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1586,
+      "output_tokens": 33,
+      "cost_usd": 0.001751
+    },
+    {
+      "id": "jc-142-2106727074216194119-2108543739383697682",
+      "expected": "related",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 1546,
+      "output_tokens": 34,
+      "cost_usd": 0.001716
+    },
+    {
+      "id": "jc-154-2108848035346170298-2108543739383697682",
+      "expected": "contradicts",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1570,
+      "output_tokens": 33,
+      "cost_usd": 0.001735
+    },
+    {
+      "id": "jc-162-2111162293786644624-2110119478176411773",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1412,
+      "output_tokens": 34,
+      "cost_usd": 0.001582
+    },
+    {
+      "id": "jc-165-2108823848590168506-2108814872116933035",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1370,
+      "output_tokens": 33,
+      "cost_usd": 0.001535
+    },
+    {
+      "id": "jc-165-2108823848590168506-2108860071971074253",
+      "expected": "unrelated",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1370,
+      "output_tokens": 33,
+      "cost_usd": 0.001535
+    },
+    {
+      "id": "jc-208-2108539588436484566-2108176159230001462",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1375,
+      "output_tokens": 34,
+      "cost_usd": 0.001545
+    },
+    {
+      "id": "jc-242-2111108163999088993-2111090726515695817",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1465,
+      "output_tokens": 34,
+      "cost_usd": 0.001635
+    },
+    {
+      "id": "jc-256-2108530983498617062-2108483638362849456",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1733,
+      "output_tokens": 33,
+      "cost_usd": 0.001898
+    },
+    {
+      "id": "jc-256-2108530983498617062-2108501706162033067",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1740,
+      "output_tokens": 33,
+      "cost_usd": 0.001905
+    },
+    {
+      "id": "jc-266-2108527975197209024-2107387924777988161",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1394,
+      "output_tokens": 34,
+      "cost_usd": 0.001564
+    },
+    {
+      "id": "jc-278-2110730855920398431-2110723663842750552",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1531,
+      "output_tokens": 33,
+      "cost_usd": 0.001696
+    },
+    {
+      "id": "jc-31-2108593130924650895-2108846020696412396",
+      "expected": "unrelated",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 1476,
+      "output_tokens": 34,
+      "cost_usd": 0.0016460000000000001
+    },
+    {
+      "id": "jc-362-2108116204552433785-2108545570163831073",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 1347,
+      "output_tokens": 34,
+      "cost_usd": 0.0015170000000000001
+    },
+    {
+      "id": "jc-367-2110696130849771666-2110679665983545539",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1384,
+      "output_tokens": 34,
+      "cost_usd": 0.001554
+    },
+    {
+      "id": "jc-368-2108560219475189929-2108559117467947221",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 2063,
+      "output_tokens": 33,
+      "cost_usd": 0.002228
+    },
+    {
+      "id": "jc-372-2108560219475189929-2108559117467947221",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 2061,
+      "output_tokens": 33,
+      "cost_usd": 0.0022259999999999997
+    },
+    {
+      "id": "jc-391-2111395893308223653-2111149530339254444",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1351,
+      "output_tokens": 34,
+      "cost_usd": 0.001521
+    },
+    {
+      "id": "jc-415-2107062850434830510-2108192513614029180",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1358,
+      "output_tokens": 34,
+      "cost_usd": 0.001528
+    },
+    {
+      "id": "jc-429-2108626432020922720-2108540871633240234",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1585,
+      "output_tokens": 33,
+      "cost_usd": 0.00175
+    },
+    {
+      "id": "jc-503-2107800387596026127-2108542659014885719",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 1354,
+      "output_tokens": 34,
+      "cost_usd": 0.001524
+    },
+    {
+      "id": "jc-503-2108549687368118553-2106869848278196397",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1472,
+      "output_tokens": 34,
+      "cost_usd": 0.001642
+    },
+    {
+      "id": "jc-503-2108549687368118553-2107032550912782624",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1513,
+      "output_tokens": 33,
+      "cost_usd": 0.001678
+    },
+    {
+      "id": "jc-51-2110029595323818007-2111090726515695817",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1700,
+      "output_tokens": 33,
+      "cost_usd": 0.001865
+    },
+    {
+      "id": "jc-515-2108549687368118553-2108556488256127300",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1476,
+      "output_tokens": 33,
+      "cost_usd": 0.001641
+    },
+    {
+      "id": "jc-556-2110729561813995584-2109887018155061260",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1575,
+      "output_tokens": 34,
+      "cost_usd": 0.001745
+    },
+    {
+      "id": "jc-652-2108498273572958546-2108547176242561432",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 1552,
+      "output_tokens": 34,
+      "cost_usd": 0.001722
+    },
+    {
+      "id": "jc-69-2107074116331196568-2108176154792259813",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1532,
+      "output_tokens": 33,
+      "cost_usd": 0.001697
+    },
+    {
+      "id": "jc-69-2108593130924650895-2108176154792259813",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1631,
+      "output_tokens": 33,
+      "cost_usd": 0.001796
+    },
+    {
+      "id": "jc-70-2108593130924650895-2108176424423084294",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1675,
+      "output_tokens": 33,
+      "cost_usd": 0.00184
+    }
+  ],
+  "header": {
+    "set_version": "v2",
+    "model": "anthropic/claude-haiku-4.5",
+    "prompt_version": "corroboration_judge@1",
+    "reasoning_effort": "none",
+    "judge": null,
+    "date": "2026-10-30T16:02:21.992948+00:00",
+    "git_commit": "33f30138f5a662b3faa04222a78e69e7ce20605f",
+    "git_dirty": false
+  }
+}

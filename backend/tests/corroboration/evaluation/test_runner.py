@@ -5,16 +5,16 @@ import pytest
 from typer.testing import CliRunner
 
 from app.core.errors import ConfigError
-from app.corroboration.config import CorroborationSettings
+from app.corroboration.config import DEFAULT_JUDGE_MODEL, CorroborationSettings
 from app.corroboration.evaluation.cases import DEFAULT_RESULTS_DIR, write_cases
 from app.corroboration.evaluation.cli import EvaluationCliDeps, app
+from app.corroboration.evaluation.dataset import BuildInfo, SetManifest, write_manifest
 from app.corroboration.evaluation.runner import (
     EvaluationError,
     default_result_path,
     run_evaluation,
 )
 from app.corroboration.judge import PROMPT_VERSION
-from app.llm.chat import DEFAULT_MODEL
 from tests.corroboration.evaluation.fakes import ScriptedJudge
 from tests.corroboration.evaluation.test_cases import make_case
 from tests.retrieval.fakes import FakeEmbedder
@@ -100,6 +100,107 @@ def test_the_default_output_path_names_the_split_and_the_model():
     assert path == DEFAULT_RESULTS_DIR / "test-openai-gpt-6-luna.json"
 
 
+def _run_with_cost(cases, judge, calls=None, rate=None):
+    return run_evaluation(
+        cases,
+        judge,
+        "test",
+        True,
+        "fake/model",
+        "judge@1",
+        NOW,
+        calls_per_month=calls,
+        usd_pln_rate=rate,
+    )
+
+
+def test_the_result_carries_the_production_slice():
+    cases = [
+        make_case(1, "supports", has_player_event=False),
+        make_case(2, "unrelated", has_player_event=False),
+        make_case(3, "supports", has_player_event=True),
+    ]
+    judge = ScriptedJudge(lambda item: "supports")
+    data = _run(cases, judge, include=True)
+    assert data["metrics"]["cases"] == 3
+    assert data["production"]["cases"] == 2
+    assert data["production"]["accuracy"] == 0.5
+    assert data["production"]["false_support"]["numerator"] == 1
+    assert data["verdict"]["passed"] is False
+
+
+def test_projected_monthly_cost():
+    cases = [make_case(1, "supports")]
+    judge = ScriptedJudge("supports", cost_usd=0.002)
+    data = _run_with_cost(cases, judge, calls=1000, rate=4.0)
+    assert data["projected_monthly_cost_pln"] == pytest.approx(0.002 * 1000 * 4.0)
+    assert _run_with_cost(cases, judge, calls=None, rate=4.0)["projected_monthly_cost_pln"] is None
+    assert _run_with_cost(cases, judge, calls=1000, rate=None)["projected_monthly_cost_pln"] is None
+
+
+class _CostPerCase(ScriptedJudge):
+    """Costs by the post: post 1 0.001, post 2 0.003, post 3 raises (no cost)."""
+
+    def run(self, item):
+        if item.post.text == "post 3":
+            raise RuntimeError("provider down")
+        self.cost_usd = {"post 1": 0.001, "post 2": 0.003}[item.post.text]
+        return super().run(item)
+
+
+def test_projected_monthly_cost_is_the_mean_of_the_priced_cases():
+    cases = [make_case(n, "supports") for n in (1, 2, 3)]
+    data = _run_with_cost(cases, _CostPerCase("supports"), calls=1000, rate=4.0)
+    # mean of 0.001 and 0.003; the errored case has no cost and is left out
+    assert data["projected_monthly_cost_pln"] == pytest.approx(0.002 * 1000 * 4.0)
+    assert data["cost_usd"] == pytest.approx(0.004)
+
+
+def test_evaluate_reads_the_call_volume_from_the_set_manifest(tmp_path):
+    build = BuildInfo(
+        corpus="c",
+        windows=[],
+        embedding_model="e",
+        extraction_model="x",
+        extraction_prompt_version="p",
+        embeddings_cost_usd=0.0,
+        extraction_cost_usd=0.0,
+        query_embeddings_cost_usd=0.0,
+        candidates=1,
+        judge_calls_per_month=1000,
+    )
+    write_manifest(tmp_path, SetManifest(version="v2", build=build))
+    settings = CorroborationSettings(_env_file=None, usd_pln_rate=4.0)
+    judge = ScriptedJudge("supports", cost_usd=0.001)
+    result = _invoke(tmp_path, _deps(judge=judge, settings=settings), "--split", "test")
+    assert result.exit_code == 0, result.output
+    assert "projected cost a month: 4.00 PLN" in result.stdout
+    data = json.loads((tmp_path / "result.json").read_text())
+    assert data["projected_monthly_cost_pln"] == pytest.approx(4.0)
+
+
+def test_evaluate_prints_and_writes_the_verdict(tmp_path):
+    result = _invoke(tmp_path, _deps(), "--split", "test")
+    assert result.exit_code == 0, result.output
+    assert "threshold accuracy: pass" in result.stdout
+    assert "threshold false_support: fail" in result.stdout
+    assert "threshold contradicts_recall: fail" in result.stdout
+    assert "verdict: FAIL" in result.stdout
+    assert "production slice" in result.stdout
+    data = json.loads((tmp_path / "result.json").read_text())
+    assert data["verdict"]["passed"] is False
+    assert "production" in data
+
+
+def test_v2_result_paths():
+    assert default_result_path("test", "a/b", "v1") == DEFAULT_RESULTS_DIR / "test-a-b.json"
+    assert default_result_path("test", "a/b", "v2") == DEFAULT_RESULTS_DIR / "v2" / "test-a-b.json"
+    assert (
+        default_result_path("dev", "a/b", "v2")
+        == DEFAULT_RESULTS_DIR / "v2" / "dev" / "dev-a-b.json"
+    )
+
+
 def _deps(judge=None, models=None, settings=None):
     models = models if models is not None else {}
 
@@ -138,7 +239,7 @@ def test_evaluate_prints_the_metrics_and_writes_the_file(tmp_path):
     assert "false-support rate" in result.stdout
     assert "supports: precision" in result.stdout
     data = json.loads((tmp_path / "result.json").read_text())
-    assert data["model"] == DEFAULT_MODEL
+    assert data["model"] == DEFAULT_JUDGE_MODEL
     assert data["prompt_version"] == PROMPT_VERSION
     assert len(data["outcomes"]) == 1
 
@@ -151,9 +252,9 @@ def test_evaluate_model_runs_the_judge_on_that_model(tmp_path):
     assert json.loads((tmp_path / "result.json").read_text())["model"] == "other/model"
 
 
-def test_evaluate_defaults_to_the_llm_model_the_judge_runs_on(tmp_path):
+def test_evaluate_defaults_to_the_judge_model_setting(tmp_path):
     models: dict = {}
-    settings = CorroborationSettings(_env_file=None, llm_model="env/model")
+    settings = CorroborationSettings(_env_file=None, llm_judge_model="env/model")
     result = _invoke(tmp_path, _deps(models=models, settings=settings))
     assert result.exit_code == 0, result.output
     assert list(models) == ["env/model"]
@@ -187,7 +288,7 @@ def test_evaluate_writes_header_and_guard_refuses(tmp_path):
     assert first.exit_code == 0, first.output
     header = json.loads(output.read_text())["header"]
     assert header["set_version"] == "v1"
-    assert header["model"] == DEFAULT_MODEL
+    assert header["model"] == DEFAULT_JUDGE_MODEL
     assert header["prompt_version"] == PROMPT_VERSION
     assert header["date"] == NOW.isoformat()
     assert header["judge"] is None

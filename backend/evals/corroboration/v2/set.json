@@ -1,0 +1,69 @@
+{
+ "version": "v2",
+ "list_handles": [
+  "bendinnery",
+  "city_xtra",
+  "ffh_hq",
+  "ffscout",
+  "fpl__raptor",
+  "fpl_harry",
+  "fpl_heisenberg",
+  "fpl_rockstar",
+  "fpl_salah",
+  "fplfocal",
+  "fplgeneral",
+  "fplgoat7",
+  "fplmattw",
+  "gafferpresser",
+  "jumpthewave",
+  "leaked_fpl",
+  "letstalk_fpl",
+  "pras_fpl",
+  "teamnewsandtix"
+ ],
+ "prelabels": [
+  {
+   "judge": "claude-opus-5-5 (Claude Code session)",
+   "prompt_version": "corroboration_judge@1",
+   "git_commit": "22c8cb7",
+   "inputs": 51,
+   "imported_at": "2026-10-28T12:00:25.093693Z"
+  },
+  {
+   "judge": "claude-opus-5-5 (Claude Code session)",
+   "prompt_version": "corroboration_judge@1",
+   "git_commit": "22c8cb7",
+   "inputs": 250,
+   "imported_at": "2026-10-28T12:00:26.314899Z"
+  }
+ ],
+ "build": {
+  "corpus": "evals/retrieval/v2/corpus.jsonl",
+  "windows": [
+   {
+    "gameweek": 6,
+    "start": "2026-10-03T10:00:00Z",
+    "end": "2026-10-10T10:00:00Z"
+   },
+   {
+    "gameweek": 7,
+    "start": "2026-10-12T21:00:00Z",
+    "end": "2026-10-17T10:00:00Z"
+   }
+  ],
+  "embedding_model": "openai/text-embedding-3-large",
+  "extraction_model": "openai/gpt-6-luna",
+  "extraction_prompt_version": "extraction@5+link_disambiguation@1+match_check@1",
+  "embeddings_cost_usd": 0.019231549999999965,
+  "extraction_cost_usd": 0.3763625000000001,
+  "query_embeddings_cost_usd": 0.00010556000000000027,
+  "candidates": 2765,
+  "judge_calls_per_month": 8516.0
+ },
+ "selection": {
+  "seed": 19,
+  "size": 55,
+  "pool": 250,
+  "min_contradicts": 12
+ }
+}

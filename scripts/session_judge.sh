@@ -11,7 +11,8 @@
 # the next run calls the judge again for that input only.
 # SCHEMA is the verdict format: presser (default) {"claims": [{"claim", "label"}]}, or
 # retrieval {"labels": {"P1": true, ...}} with one boolean for each [Pn] ID in the input, or
-# extraction {"events": [{"player", "team", "event_type", "certainty"}], "other_match_lineup": bool}.
+# extraction {"events": [{"player", "team", "event_type", "certainty"}], "other_match_lineup": bool},
+# or corroboration {"label": "supports" | "contradicts" | "related" | "unrelated"}.
 # EFFORT, when given, is passed to `claude --effort`.
 # The judges count against the Claude subscription: about 15-30k tokens per item.
 set -euo pipefail
@@ -33,8 +34,11 @@ case "$SCHEMA" in
     extraction)
         FORMAT='Reply with JSON only, no prose and no code fence: {"events": [{"player": "...", "team": "..." | null, "event_type": "out" | "doubt" | "benched" | "confirmed_starter", "certainty": "confirmed" | "likely" | "rumour"}], "other_match_lineup": true | false}'
         ;;
+    corroboration)
+        FORMAT='Reply with JSON only, no prose and no code fence: {"label": "supports" | "contradicts" | "related" | "unrelated"}'
+        ;;
     *)
-        echo "unknown schema: $SCHEMA (presser, retrieval or extraction)" >&2
+        echo "unknown schema: $SCHEMA (presser, retrieval, extraction or corroboration)" >&2
         exit 2
         ;;
 esac
@@ -77,6 +81,9 @@ try:
     verdict = json.loads(text)
     if schema == "presser":
         assert all(c["label"] in ("supported", "unsupported") for c in verdict["claims"])
+    elif schema == "corroboration":
+        assert isinstance(verdict, dict) and set(verdict) == {"label"}, "keys"
+        assert verdict["label"] in ("supports", "contradicts", "related", "unrelated"), "label"
     elif schema == "extraction":
         assert isinstance(verdict, dict) and set(verdict) == {"events", "other_match_lineup"}, "keys"
         assert isinstance(verdict["other_match_lineup"], bool), "other_match_lineup is not a boolean"

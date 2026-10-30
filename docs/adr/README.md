@@ -7,3 +7,7 @@ alternatives worth explaining also gets an ADR here, and its row links to it.
 - Sections: Status, Context, Options, Decision, Consequences.
 - Status: `accepted`, or `superseded by NNNN`. An accepted ADR is not rewritten; a change
   of mind is a new ADR that supersedes it.
+
+## Index
+
+- [0011 — The corroboration judge's own model and its default](0011-corroboration-judge-model.md)
