@@ -11,7 +11,7 @@ dependencies = [
     "pydantic-settings==2.15.0",
     "typer==0.27.2",
     "twscrape==0.20.1",
-    "langgraph==1.2.12",
+    "langgraph==1.2.14",
     "langchain-core==1.6.5",
     "langfuse==4.15.6",
     "langchain-openrouter==0.2.9",
