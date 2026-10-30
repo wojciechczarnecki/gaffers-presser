@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-28"
   - "spec-ready — 2026-10-28"
   - "plan-draft — 2026-10-28"
   - "plan-approved — 2026-10-28"
   - "implemented — 2026-10-30"
+  - "done — 2026-10-30"
 metrics:
   started_at: 2026-10-28T10:42
   plan_steps: 15
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 5
   findings_accepted: 11
   findings_rejected: 0
+  cost_plan_cents: 349
+  cost_plan_review_cents: 121
+  cost_implement_cents: 1152
+  cost_final_review_cents: 826
+  finished_at: 2026-10-30T19:12
 ---
 
 # SPEC 019 — Corroboration evaluation v2: a reviewed judge set, contradictions and a pass threshold
