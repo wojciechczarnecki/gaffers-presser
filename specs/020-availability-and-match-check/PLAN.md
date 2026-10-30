@@ -459,7 +459,7 @@ session scratchpad (never in the repository).
       Automatic verification:
       `uv run pytest -q tests/alerts/test_end_to_end.py`, then Verify.
 
-- [ ] 11. **Breaking alerts for a reversing `available` post only (AC15).** Files:
+- [x] 11. **Breaking alerts for a reversing `available` post only (AC15).** Files: `iterations: 0`
       `app/alerts/breaking.py` (design item 7).
 
       Tests first, in `tests/alerts/test_breaking.py`:
