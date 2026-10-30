@@ -1,0 +1,775 @@
+{
+  "model": "qwen/qwen3.8-flash",
+  "prompt_version": "corroboration_judge@1",
+  "split": "test",
+  "date": "2026-10-30T16:05:19.882336+00:00",
+  "include_unreviewed": false,
+  "cost_usd": 0.010195,
+  "metrics": {
+    "cases": 75,
+    "errored": 0,
+    "accuracy": 0.6533333333333333,
+    "per_label": {
+      "supports": {
+        "precision": 0.4666666666666667,
+        "recall": 0.8235294117647058,
+        "expected": 17,
+        "predicted": 30
+      },
+      "contradicts": {
+        "precision": 0.5555555555555556,
+        "recall": 0.8333333333333334,
+        "expected": 6,
+        "predicted": 9
+      },
+      "related": {
+        "precision": 0.2,
+        "recall": 0.05,
+        "expected": 20,
+        "predicted": 5
+      },
+      "unrelated": {
+        "precision": 0.9354838709677419,
+        "recall": 0.90625,
+        "expected": 32,
+        "predicted": 31
+      }
+    },
+    "false_support": {
+      "numerator": 16,
+      "denominator": 58,
+      "rate": 0.27586206896551724
+    }
+  },
+  "production": {
+    "cases": 61,
+    "errored": 0,
+    "accuracy": 0.6885245901639344,
+    "per_label": {
+      "supports": {
+        "precision": 0.43478260869565216,
+        "recall": 0.8333333333333334,
+        "expected": 12,
+        "predicted": 23
+      },
+      "contradicts": {
+        "precision": 0.6,
+        "recall": 0.75,
+        "expected": 4,
+        "predicted": 5
+      },
+      "related": {
+        "precision": 0.3333333333333333,
+        "recall": 0.06666666666666667,
+        "expected": 15,
+        "predicted": 3
+      },
+      "unrelated": {
+        "precision": 0.9333333333333333,
+        "recall": 0.9333333333333333,
+        "expected": 30,
+        "predicted": 30
+      }
+    },
+    "false_support": {
+      "numerator": 13,
+      "denominator": 49,
+      "rate": 0.2653061224489796
+    }
+  },
+  "verdict": {
+    "accuracy": false,
+    "false_support": false,
+    "contradicts_recall": true,
+    "no_errors": true,
+    "passed": false
+  },
+  "projected_monthly_cost_pln": 4.456791826666666,
+  "outcomes": [
+    {
+      "id": "jc-13-2104158837540622748-2103958805142978873",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 773,
+      "output_tokens": 7,
+      "cost_usd": 0.00011924
+    },
+    {
+      "id": "jc-13-2104158837540622748-2104663854315958314",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 755,
+      "output_tokens": 7,
+      "cost_usd": 0.00011654
+    },
+    {
+      "id": "jc-13-2104158837540622748-2104665370741326220",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 755,
+      "output_tokens": 7,
+      "cost_usd": 0.00011654
+    },
+    {
+      "id": "jc-154-2104158837540622748-2104571410026791410",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 815,
+      "output_tokens": 12,
+      "cost_usd": 0.00012789
+    },
+    {
+      "id": "jc-165-2104158837540622748-2104646876389650860",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 817,
+      "output_tokens": 6,
+      "cost_usd": 0.00012537
+    },
+    {
+      "id": "jc-25-2104124182170566816-2104121110841139241",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 898,
+      "output_tokens": 7,
+      "cost_usd": 0.00013799
+    },
+    {
+      "id": "jc-26-2104177542324273565-2103436877860593885",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 797,
+      "output_tokens": 6,
+      "cost_usd": 0.00012236999999999998
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104124182170566816",
+      "expected": "related",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 884,
+      "output_tokens": 8,
+      "cost_usd": 0.00013636
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104158837540622748",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 837,
+      "output_tokens": 9,
+      "cost_usd": 0.00012978
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104487542066413950",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 887,
+      "output_tokens": 7,
+      "cost_usd": 0.00013633999999999999
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104244495927972091",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 776,
+      "output_tokens": 11,
+      "cost_usd": 0.00012156999999999999
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104270786454577468",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 764,
+      "output_tokens": 7,
+      "cost_usd": 0.00011789
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104511766172467564",
+      "expected": "related",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 789,
+      "output_tokens": 12,
+      "cost_usd": 0.00012398999999999998
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104612936534655146",
+      "expected": "related",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 818,
+      "output_tokens": 8,
+      "cost_usd": 0.00012646
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104158837540622748",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 836,
+      "output_tokens": 11,
+      "cost_usd": 0.00013057000000000002
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104173076380303608",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 828,
+      "output_tokens": 11,
+      "cost_usd": 0.00012937
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104511766172467564",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 807,
+      "output_tokens": 6,
+      "cost_usd": 0.00012387
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104516939213095099",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 839,
+      "output_tokens": 6,
+      "cost_usd": 0.00012867
+    },
+    {
+      "id": "jc-397-2104158837540622748-2104462614600302750",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 792,
+      "output_tokens": 7,
+      "cost_usd": 0.00012209
+    },
+    {
+      "id": "jc-397-2104158837540622748-2104600493083529570",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 902,
+      "output_tokens": 6,
+      "cost_usd": 0.00013812
+    },
+    {
+      "id": "jc-415-2104266398126014931-2104523734438588623",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 824,
+      "output_tokens": 6,
+      "cost_usd": 0.00012642
+    },
+    {
+      "id": "jc-415-2104266398126014931-2104673537697186283",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 775,
+      "output_tokens": 7,
+      "cost_usd": 0.00011954
+    },
+    {
+      "id": "jc-423-2103809666761531519-2104664507385799105",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 698,
+      "output_tokens": 12,
+      "cost_usd": 0.00011034
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104158837540622748",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 840,
+      "output_tokens": 5,
+      "cost_usd": 0.00012835
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104175133694804334",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 933,
+      "output_tokens": 11,
+      "cost_usd": 0.00014512
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104531353307844990",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1032,
+      "output_tokens": 9,
+      "cost_usd": 0.00015903
+    },
+    {
+      "id": "jc-501-2103771262233284892-2104665908933489005",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 809,
+      "output_tokens": 7,
+      "cost_usd": 0.00012464
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103771262233284892",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 873,
+      "output_tokens": 6,
+      "cost_usd": 0.00013377
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103809666761531519",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 764,
+      "output_tokens": 7,
+      "cost_usd": 0.00011789
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103955750015905855",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 819,
+      "output_tokens": 7,
+      "cost_usd": 0.00012613999999999998
+    },
+    {
+      "id": "jc-532-2104158837540622748-2104648476038430744",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 859,
+      "output_tokens": 11,
+      "cost_usd": 0.00013402
+    },
+    {
+      "id": "jc-533-2103771262233284892-2104584617491669030",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 828,
+      "output_tokens": 7,
+      "cost_usd": 0.00012749
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104273037319454995",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 842,
+      "output_tokens": 7,
+      "cost_usd": 0.00012958999999999998
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104663313527472189",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 812,
+      "output_tokens": 7,
+      "cost_usd": 0.00012508999999999998
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104671002722529406",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 811,
+      "output_tokens": 10,
+      "cost_usd": 0.00012634999999999998
+    },
+    {
+      "id": "jc-552-2104158837540622748-2104452956900766117",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 849,
+      "output_tokens": 12,
+      "cost_usd": 0.00013299
+    },
+    {
+      "id": "jc-112-2108549687368118553-2107062850434830510",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 868,
+      "output_tokens": 8,
+      "cost_usd": 0.00013396
+    },
+    {
+      "id": "jc-112-2108549687368118553-2107800387596026127",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 850,
+      "output_tokens": 6,
+      "cost_usd": 0.00013031999999999999
+    },
+    {
+      "id": "jc-112-2108549687368118553-2108542659014885719",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 841,
+      "output_tokens": 6,
+      "cost_usd": 0.00012896999999999998
+    },
+    {
+      "id": "jc-116-2108486798447907022-2108470513550918135",
+      "expected": "contradicts",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 852,
+      "output_tokens": 6,
+      "cost_usd": 0.00013062
+    },
+    {
+      "id": "jc-116-2108498273572958546-2108486798447907022",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 930,
+      "output_tokens": 6,
+      "cost_usd": 0.00014232
+    },
+    {
+      "id": "jc-121-2111044071879774566-2111030355020988582",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 802,
+      "output_tokens": 6,
+      "cost_usd": 0.00012312
+    },
+    {
+      "id": "jc-123-2108486798447907022-2108498273572958546",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 925,
+      "output_tokens": 8,
+      "cost_usd": 0.00014251000000000002
+    },
+    {
+      "id": "jc-131-2108540871633240234-2108541502779482589",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 968,
+      "output_tokens": 5,
+      "cost_usd": 0.00014755
+    },
+    {
+      "id": "jc-131-2108626432020922720-2107412084627562951",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 930,
+      "output_tokens": 7,
+      "cost_usd": 0.00014279
+    },
+    {
+      "id": "jc-131-2108626432020922720-2108540871633240234",
+      "expected": "unrelated",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 986,
+      "output_tokens": 5,
+      "cost_usd": 0.00015025
+    },
+    {
+      "id": "jc-142-2106727074216194119-2108543739383697682",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 958,
+      "output_tokens": 11,
+      "cost_usd": 0.00014887
+    },
+    {
+      "id": "jc-154-2108848035346170298-2108543739383697682",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 981,
+      "output_tokens": 13,
+      "cost_usd": 0.00015326
+    },
+    {
+      "id": "jc-162-2111162293786644624-2110119478176411773",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 821,
+      "output_tokens": 7,
+      "cost_usd": 0.00012644
+    },
+    {
+      "id": "jc-165-2108823848590168506-2108814872116933035",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 804,
+      "output_tokens": 6,
+      "cost_usd": 0.00012342
+    },
+    {
+      "id": "jc-165-2108823848590168506-2108860071971074253",
+      "expected": "unrelated",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 797,
+      "output_tokens": 5,
+      "cost_usd": 0.0001219
+    },
+    {
+      "id": "jc-208-2108539588436484566-2108176159230001462",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 797,
+      "output_tokens": 7,
+      "cost_usd": 0.00012283999999999998
+    },
+    {
+      "id": "jc-242-2111108163999088993-2111090726515695817",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 880,
+      "output_tokens": 7,
+      "cost_usd": 0.00013529000000000001
+    },
+    {
+      "id": "jc-256-2108530983498617062-2108483638362849456",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1139,
+      "output_tokens": 6,
+      "cost_usd": 0.00017367
+    },
+    {
+      "id": "jc-256-2108530983498617062-2108501706162033067",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1150,
+      "output_tokens": 11,
+      "cost_usd": 0.00017767
+    },
+    {
+      "id": "jc-266-2108527975197209024-2107387924777988161",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 815,
+      "output_tokens": 7,
+      "cost_usd": 0.00012554
+    },
+    {
+      "id": "jc-278-2110730855920398431-2110723663842750552",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 940,
+      "output_tokens": 11,
+      "cost_usd": 0.00014617
+    },
+    {
+      "id": "jc-31-2108593130924650895-2108846020696412396",
+      "expected": "unrelated",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 889,
+      "output_tokens": 8,
+      "cost_usd": 0.00013711
+    },
+    {
+      "id": "jc-362-2108116204552433785-2108545570163831073",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 771,
+      "output_tokens": 8,
+      "cost_usd": 0.00011941
+    },
+    {
+      "id": "jc-367-2110696130849771666-2110679665983545539",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 808,
+      "output_tokens": 12,
+      "cost_usd": 0.00012684
+    },
+    {
+      "id": "jc-368-2108560219475189929-2108559117467947221",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1401,
+      "output_tokens": 11,
+      "cost_usd": 0.00021532
+    },
+    {
+      "id": "jc-372-2108560219475189929-2108559117467947221",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1399,
+      "output_tokens": 9,
+      "cost_usd": 0.00021408
+    },
+    {
+      "id": "jc-391-2111395893308223653-2111149530339254444",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 772,
+      "output_tokens": 7,
+      "cost_usd": 0.00011909
+    },
+    {
+      "id": "jc-415-2107062850434830510-2108192513614029180",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 775,
+      "output_tokens": 7,
+      "cost_usd": 0.00011954
+    },
+    {
+      "id": "jc-429-2108626432020922720-2108540871633240234",
+      "expected": "related",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 985,
+      "output_tokens": 8,
+      "cost_usd": 0.00015151
+    },
+    {
+      "id": "jc-503-2107800387596026127-2108542659014885719",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 772,
+      "output_tokens": 8,
+      "cost_usd": 0.00011956
+    },
+    {
+      "id": "jc-503-2108549687368118553-2106869848278196397",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 880,
+      "output_tokens": 7,
+      "cost_usd": 0.00013529000000000001
+    },
+    {
+      "id": "jc-503-2108549687368118553-2107032550912782624",
+      "expected": "related",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 911,
+      "output_tokens": 7,
+      "cost_usd": 0.00013994
+    },
+    {
+      "id": "jc-51-2110029595323818007-2111090726515695817",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1097,
+      "output_tokens": 11,
+      "cost_usd": 0.00016972000000000002
+    },
+    {
+      "id": "jc-515-2108549687368118553-2108556488256127300",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 882,
+      "output_tokens": 11,
+      "cost_usd": 0.00013747
+    },
+    {
+      "id": "jc-556-2110729561813995584-2109887018155061260",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 973,
+      "output_tokens": 7,
+      "cost_usd": 0.00014924
+    },
+    {
+      "id": "jc-652-2108498273572958546-2108547176242561432",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 957,
+      "output_tokens": 7,
+      "cost_usd": 0.00014684
+    },
+    {
+      "id": "jc-69-2107074116331196568-2108176154792259813",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 937,
+      "output_tokens": 11,
+      "cost_usd": 0.00014572
+    },
+    {
+      "id": "jc-69-2108593130924650895-2108176154792259813",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1025,
+      "output_tokens": 9,
+      "cost_usd": 0.00015798
+    },
+    {
+      "id": "jc-70-2108593130924650895-2108176424423084294",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1066,
+      "output_tokens": 11,
+      "cost_usd": 0.00016507000000000002
+    }
+  ],
+  "header": {
+    "set_version": "v2",
+    "model": "qwen/qwen3.8-flash",
+    "prompt_version": "corroboration_judge@1",
+    "reasoning_effort": "none",
+    "judge": null,
+    "date": "2026-10-30T16:07:25.816972+00:00",
+    "git_commit": "d070ed7a36ed7e00e0fb26c46e31d80ad069d496",
+    "git_dirty": false
+  }
+}
