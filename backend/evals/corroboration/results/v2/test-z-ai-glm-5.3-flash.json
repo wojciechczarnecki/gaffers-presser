@@ -1,0 +1,775 @@
+{
+  "model": "z-ai/glm-5.3-flash",
+  "prompt_version": "corroboration_judge@1",
+  "split": "test",
+  "date": "2026-10-30T16:07:27.275425+00:00",
+  "include_unreviewed": false,
+  "cost_usd": 0.01271655,
+  "metrics": {
+    "cases": 75,
+    "errored": 0,
+    "accuracy": 0.68,
+    "per_label": {
+      "supports": {
+        "precision": 0.5,
+        "recall": 0.7058823529411765,
+        "expected": 17,
+        "predicted": 24
+      },
+      "contradicts": {
+        "precision": 0.6666666666666666,
+        "recall": 0.6666666666666666,
+        "expected": 6,
+        "predicted": 6
+      },
+      "related": {
+        "precision": 0.4444444444444444,
+        "recall": 0.4,
+        "expected": 20,
+        "predicted": 18
+      },
+      "unrelated": {
+        "precision": 1.0,
+        "recall": 0.84375,
+        "expected": 32,
+        "predicted": 27
+      }
+    },
+    "false_support": {
+      "numerator": 12,
+      "denominator": 58,
+      "rate": 0.20689655172413793
+    }
+  },
+  "production": {
+    "cases": 61,
+    "errored": 0,
+    "accuracy": 0.6885245901639344,
+    "per_label": {
+      "supports": {
+        "precision": 0.4444444444444444,
+        "recall": 0.6666666666666666,
+        "expected": 12,
+        "predicted": 18
+      },
+      "contradicts": {
+        "precision": 0.6,
+        "recall": 0.75,
+        "expected": 4,
+        "predicted": 5
+      },
+      "related": {
+        "precision": 0.4166666666666667,
+        "recall": 0.3333333333333333,
+        "expected": 15,
+        "predicted": 12
+      },
+      "unrelated": {
+        "precision": 1.0,
+        "recall": 0.8666666666666667,
+        "expected": 30,
+        "predicted": 26
+      }
+    },
+    "false_support": {
+      "numerator": 10,
+      "denominator": 49,
+      "rate": 0.20408163265306123
+    }
+  },
+  "verdict": {
+    "accuracy": false,
+    "false_support": false,
+    "contradicts_recall": false,
+    "no_errors": true,
+    "passed": false
+  },
+  "projected_monthly_cost_pln": 5.5590991764,
+  "outcomes": [
+    {
+      "id": "jc-13-2104158837540622748-2103958805142978873",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 844,
+      "output_tokens": 233,
+      "cost_usd": 0.0002431
+    },
+    {
+      "id": "jc-13-2104158837540622748-2104663854315958314",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 788,
+      "output_tokens": 24,
+      "cost_usd": 0.0001302
+    },
+    {
+      "id": "jc-13-2104158837540622748-2104665370741326220",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 826,
+      "output_tokens": 176,
+      "cost_usd": 0.0002119
+    },
+    {
+      "id": "jc-154-2104158837540622748-2104571410026791410",
+      "expected": "unrelated",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 847,
+      "output_tokens": 12,
+      "cost_usd": 0.00013305
+    },
+    {
+      "id": "jc-165-2104158837540622748-2104646876389650860",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 849,
+      "output_tokens": 108,
+      "cost_usd": 0.00018135
+    },
+    {
+      "id": "jc-25-2104124182170566816-2104121110841139241",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 921,
+      "output_tokens": 13,
+      "cost_usd": 0.00014465
+    },
+    {
+      "id": "jc-26-2104177542324273565-2103436877860593885",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 825,
+      "output_tokens": 44,
+      "cost_usd": 0.00014575
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104124182170566816",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 905,
+      "output_tokens": 93,
+      "cost_usd": 0.00018224999999999998
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104158837540622748",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 905,
+      "output_tokens": 188,
+      "cost_usd": 0.00022974999999999997
+    },
+    {
+      "id": "jc-26-2104177542324273565-2104487542066413950",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 908,
+      "output_tokens": 13,
+      "cost_usd": 0.00014269999999999997
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104244495927972091",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 807,
+      "output_tokens": 179,
+      "cost_usd": 0.00021055
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104270786454577468",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 795,
+      "output_tokens": 34,
+      "cost_usd": 0.00013625
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104511766172467564",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 815,
+      "output_tokens": 100,
+      "cost_usd": 0.00017224999999999999
+    },
+    {
+      "id": "jc-367-2104262624183722322-2104612936534655146",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 885,
+      "output_tokens": 259,
+      "cost_usd": 0.00026225
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104158837540622748",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 904,
+      "output_tokens": 285,
+      "cost_usd": 0.0002781
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104173076380303608",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 855,
+      "output_tokens": 46,
+      "cost_usd": 0.00015125
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104511766172467564",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 831,
+      "output_tokens": 12,
+      "cost_usd": 0.00013065
+    },
+    {
+      "id": "jc-379-2104177542324273565-2104516939213095099",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 866,
+      "output_tokens": 12,
+      "cost_usd": 0.0001359
+    },
+    {
+      "id": "jc-397-2104158837540622748-2104462614600302750",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 864,
+      "output_tokens": 113,
+      "cost_usd": 0.00018609999999999997
+    },
+    {
+      "id": "jc-397-2104158837540622748-2104600493083529570",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 922,
+      "output_tokens": 47,
+      "cost_usd": 0.0001618
+    },
+    {
+      "id": "jc-415-2104266398126014931-2104523734438588623",
+      "expected": "supports",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 851,
+      "output_tokens": 81,
+      "cost_usd": 0.00016815
+    },
+    {
+      "id": "jc-415-2104266398126014931-2104673537697186283",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 802,
+      "output_tokens": 13,
+      "cost_usd": 0.0001268
+    },
+    {
+      "id": "jc-423-2103809666761531519-2104664507385799105",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 729,
+      "output_tokens": 20,
+      "cost_usd": 0.00011935
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104158837540622748",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 870,
+      "output_tokens": 12,
+      "cost_usd": 0.0001365
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104175133694804334",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 963,
+      "output_tokens": 12,
+      "cost_usd": 0.00015045
+    },
+    {
+      "id": "jc-426-2104177542324273565-2104531353307844990",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1040,
+      "output_tokens": 73,
+      "cost_usd": 0.00019249999999999996
+    },
+    {
+      "id": "jc-501-2103771262233284892-2104665908933489005",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 831,
+      "output_tokens": 21,
+      "cost_usd": 0.00013515
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103771262233284892",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 898,
+      "output_tokens": 44,
+      "cost_usd": 0.0001567
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103809666761531519",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 797,
+      "output_tokens": 13,
+      "cost_usd": 0.00012605
+    },
+    {
+      "id": "jc-532-2104158837540622748-2103955750015905855",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 846,
+      "output_tokens": 38,
+      "cost_usd": 0.0001459
+    },
+    {
+      "id": "jc-532-2104158837540622748-2104648476038430744",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 891,
+      "output_tokens": 31,
+      "cost_usd": 0.00014915
+    },
+    {
+      "id": "jc-533-2103771262233284892-2104584617491669030",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 850,
+      "output_tokens": 20,
+      "cost_usd": 0.00013749999999999998
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104273037319454995",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 865,
+      "output_tokens": 13,
+      "cost_usd": 0.00013624999999999998
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104663313527472189",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 834,
+      "output_tokens": 16,
+      "cost_usd": 0.0001331
+    },
+    {
+      "id": "jc-536-2103771262233284892-2104671002722529406",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 833,
+      "output_tokens": 53,
+      "cost_usd": 0.00015145
+    },
+    {
+      "id": "jc-552-2104158837540622748-2104452956900766117",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 881,
+      "output_tokens": 13,
+      "cost_usd": 0.00013864999999999998
+    },
+    {
+      "id": "jc-112-2108549687368118553-2107062850434830510",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 897,
+      "output_tokens": 44,
+      "cost_usd": 0.00015654999999999998
+    },
+    {
+      "id": "jc-112-2108549687368118553-2107800387596026127",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 879,
+      "output_tokens": 57,
+      "cost_usd": 0.00016035000000000002
+    },
+    {
+      "id": "jc-112-2108549687368118553-2108542659014885719",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 907,
+      "output_tokens": 124,
+      "cost_usd": 0.00019805000000000002
+    },
+    {
+      "id": "jc-116-2108486798447907022-2108470513550918135",
+      "expected": "contradicts",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 880,
+      "output_tokens": 12,
+      "cost_usd": 0.00013800000000000002
+    },
+    {
+      "id": "jc-116-2108498273572958546-2108486798447907022",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 994,
+      "output_tokens": 154,
+      "cost_usd": 0.00022610000000000002
+    },
+    {
+      "id": "jc-121-2111044071879774566-2111030355020988582",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 827,
+      "output_tokens": 12,
+      "cost_usd": 0.00013005000000000002
+    },
+    {
+      "id": "jc-123-2108486798447907022-2108498273572958546",
+      "expected": "contradicts",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 951,
+      "output_tokens": 12,
+      "cost_usd": 0.00014865
+    },
+    {
+      "id": "jc-131-2108540871633240234-2108541502779482589",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 992,
+      "output_tokens": 100,
+      "cost_usd": 0.0001988
+    },
+    {
+      "id": "jc-131-2108626432020922720-2107412084627562951",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 937,
+      "output_tokens": 13,
+      "cost_usd": 0.00014705
+    },
+    {
+      "id": "jc-131-2108626432020922720-2108540871633240234",
+      "expected": "unrelated",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1004,
+      "output_tokens": 56,
+      "cost_usd": 0.00017859999999999998
+    },
+    {
+      "id": "jc-142-2106727074216194119-2108543739383697682",
+      "expected": "related",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 984,
+      "output_tokens": 14,
+      "cost_usd": 0.00015460000000000002
+    },
+    {
+      "id": "jc-154-2108848035346170298-2108543739383697682",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 1045,
+      "output_tokens": 266,
+      "cost_usd": 0.00028974999999999997
+    },
+    {
+      "id": "jc-162-2111162293786644624-2110119478176411773",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 844,
+      "output_tokens": 13,
+      "cost_usd": 0.00013309999999999998
+    },
+    {
+      "id": "jc-165-2108823848590168506-2108814872116933035",
+      "expected": "related",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 832,
+      "output_tokens": 12,
+      "cost_usd": 0.0001308
+    },
+    {
+      "id": "jc-165-2108823848590168506-2108860071971074253",
+      "expected": "unrelated",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 862,
+      "output_tokens": 144,
+      "cost_usd": 0.00020130000000000001
+    },
+    {
+      "id": "jc-208-2108539588436484566-2108176159230001462",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 824,
+      "output_tokens": 22,
+      "cost_usd": 0.0001346
+    },
+    {
+      "id": "jc-242-2111108163999088993-2111090726515695817",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 906,
+      "output_tokens": 31,
+      "cost_usd": 0.0001514
+    },
+    {
+      "id": "jc-256-2108530983498617062-2108483638362849456",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1145,
+      "output_tokens": 59,
+      "cost_usd": 0.00020124999999999999
+    },
+    {
+      "id": "jc-256-2108530983498617062-2108501706162033067",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1155,
+      "output_tokens": 148,
+      "cost_usd": 0.00024724999999999997
+    },
+    {
+      "id": "jc-266-2108527975197209024-2107387924777988161",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 836,
+      "output_tokens": 13,
+      "cost_usd": 0.0001319
+    },
+    {
+      "id": "jc-278-2110730855920398431-2110723663842750552",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 968,
+      "output_tokens": 32,
+      "cost_usd": 0.00016120000000000002
+    },
+    {
+      "id": "jc-31-2108593130924650895-2108846020696412396",
+      "expected": "unrelated",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 918,
+      "output_tokens": 114,
+      "cost_usd": 0.0001947
+    },
+    {
+      "id": "jc-362-2108116204552433785-2108545570163831073",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 803,
+      "output_tokens": 21,
+      "cost_usd": 0.00013095
+    },
+    {
+      "id": "jc-367-2110696130849771666-2110679665983545539",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 868,
+      "output_tokens": 163,
+      "cost_usd": 0.0002117
+    },
+    {
+      "id": "jc-368-2108560219475189929-2108559117467947221",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1407,
+      "output_tokens": 12,
+      "cost_usd": 0.00021705000000000002
+    },
+    {
+      "id": "jc-372-2108560219475189929-2108559117467947221",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1405,
+      "output_tokens": 85,
+      "cost_usd": 0.00025325
+    },
+    {
+      "id": "jc-391-2111395893308223653-2111149530339254444",
+      "expected": "unrelated",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 799,
+      "output_tokens": 52,
+      "cost_usd": 0.00014585
+    },
+    {
+      "id": "jc-415-2107062850434830510-2108192513614029180",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 806,
+      "output_tokens": 13,
+      "cost_usd": 0.00012739999999999998
+    },
+    {
+      "id": "jc-429-2108626432020922720-2108540871633240234",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 1003,
+      "output_tokens": 12,
+      "cost_usd": 0.00015645
+    },
+    {
+      "id": "jc-503-2107800387596026127-2108542659014885719",
+      "expected": "contradicts",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 801,
+      "output_tokens": 31,
+      "cost_usd": 0.00013565
+    },
+    {
+      "id": "jc-503-2108549687368118553-2106869848278196397",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 907,
+      "output_tokens": 24,
+      "cost_usd": 0.00014805
+    },
+    {
+      "id": "jc-503-2108549687368118553-2107032550912782624",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 937,
+      "output_tokens": 127,
+      "cost_usd": 0.00020405
+    },
+    {
+      "id": "jc-51-2110029595323818007-2111090726515695817",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1118,
+      "output_tokens": 117,
+      "cost_usd": 0.00022620000000000002
+    },
+    {
+      "id": "jc-515-2108549687368118553-2108556488256127300",
+      "expected": "related",
+      "predicted": "contradicts",
+      "error_class": null,
+      "input_tokens": 910,
+      "output_tokens": 67,
+      "cost_usd": 0.00016999999999999999
+    },
+    {
+      "id": "jc-556-2110729561813995584-2109887018155061260",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 991,
+      "output_tokens": 13,
+      "cost_usd": 0.00015514999999999998
+    },
+    {
+      "id": "jc-652-2108498273572958546-2108547176242561432",
+      "expected": "unrelated",
+      "predicted": "unrelated",
+      "error_class": null,
+      "input_tokens": 983,
+      "output_tokens": 13,
+      "cost_usd": 0.00015394999999999997
+    },
+    {
+      "id": "jc-69-2107074116331196568-2108176154792259813",
+      "expected": "related",
+      "predicted": "related",
+      "error_class": null,
+      "input_tokens": 963,
+      "output_tokens": 77,
+      "cost_usd": 0.00018294999999999997
+    },
+    {
+      "id": "jc-69-2108593130924650895-2108176154792259813",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1088,
+      "output_tokens": 104,
+      "cost_usd": 0.00021519999999999997
+    },
+    {
+      "id": "jc-70-2108593130924650895-2108176424423084294",
+      "expected": "supports",
+      "predicted": "supports",
+      "error_class": null,
+      "input_tokens": 1088,
+      "output_tokens": 64,
+      "cost_usd": 0.00019519999999999997
+    }
+  ],
+  "header": {
+    "set_version": "v2",
+    "model": "z-ai/glm-5.3-flash",
+    "prompt_version": "corroboration_judge@1",
+    "reasoning_effort": "low",
+    "judge": null,
+    "date": "2026-10-30T16:09:54.163940+00:00",
+    "git_commit": "18bdbda6275d2281fa0df792f7e536e84bc00f09",
+    "git_dirty": false
+  }
+}
