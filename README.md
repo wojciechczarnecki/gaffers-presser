@@ -254,22 +254,33 @@ counts as its original author), flags a reversal and grades the anchor `high`, `
 `OPENROUTER_API_KEY`; without it the result uses the extracted claims only and says so. Times
 are `Europe/Warsaw`; `--at` replays a past moment and `--new-since` marks what is new to the
 reader. Each run is one Langfuse trace when the Langfuse keys are set. The judge has its own
-evaluation set in `backend/evals/corroboration/v1/`, pre-labelled by a model and waiting for the
-owner's review (`review` needs no database or key); none of these commands is run by `pytest`:
+evaluation set v2 in `backend/evals/corroboration/v2/` (106 cases, reviewed one by one by the
+owner; results in [the report](docs/reports/corroboration-eval-v2.md), choice in
+[ADR 0011](docs/adr/0011-corroboration-judge-model.md)). `review` and `evaluate` need no database;
+`build-scratch` and `build-candidates` run only against a throwaway database (`--database-url`;
+they refuse port 5432 and the configured `DATABASE_URL`); none of these commands is run by `pytest`:
 
 ```bash
 uv run python -m app.corroboration Isak --at 2026-09-29T18:00       # a name or an FPL ID
 uv run python -m app.corroboration Isak --since 2026-09-25T00:00 --new-since 2026-09-29T12:00
 uv run python -m app.corroboration.evaluation build-cases           # set v1 from the stored posts
-uv run python -m app.corroboration.evaluation review --split test   # label each post with keys 1-4 (s skip, b back, q quit)
-uv run python -m app.corroboration.evaluation evaluate --split test --model openai/gpt-6-luna
+uv run python -m app.corroboration.evaluation build-scratch --database-url URL      # v2: corpus, embeddings, extraction
+uv run python -m app.corroboration.evaluation build-candidates --database-url URL --gameweek 6 --gameweek 7 --out FILE
+uv run python -m app.corroboration.evaluation export-judge-inputs --candidates FILE --out DIR
+uv run python -m app.corroboration.evaluation estimate --export DIR
+uv run python -m app.corroboration.evaluation import-judge --export DIR --set evals/corroboration/v2 --judge-model NAME
+uv run python -m app.corroboration.evaluation review                # keys 1-4, a accept, s skip, b back, q quit
+uv run python -m app.corroboration.evaluation agreement             # the owner's labels against each pre-label
+uv run python -m app.corroboration.evaluation evaluate --split test --model qwen/qwen3.8-flash
 ```
 
-`evaluate` reports accuracy, per-label precision and recall and the false-support rate, counts
-reviewed cases only unless `--include-unreviewed` is given, and writes
-`backend/evals/corroboration/results/<split>-<model>.json`. Without `--model` it evaluates the
+`evaluate` reports accuracy, per-label precision and recall, the false-support rate, the
+production slice (`has_player_event: false`), a pass or fail per threshold and the cost a month,
+counts reviewed cases only unless `--include-unreviewed` is given, and writes
+`backend/evals/corroboration/results/v2/test-<model>.json`. Without `--model` it evaluates the
 model the judge runs on: `LLM_JUDGE_MODEL` when set, the default judge model
-(`qwen/qwen3.8-flash`, ADR 0011) otherwise.
+(`qwen/qwen3.8-flash`, ADR 0011) otherwise. No candidate passed the threshold on set v2; the
+default is the best by the rule, not a model proven good enough.
 
 Alerts — before each deadline the worker e-mails team news for the players that matter to the
 league (league-owned, widely owned or trending): a digest at 20:00 Warsaw time the day before, news at T-60 and a

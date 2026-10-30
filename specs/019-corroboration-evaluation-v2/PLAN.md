@@ -709,7 +709,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/test_docs.py tests/corroboration/evaluation/test_results_files.py`,
       then Verify.
-- [ ] 14. **Documents (AC15, AC16).**
+- [x] 14. **Documents (AC15, AC16).** `iterations: 1`
       - `docs/DECISIONS.md`, three rows dated on the day:
         - set v2: the source, a test container built from the retrieval v2 corpus, the
           session pre-labels with v1 relabelled blind, the full review, the composition
@@ -896,6 +896,7 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 - `minor` — step 11: the first two attempts at the test runs wrote result files into an uncommitted tree, so their headers said `git_dirty: true` (the plan asks for false). They were discarded and all six models re-run, each result file committed before the next run (six commits instead of one). The discarded runs cost about $0.20 and count toward the spend line of the report. No model errored, so no `-r2` repeat. Model answers are not deterministic: luna scored 0.733, 0.667 and 0.613 across three runs on the same split, which the report names under threats.
 - `minor` — step 12 is case 2 (the rule picked `qwen/qwen3.8-flash`, not luna). Existing tests that pinned `DEFAULT_MODEL` as the judge (`test_runner.py`, `test_cli.py`, `test_cases.py`) were moved to `DEFAULT_JUDGE_MODEL`; that is the plan's own approach item 10.
 - `minor` — no model passed the threshold on the test split; the winner comes from the rule's no-pass branch (5 PLN cap, most thresholds, lower false-support, cheaper). ADR 0011 says so plainly.
+- `minor` — step 14: the BACKLOG row 47 assertion of `test_backlog_window_row_and_017_018_renumbering` (that row exists and names spec 019) was dropped, because the plan removes the row and `test_backlog_12_and_47_removed` covers it. The report's recommendations became BACKLOG #58, #59 and #60 (not #57, which DECISIONS 2026-10-27 already cites for player linking).
 
 ## Final review
 

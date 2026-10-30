@@ -130,7 +130,7 @@ below; agents never touch production.
       extracted claims only and prints `Retrieval and judge: skipped`. Langfuse keys, when set,
       make each run one trace.
     - The judge's evaluation set is reviewed and run locally, never by the worker:
-      `python -m app.corroboration.evaluation build-cases | review | evaluate`.
+      `python -m app.corroboration.evaluation build-cases | build-scratch | build-candidates | export-judge-inputs | estimate | import-judge | review | agreement | evaluate`.
 11. **Delivery (optional).** Alerts and the presser leave through one delivery interface; this
     step sets its channel. With no `DELIVERY_PROVIDER` set, delivery is disabled: the worker and
     every loop run exactly as before and sending returns `disabled`. The only channel is `resend`;
