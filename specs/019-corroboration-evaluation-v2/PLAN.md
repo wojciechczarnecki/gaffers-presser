@@ -374,7 +374,7 @@
 | AC9 | 2 | `tests/corroboration/evaluation/test_metrics.py::test_threshold_verdict_passes`, `::test_threshold_verdict_fails_on_accuracy`, `::test_threshold_verdict_fails_on_false_support`, `::test_threshold_verdict_fails_on_contradicts_recall`, `::test_threshold_verdict_fails_on_an_errored_run`; `tests/corroboration/evaluation/test_runner.py::test_evaluate_prints_and_writes_the_verdict` |
 | AC10 | 2 | `tests/corroboration/evaluation/test_runner.py::test_the_result_carries_the_production_slice` |
 | AC11 | 10, 11 | `tests/corroboration/evaluation/test_results_files.py::test_v2_one_test_run_per_candidate`, `::test_v2_spend_within_cap` |
-| AC12 | 7, 12 | `tests/corroboration/evaluation/test_selection.py`; `tests/corroboration/evaluation/test_results_files.py::test_v2_rule_picks_the_judge_default`; `tests/corroboration/test_runtime.py::test_the_judge_runs_on_its_default_model` |
+| AC12 | 7, 12 | `tests/corroboration/evaluation/test_selection.py`; `tests/corroboration/evaluation/test_results_files.py::test_v2_rule_picks_qwen_and_the_owner_overrode_it` (renamed from `test_v2_rule_picks_the_judge_default` after the owner's 2026-10-30 judge decision); `tests/corroboration/test_runtime.py::test_the_judge_runs_on_its_default_model` |
 | AC13 | 10, 11 | `tests/corroboration/evaluation/test_results_files.py::test_v2_test_runs_share_one_prompt`; `tests/test_docs.py::test_corroboration_report_v2_has_every_section` (dev iterations) |
 | AC14 | 13 | `tests/test_docs.py::test_corroboration_report_v2_has_every_section`; `tests/corroboration/evaluation/test_results_files.py::test_report_v2_names_every_test_run` |
 | AC15 | 12, 14 | `tests/test_docs.py::test_decisions_cover_corroboration_set_v2_threshold_and_default` (and `::test_adr_0011_names_the_judge_default` in case 2) |
@@ -931,7 +931,7 @@ AC → evidence:
 | AC9 | `metrics.py::threshold_verdict`; `test_metrics.py::test_threshold_verdict_*`; `test_runner.py::test_evaluate_prints_and_writes_the_verdict` |
 | AC10 | `runner.py` `production` key; `test_runner.py::test_the_result_carries_the_production_slice` |
 | AC11 | six files in `results/v2/` with headers, `git_dirty: false`; `test_results_files.py::test_v2_one_test_run_per_candidate`, `::test_v2_spend_within_cap` — see F5 |
-| AC12 | case 2 (`qwen/qwen3.8-flash`): `config.py` `DEFAULT_JUDGE_MODEL` / `LLM_JUDGE_MODEL`, `runtime.py`; `test_runtime.py`; `test_selection.py`; `test_v2_rule_picks_the_judge_default`; `.env.example`, DEPLOYMENT, PROJECT line 87 — see F2, F3 |
+| AC12 | case 2 (the rule picked `qwen/qwen3.8-flash`; the owner set the default to `google/gemini-3.1-flash-lite`): `config.py` `DEFAULT_JUDGE_MODEL` / `LLM_JUDGE_MODEL`, `runtime.py`; `test_runtime.py`; `test_selection.py`; `test_v2_rule_picks_qwen_and_the_owner_overrode_it` (was `test_v2_rule_picks_the_judge_default`); `.env.example`, DEPLOYMENT, PROJECT line 87 — see F2, F3 |
 | AC13 | prompt unchanged at `corroboration_judge@1`; `dev-iterations.md`; `test_v2_test_runs_share_one_prompt` |
 | AC14 | `docs/reports/corroboration-eval-v2.md`; `test_docs.py::test_corroboration_report_v2_has_every_section`, `test_report_v2_names_every_test_run` |
 | AC15 | DECISIONS 2026-10-30 rows; ADR 0011; `test_decisions_cover_corroboration_set_v2_threshold_and_default`, `test_adr_0011_names_the_judge_default` |
@@ -976,5 +976,11 @@ Owner decision: every finding accepted (F1–F11). Fixed:
 - **F11** — `scratch.py`: the fallback `fetched_at` is `datetime.now(UTC)`.
 
 Verification: `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` — 2457 passed.
+
+After the two owner decisions that followed (2026-10-30):
+
+- **`tooling` — `backend-audit`** — `backend/uv.lock`: `langgraph-sdk` 0.4.5 → 0.4.6 (CVE-2026-118667), `uv lock --upgrade-package langgraph-sdk==0.4.6`, its own commit; no other package changed.
+- **`decision` — the default judge** — `DEFAULT_JUDGE_MODEL` is `google/gemini-3.1-flash-lite`, the owner's choice over the rule's `qwen/qwen3.8-flash` (the 5 PLN cap overridden: the closest to the threshold, 7.38 PLN a month within the 20 PLN budget). ADR 0011 (options and decision), the report (summary, "The rule and the winner"), DECISIONS 2026-10-30, README, `.env.example`, DEPLOYMENT and BACKLOG #58 say so. `choose_judge` is unchanged; `test_v2_rule_picks_the_judge_default` became `test_v2_rule_picks_qwen_and_the_owner_overrode_it` (the rule still answers qwen, the default is gemini); `test_runtime.py`'s override test now overrides with qwen, since gemini is the default; `test_adr_0011_names_the_judge_default` also looks for gemini and "owner chose".
+- Verification: `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` — 2457 passed.
 
 For the owner: the trigger of BACKLOG #60 (repeated runs per model, "a model choice that rests on a gap under 0.05") has fired — the default judge rests on one `contradicts` case (F5).

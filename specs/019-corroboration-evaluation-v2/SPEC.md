@@ -10,9 +10,9 @@ metrics:
   started_at: 2026-10-28T10:42
   plan_steps: 15
   plan_changes: 15
-  escalations: 3
+  escalations: 5
   escalations_permission: 0
-  escalations_tooling: 0
+  escalations_tooling: 1
   plan_review_blockers: 0
   plan_review_majors: 2
   implement_steps: 15

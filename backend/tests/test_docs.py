@@ -369,6 +369,8 @@ def test_adr_0011_names_the_judge_default():
     adr = (ROOT / "docs" / "adr" / "0011-corroboration-judge-model.md").read_text(encoding="utf-8")
     for needle in (
         "qwen/qwen3.8-flash",
+        "google/gemini-3.1-flash-lite",
+        "owner chose",
         "LLM_JUDGE_MODEL",
         "no model passes",
         "5 PLN",

@@ -99,9 +99,11 @@ def test_v2_spend_within_cap():
     assert spend <= 5.00
 
 
-def test_v2_rule_picks_the_judge_default():
+def test_v2_rule_picks_qwen_and_the_owner_overrode_it():
+    # the rule's answer stays recorded; the owner chose gemini as the default (ADR 0011)
     runs = {p.stem: json.loads(p.read_text()) for p in _v2_files()}
-    assert choose_judge(runs) == DEFAULT_JUDGE_MODEL
+    assert choose_judge(runs) == "qwen/qwen3.8-flash"
+    assert DEFAULT_JUDGE_MODEL == "google/gemini-3.1-flash-lite"
 
 
 def test_report_v2_names_every_test_run():

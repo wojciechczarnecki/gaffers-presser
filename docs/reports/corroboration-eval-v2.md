@@ -5,7 +5,7 @@ Spec 019, run on 2026-10-30. Decision: [ADR 0011](../adr/0011-corroboration-judg
 ## Summary
 
 - No model passes the threshold on the test split. The best, `google/gemini-3.1-flash-lite`, holds one of three (`contradicts` recall 1.00) with accuracy 0.720 and false-support 12.1%; the closest on false-support is also the closest on accuracy.
-- The rule (no model passes, so: at most 5 PLN a month, most thresholds, lower false-support, cheaper) picks `qwen/qwen3.8-flash` (0.653, 27.6%, recall 0.83, 4.46 PLN a month). It is the default judge now, under its own setting `LLM_JUDGE_MODEL` (ADR 0011); `LLM_MODEL` keeps extraction. It is the best of a set that does not pass, not a model proven good enough.
+- The rule (no model passes, so: at most 5 PLN a month, most thresholds, lower false-support, cheaper) picks `qwen/qwen3.8-flash` (0.653, 27.6%, recall 0.83, 4.46 PLN a month). The owner overrode the rule's 5 PLN cap and chose `google/gemini-3.1-flash-lite` (7.38 PLN a month, within the 20 PLN budget) as the default judge, under its own setting `LLM_JUDGE_MODEL` (ADR 0011); `LLM_MODEL` keeps extraction. It is the closest to the threshold, not a model proven good enough.
 - The weak spot is the `related` label (precision 0.20-0.57, recall 0.05-0.60 for every model) and the false `supports` on posts about teammates or about the same club. The judge prompt stayed at `corroboration_judge@1`: no dev error was both explained by its rules and shared by two models.
 - Model answers are not deterministic: `openai/gpt-6-luna` scored 0.733, 0.667 and 0.613 on the same 75 cases in three runs. Differences of a few points between models are noise at this set size.
 
@@ -72,9 +72,11 @@ Cost a month: the volume is the candidates of each listed player's newest anchor
 
 ## The rule and the winner
 
-No model passes every threshold, so the SPEC's second branch applies: among runs at or under 5 PLN a month, the most thresholds held (counting "no errored case"), then the lower false-support rate, then the cheaper. Eligible: `openai/gpt-6-luna` (2.91 PLN, 1 held) and `qwen/qwen3.8-flash` (4.46 PLN, 2 held). `deepseek` (5.16), `glm` (5.56), `gemini` (7.38) and `haiku` (53.60) are over the cap. The winner is `qwen/qwen3.8-flash`. Had the cap been 8 PLN, `gemini` would win: it is the only model near the thresholds.
+No model passes every threshold, so the SPEC's second branch applies: among runs at or under 5 PLN a month, the most thresholds held (counting "no errored case"), then the lower false-support rate, then the cheaper. Eligible: `openai/gpt-6-luna` (2.91 PLN, 1 held) and `qwen/qwen3.8-flash` (4.46 PLN, 2 held). `deepseek` (5.16), `glm` (5.56), `gemini` (7.38) and `haiku` (53.60) are over the cap. The rule's winner is `qwen/qwen3.8-flash`. Had the cap been 8 PLN, `gemini` would win: it is the only model near the thresholds.
 
 The win rests on one case. qwen holds the `contradicts` recall threshold with 5 of 6 (0.83); one more miss (4 of 6, 0.67) and it holds as many thresholds as luna, and luna wins on the lower false-support rate (20.7% against 27.6%). The six models also ran twice before the committed runs; those runs were discarded for `git_dirty: true` and their result files were not kept, so what the rule picked in them is not known. Only luna's accuracy was noted (0.733 and 0.667, against 0.613 in the committed run). The pick is the rule's answer on these runs, not a stable ranking of qwen above luna.
+
+The default is not the rule's winner. The owner chose `google/gemini-3.1-flash-lite` over qwen, overriding the 5 PLN a month cap: gemini is the closest to the threshold (accuracy 0.720 against 0.653, false-support 12.1% against 27.6%, `contradicts` recall 1.00 against 0.83) at 7.38 PLN a month, well within the 20 PLN budget. Its lead over qwen is wider than the noise of one case, unlike the qwen against luna tie-break; the rule's answer stays recorded as qwen.
 
 ## Spend
 

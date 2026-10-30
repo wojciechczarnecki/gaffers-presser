@@ -271,7 +271,7 @@ uv run python -m app.corroboration.evaluation estimate --export DIR
 uv run python -m app.corroboration.evaluation import-judge --export DIR --set evals/corroboration/v2 --judge-model NAME
 uv run python -m app.corroboration.evaluation review                # keys 1-4, a accept, s skip, b back, q quit
 uv run python -m app.corroboration.evaluation agreement             # the owner's labels against each pre-label
-uv run python -m app.corroboration.evaluation evaluate --split test --model qwen/qwen3.8-flash
+uv run python -m app.corroboration.evaluation evaluate --split test --model google/gemini-3.1-flash-lite
 ```
 
 `evaluate` reports accuracy, per-label precision and recall, the false-support rate, the
@@ -279,8 +279,9 @@ production slice (`has_player_event: false`), a pass or fail per threshold and t
 counts reviewed cases only unless `--include-unreviewed` is given, and writes
 `backend/evals/corroboration/results/v2/test-<model>.json`. Without `--model` it evaluates the
 model the judge runs on: `LLM_JUDGE_MODEL` when set, the default judge model
-(`qwen/qwen3.8-flash`, ADR 0011) otherwise. No candidate passed the threshold on set v2; the
-default is the best by the rule, not a model proven good enough.
+(`google/gemini-3.1-flash-lite`, ADR 0011) otherwise. No candidate passed the threshold on set
+v2; the owner chose the model closest to it over the rule's pick (`qwen/qwen3.8-flash`), and it
+is not a model proven good enough.
 
 Alerts — before each deadline the worker e-mails team news for the players that matter to the
 league (league-owned, widely owned or trending): a digest at 20:00 Warsaw time the day before, news at T-60 and a

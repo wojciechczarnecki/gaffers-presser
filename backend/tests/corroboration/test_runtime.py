@@ -21,15 +21,15 @@ def test_llm_judge_model_overrides_and_extraction_keeps_llm_model():
     settings = CorroborationSettings(
         _env_file=None,
         openrouter_api_key="dummy-key",
-        llm_judge_model="google/gemini-3.1-flash-lite",
+        llm_judge_model="qwen/qwen3.8-flash",
         llm_model="deepseek/deepseek-v4-flash",
     )
     runtime = build_runtime(settings, _clock())
-    assert runtime.judge is not None and runtime.judge.model == "google/gemini-3.1-flash-lite"
+    assert runtime.judge is not None and runtime.judge.model == "qwen/qwen3.8-flash"
     llm = resolve_llm(settings)
     assert llm is not None and llm.model == "deepseek/deepseek-v4-flash"
 
 
 def test_the_judge_default_is_not_the_extraction_default():
-    # the rule picked a judge other than the extraction default (ADR 0011)
+    # the owner chose a judge other than the extraction default (ADR 0011)
     assert DEFAULT_JUDGE_MODEL != DEFAULT_MODEL

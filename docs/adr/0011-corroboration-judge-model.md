@@ -34,24 +34,31 @@ Two runs are eligible, `openai/gpt-6-luna` and `qwen/qwen3.8-flash`; `deepseek` 
 
 - **A: keep `LLM_MODEL` for both.** It leaves the extraction default (luna) as the judge,
   which held no threshold and found one `contradicts` in six.
-- **B (chosen): a separate `LLM_JUDGE_MODEL`, default the rule's winner.**
+- **B: a separate `LLM_JUDGE_MODEL`, default the rule's winner (`qwen/qwen3.8-flash`).**
+- **B' (chosen): a separate `LLM_JUDGE_MODEL`, default `google/gemini-3.1-flash-lite`,** the
+  owner's choice over the rule's 5 PLN cap.
 - **C: no default until a model passes.** The judge cannot be left unset in production.
 
 ## Decision
 
-- `qwen/qwen3.8-flash` is the judge's default (`DEFAULT_JUDGE_MODEL`), because it holds the
-  `contradicts` recall threshold and luna does not. It does not meet the pass threshold: its
-  false-support rate is 27.6% and its accuracy 0.653. The default is the best of a set that
-  does not pass, not a model proven good enough.
-- The pick rests on one case: qwen holds the `contradicts` recall threshold with 5 of 6. One
-  more miss and it ties luna on thresholds held, and luna wins on false-support. Two earlier
-  sets of test runs were discarded (`git_dirty: true`) without keeping their files, so the
-  rule's pick in them is not known. A rerun can change the default; the owner switches it
-  with `LLM_JUDGE_MODEL`.
+- The rule picks `qwen/qwen3.8-flash`: it holds the `contradicts` recall threshold and luna
+  does not. That pick rests on one case: qwen holds the threshold with 5 of 6; one more miss
+  and it ties luna on thresholds held, and luna wins on false-support. Two earlier sets of
+  test runs were discarded (`git_dirty: true`) without keeping their files, so the rule's
+  pick in them is not known. The rule's answer stays recorded as qwen (`choose_judge`).
+- The owner chose `google/gemini-3.1-flash-lite` as the judge's default
+  (`DEFAULT_JUDGE_MODEL`) over the rule's qwen, overriding the 5 PLN a month cap. Gemini is
+  the closest to the threshold: accuracy 0.720 (qwen 0.653), false-support 12.1% (qwen
+  27.6%), `contradicts` recall 1.00 (qwen 0.83). It costs 7.38 PLN a month, within the 20 PLN
+  budget. Its lead over qwen is wider than one case, unlike the qwen against luna tie-break.
+  It still does not meet the pass threshold, so the default is the best of a set that does
+  not pass, not a model proven good enough. A rerun can change the default; the owner
+  switches it with `LLM_JUDGE_MODEL`.
 - `CorroborationSettings.llm_judge_model` (`LLM_JUDGE_MODEL`, empty = the default). The judge
   is built from `single_model_config` with no fallback (a failed judge call already leaves the
   post unjudged). Extraction keeps `LLM_MODEL` and its fallback.
-- `evaluate` and the composition check use the judge's default.
+- `evaluate` and the composition check use the judge's default. Gemini is also the
+  extraction fallback (ADR 0006); the judge has no fallback, so the two settings stay apart.
 
 ## Consequences
 
