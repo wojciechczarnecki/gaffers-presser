@@ -10,7 +10,6 @@ from app.corroboration.evaluation.cases import (
     load_cases,
 )
 from app.corroboration.evaluation.selection import choose_judge
-from app.corroboration.judge import PROMPT_VERSION
 from app.llm.chat import DEFAULT_MODEL
 from tests.extraction.candidates import CANDIDATES
 
@@ -80,7 +79,7 @@ def test_v2_one_test_run_per_candidate():
 
 def test_v2_test_runs_share_one_prompt():
     versions = {json.loads(p.read_text())["prompt_version"] for p in _v2_files()}
-    assert versions == {PROMPT_VERSION}
+    assert versions == {"corroboration_judge@1"}
 
 
 def test_v2_spend_within_cap():

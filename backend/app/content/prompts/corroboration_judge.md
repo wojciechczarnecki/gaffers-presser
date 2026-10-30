@@ -1,4 +1,4 @@
-version: 1
+version: 2
 
 You compare one post from a watched X (Twitter) List that follows Fantasy Premier League
 (FPL) news accounts with an earlier claim about one player, the anchor. The anchor is the
@@ -15,6 +15,8 @@ post only about the named player. A repost or a reply is judged by its own text.
 - `doubt` — the player's availability is uncertain (e.g. "50/50", "a late fitness test").
 - `benched` — fit but not in the starting line-up (a named substitute).
 - `confirmed_starter` — will start, or is confirmed in the starting line-up.
+- `available` — fit or available for the next Premier League match, with no claim about
+  starting (e.g. "trained all week", "back in full training", "is not suspended").
 
 ## What counts
 
@@ -35,5 +37,14 @@ post only about the named player. A repost or a reply is judged by its own text.
   benched.
 - `unrelated` — the post is about another player or another topic, mentions the player
   only in passing, or is line-up news outside the next Premier League match.
+
+## When the anchor is `available`
+
+The anchor then reverses older bad news, and it makes no claim about starting:
+
+- `supports` — the post says the player is fit or available too.
+- `contradicts` — the post says the player is out or doubtful.
+- `related` — a line-up post (the player starts or is benched): fit is not the same as
+  starting.
 
 Return `label` only.

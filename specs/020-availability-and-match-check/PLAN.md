@@ -394,7 +394,7 @@ session scratchpad (never in the repository).
       `python -c "import json,glob; fs=sorted(glob.glob('evals/corroboration/results/regression/test-judge-v1-r*.json')); assert len(fs)==3 and all(json.load(open(f))['prompt_version']=='corroboration_judge@1' for f in fs)"`,
       then Verify.
 
-- [ ] 7. **Judge prompt `corroboration_judge` v2 (AC11).** Files:
+- [x] 7. **Judge prompt `corroboration_judge` v2 (AC11).** Files: `iterations: 0`
       `app/content/prompts/corroboration_judge.md` (version 2, design item 10).
 
       Tests first:
