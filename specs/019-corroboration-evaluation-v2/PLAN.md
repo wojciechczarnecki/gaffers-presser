@@ -907,3 +907,51 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 ## Final review
 
 _(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
+
+### 2026-10-30 — final review (report)
+
+Three perspectives (compliance, quality, tests) ran as separate subagents; every finding
+below was checked in the code.
+
+AC → evidence:
+
+| AC | Evidence |
+|---|---|
+| AC1 | `test_eval_set_v2.py::test_every_v1_case_in_v2_with_its_split`, `::test_at_least_45_new_cases_inside_their_window` (55 new), `::test_windows_equal_the_production_window_constants`; `test_scratch.py::test_windows_from_the_seeded_calendar` |
+| AC2 | `cases.py::composition_problems` (no `LABELS_NOT_YET_REQUIRED`, 90–130, 8 / 5 `contradicts`); `test_cases.py::test_a_set_missing_contradicts_is_reported`, `::test_too_few_contradicts_overall_and_in_test`, `::test_size_out_of_range`; `test_eval_set_v2.py::test_composition` (106 cases, 11 `contradicts`, 6 in test) |
+| AC3 | `scratch.py::guard_scratch_url`; `test_scratch.py::test_refuses_port_5432`, `::test_refuses_the_configured_database_url`, `::test_extraction_stays_in_the_window_and_stops_at_the_cap`; `test_building.py::test_candidates_use_the_production_retrieval_and_fresh_lineups`; `set.json` build $0.396; `test_build_recorded_and_within_one_dollar` — see F1 |
+| AC4 | `JudgeCase.prelabel` / `v1_prelabel`; `test_cases.py::test_v2_fields_round_trip`; `test_judging.py::test_v1_case_keeps_split_and_haiku_label_unreviewed`, `::test_manifest_names_the_judge_prompt_and_commit`; `test_eval_set_v2.py::test_every_case_records_its_prelabels`, `::test_manifest_names_the_session_judge` |
+| AC5 | `judging.py`; `test_judging.py::test_export_one_input_per_case_with_neutral_ids`, `::test_mapping_outside_inputs`, `::test_estimate_counts_calls_and_tokens`; `test_cli.py::test_estimate_prints_calls_and_tokens` |
+| AC6 | `scripts/session_judge.sh` (`corroboration` schema); `test_session_judge.py::test_corroboration_writes_a_valid_verdict`, `::test_corroboration_rejects_an_invalid_verdict`; `test_judging.py::test_import_refuses_an_invalid_verdict` |
+| AC7 | `cases.py::review_order`, `prelabel_lines`; `test_review_cli.py::test_review_shows_disagreements_first`, `::test_prelabels_are_shown_below_the_label_row_and_marked_on_disagreement`, `::test_a_key_saves_the_label_reviewed_on_disk_at_once` |
+| AC8 | 106/106 reviewed before the test runs; `test_eval_set_v2.py::test_every_case_reviewed`; `test_review_cli.py::test_agreement_counts_differences_per_prelabeller`; report agreement section |
+| AC9 | `metrics.py::threshold_verdict`; `test_metrics.py::test_threshold_verdict_*`; `test_runner.py::test_evaluate_prints_and_writes_the_verdict` |
+| AC10 | `runner.py` `production` key; `test_runner.py::test_the_result_carries_the_production_slice` |
+| AC11 | six files in `results/v2/` with headers, `git_dirty: false`; `test_results_files.py::test_v2_one_test_run_per_candidate`, `::test_v2_spend_within_cap` — see F5 |
+| AC12 | case 2 (`qwen/qwen3.8-flash`): `config.py` `DEFAULT_JUDGE_MODEL` / `LLM_JUDGE_MODEL`, `runtime.py`; `test_runtime.py`; `test_selection.py`; `test_v2_rule_picks_the_judge_default`; `.env.example`, DEPLOYMENT, PROJECT line 87 — see F2, F3 |
+| AC13 | prompt unchanged at `corroboration_judge@1`; `dev-iterations.md`; `test_v2_test_runs_share_one_prompt` |
+| AC14 | `docs/reports/corroboration-eval-v2.md`; `test_docs.py::test_corroboration_report_v2_has_every_section`, `test_report_v2_names_every_test_run` |
+| AC15 | DECISIONS 2026-10-30 rows; ADR 0011; `test_decisions_cover_corroboration_set_v2_threshold_and_default`, `test_adr_0011_names_the_judge_default` |
+| AC16 | ROADMAP ticked and linked; BACKLOG #12, #47 removed; README; EVALUATION corroboration procedure; `test_roadmap_019_ticked`, `test_backlog_12_and_47_removed`, `test_readme.py`, `test_evaluation_has_the_corroboration_procedure` |
+| AC17 | verification green (implement stage); Compose guard tested — partial, see F1 and F4 |
+
+Findings:
+
+- **F1** `worth-fixing` — `backend/app/corroboration/evaluation/scratch.py:44` (`guard_scratch_url`), `cli.py:201` — the guard compares host strings and skips the check when no `DATABASE_URL` is loaded: Compose on `POSTGRES_PORT=5433` with `DATABASE_URL=localhost:5433/presser` and `--database-url 127.0.0.1:5433/presser` (or the command run where no `.env` is read) passes, and `build-candidates` then reads the Compose database (iron rule); `build-scratch`/`build-candidates` have no CLI test of the guard wiring — treat every loopback name as one host, refuse in `build-candidates` a database whose `tweet` table holds a source other than `eval-corpus`, add CliRunner tests (port 5432, the configured URL, an alias, exit 1 on the cap).
+- **F2** `worth-fixing` — `backend/app/corroboration/evaluation/runner.py:98`, `cli.py:547` — the projected PLN a month feeds the rule's 5 PLN gate, but `test_projected_monthly_cost` uses one case (mean = sum; a mutation to `sum(costs)` stays green) and no test covers `evaluate` reading `judge_calls_per_month` from the set's `set.json` (a wrong path gives `None` and no model is eligible) — test with several cases of different cost plus an errored one, and a CLI test with a tmp `set.json` asserting the printed and written PLN value.
+- **F3** `worth-fixing` — `backend/tests/corroboration/evaluation/test_selection.py:52` — `test_repeat_replaces_the_first_run` lists `test-a` before `test-a-r2`, so removing the sort in `selection.py:12` stays green and a different read order would keep the errored first run — add the case with the repeat listed first.
+- **F4** `worth-fixing` — `specs/019-corroboration-evaluation-v2/PLAN.md` Deviations — deviation 4 describes the first review rework (pre-labels only on difference, no accept), while the code follows the owner's third decision (pre-labels always shown, `a`/Enter accepts, refused on disagreement); deviation 2 covers anchors outside the List but 7 post authors of new cases are outside it too (quoted public posts in the retrieval v2 corpus), which AC17's "posts of the watched accounts" does not state — update deviation 4 to the final behaviour, extend deviation 2 to posts and name the AC17 wording, and say it in the report.
+- **F5** `worth-fixing` — `docs/reports/corroboration-eval-v2.md` (The rule and the winner), `docs/adr/0011-corroboration-judge-model.md` — the winner rests on one case: qwen's `contradicts` recall is 5/6; one more miss (0.67) ties it with luna on thresholds held and luna wins on false-support; all six models ran three times (two discarded for `git_dirty`), luna moved 0.733→0.613, and the report does not say what the rule picked in the discarded runs; `test_v2_spend_within_cap` also leaves the discarded ~$0.20 out — state the single-case dependence and the discarded runs' outcome (or that it was not kept) in the report and ADR, and record a discarded-spend line the test sums.
+- **F6** `worth-fixing` — `backend/app/corroboration/evaluation/scratch.py:18,203` — imports the private `_post_from_tweet` from `app.extraction.store`, against DECISIONS 2026-10-15 (modules depend on each other's public functions); a rename in extraction breaks it silently — make it public (or add a public reader of posts in a window) in `store.py`.
+- **F7** `nit` — `backend/app/corroboration/evaluation/selection.py:28` — a run that passes every threshold but has `projected_monthly_cost_pln: None` (no `USD_PLN_RATE` or no build in `set.json`) is dropped before `passing`, and the no-pass branch may pick a failing model — rank it last or raise, with a test.
+- **F8** `nit` — `backend/app/corroboration/evaluation/scratch.py:198` — no test post sits on the window edges; `created_at < until` → `<=` stays green — add posts at `since` and `until`.
+- **F9** `nit` — `backend/app/corroboration/evaluation/building.py:222` — `retrieval_candidates` does not depend on the anchor yet runs once per anchor (up to 2 per player), doubling the search and the query-embedding spend — call it once per player.
+- **F10** `nit` — `backend/app/corroboration/evaluation/scratch.py:161` — seeding commits before `check_source_flags`; after a failed check a re-run sees `eval-corpus`, skips seeding and never re-runs the check — run the check on every run.
+- **F11** `nit` — `backend/app/corroboration/evaluation/scratch.py:138` — the fallback `datetime.now().astimezone()` is local time, against CONVENTIONS' UTC rule — `datetime.now(UTC)`.
+
+Rejected:
+
+- `docs/DEPLOYMENT.md:129` line over 100 characters — the file already has eight such lines; the edit follows its existing form.
+- `judging.py:59` `_git_commit` duplicates and should use `eval_results.git_state` — it copies the existing extraction session-judge pattern (`app/extraction/evaluation/judging.py:184`), whose set metadata records the same short hash; a shared change belongs to both modules, not this spec.
+
+Left out: 20 nit findings

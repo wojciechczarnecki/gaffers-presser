@@ -19,6 +19,9 @@ metrics:
   implement_iterations: 10
   deviations_minor: 8
   deviations_major: 0
+  final_review_blockers: 0
+  final_review_worth_fixing: 6
+  final_review_nits: 5
 ---
 
 # SPEC 019 — Corroboration evaluation v2: a reviewed judge set, contradictions and a pass threshold
