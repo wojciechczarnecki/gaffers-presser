@@ -444,7 +444,7 @@ session scratchpad (never in the repository).
 
       Automatic verification: `uv run pytest -q tests/alerts tests/content`, then Verify.
 
-- [ ] 10. **A Palmer-shaped reversal card (AC14).** Test only; no product change is expected.
+- [x] 10. **A Palmer-shaped reversal card (AC14).** Test only; no product change is expected. `iterations: 0`
       If one is needed, it is a deviation.
 
       `tests/alerts/test_end_to_end.py::test_palmer_shaped_reversal_is_a_wraca_do_gry_card`
