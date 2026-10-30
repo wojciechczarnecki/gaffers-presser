@@ -1,4 +1,6 @@
 import json
+import re
+from pathlib import Path
 
 from app.corroboration.evaluation.cases import (
     DEFAULT_RESULTS_DIR,
@@ -6,7 +8,9 @@ from app.corroboration.evaluation.cases import (
     V1_CASES_PATH,
     load_cases,
 )
+from app.corroboration.judge import PROMPT_VERSION
 from app.llm.chat import DEFAULT_MODEL
+from tests.extraction.candidates import CANDIDATES
 
 RESULT = DEFAULT_RESULTS_DIR / f"test-{DEFAULT_MODEL.replace('/', '-')}.json"
 
@@ -30,3 +34,62 @@ def test_the_result_holds_the_metrics_and_one_outcome_per_test_case():
     assert sorted(o["id"] for o in data["outcomes"]) == test_ids
     assert metrics["cases"] == len(test_ids)
     assert data["cost_usd"] is None or data["cost_usd"] >= 0
+
+
+# --- set v2 -----------------------------------------------------------------
+
+V2_RESULTS = DEFAULT_RESULTS_DIR / "v2"
+V2_SET = Path(__file__).resolve().parents[3] / "evals" / "corroboration" / "v2"
+DEV_LOG = (
+    Path(__file__).resolve().parents[4]
+    / "specs"
+    / "019-corroboration-evaluation-v2"
+    / "dev-iterations.md"
+)
+
+
+def _v2_files() -> list[Path]:
+    return sorted(V2_RESULTS.glob("test-*.json"))
+
+
+def _slug(model: str) -> str:
+    return model.replace("/", "-")
+
+
+def test_v2_one_test_run_per_candidate():
+    names = {p.name for p in _v2_files()}
+    for model in CANDIDATES:
+        first = f"test-{_slug(model)}.json"
+        assert first in names, f"{first} is missing"
+    allowed = {f"test-{_slug(m)}{suffix}.json" for m in CANDIDATES for suffix in ("", "-r2")}
+    assert names <= allowed
+    for path in _v2_files():
+        data = json.loads(path.read_text())
+        header = data["header"]
+        assert header["set_version"] == "v2"
+        assert header["model"] == data["model"]
+        assert header["prompt_version"]
+        assert "reasoning_effort" in header
+        assert header["git_commit"]
+        assert header["git_dirty"] is False
+        assert data["split"] == "test"
+        assert "verdict" in data and "production" in data
+
+
+def test_v2_test_runs_share_one_prompt():
+    versions = {json.loads(p.read_text())["prompt_version"] for p in _v2_files()}
+    assert versions == {PROMPT_VERSION}
+
+
+def test_v2_spend_within_cap():
+    build = json.loads((V2_SET / "set.json").read_text())["build"]
+    spend = (
+        build["embeddings_cost_usd"]
+        + build["extraction_cost_usd"]
+        + build["query_embeddings_cost_usd"]
+    )
+    match = re.search(r"^Dev spend: ([0-9.]+) USD$", DEV_LOG.read_text(), re.MULTILINE)
+    assert match, "dev-iterations.md has no 'Dev spend: <x> USD' line"
+    spend += float(match.group(1))
+    spend += sum(json.loads(p.read_text())["cost_usd"] or 0 for p in _v2_files())
+    assert spend <= 5.00
