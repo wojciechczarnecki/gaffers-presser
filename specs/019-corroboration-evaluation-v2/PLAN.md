@@ -595,7 +595,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       green, `test_composition` included (the extra draws above exist to make it pass on the
       pre-labels; if they cannot, the step has already escalated), then Verify with
       `--deselect tests/corroboration/evaluation/test_eval_set_v2.py::test_every_case_reviewed`.
-- [ ] 9. **Your review of set v2 (AC7, AC8): the implementer stops here.**
+- [x] 9. **Your review of set v2 (AC7, AC8): the implementer stops here.** `iterations: 0`
       - End the run with `RESULT: ESCALATE` (`KIND: decision`) and wait. The message gives:
         - the counts: v1 cases, new cases per split, and the v1 cases where the two
           pre-labels disagree;
