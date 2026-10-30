@@ -475,7 +475,7 @@ session scratchpad (never in the repository).
 
       Automatic verification: `uv run pytest -q tests/alerts -n auto`, then Verify.
 
-- [ ] 12. **Evaluation metrics for the new type and the absences (AC17 code).** Files:
+- [x] 12. **Evaluation metrics for the new type and the absences (AC17 code).** Files: `iterations: 0`
       - `app/extraction/evaluation/cases.py`: `Tag` gets `other_match_absence` and
         `cup_injury` here (moved from step 13 by the plan review: `Tag` is a `Literal`, so
         this step's tests cannot build a case with the new tag without it);

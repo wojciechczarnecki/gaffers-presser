@@ -13,6 +13,9 @@ MIN_F1 = 0.85
 MIN_LINKING_ACCURACY = 0.95
 MAX_FALSE_ALARM_RATE = 0.05
 MAX_MONTHLY_COST_PLN = 5.0
+MAX_OTHER_MATCH_ABSENCE_FALSE_ALARMS = 1
+MAX_INJURIES_DROPPED = 1
+ABSENCE_EVENTS = ("out", "doubt")
 
 
 class RawEvent(ExpectedEvent):
@@ -27,6 +30,7 @@ class CaseResult:
     predicted: Sequence[ExpectedEvent]
     raw_predicted: Sequence[RawEvent] = ()
     other_match: bool = False
+    other_match_absence: bool = False
     latency_seconds: float | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
@@ -73,6 +77,10 @@ class Metrics:
     lineups_dropped_by_check: int = 0
     other_match_with_raw_events: int = 0
     other_match_caught_by_lead_only: int = 0
+    available_f1: float = 0.0
+    other_match_absence_cases: int = 0
+    other_match_absence_false_alarms: int = 0
+    injuries_dropped_by_check: int = 0
 
 
 def threshold_flags(
@@ -100,6 +108,14 @@ def passes(
 ) -> bool:
     flags = threshold_flags(f1, linking_accuracy, false_alarm_rate, monthly_cost_pln, errored_cases)
     return all(flags.values())
+
+
+def absence_checks(metrics: Metrics) -> dict[str, bool]:
+    return {
+        "other_match_absence": metrics.other_match_absence_false_alarms
+        <= MAX_OTHER_MATCH_ABSENCE_FALSE_ALARMS,
+        "injuries_dropped": metrics.injuries_dropped_by_check <= MAX_INJURIES_DROPPED,
+    }
 
 
 def _key(event: ExpectedEvent) -> tuple[str, int | str]:
@@ -210,6 +226,12 @@ def compute_metrics(
     lineups_dropped = 0
     other_match_raw = 0
     other_match_lead_only = 0
+    available_hits = 0
+    available_expected = 0
+    available_predicted = 0
+    absence_cases = 0
+    absence_false_alarms = 0
+    injuries_dropped = 0
 
     for result in results:
         expected_total += len(result.expected)
@@ -226,11 +248,24 @@ def compute_metrics(
             linking_paired += 1
             linking_correct += exp.fpl_id == pred.fpl_id
 
+        wanted = [e for e in result.expected if e.event_type == "available"]
+        got = [e for e in result.predicted if e.event_type == "available"]
+        available_expected += len(wanted)
+        available_predicted += len(got)
+        available_hits += len(_match_pairs(wanted, got))
+
         if result.raw_predicted:
             for exp, raw in _match_pairs(result.expected, result.raw_predicted):
                 lineups_dropped += (
                     exp.event_type in LINEUP_EVENTS and raw.for_next_pl_match is False
                 )
+                injuries_dropped += (
+                    exp.event_type in ABSENCE_EVENTS and raw.for_next_pl_match is False
+                )
+
+        if result.other_match_absence and result.error_class is None:
+            absence_cases += 1
+            absence_false_alarms += any(e.event_type in ABSENCE_EVENTS for e in result.predicted)
 
         if result.other_match and result.error_class is None:
             other_match_cases += 1
@@ -292,4 +327,8 @@ def compute_metrics(
         lineups_dropped_by_check=lineups_dropped,
         other_match_with_raw_events=other_match_raw,
         other_match_caught_by_lead_only=other_match_lead_only,
+        available_f1=_ratio(2 * available_hits, available_predicted + available_expected),
+        other_match_absence_cases=absence_cases,
+        other_match_absence_false_alarms=absence_false_alarms,
+        injuries_dropped_by_check=injuries_dropped,
     )

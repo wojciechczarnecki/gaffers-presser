@@ -18,6 +18,8 @@ Tag = Literal[
     "womens_lineup",
     "cup_european_lineup",
     "other_match_lineup",
+    "other_match_absence",
+    "cup_injury",
     "multi_player",
     "ambiguous_name",
     "nickname",

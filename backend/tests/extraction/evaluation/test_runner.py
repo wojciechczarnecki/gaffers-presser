@@ -164,3 +164,25 @@ def test_a_kept_lineup_is_scored_and_a_dropped_expected_one_is_counted():
 
 def test_runner_and_store_share_the_predicate():
     assert runner.kept_at_read is store.kept_at_read is lineups.kept_at_read
+
+
+def test_other_match_absence_tag_reaches_the_result():
+    out = ExtractionOutput(
+        events=[
+            ExtractedEvent(player="Haaland", team=None, event_type="out", certainty="confirmed")
+        ]
+    )
+    report = _run(
+        _case(tags=["other_match_absence"]),
+        _fixtures(timedelta(hours=10)),
+        out,
+        MatchCheck(for_next_pl_match=True),
+    )
+
+    [outcome] = report.outcomes
+    assert outcome.result.other_match_absence is True
+    assert report.metrics.other_match_absence_cases == 1
+    assert report.metrics.other_match_absence_false_alarms == 1
+
+    errored = _run(_case(tags=["other_match_absence"]), _fixtures(timedelta(hours=10)), "boom")
+    assert errored.outcomes[0].result.other_match_absence is True

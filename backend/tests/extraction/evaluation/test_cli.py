@@ -970,6 +970,29 @@ def test_evaluate_reads_the_set_directory_without_a_database(tmp_path, monkeypat
     assert data["metrics"]["other_match_cases"] == 1
 
 
+def test_evaluate_prints_the_absence_metrics(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.extraction.evaluation.cli.DEFAULT_RESULTS_DIR", tmp_path / "results")
+    set_dir = tmp_path / "v3"
+    case = _eval_case("1", "test").model_copy(update={"tags": ["other_match_absence"]})
+    _write_v2_set(set_dir, [case.model_copy(update={"expected_events": []})])
+    from app.extraction.schemas import MatchCheck
+
+    build_spec, _ = _build_spec(_haaland_out(), MatchCheck(for_next_pl_match=False), model="m")
+
+    result = CliRunner().invoke(
+        app,
+        ["evaluate", "--split", "test", "--model", "m", "--set", str(set_dir), "--run-name", "r"],
+        obj=_no_db_deps(build_spec),
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "available F1: 0.000" in result.stdout
+    assert "other match absence false alarms: 0 of 1" in result.stdout
+    assert "injuries dropped by the check: 0" in result.stdout
+    assert "other match absence check passed: yes" in result.stdout
+    assert "injuries dropped check passed: yes" in result.stdout
+
+
 def test_evaluate_header_names_the_three_prompts(tmp_path):
     set_dir = tmp_path / "set"
     _write_v2_set(set_dir, [_benched_case("1")])

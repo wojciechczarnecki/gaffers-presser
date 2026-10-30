@@ -172,6 +172,7 @@ def run_evaluation(
                 predicted=[],
                 error_class=error_class,
                 other_match="other_match_lineup" in case.tags,
+                other_match_absence="other_match_absence" in case.tags,
             )
         else:
             usage = retry.result.usage
@@ -191,6 +192,7 @@ def run_evaluation(
                 ],
                 raw_predicted=raw,
                 other_match="other_match_lineup" in case.tags,
+                other_match_absence="other_match_absence" in case.tags,
                 latency_seconds=flow.last_seconds,
                 input_tokens=usage.input_tokens,
                 output_tokens=usage.output_tokens,
