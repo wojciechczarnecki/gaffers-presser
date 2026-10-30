@@ -31,12 +31,16 @@ class AccountCounts:
 
 DEFAULT_RULES = GradeRules()
 _AVAILABILITY = {"out", "doubt", "benched"}
+_ABSENCES = ("out", "doubt")
 _LEVELS = ("low", "medium", "high")
 
 
 def label_claim(anchor_type: str, claim_type: str) -> Label:
     if anchor_type == claim_type:
         return "supports"
+    if "available" in (anchor_type, claim_type):
+        other = claim_type if anchor_type == "available" else anchor_type
+        return "contradicts" if other in _ABSENCES else "related"
     pair = {anchor_type, claim_type}
     if "confirmed_starter" in pair and pair - {"confirmed_starter"} <= _AVAILABILITY:
         return "contradicts"

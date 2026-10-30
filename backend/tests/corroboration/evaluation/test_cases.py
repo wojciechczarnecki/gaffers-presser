@@ -197,3 +197,13 @@ def test_known_miss_definition():
     assert is_known_miss(make_case(1, "supports", has_player_event=False))
     assert not is_known_miss(make_case(1, "unrelated", has_player_event=False))
     assert not is_known_miss(make_case(1, "supports", has_player_event=True))
+
+
+def test_event_words_and_label_table_cover_every_type():
+    from typing import get_args
+
+    from app.corroboration.evaluation.cases import EVENT_WORDS, LABEL_TABLE
+    from app.extraction.schemas import EventType
+
+    assert set(EVENT_WORDS) == set(get_args(EventType))
+    assert set(LABEL_TABLE) == set(get_args(EventType))

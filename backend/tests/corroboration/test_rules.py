@@ -17,7 +17,7 @@ from app.corroboration.rules import (
 from app.corroboration.schemas import LabelledPost, PostRef
 
 T0 = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
-TYPES = ("out", "doubt", "benched", "confirmed_starter")
+TYPES = ("out", "doubt", "benched", "confirmed_starter", "available")
 
 
 def _post(x_id, author="a", minutes=0, repost_of=None, quotes=None) -> PostRef:
@@ -50,6 +50,9 @@ ANCHOR = _post(100, "anchor_account", minutes=0)
 def test_label_table(anchor_type, claim_type):
     if anchor_type == claim_type:
         expected = "supports"
+    elif "available" in (anchor_type, claim_type):
+        other = claim_type if anchor_type == "available" else anchor_type
+        expected = "contradicts" if other in ("out", "doubt") else "related"
     elif "confirmed_starter" in (anchor_type, claim_type):
         expected = "contradicts"
     else:

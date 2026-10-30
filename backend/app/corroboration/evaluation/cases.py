@@ -165,6 +165,7 @@ EVENT_WORDS = {
     "doubt": "a DOUBT (availability uncertain)",
     "benched": "BENCHED (fit but not in the starting line-up)",
     "confirmed_starter": "a STARTER (will start or is in the confirmed line-up)",
+    "available": "FIT or AVAILABLE (no claim about starting)",
 }
 
 # One row per anchor event type: what the post says -> the label it earns.
@@ -187,6 +188,11 @@ LABEL_TABLE: dict[str, tuple[tuple[str, str], ...]] = {
     "confirmed_starter": (
         ("starts", "supports"),
         ("out / doubt / benched", "contradicts"),
+    ),
+    "available": (
+        ("fit / available", "supports"),
+        ("out / doubt", "contradicts"),
+        ("starts / benched", "related"),
     ),
 }
 LABEL_RULES = (

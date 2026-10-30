@@ -338,7 +338,7 @@ session scratchpad (never in the repository).
       `uv run pytest -q tests/content tests/extraction/test_service.py tests/extraction/test_flow.py`,
       then Verify.
 
-- [ ] 4. **The label table and the evaluation's type texts (AC9, AC3).** Files:
+- [x] 4. **The label table and the evaluation's type texts (AC9, AC3).** Files: `iterations: 0`
       - `app/corroboration/rules.py` (`label_claim`);
       - `app/corroboration/evaluation/cases.py`: `EVENT_WORDS["available"] = "FIT or
         AVAILABLE (no claim about starting)"`, and the `LABEL_TABLE["available"]` rows
