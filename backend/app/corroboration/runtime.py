@@ -1,7 +1,7 @@
 import threading
 
 from app.core.clock import Clock
-from app.corroboration.config import CorroborationSettings
+from app.corroboration.config import CorroborationSettings, judge_model
 from app.corroboration.judge import build_judge
 from app.corroboration.service import CorroborationRuntime
 from app.corroboration.tracing import (
@@ -9,7 +9,7 @@ from app.corroboration.tracing import (
     CorroborationTracer,
     make_corroboration_tracer,
 )
-from app.llm.chat import build_chat_model, resolve_llm
+from app.llm.chat import build_chat_model, single_model_config
 from app.llm.pricing import load_prices
 from app.llm.structured import StructuredCaller
 from app.llm.tracing import resolve_tracing
@@ -33,8 +33,11 @@ def build_runtime(
         return sql_only_runtime(NOT_CONFIGURED, tracer)
     prices = load_prices()
     embedding = resolve_embedding(settings, prices=prices)
-    llm = resolve_llm(settings)
-    assert embedding is not None and llm is not None
+    assert embedding is not None
+    # no fallback: a failed judge call already leaves the post unjudged
+    llm = single_model_config(
+        settings.openrouter_api_key, judge_model(settings), variable="LLM_JUDGE_MODEL"
+    )
     spec = build_chat_model(llm)
     caller = StructuredCaller.from_spec(spec, prices, clock)
     if stop_event is not None:

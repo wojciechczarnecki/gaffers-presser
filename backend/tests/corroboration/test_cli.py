@@ -307,24 +307,24 @@ def test_the_default_runtime_without_a_key_skips_retrieval_and_the_judge():
 
 
 def test_the_default_runtime_with_a_key_builds_the_embedder_and_the_judge():
+    from app.corroboration.config import DEFAULT_JUDGE_MODEL
     from app.corroboration.runtime import build_runtime
-    from app.llm.chat import DEFAULT_MODEL
     from app.retrieval.config import DEFAULT_EMBEDDING_MODEL
 
     settings = CorroborationSettings(_env_file=None, openrouter_api_key="dummy-key")
     runtime = build_runtime(settings, FixedClock())
     assert runtime.embedder is not None and runtime.embedder.model == DEFAULT_EMBEDDING_MODEL
-    assert runtime.judge is not None and runtime.judge.model == DEFAULT_MODEL
-    assert DEFAULT_MODEL in runtime.prices
+    assert runtime.judge is not None and runtime.judge.model == DEFAULT_JUDGE_MODEL
+    assert DEFAULT_JUDGE_MODEL in runtime.prices
 
 
-def test_the_settings_add_no_variable_to_the_existing_ones():
+def test_the_settings_add_only_the_judge_model_to_the_existing_ones():
     from app.llm.chat import ChatSettings
     from app.retrieval.config import RetrievalSettings
 
     assert set(CorroborationSettings.model_fields) == set(ChatSettings.model_fields) | set(
         RetrievalSettings.model_fields
-    )
+    ) | {"llm_judge_model"}
 
 
 def test_a_set_stop_event_ends_the_judge_without_a_call():

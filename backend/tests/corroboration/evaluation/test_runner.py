@@ -5,7 +5,7 @@ import pytest
 from typer.testing import CliRunner
 
 from app.core.errors import ConfigError
-from app.corroboration.config import CorroborationSettings
+from app.corroboration.config import DEFAULT_JUDGE_MODEL, CorroborationSettings
 from app.corroboration.evaluation.cases import DEFAULT_RESULTS_DIR, write_cases
 from app.corroboration.evaluation.cli import EvaluationCliDeps, app
 from app.corroboration.evaluation.runner import (
@@ -14,7 +14,6 @@ from app.corroboration.evaluation.runner import (
     run_evaluation,
 )
 from app.corroboration.judge import PROMPT_VERSION
-from app.llm.chat import DEFAULT_MODEL
 from tests.corroboration.evaluation.fakes import ScriptedJudge
 from tests.corroboration.evaluation.test_cases import make_case
 from tests.retrieval.fakes import FakeEmbedder
@@ -198,7 +197,7 @@ def test_evaluate_prints_the_metrics_and_writes_the_file(tmp_path):
     assert "false-support rate" in result.stdout
     assert "supports: precision" in result.stdout
     data = json.loads((tmp_path / "result.json").read_text())
-    assert data["model"] == DEFAULT_MODEL
+    assert data["model"] == DEFAULT_JUDGE_MODEL
     assert data["prompt_version"] == PROMPT_VERSION
     assert len(data["outcomes"]) == 1
 
@@ -211,9 +210,9 @@ def test_evaluate_model_runs_the_judge_on_that_model(tmp_path):
     assert json.loads((tmp_path / "result.json").read_text())["model"] == "other/model"
 
 
-def test_evaluate_defaults_to_the_llm_model_the_judge_runs_on(tmp_path):
+def test_evaluate_defaults_to_the_judge_model_setting(tmp_path):
     models: dict = {}
-    settings = CorroborationSettings(_env_file=None, llm_model="env/model")
+    settings = CorroborationSettings(_env_file=None, llm_judge_model="env/model")
     result = _invoke(tmp_path, _deps(models=models, settings=settings))
     assert result.exit_code == 0, result.output
     assert list(models) == ["env/model"]
@@ -247,7 +246,7 @@ def test_evaluate_writes_header_and_guard_refuses(tmp_path):
     assert first.exit_code == 0, first.output
     header = json.loads(output.read_text())["header"]
     assert header["set_version"] == "v1"
-    assert header["model"] == DEFAULT_MODEL
+    assert header["model"] == DEFAULT_JUDGE_MODEL
     assert header["prompt_version"] == PROMPT_VERSION
     assert header["date"] == NOW.isoformat()
     assert header["judge"] is None

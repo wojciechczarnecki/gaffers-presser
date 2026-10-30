@@ -268,7 +268,8 @@ uv run python -m app.corroboration.evaluation evaluate --split test --model open
 `evaluate` reports accuracy, per-label precision and recall and the false-support rate, counts
 reviewed cases only unless `--include-unreviewed` is given, and writes
 `backend/evals/corroboration/results/<split>-<model>.json`. Without `--model` it evaluates the
-model the judge runs on: `LLM_MODEL` when set, the default model otherwise.
+model the judge runs on: `LLM_JUDGE_MODEL` when set, the default judge model
+(`qwen/qwen3.8-flash`, ADR 0011) otherwise.
 
 Alerts — before each deadline the worker e-mails team news for the players that matter to the
 league (league-owned, widely owned or trending): a digest at 20:00 Warsaw time the day before, news at T-60 and a

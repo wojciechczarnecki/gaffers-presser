@@ -322,3 +322,17 @@ def test_backlog_23_46_54_removed_and_12_narrowed():
     assert "revisit the default model" not in twelve
     (fifty_five,) = [row for row in rows if row.startswith("| 55 |")]
     assert "#54" not in fifty_five and "match check (spec 018)" in fifty_five
+
+
+def test_adr_0011_names_the_judge_default():
+    adr = (ROOT / "docs" / "adr" / "0011-corroboration-judge-model.md").read_text(encoding="utf-8")
+    for needle in (
+        "qwen/qwen3.8-flash",
+        "LLM_JUDGE_MODEL",
+        "no model passes",
+        "5 PLN",
+        "docs/reports/corroboration-eval-v2.md".split("/")[-1],
+    ):
+        assert needle.lower() in adr.lower(), needle
+    readme = (ROOT / "docs" / "adr" / "README.md").read_text(encoding="utf-8")
+    assert "0011-corroboration-judge-model.md" in readme

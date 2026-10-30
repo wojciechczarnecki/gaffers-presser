@@ -10,8 +10,8 @@ from pydantic import BaseModel, ConfigDict
 
 from app.core.eval_results import write_lines_atomic
 from app.core.local_time import format_local
+from app.corroboration.config import DEFAULT_JUDGE_MODEL
 from app.corroboration.schemas import Label
-from app.llm.chat import DEFAULT_MODEL
 
 EVALS_DIR = Path(__file__).resolve().parents[3] / "evals" / "corroboration"
 V1_CASES_PATH = EVALS_DIR / "v1" / "cases.jsonl"
@@ -151,7 +151,7 @@ def composition_problems(cases: Sequence[JudgeCase]) -> list[str]:
             f" need at least {MIN_TEST_CONTRADICTS}"
         )
 
-    same_as_judge = sorted({case.id for case in cases if case.labelled_by == DEFAULT_MODEL})
+    same_as_judge = sorted({case.id for case in cases if case.labelled_by == DEFAULT_JUDGE_MODEL})
     if same_as_judge:
         problems.append(f"pre-labelled by the judge's own model: {', '.join(same_as_judge)}")
 

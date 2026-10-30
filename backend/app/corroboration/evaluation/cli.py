@@ -15,7 +15,7 @@ from app.core.clock import Clock, SystemClock
 from app.core.errors import AppError, ConfigError
 from app.core.eval_results import ResultExistsError, check_new_result, make_header
 from app.core.settings import load_settings
-from app.corroboration.config import CorroborationSettings
+from app.corroboration.config import CorroborationSettings, judge_model
 from app.corroboration.evaluation.building import (
     MAX_INPUTS,
     TARGET_SIZE,
@@ -65,7 +65,6 @@ from app.db.engine import make_engine
 from app.extraction.evaluation.dataset import load_context
 from app.extraction.service import ExtractionRuntime, load_reference_files
 from app.llm.chat import (
-    DEFAULT_MODEL,
     PROVIDER,
     build_chat_model,
     resolve_llm,
@@ -525,7 +524,7 @@ def evaluate(
     if split not in ("dev", "test"):
         raise fail("--split must be dev or test")
     deps = get_deps(ctx)
-    chosen_model = model or deps.settings.llm_model or DEFAULT_MODEL
+    chosen_model = model or judge_model(deps.settings)
     path = output or default_result_path(split, chosen_model, cases_path.parent.name)
     try:
         check_new_result(path, force)

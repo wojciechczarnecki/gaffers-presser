@@ -638,7 +638,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/content tests/corroboration -n auto`, then Verify.
-- [ ] 11. **The six test runs (AC11, AC13).**
+- [x] 11. **The six test runs (AC11, AC13).** `iterations: 1`
       - Write these first, in `tests/corroboration/evaluation/test_results_files.py`:
         - `test_v2_one_test_run_per_candidate`: `results/v2/test-*.json` holds one file per
           `CANDIDATES` model, plus at most one `-r2` each. Each header has `set_version
@@ -658,7 +658,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation/test_results_files.py`, then Verify.
-- [ ] 12. **The judge's default (AC12).**
+- [x] 12. **The judge's default (AC12).** `iterations: 1`
       - Write
         `tests/corroboration/evaluation/test_results_files.py::test_v2_rule_picks_the_judge_default`
         first: `choose_judge` over the final v2 test runs equals the configured judge default.
@@ -893,6 +893,9 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 - `minor` — `build_window_candidates` reads claims with `sources_only=True` (the plan names it for the anchors); an anchor can therefore come from an account outside the list whose post a list member quotes, so `test_eval_set_v2.py` checks public handles and that most anchors are list accounts instead of "every author is on the list".
 - `minor` — `export_inputs` takes `cases=`, `candidates=` and the two source paths (not a `sources` list), and `import_verdicts` takes no `select`-time `min_contradicts`; the manifest `selection` records the default 12.
 - `minor` — `review` reworked after the owner's 2026-10-30 decision: the post first, the anchor shortened below, the one label-table row, keys 1–4/s/b/q read as a line plus Enter (not a single keypress, so it works without a TTY), pre-labels shown only when the pick differs. `test_review_cli.py` was rewritten for the new keys; `LABEL_TABLE` lives in `cases.py` and the README line was updated.
+- `minor` — step 11: the first two attempts at the test runs wrote result files into an uncommitted tree, so their headers said `git_dirty: true` (the plan asks for false). They were discarded and all six models re-run, each result file committed before the next run (six commits instead of one). The discarded runs cost about $0.20 and count toward the spend line of the report. No model errored, so no `-r2` repeat. Model answers are not deterministic: luna scored 0.733, 0.667 and 0.613 across three runs on the same split, which the report names under threats.
+- `minor` — step 12 is case 2 (the rule picked `qwen/qwen3.8-flash`, not luna). Existing tests that pinned `DEFAULT_MODEL` as the judge (`test_runner.py`, `test_cli.py`, `test_cases.py`) were moved to `DEFAULT_JUDGE_MODEL`; that is the plan's own approach item 10.
+- `minor` — no model passed the threshold on the test split; the winner comes from the rule's no-pass branch (5 PLN cap, most thresholds, lower false-support, cheaper). ADR 0011 says so plainly.
 
 ## Final review
 

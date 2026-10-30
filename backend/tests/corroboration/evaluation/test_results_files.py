@@ -2,12 +2,14 @@ import json
 import re
 from pathlib import Path
 
+from app.corroboration.config import DEFAULT_JUDGE_MODEL
 from app.corroboration.evaluation.cases import (
     DEFAULT_RESULTS_DIR,
     LABELS,
     V1_CASES_PATH,
     load_cases,
 )
+from app.corroboration.evaluation.selection import choose_judge
 from app.corroboration.judge import PROMPT_VERSION
 from app.llm.chat import DEFAULT_MODEL
 from tests.extraction.candidates import CANDIDATES
@@ -93,3 +95,8 @@ def test_v2_spend_within_cap():
     spend += float(match.group(1))
     spend += sum(json.loads(p.read_text())["cost_usd"] or 0 for p in _v2_files())
     assert spend <= 5.00
+
+
+def test_v2_rule_picks_the_judge_default():
+    runs = {p.stem: json.loads(p.read_text()) for p in _v2_files()}
+    assert choose_judge(runs) == DEFAULT_JUDGE_MODEL

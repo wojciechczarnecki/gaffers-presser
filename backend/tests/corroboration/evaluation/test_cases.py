@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from app.corroboration.config import DEFAULT_JUDGE_MODEL
 from app.corroboration.evaluation.cases import (
     LABELS,
     MAX_CASES,
@@ -18,7 +19,6 @@ from app.corroboration.evaluation.cases import (
     parse_cases,
     write_cases,
 )
-from app.llm.chat import DEFAULT_MODEL
 
 T = datetime(2026, 9, 29, 12, 0, tzinfo=UTC)
 
@@ -184,7 +184,7 @@ def test_too_few_contradicts_overall_and_in_test():
 
 def test_labelled_by_the_default_model_is_reported():
     cases = valid_set()
-    cases[3] = cases[3].model_copy(update={"labelled_by": DEFAULT_MODEL})
+    cases[3] = cases[3].model_copy(update={"labelled_by": DEFAULT_JUDGE_MODEL})
     assert any("pre-labelled by the judge's own model" in p for p in composition_problems(cases))
 
 
