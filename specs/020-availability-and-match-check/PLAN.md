@@ -426,7 +426,7 @@ session scratchpad (never in the repository).
       Automatic verification:
       `uv run pytest -q tests/corroboration/evaluation/test_results_files.py`, then Verify.
 
-- [ ] 9. **The alert group "✅ Wraca do gry" (AC13, AC3 alert texts).** Files:
+- [x] 9. **The alert group "✅ Wraca do gry" (AC13, AC3 alert texts).** Files: `iterations: 0`
       `app/alerts/render.py` (`GROUP_ORDER`) and `app/content/alert_email.toml` (design
       item 7; update the "four groups" comment).
 

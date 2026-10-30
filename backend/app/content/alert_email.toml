@@ -29,12 +29,14 @@ weekdays = ["pon", "wt", "śr", "czw", "pt", "sob", "nd"]
 out = "🔴 Nie zagra"
 doubt = "🟠 Pod znakiem zapytania"
 benched = "🟡 Na ławce"
+available = "✅ Wraca do gry"
 confirmed_starter = "🟢 Zagra"
 
 [summary]
 out = "🔴 nie zagra"
 doubt = "🟠 niepewni"
 benched = "🟡 ławka"
+available = "✅ wraca"
 confirmed_starter = "🟢 zagra"
 separator = " · "
 
@@ -42,6 +44,7 @@ separator = " · "
 out = "Wypada ze składu"
 doubt = "Wątpliwy"
 benched = "Zaczyna na ławce"
+available = "Gotowy do gry"
 confirmed_starter = "W pierwszym składzie"
 
 [grade]
@@ -104,7 +107,7 @@ sources = "{label}:"
 source = "@{account}, {time}: {url}{marker}"
 button = "📲 Wyślij na WhatsApp"
 
-# Colours of the four groups.
+# Colours of the five groups.
 [palette.out]
 accent = "#d92d20"
 background = "#fef3f2"
@@ -119,6 +122,11 @@ heading = "#b54708"
 accent = "#eaaa08"
 background = "#fefbe8"
 heading = "#a15c07"
+
+[palette.available]
+accent = "#2e90fa"
+background = "#eff8ff"
+heading = "#175cd3"
 
 [palette.confirmed_starter]
 accent = "#47cd89"

@@ -19,7 +19,7 @@ TEMPLATE = load_template()
 ISAK = player_ref(2, "Isak", "Newcastle")
 
 CERTAINTIES = {"confirmed", "likely", "rumour"}
-EVENT_TYPES = {"out", "doubt", "benched", "confirmed_starter"}
+EVENT_TYPES = {"out", "doubt", "benched", "confirmed_starter", "available"}
 GRADES = {"high", "medium", "low"}
 KINDS = {"digest", "news", "breaking"}
 

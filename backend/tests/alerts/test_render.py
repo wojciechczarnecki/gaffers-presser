@@ -28,6 +28,7 @@ MARKER = TEMPLATE["sources"]["new_marker"]
 ISAK = player_ref(2, "Isak", "Newcastle")
 PALMER = player_ref(3, "Palmer", "Chelsea")
 HALL = player_ref(4, "Hall", "Newcastle")
+KANE = player_ref(5, "Kane", "Tottenham")
 
 
 def player_report(player, event_type="doubt", supporters=0, percent="10", level="medium", **kw):
@@ -117,19 +118,51 @@ def test_groups_follow_the_event_order_with_a_summary():
         player_report(ISAK, "doubt"),
         player_report(PALMER, "out"),
         player_report(HALL, "doubt"),
+        player_report(KANE, "available"),
     ]
     message = render_alert("digest", deadline(), AS_OF, reports)
     text = message.text
 
-    headings = [TEMPLATE["group"][event] for event in ("out", "doubt", "confirmed_starter")]
+    headings = [
+        TEMPLATE["group"][event] for event in ("out", "doubt", "available", "confirmed_starter")
+    ]
     positions = [text.index(heading) for heading in headings]
     assert positions == sorted(positions)
     assert TEMPLATE["group"]["benched"] not in text
-    assert text.index("Palmer") < text.index("Isak") < text.index("Saka")
+    assert text.index("Palmer") < text.index("Isak") < text.index("Kane") < text.index("Saka")
     assert f"{TEMPLATE['summary']['doubt']} 2" in text
     assert TEMPLATE["summary"]["benched"] not in text
     for heading in headings:
         assert heading in message.html
+
+
+def test_available_group_comes_before_zagra_with_its_counter():
+    reports = [
+        player_report(SAKA, "confirmed_starter"),
+        player_report(ISAK, "available"),
+        player_report(PALMER, "out"),
+        player_report(HALL, "benched"),
+    ]
+    message = render_alert("digest", deadline(), AS_OF, reports)
+    text = message.text
+
+    headings = [
+        TEMPLATE["group"][event] for event in ("out", "benched", "available", "confirmed_starter")
+    ]
+    assert TEMPLATE["group"]["available"] == "✅ Wraca do gry"
+    positions = [text.index(heading) for heading in headings]
+    assert positions == sorted(positions)
+    assert "✅ wraca 1" in text
+    assert "Isak (Newcastle) — Gotowy do gry" in text
+
+
+def test_available_card_html_has_its_palette():
+    html = render_alert("digest", deadline(), AS_OF, [player_report(ISAK, "available")]).html
+    palette = TEMPLATE["palette"]["available"]
+    assert palette["accent"] == "#2e90fa"
+    assert palette["accent"] in html
+    assert palette["heading"] in html
+    assert "Wraca do gry" in html
 
 
 def test_within_a_group_most_accounts_first_then_overall_ownership():
