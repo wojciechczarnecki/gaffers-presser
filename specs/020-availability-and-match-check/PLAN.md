@@ -379,7 +379,7 @@ session scratchpad (never in the repository).
       Automatic verification: `uv run pytest -q tests/corroboration tests/alerts -n auto`,
       then Verify.
 
-- [ ] 6. **The corroboration regression baseline: three runs of judge prompt v1 (AC12
+- [x] 6. **The corroboration regression baseline: three runs of judge prompt v1 (AC12 `iterations: 0`
       part).** Paid, run before step 7. The tree must be clean and committed, because the
       header records `git_dirty`. Run three times, `N` = 1, 2, 3:
       `env -u TWEET_SOURCE uv run python -m app.corroboration.evaluation evaluate --cases evals/corroboration/v2/cases.jsonl --split test --model google/gemini-3.1-flash-lite --output evals/corroboration/results/regression/test-judge-v1-rN.json`.
