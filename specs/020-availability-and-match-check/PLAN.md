@@ -782,6 +782,8 @@ session scratchpad (never in the repository).
 
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
+- 2026-10-30 — implement — `decision` — Step 14: the planned set v3 candidate pool needs about 5.3M judge tokens against the 3M limit; how should candidates be drawn? — Option B: keep the whole GW8 and GW9 window (`--since 2026-10-17`) but drop `--keywords` and use only `--availability-keywords` (about 3.9M with the 228 set v2 relabels); the owner accepts exceeding the 3M limit for this run.
+
 ## Review log
 
 2026-10-30 — plan review (fresh eye, `/pipeline:ship`).
