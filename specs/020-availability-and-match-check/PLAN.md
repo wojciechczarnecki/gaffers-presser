@@ -534,7 +534,7 @@ session scratchpad (never in the repository).
       `uv run pytest -q tests/extraction/evaluation -n auto`, the script check above, then
       Verify.
 
-- [ ] 14. **Build set v3 with session pre-labels (AC16 data).** AC16 asks for GW8–GW9 posts,
+- [x] 14. **Build set v3 with session pre-labels (AC16 data).** AC16 asks for GW8–GW9 posts, `iterations: 0`
       and the only source is Compose. The owner-approved SPEC (AC16, the "Context" posts) is
       the request for these reads; they are the only Compose reads of this plan: `export-corpus`,
       `snapshot-players` and `snapshot-fixtures`, read-only, and no command here writes to
@@ -847,6 +847,9 @@ SPEC gap remains, and it adds neither a dependency nor a migration.
 - `minor` — Step 13: `DEFAULT_SET_DIR` stays `v2` until step 14 creates `evals/extraction/v3` (`tests/extraction/test_linking.py` reads the default set's `players.json`); the switch to `v3` moves to step 14.
 - `minor` — Step 13: `session_judge.sh` asks the extraction judge for all four keys, but its validation requires `events` and `other_match_lineup` and accepts the two new flags as optional booleans, so the existing two-key verdict tests stay valid.
 - `minor` — Step 2: `test_prelabel_leaves_out_a_lineup_the_check_answers_false` kept a false-answered `doubt`, which the new rule drops; the test now keeps an `available` event instead.
+
+- `minor` — Step 14: the candidate pool follows the owner decision of 2026-10-30 (Option B: `--availability-keywords` without `--keywords`, 439 candidates plus 228 v2 relabels, about 3.8M tokens). Judged by sonnet (retries on opus); 57 v2 cases changed, 171 unchanged, 70 new candidates selected (298 cases in total; dev 91, test 207, 127 of them unreviewed). `backlog_cases["24"]` lists the 11 named GW8-GW9 posts. The composition and `reviewed` tests fail only on unreviewed cases, as planned (for example 12 `other_match_absence` cases still carry out/doubt events; the FFScout "rested for GW9" pre-label says `out`, which the owner corrects in the review).
+- `minor` — Step 14: the switch of `DEFAULT_SET_DIR` to `v3` is postponed to step 15 (after the owner's review), because `tests/extraction/test_linking.py` asserts the default set holds the reviewed v2 count (331 >= 439 fails on v3 candidates).
 
 ## Final review
 
