@@ -9,11 +9,15 @@ metrics:
   started_at: 2026-10-30T22:06
   plan_steps: 19
   plan_changes: 4
-  escalations: 0
+  escalations: 1
   escalations_permission: 0
   escalations_tooling: 0
   plan_review_blockers: 0
   plan_review_majors: 1
+  implement_steps: 14
+  implement_iterations: 2
+  deviations_minor: 7
+  deviations_major: 0
 ---
 
 # SPEC 020 — Positive availability and the match check for absences
