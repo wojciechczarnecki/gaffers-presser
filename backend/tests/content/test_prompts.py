@@ -35,6 +35,23 @@ def test_match_check_prompt_has_a_version():
     assert "for_next_pl_match" in prompt.text
 
 
+def test_match_check_prompt_v2_rules():
+    prompt = load_prompt("match_check")
+    assert prompt.version == 2
+    text = prompt.text.lower()
+    for phrase in (
+        "rest",
+        "rotat",
+        "suspension",
+        "injury",
+        "illness",
+        "cup",
+        "european",
+        "national",
+    ):
+        assert phrase in text
+
+
 def test_flow_sends_the_loaded_match_check_prompt():
     from app.extraction import flow
 

@@ -289,7 +289,7 @@ session scratchpad (never in the repository).
       `uv run pytest -q tests/extraction tests/retrieval/evaluation/test_templates.py tests/corroboration/test_service.py tests/alerts/test_breaking.py -n auto`
       (the v1 and v2 composition tests stay green through `LEGACY_EVENT_TYPES`), then Verify.
 
-- [ ] 2. **The match check for absences, prompt `match_check` v2 (AC5, AC6 text).** Files:
+- [x] 2. **The match check for absences, prompt `match_check` v2 (AC5, AC6 text).** Files: `iterations: 0`
       - `app/extraction/flow.py`: the filter becomes `MATCH_CHECKED_EVENTS`;
         `_render_match_check` gets an `Events:` block with one `- <mention>: <event_type>`
         line per event of that club;
@@ -842,6 +842,7 @@ SPEC gap remains, and it adds neither a dependency nor a migration.
 
 - `minor` — Step 1: the `test_an_out_event_answered_false_is_not_predicted` runner test moved to step 2, because the evaluation runner only gets a match-check answer for `out` once step 2 changes `match_check_node`; in step 1 it could not be seen red-then-green.
 - `minor` — Step 1: the existing `test_fresh_lineups_only_drops_a_lineup_the_check_answered_false` expected a false-answered `out` kept; it now expects an `available` event kept instead (the plan's rule change for `kept_at_read`). `tests/corroboration/helpers.py` gained a `for_next_pl_match` argument.
+- `minor` — Step 2: `test_prelabel_leaves_out_a_lineup_the_check_answers_false` kept a false-answered `doubt`, which the new rule drops; the test now keeps an `available` event instead.
 
 ## Final review
 

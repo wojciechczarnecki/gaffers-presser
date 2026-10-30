@@ -112,6 +112,20 @@ def test_scores_the_events_kept_at_read():
     assert report.metrics.other_match_caught_by_lead_only == 0
 
 
+def test_an_out_event_answered_false_is_not_predicted():
+    out = ExtractionOutput(
+        events=[
+            ExtractedEvent(player="Haaland", team=None, event_type="out", certainty="confirmed")
+        ]
+    )
+    report = _run(_case(), _fixtures(timedelta(hours=10)), out, MatchCheck(for_next_pl_match=False))
+
+    [outcome] = report.outcomes
+    assert outcome.result.predicted == []
+    [raw] = outcome.result.raw_predicted
+    assert (raw.event_type, raw.for_next_pl_match, raw.kept) == ("out", False, False)
+
+
 def test_lead_only_filter_reported():
     report = _run(
         _case(tags=["other_match_lineup"]),

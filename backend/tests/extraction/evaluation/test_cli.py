@@ -997,7 +997,7 @@ def test_evaluate_header_names_the_three_prompts(tmp_path):
     assert result.exit_code == 0, result.output
     header = json.loads((results / "h.json").read_text())["header"]
     assert header["set_version"] == "v2"
-    for part in ("extraction@", "link_disambiguation@1", "match_check@1"):
+    for part in ("extraction@", "link_disambiguation@1", "match_check@2"):
         assert part in header["prompt_version"]
 
 
@@ -1131,7 +1131,7 @@ def test_prelabel_leaves_out_a_lineup_the_check_answers_false(db, tmp_path):
     output_with_lineup = ExtractionOutput(
         events=[
             ExtractedEvent(player="Haaland", team=None, event_type="benched", certainty="likely"),
-            ExtractedEvent(player="Haaland", team=None, event_type="doubt", certainty="likely"),
+            ExtractedEvent(player="Haaland", team=None, event_type="available", certainty="likely"),
         ]
     )
     build_spec, _ = _build_spec(output_with_lineup, MatchCheck(for_next_pl_match=False))
@@ -1143,7 +1143,7 @@ def test_prelabel_leaves_out_a_lineup_the_check_answers_false(db, tmp_path):
 
     assert result.exit_code == 0, result.output
     [case] = load_cases(output)
-    assert [(e.fpl_id, e.event_type) for e in case.expected_events] == [(5, "doubt")]
+    assert [(e.fpl_id, e.event_type) for e in case.expected_events] == [(5, "available")]
 
 
 def test_prelabel_needs_a_set_or_an_output(tmp_path):
