@@ -56,6 +56,7 @@ from app.corroboration.evaluation.runner import (
 )
 from app.corroboration.evaluation.scratch import (
     ScratchError,
+    check_scratch_sources,
     guard_scratch_url,
     run_build_scratch,
     window_for,
@@ -300,6 +301,7 @@ def build_candidates_command(
 ) -> None:
     engine = _scratch_engine(database_url)
     try:
+        check_scratch_sources(engine)
         settings = (
             ctx.obj.settings if ctx.obj is not None else load_llm_settings(CorroborationSettings)
         )

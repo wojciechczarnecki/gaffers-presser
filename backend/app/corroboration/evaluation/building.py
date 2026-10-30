@@ -219,18 +219,19 @@ def build_window_candidates(
         for player, claims in sorted(claims_by_player.items(), key=lambda i: i[0].fpl_id):
             with Session(engine) as session:
                 claimed = claimed_post_ids(session, player, window.start, window.end)
+            # The search depends on the player and the window, not on the anchor: one per player.
+            found = retrieval_candidates(
+                engine,
+                player,
+                window.start,
+                window.end,
+                embedder=embedder,
+                claimed_ids=claimed,
+                prices=prices,
+                aliases=aliases,
+                tracer=tracer,
+            )
             for position, anchor in enumerate(_anchors(claims)):
-                found = retrieval_candidates(
-                    engine,
-                    player,
-                    window.start,
-                    window.end,
-                    embedder=embedder,
-                    claimed_ids=claimed,
-                    prices=prices,
-                    aliases=aliases,
-                    tracer=tracer,
-                )
                 context = [c for c in claims if c.post.x_id != anchor.post.x_id]
                 contradicting = [
                     c

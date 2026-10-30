@@ -23,12 +23,18 @@ def _false_support(data: dict[str, Any]) -> float:
     return 1.0 if rate is None else rate
 
 
+def _cost_rank(data: dict[str, Any]) -> tuple[bool, float]:
+    cost = data["projected_monthly_cost_pln"]
+    return (cost is None, cost or 0.0)
+
+
 def choose_judge(runs: Mapping[str, dict[str, Any]]) -> str | None:
     final = _final_runs(runs)
-    priced = {model: d for model, d in final.items() if d["projected_monthly_cost_pln"] is not None}
-    passing = {model: d for model, d in priced.items() if d["verdict"]["passed"]}
+    passing = {model: d for model, d in final.items() if d["verdict"]["passed"]}
     if passing:
-        return min(passing, key=lambda m: (passing[m]["projected_monthly_cost_pln"], m))
+        # A passing run with no projected cost still passes; it ranks after the priced ones.
+        return min(passing, key=lambda m: (_cost_rank(passing[m]), m))
+    priced = {model: d for model, d in final.items() if d["projected_monthly_cost_pln"] is not None}
     eligible = {
         model: d
         for model, d in priced.items()

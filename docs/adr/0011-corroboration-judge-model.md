@@ -43,6 +43,11 @@ Two runs are eligible, `openai/gpt-6-luna` and `qwen/qwen3.8-flash`; `deepseek` 
   `contradicts` recall threshold and luna does not. It does not meet the pass threshold: its
   false-support rate is 27.6% and its accuracy 0.653. The default is the best of a set that
   does not pass, not a model proven good enough.
+- The pick rests on one case: qwen holds the `contradicts` recall threshold with 5 of 6. One
+  more miss and it ties luna on thresholds held, and luna wins on false-support. Two earlier
+  sets of test runs were discarded (`git_dirty: true`) without keeping their files, so the
+  rule's pick in them is not known. A rerun can change the default; the owner switches it
+  with `LLM_JUDGE_MODEL`.
 - `CorroborationSettings.llm_judge_model` (`LLM_JUDGE_MODEL`, empty = the default). The judge
   is built from `single_model_config` with no fallback (a failed judge call already leaves the
   post unjudged). Extraction keeps `LLM_MODEL` and its fallback.

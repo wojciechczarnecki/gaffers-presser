@@ -22,6 +22,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 6
   final_review_nits: 5
+  findings_accepted: 11
+  findings_rejected: 0
 ---
 
 # SPEC 019 — Corroboration evaluation v2: a reviewed judge set, contradictions and a pass threshold

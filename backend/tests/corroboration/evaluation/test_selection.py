@@ -56,6 +56,15 @@ def test_repeat_replaces_the_first_run():
     runs = {"test-a": first, "test-a-r2": repeat, "test-b": run("b", 2.0)}
     assert choose_judge(runs) == "a"
     assert choose_judge({"test-a": first, "test-b": run("b", 2.0)}) == "b"
+    # the order the files are read in does not matter: the repeat still wins
+    repeat_first = {"test-a-r2": repeat, "test-a": first, "test-b": run("b", 2.0)}
+    assert choose_judge(repeat_first) == "a"
+
+
+def test_a_passing_run_without_a_cost_ranks_after_the_priced_passing_runs():
+    runs = _runs(run("a", None), run("b", 3.0), run("c", 1.0, accuracy=False))
+    assert choose_judge(runs) == "b"
+    assert choose_judge(_runs(run("a", None), run("c", 1.0, accuracy=False))) == "a"
 
 
 def test_no_eligible_run_gives_none():

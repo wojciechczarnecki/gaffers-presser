@@ -90,9 +90,11 @@ def test_v2_spend_within_cap():
         + build["extraction_cost_usd"]
         + build["query_embeddings_cost_usd"]
     )
-    match = re.search(r"^Dev spend: ([0-9.]+) USD$", DEV_LOG.read_text(), re.MULTILINE)
-    assert match, "dev-iterations.md has no 'Dev spend: <x> USD' line"
-    spend += float(match.group(1))
+    log = DEV_LOG.read_text()
+    for line in ("Dev spend", "Discarded test spend"):
+        match = re.search(rf"^{line}: ([0-9.]+) USD$", log, re.MULTILINE)
+        assert match, f"dev-iterations.md has no '{line}: <x> USD' line"
+        spend += float(match.group(1))
     spend += sum(json.loads(p.read_text())["cost_usd"] or 0 for p in _v2_files())
     assert spend <= 5.00
 

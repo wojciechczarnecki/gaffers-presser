@@ -2,7 +2,7 @@ import logging
 import threading
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import Engine, func, text
 from sqlalchemy.engine import make_url
@@ -15,7 +15,7 @@ from app.extraction.fixtures import FixtureRecord
 from app.extraction.linking import PlayerRecord, TeamRecord
 from app.extraction.models import Extraction
 from app.extraction.service import ExtractionRuntime, extract_post
-from app.extraction.store import _post_from_tweet
+from app.extraction.store import post_from_tweet
 from app.extraction.tracing import NULL_EXTRACTION_TRACER
 from app.fpl.calendar import current_season
 from app.fpl.models.reference import Fixture, Gameweek, Player, Season, Team
@@ -32,6 +32,9 @@ from app.tweets.models import ListMembership, Tweet
 logger = logging.getLogger(__name__)
 
 COMPOSE_PORT = 5432
+# Names that reach this machine; the guard treats them as one host. No host at all means the
+# local socket, the same server.
+LOOPBACK_HOSTS = frozenset({"", "localhost", "127.0.0.1", "::1"})
 # FPL's transfer deadline is 90 minutes before the first kickoff of the gameweek. Checked against
 # retrieval set v2's recorded GW6 and GW7 deadlines (spec 019).
 DEADLINE_LEAD = timedelta(minutes=90)
@@ -41,6 +44,11 @@ class ScratchError(AppError):
     pass
 
 
+def _host(host: str | None) -> str:
+    name = (host or "").strip("[]").lower()
+    return "localhost" if name in LOOPBACK_HOSTS else name
+
+
 def guard_scratch_url(url: str, configured_url: str | None) -> None:
     parsed = make_url(url)
     port = parsed.port or COMPOSE_PORT
@@ -48,13 +56,22 @@ def guard_scratch_url(url: str, configured_url: str | None) -> None:
         raise ScratchError("the scratch database must not use port 5432, the Compose port")
     if configured_url:
         configured = make_url(configured_url)
-        same = (parsed.host, port, parsed.database) == (
-            configured.host,
+        same = (_host(parsed.host), port, parsed.database) == (
+            _host(configured.host),
             configured.port or COMPOSE_PORT,
             configured.database,
         )
         if same:
             raise ScratchError("the scratch database is the configured DATABASE_URL")
+
+
+def check_scratch_sources(engine: Engine) -> set[str]:
+    # A database holding posts of any other source (the live `list` one) is not a scratch copy.
+    with Session(engine) as session:
+        sources = set(session.exec(select(Tweet.source).distinct()).all())
+    if sources - {CORPUS_SOURCE}:
+        raise ScratchError("the database holds other posts than the evaluation corpus")
+    return sources
 
 
 def derive_deadlines(fixtures: Sequence[FixtureRecord]) -> dict[int, datetime]:
@@ -75,11 +92,9 @@ def seed_scratch(
     teams: Sequence[TeamRecord],
     fixtures: Sequence[FixtureRecord],
 ) -> bool:
-    with Session(engine) as session:
-        sources = set(session.exec(select(Tweet.source).distinct()).all())
-    if sources and sources != {CORPUS_SOURCE}:
-        raise ScratchError("the database holds other posts than the evaluation corpus")
-    if sources:
+    if check_scratch_sources(engine):
+        # Seeded by an earlier run; the flag check runs again, as it may have stopped that run.
+        check_source_flags(engine, corpus)
         return False
 
     season = players[0].season if players else teams[0].season
@@ -135,7 +150,7 @@ def seed_scratch(
             ListMembership(
                 list_id=0,
                 source=CORPUS_SOURCE,
-                fetched_at=corpus_end or datetime.now().astimezone(),
+                fetched_at=corpus_end or datetime.now(UTC),
                 handles=list(list_handles),
             )
         )
@@ -200,7 +215,7 @@ def extract_window(
             .where(Tweet.x_id.not_in(done))
             .order_by(Tweet.created_at.desc(), Tweet.x_id.desc())
         ).all()
-        posts = [_post_from_tweet(tweet) for tweet in tweets]
+        posts = [post_from_tweet(tweet) for tweet in tweets]
     extracted = failed = 0
     for post in posts:
         if stop.is_set():

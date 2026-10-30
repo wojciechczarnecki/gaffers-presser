@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from typer.testing import CliRunner
 
+from app.corroboration.evaluation import building
 from app.corroboration.evaluation.building import (
     BuildExistsError,
     assign_split,
@@ -287,6 +288,23 @@ def test_sql_pairs_contradicts_first(db):
     assert len(pairs) == 3
     assert {c.post.x_id for c in pairs if c.tier == "sql-contradicts"} == {2, 3}
     assert {c.tier for c in pairs} == {"sql-contradicts", "sql"}
+
+
+def test_one_retrieval_search_per_player_whatever_the_anchors(db, monkeypatch):
+    seed_reference(db)
+    add_claim(db, 1, SAKA, "confirmed_starter", created_at=NOW - timedelta(hours=1), author="a1")
+    add_claim(db, 2, SAKA, "out", created_at=NOW - timedelta(hours=2), author="a2")
+    searched = []
+    real = building.retrieval_candidates
+
+    def counting(engine, player, *args, **kwargs):
+        searched.append(player.fpl_id)
+        return real(engine, player, *args, **kwargs)
+
+    monkeypatch.setattr(building, "retrieval_candidates", counting)
+    built = build_window_candidates(db, FakeEmbedder(), [WINDOW], PRICES)
+    assert len({c.anchor.x_id for c in built.candidates}) == 2
+    assert searched == [SAKA]
 
 
 def _cand(n, tier, has_event=False):

@@ -93,7 +93,7 @@ def _latest_per_post(columns: str, where: str = "") -> str:
     )
 
 
-def _post_from_tweet(tweet: Tweet) -> PostInput:
+def post_from_tweet(tweet: Tweet) -> PostInput:
     return PostInput(
         x_id=tweet.x_id,
         author_handle=tweet.author_handle,
@@ -172,7 +172,7 @@ def next_pending(
         .order_by(history.c.tweet_x_id.is_not(None), Tweet.created_at.desc(), Tweet.x_id.desc())
         .limit(1)
     ).first()
-    return _post_from_tweet(tweet) if tweet is not None else None
+    return post_from_tweet(tweet) if tweet is not None else None
 
 
 def posts_for_reextract(
@@ -184,7 +184,7 @@ def posts_for_reextract(
 ) -> list[PostInput]:
     if x_id is not None:
         tweet = session.get(Tweet, x_id)
-        return [_post_from_tweet(tweet)] if tweet is not None else []
+        return [post_from_tweet(tweet)] if tweet is not None else []
 
     if since is not None or until is not None:
         stmt = select(Tweet).order_by(Tweet.created_at, Tweet.x_id)
@@ -192,7 +192,7 @@ def posts_for_reextract(
             stmt = stmt.where(Tweet.created_at >= since)
         if until is not None:
             stmt = stmt.where(Tweet.created_at <= until)
-        return [_post_from_tweet(t) for t in session.exec(stmt).all()]
+        return [post_from_tweet(t) for t in session.exec(stmt).all()]
 
     if failed:
         rows = session.execute(
@@ -204,7 +204,7 @@ def posts_for_reextract(
                 " ORDER BY t.created_at, t.x_id"
             )
         ).mappings()
-        return [_post_from_tweet(Tweet(**dict(row))) for row in rows]
+        return [post_from_tweet(Tweet(**dict(row))) for row in rows]
 
     return []
 

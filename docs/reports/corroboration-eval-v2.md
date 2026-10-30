@@ -22,6 +22,8 @@ Set v2 (`backend/evals/corroboration/v2/`) is every v1 case (51, v1's split kept
 
 Source: the retrieval v2 corpus (2,557 public posts of the watched List, 2026-09-18 to 2026-10-17) was loaded into a throwaway container, embedded with `text-embedding-3-large` and extracted with prompt v5 and the match check (`extraction@5+link_disambiguation@1+match_check@1`, `openai/gpt-6-luna`). The windows come from the production window function over the corpus's fixtures: GW6 [2026-10-03T10:00Z, 2026-10-10T10:00Z) and GW7 [2026-10-12T21:00Z, 2026-10-17T10:00Z). Anchors are current events under `fresh_lineups_only=True`; candidates come from `retrieval_candidates` with the 2026-10-22 configuration, plus up to 3 SQL-context claims per anchor. The build produced 2,765 candidates; 250 were judged by the session and 55 selected (seed 19, `contradicts` first). The Compose database was neither read nor written.
 
+The corpus holds the watched accounts' posts and the public posts they quote, and the build does not filter the quoted ones out: 8 of the 55 new cases have an anchor by 5 accounts outside the List and 8 a post by 7 such accounts. They are public posts reached through the List, never a private account or manager and league data.
+
 ## Pre-labels and the owner's agreement
 
 Every case was pre-labelled blind by the Claude Code session judge (`claude-opus-5-5 (Claude Code session)`, prompt `corroboration_judge@1`), through `scripts/session_judge.sh` with the `corroboration` schema. A v1 case also keeps haiku's original label (`anthropic/claude-haiku-4.5`). The owner then reviewed all 106 cases. Output of `agreement` (cases where the owner's label differs):
@@ -72,6 +74,8 @@ Cost a month: the volume is the candidates of each listed player's newest anchor
 
 No model passes every threshold, so the SPEC's second branch applies: among runs at or under 5 PLN a month, the most thresholds held (counting "no errored case"), then the lower false-support rate, then the cheaper. Eligible: `openai/gpt-6-luna` (2.91 PLN, 1 held) and `qwen/qwen3.8-flash` (4.46 PLN, 2 held). `deepseek` (5.16), `glm` (5.56), `gemini` (7.38) and `haiku` (53.60) are over the cap. The winner is `qwen/qwen3.8-flash`. Had the cap been 8 PLN, `gemini` would win: it is the only model near the thresholds.
 
+The win rests on one case. qwen holds the `contradicts` recall threshold with 5 of 6 (0.83); one more miss (4 of 6, 0.67) and it holds as many thresholds as luna, and luna wins on the lower false-support rate (20.7% against 27.6%). The six models also ran twice before the committed runs; those runs were discarded for `git_dirty: true` and their result files were not kept, so what the rule picked in them is not known. Only luna's accuracy was noted (0.733 and 0.667, against 0.613 in the committed run). The pick is the rule's answer on these runs, not a stable ranking of qwen above luna.
+
 ## Spend
 
 | Item | USD |
@@ -79,7 +83,7 @@ No model passes every threshold, so the SPEC's second branch applies: among runs
 | Build: embeddings 0.0192, extraction 0.3764, query embeddings 0.0001 | 0.396 |
 | Dev iteration (six runs) | 0.075 |
 | Test runs (six, committed) | 0.181 |
-| Two discarded sets of test runs (they ran with an uncommitted tree, `git_dirty: true`, and were repeated) | about 0.204 |
+| Two discarded sets of test runs (they ran with an uncommitted tree, `git_dirty: true`, and were repeated; recorded as `Discarded test spend` in the dev log) | about 0.204 |
 | Total | about 0.856 |
 
 Against the $5 cap for the spec and the $1 cap for the build (0.396).

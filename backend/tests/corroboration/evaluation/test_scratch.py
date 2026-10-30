@@ -9,6 +9,7 @@ from app.corroboration.evaluation.scratch import (
     DEADLINE_LEAD,
     ScratchError,
     build_costs,
+    check_scratch_sources,
     derive_deadlines,
     extract_window,
     guard_scratch_url,
@@ -21,7 +22,7 @@ from app.extraction.schemas import ExtractionOutput
 from app.extraction.service import ExtractionRuntime
 from app.llm.chat import ChatModelSpec
 from app.llm.pricing import Price
-from app.retrieval.evaluation.dataset import CorpusPost
+from app.retrieval.evaluation.dataset import CorpusPost, EvaluationError
 from app.retrieval.indexing import IndexingRuntime, index_missing
 from app.retrieval.tracing import NULL_TRACER
 from app.tweets.models import Tweet
@@ -69,6 +70,42 @@ def test_refuses_the_configured_database_url():
     guard_scratch_url("postgresql+psycopg://eval:eval@localhost:55433/eval", configured)
 
 
+def test_loopback_names_are_one_host():
+    configured = "postgresql+psycopg://presser:secret@localhost:5433/presser"
+    for host in ("127.0.0.1", "[::1]", "LOCALHOST", ""):
+        with pytest.raises(ScratchError, match="configured"):
+            guard_scratch_url(f"postgresql+psycopg://u:p@{host}:5433/presser", configured)
+    guard_scratch_url("postgresql+psycopg://u:p@127.0.0.1:5433/eval", configured)
+    guard_scratch_url("postgresql+psycopg://u:p@scratch-host:5433/presser", configured)
+
+
+def _list_post(db):
+    with Session(db) as session:
+        session.add(
+            Tweet(
+                x_id=1,
+                author_handle="x",
+                text="t",
+                created_at=T0,
+                first_fetched_at=T0,
+                source="list",
+                is_repost=False,
+                is_reply=False,
+                raw={},
+            )
+        )
+        session.commit()
+
+
+def test_check_scratch_sources_refuses_live_posts(db):
+    assert check_scratch_sources(db) == set()
+    _seed(db, [_post(1, T0)])
+    assert check_scratch_sources(db) == {"eval-corpus"}
+    _list_post(db)
+    with pytest.raises(ScratchError, match="other posts"):
+        check_scratch_sources(db)
+
+
 def test_deadlines_are_first_kickoff_minus_90_minutes():
     _, _, fixtures = _context()
     deadlines = derive_deadlines(fixtures)
@@ -92,23 +129,17 @@ def test_seed_loads_corpus_players_fixtures_and_gameweeks(db):
 
 
 def test_seed_refuses_a_database_with_other_posts(db):
-    with Session(db) as session:
-        session.add(
-            Tweet(
-                x_id=1,
-                author_handle="x",
-                text="t",
-                created_at=T0,
-                first_fetched_at=T0,
-                source="list",
-                is_repost=False,
-                is_reply=False,
-                raw={},
-            )
-        )
-        session.commit()
+    _list_post(db)
     with pytest.raises(ScratchError, match="other posts"):
         _seed(db, [_post(1, T0)])
+
+
+def test_a_rerun_checks_the_source_flags_again(db):
+    post = _post(1, T0)
+    assert _seed(db, [post]) is True
+    flagged = post.model_copy(update={"is_source": False})  # disagrees with the stored post
+    with pytest.raises(EvaluationError, match="is_source"):
+        _seed(db, [flagged])
 
 
 def test_windows_from_the_seeded_calendar(db):
@@ -153,6 +184,7 @@ def test_extraction_stays_in_the_window_and_stops_at_the_cap(db):
     corpus = [_post(n, T0 + timedelta(hours=n)) for n in range(1, 6)]
     corpus.append(_post(9, T0 - timedelta(days=3)))  # before the window
     corpus.append(_post(10, T0 + timedelta(days=3)))  # after the window
+    corpus.append(_post(11, T0 + timedelta(days=1)))  # on the end, which is excluded
     _seed(db, corpus)
     summary = extract_window(
         db,
@@ -167,6 +199,22 @@ def test_extraction_stays_in_the_window_and_stops_at_the_cap(db):
     assert _extracted(db) == [1003, 1004, 1005]
     assert summary.extracted == 3 and summary.stopped_by_cap is True
     assert 1009 not in _extracted(db) and 1010 not in _extracted(db)
+    assert 1011 not in _extracted(db)
+
+
+def test_extraction_includes_the_window_start(db):
+    corpus = [_post(1, T0), _post(2, T0 - timedelta(seconds=1))]
+    _seed(db, corpus)
+    summary = extract_window(
+        db,
+        _runtime(2),
+        T0,
+        T0 + timedelta(days=1),
+        max_cost_usd=100,
+        clock=FixedClock(),
+        stop=threading.Event(),
+    )
+    assert _extracted(db) == [1001] and summary.extracted == 1
 
 
 def test_rerun_resumes_without_reseeding_or_reextracting(db):

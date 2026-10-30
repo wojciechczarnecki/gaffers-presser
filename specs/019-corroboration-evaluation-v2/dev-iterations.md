@@ -13,6 +13,10 @@ Dev split of set v2 (31 cases, owner-reviewed). Prompt `corroboration_judge@1`; 
 
 Dev spend: 0.0746 USD
 
+Discarded test spend: 0.2040 USD
+
+The discarded test spend is the two sets of six test runs that ran with an uncommitted tree (`git_dirty: true`) and were repeated; their result files were not kept, only luna's accuracy (0.733 and 0.667) was noted.
+
 ## Analysis and decision
 
 Only google/gemini-3.1-flash-lite passes every threshold on dev. The errors shared by at least two models are single hard cases that the prompt's rules do not decide:

@@ -8,6 +8,7 @@ from app.core.errors import ConfigError
 from app.corroboration.config import DEFAULT_JUDGE_MODEL, CorroborationSettings
 from app.corroboration.evaluation.cases import DEFAULT_RESULTS_DIR, write_cases
 from app.corroboration.evaluation.cli import EvaluationCliDeps, app
+from app.corroboration.evaluation.dataset import BuildInfo, SetManifest, write_manifest
 from app.corroboration.evaluation.runner import (
     EvaluationError,
     default_result_path,
@@ -135,6 +136,47 @@ def test_projected_monthly_cost():
     assert data["projected_monthly_cost_pln"] == pytest.approx(0.002 * 1000 * 4.0)
     assert _run_with_cost(cases, judge, calls=None, rate=4.0)["projected_monthly_cost_pln"] is None
     assert _run_with_cost(cases, judge, calls=1000, rate=None)["projected_monthly_cost_pln"] is None
+
+
+class _CostPerCase(ScriptedJudge):
+    """Costs by the post: post 1 0.001, post 2 0.003, post 3 raises (no cost)."""
+
+    def run(self, item):
+        if item.post.text == "post 3":
+            raise RuntimeError("provider down")
+        self.cost_usd = {"post 1": 0.001, "post 2": 0.003}[item.post.text]
+        return super().run(item)
+
+
+def test_projected_monthly_cost_is_the_mean_of_the_priced_cases():
+    cases = [make_case(n, "supports") for n in (1, 2, 3)]
+    data = _run_with_cost(cases, _CostPerCase("supports"), calls=1000, rate=4.0)
+    # mean of 0.001 and 0.003; the errored case has no cost and is left out
+    assert data["projected_monthly_cost_pln"] == pytest.approx(0.002 * 1000 * 4.0)
+    assert data["cost_usd"] == pytest.approx(0.004)
+
+
+def test_evaluate_reads_the_call_volume_from_the_set_manifest(tmp_path):
+    build = BuildInfo(
+        corpus="c",
+        windows=[],
+        embedding_model="e",
+        extraction_model="x",
+        extraction_prompt_version="p",
+        embeddings_cost_usd=0.0,
+        extraction_cost_usd=0.0,
+        query_embeddings_cost_usd=0.0,
+        candidates=1,
+        judge_calls_per_month=1000,
+    )
+    write_manifest(tmp_path, SetManifest(version="v2", build=build))
+    settings = CorroborationSettings(_env_file=None, usd_pln_rate=4.0)
+    judge = ScriptedJudge("supports", cost_usd=0.001)
+    result = _invoke(tmp_path, _deps(judge=judge, settings=settings), "--split", "test")
+    assert result.exit_code == 0, result.output
+    assert "projected cost a month: 4.00 PLN" in result.stdout
+    data = json.loads((tmp_path / "result.json").read_text())
+    assert data["projected_monthly_cost_pln"] == pytest.approx(4.0)
 
 
 def test_evaluate_prints_and_writes_the_verdict(tmp_path):
