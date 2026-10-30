@@ -430,3 +430,93 @@ def test_a_stale_lineup_is_neither_a_claim_nor_judged(db):
     cited = result.supporting + result.contradicting + result.related
     assert all(c.x_id != 3 for c in cited)
     assert fake.received_messages == []
+
+
+def _available_world(db):
+    seed_reference(db, {6: DEADLINE})
+
+
+def test_available_anchor_when_it_reverses_an_older_out(db):
+    _available_world(db)
+    add_claim(db, 1, SAKA, "out", "confirmed", created_at=NOW - timedelta(hours=5), author="a1")
+    add_claim(db, 2, SAKA, "out", "likely", created_at=NOW - timedelta(hours=4), author="a2")
+    add_claim(
+        db, 3, SAKA, "available", "confirmed", created_at=NOW - timedelta(hours=1), author="a3"
+    )
+    result = _run(db, _runtime())
+    assert result.anchor.post.x_id == 3
+    assert result.anchor.event_type == "available"
+    assert [c.x_id for c in result.contradicting] == [2, 1]
+    assert result.reversal is True
+
+
+def test_available_anchor_when_a_judged_older_post_contradicts(db):
+    _available_world(db)
+    add_claim(
+        db, 3, SAKA, "available", "confirmed", created_at=NOW - timedelta(hours=1), author="a3"
+    )
+    add_tweet(db, 10, "Saka is ruled out", created_at=NOW - timedelta(hours=3), author="j1")
+    judge, fake = _judge("contradicts")
+    result = _run(db, _runtime(judge))
+    assert result.anchor.post.x_id == 3
+    assert len(fake.received_messages) == 1
+    sent = fake.received_messages[0][1].content
+    assert "available" in sent.lower()
+    assert [c.x_id for c in result.contradicting] == [10]
+    assert result.reversal is True
+
+
+def test_non_reversing_available_falls_back_to_an_older_starter(db):
+    _available_world(db)
+    add_claim(db, 1, SAKA, "confirmed_starter", created_at=NOW - timedelta(hours=5), author="a1")
+    add_claim(
+        db, 3, SAKA, "available", "confirmed", created_at=NOW - timedelta(hours=1), author="a3"
+    )
+    add_tweet(db, 10, "Saka trained all week", created_at=NOW - timedelta(hours=2), author="j1")
+    judge, fake = _judge("related", "related")
+    result = _run(db, _runtime(judge))
+    assert result.anchor.post.x_id == 1
+    assert result.anchor.event_type == "confirmed_starter"
+    assert {c.x_id for c in result.related} == {3, 10}
+    assert len(fake.received_messages) == 2
+    assert "Event type: confirmed_starter" in fake.received_messages[1][1].content
+
+
+def test_only_available_claims_give_no_anchor(db):
+    _available_world(db)
+    add_claim(
+        db, 3, SAKA, "available", "confirmed", created_at=NOW - timedelta(hours=1), author="a3"
+    )
+    judge, fake = _judge("unrelated")
+    result = _run(db, _runtime(judge))
+    assert result.anchor is None
+    assert result.grade is None
+    assert result.retrieval.status == "skipped"
+    assert "reverse" in result.retrieval.skipped_reason
+
+
+def test_same_account_out_then_fit_reverses(db):
+    _available_world(db)
+    add_claim(db, 1, SAKA, "out", "likely", created_at=NOW - timedelta(hours=5), author="reporter")
+    add_claim(
+        db,
+        2,
+        SAKA,
+        "available",
+        "confirmed",
+        created_at=NOW - timedelta(hours=1),
+        author="Reporter",
+    )
+    result = _run(db, _runtime())
+    assert result.anchor.post.x_id == 2
+    assert result.contradicting == []
+
+
+def test_given_available_anchor_that_does_not_reverse_is_replaced(db):
+    _available_world(db)
+    add_claim(db, 1, SAKA, "confirmed_starter", created_at=NOW - timedelta(hours=5), author="a1")
+    add_claim(
+        db, 3, SAKA, "available", "confirmed", created_at=NOW - timedelta(hours=1), author="a3"
+    )
+    result = _run(db, _runtime(), anchor_x_id=3)
+    assert result.anchor.post.x_id == 1

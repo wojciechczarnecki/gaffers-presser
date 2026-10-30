@@ -353,7 +353,7 @@ session scratchpad (never in the repository).
 
       Automatic verification: `uv run pytest -q tests/corroboration`, then Verify.
 
-- [ ] 5. **The anchor rule (AC10).** Files: `app/corroboration/rules.py` (`reverses`,
+- [x] 5. **The anchor rule (AC10).** Files: `app/corroboration/rules.py` (`reverses`, `iterations: 1`
       `REVERSED_TYPES = ("out", "doubt")`) and `app/corroboration/service.py` (design item 6,
       `NO_REVERSAL_REASON`). Factor the existing labelling and judging block of `corroborate`
       into a helper that takes the anchor, so it can run twice.

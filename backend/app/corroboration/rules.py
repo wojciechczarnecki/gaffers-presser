@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from app.corroboration.schemas import (
+    Claim,
     Freshness,
     Grade,
     Label,
@@ -32,6 +33,7 @@ class AccountCounts:
 DEFAULT_RULES = GradeRules()
 _AVAILABILITY = {"out", "doubt", "benched"}
 _ABSENCES = ("out", "doubt")
+REVERSED_TYPES = _ABSENCES
 _LEVELS = ("low", "medium", "high")
 
 
@@ -45,6 +47,17 @@ def label_claim(anchor_type: str, claim_type: str) -> Label:
     if "confirmed_starter" in pair and pair - {"confirmed_starter"} <= _AVAILABILITY:
         return "contradicts"
     return "related"
+
+
+def reverses(candidate: Claim, claims: Sequence[Claim], judged: Sequence[LabelledPost]) -> bool:
+    mark = (candidate.post.created_at, candidate.post.x_id)
+
+    def older(post: PostRef) -> bool:
+        return (post.created_at, post.x_id) < mark
+
+    return any(c.event_type in REVERSED_TYPES and older(c.post) for c in claims) or any(
+        item.label == "contradicts" and older(item.post) for item in judged
+    )
 
 
 def account_of(post: PostRef) -> str:

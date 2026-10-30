@@ -13,8 +13,9 @@ from app.corroboration.rules import (
     label_claim,
     newer_contradiction,
     reversal,
+    reverses,
 )
-from app.corroboration.schemas import LabelledPost, PostRef
+from app.corroboration.schemas import Claim, LabelledPost, PostRef
 
 T0 = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
 TYPES = ("out", "doubt", "benched", "confirmed_starter", "available")
@@ -353,3 +354,21 @@ def test_quoted_anchor_its_quoting_account_never_contradicts():
         QUOTING_ANCHOR,
     )
     assert counts.contradicting == []
+
+
+def _claim(x_id, event_type, minutes, author="a") -> Claim:
+    return Claim(post=_post(x_id, author, minutes), event_type=event_type, certainty="likely")
+
+
+CANDIDATE = _claim(50, "available", 0, "fit_account")
+
+
+def test_reverses():
+    assert reverses(CANDIDATE, [_claim(1, "out", -10)], []) is True
+    assert reverses(CANDIDATE, [_claim(2, "doubt", -5, "fit_account")], []) is True
+    assert reverses(CANDIDATE, [], [_lab(3, "contradicts", "j", -5, origin="judge")]) is True
+    assert reverses(CANDIDATE, [_claim(4, "out", 10)], []) is False
+    assert reverses(CANDIDATE, [_claim(5, "confirmed_starter", -10)], []) is False
+    assert reverses(CANDIDATE, [_claim(6, "available", -10)], []) is False
+    assert reverses(CANDIDATE, [], [_lab(7, "supports", "j", -5, origin="judge")]) is False
+    assert reverses(CANDIDATE, [], [_lab(8, "contradicts", "j", 5, origin="judge")]) is False

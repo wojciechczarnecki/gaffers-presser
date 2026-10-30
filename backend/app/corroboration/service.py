@@ -16,6 +16,7 @@ from app.corroboration.rules import (
     label_claim,
     newer_contradiction,
     reversal,
+    reverses,
 )
 from app.corroboration.schemas import (
     Citation,
@@ -40,6 +41,7 @@ from app.retrieval.embedder import Embedder
 logger = logging.getLogger(__name__)
 
 SKIPPED_NOT_CONFIGURED = "retrieval and the judge are not configured"
+NO_REVERSAL_REASON = "the only claims say the player is available and reverse nothing"
 
 
 @dataclass(frozen=True)
@@ -176,9 +178,34 @@ def corroborate(
             span.update(output={"anchor": None})
             return result
 
-        anchor = next((c for c in claims if c.post.x_id == anchor_x_id), None) or max(
+        candidate = next((c for c in claims if c.post.x_id == anchor_x_id), None) or max(
             claims, key=lambda c: (c.post.created_at, c.post.x_id)
         )
+        judge_ready = runtime.embedder is not None and runtime.judge is not None
+        anchor = candidate
+        judged: list[LabelledPost] | None = None
+        report: RetrievalReport | None = None
+        if candidate.event_type == "available" and not reverses(candidate, claims, []):
+            if judge_ready:
+                judged, report = _judge_candidates(
+                    engine, runtime, player, candidate, start, as_of, claimed
+                )
+            if judged is None or not reverses(candidate, claims, judged):
+                judged, report = None, None
+                others = [c for c in claims if c.event_type != "available"]
+                if not others:
+                    result = Corroboration(
+                        player=player,
+                        as_of=as_of,
+                        window_start=start,
+                        new_since=new_since,
+                        anchor=None,
+                        retrieval=RetrievalReport("skipped", NO_REVERSAL_REASON),
+                        trace_id=span.trace_id,
+                    )
+                    span.update(output={"anchor": None})
+                    return result
+                anchor = max(others, key=lambda c: (c.post.created_at, c.post.x_id))
         labelled = [
             LabelledPost(
                 post=claim.post,
@@ -191,12 +218,13 @@ def corroborate(
             if claim.post.x_id != anchor.post.x_id
         ]
 
-        if runtime.embedder is None or runtime.judge is None:
+        if not judge_ready:
             report = RetrievalReport("skipped", runtime.skipped_reason or SKIPPED_NOT_CONFIGURED)
         else:
-            judged, report = _judge_candidates(
-                engine, runtime, player, anchor, start, as_of, claimed
-            )
+            if judged is None or report is None:
+                judged, report = _judge_candidates(
+                    engine, runtime, player, anchor, start, as_of, claimed
+                )
             labelled.extend(judged)
 
         counts = count_accounts(labelled, anchor.post)
