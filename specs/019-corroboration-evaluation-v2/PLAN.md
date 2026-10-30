@@ -740,7 +740,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
 
       Automatic verification: `uv run pytest -q tests/test_docs.py tests/test_readme.py`, then
       Verify.
-- [ ] 15. **Close (AC17).**
+- [x] 15. **Close (AC17).** `iterations: 0`
       - Stop the container: `docker stop presser-eval-019`.
       - Check that nothing private leaked:
         `git diff origin/main --stat` lists no `.env` file, and
@@ -796,7 +796,13 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
   is green.
 - Verify (the full command) is green.
 
-Record the results here when done.
+Results (2026-10-30):
+
+- `--help` lists all nine commands.
+- `agreement` prints `reviewed: 106`, the session judge 18 of 106 and haiku 11 of 51.
+- `evaluate --split test --model qwen/qwen3.8-flash --output $S/e2e.json` printed the production block and `verdict: FAIL` (accuracy 0.680, false-support and recall failing; the same model scored 0.653 in the committed run, which shows the run-to-run noise named in the report). It wrote `verdict` and `production` into the file. The verdict is FAIL because no model passes; the report gives that verdict.
+- `test_eval_set_v2.py` and `test_results_files.py` green; the full verification command green.
+- The container `presser-eval-019` is stopped; no `.env` file in the diff; no `league_id` or `manager` in `cases.jsonl`.
 
 ### Manual (performed by the owner)
 
@@ -804,13 +810,13 @@ n/a — the only hands-on part, the review of set v2, is requested by the step 9
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/EVALUATION.md`, `README.md`,
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/EVALUATION.md`, `README.md`,
       `docs/BACKLOG.md` (and in case 2 ADR 0011, `docs/DEPLOYMENT.md`, `docs/PROJECT.md`,
       `.env.example`)
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
