@@ -100,3 +100,17 @@ def test_v2_spend_within_cap():
 def test_v2_rule_picks_the_judge_default():
     runs = {p.stem: json.loads(p.read_text()) for p in _v2_files()}
     assert choose_judge(runs) == DEFAULT_JUDGE_MODEL
+
+
+def test_report_v2_names_every_test_run():
+    report = (V2_SET.parents[3] / "docs" / "reports" / "corroboration-eval-v2.md").read_text(
+        encoding="utf-8"
+    )
+    final: dict[str, dict] = {}
+    for path in sorted(_v2_files(), key=lambda p: p.stem.endswith("-r2")):
+        data = json.loads(path.read_text())
+        final[data["model"]] = data
+    assert set(final) == set(CANDIDATES)
+    for model, data in final.items():
+        assert f"`{model}`" in report, model
+        assert f"{data['metrics']['accuracy']:.3f}" in report, model

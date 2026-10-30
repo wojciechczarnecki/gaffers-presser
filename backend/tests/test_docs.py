@@ -336,3 +336,22 @@ def test_adr_0011_names_the_judge_default():
         assert needle.lower() in adr.lower(), needle
     readme = (ROOT / "docs" / "adr" / "README.md").read_text(encoding="utf-8")
     assert "0011-corroboration-judge-model.md" in readme
+
+
+def test_corroboration_report_v2_has_every_section():
+    report = (ROOT / "docs" / "reports" / "corroboration-eval-v2.md").read_text(encoding="utf-8")
+    for heading in (
+        "## Summary",
+        "## The set",
+        "## Pre-labels and the owner's agreement",
+        "## Threshold",
+        "## Dev iterations",
+        "## Test results",
+        "## The rule and the winner",
+        "## Spend",
+        "## Threats to validity",
+        "## Recommendations",
+    ):
+        assert heading in report, heading
+    for needle in ("claude-opus-5-5", "claude-haiku-4.5", "PLN", "vendor overlap", "SQL-context"):
+        assert needle in report, needle

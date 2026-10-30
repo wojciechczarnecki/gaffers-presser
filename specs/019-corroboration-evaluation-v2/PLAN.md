@@ -683,7 +683,7 @@ All commands run from `backend/` (`cd /home/czarny/Projects/gaffers-presser/back
       Automatic verification:
       `uv run pytest -q tests/corroboration tests/test_env_example.py tests/test_docs.py -n auto`,
       then Verify.
-- [ ] 13. **The report (AC3 spend, AC8, AC13, AC14).**
+- [x] 13. **The report (AC3 spend, AC8, AC13, AC14).** `iterations: 1`
       - File: `docs/reports/corroboration-eval-v2.md`, with these sections:
         - Summary;
         - The set: labels by split, `has_player_event`, the source windows, the build and its
