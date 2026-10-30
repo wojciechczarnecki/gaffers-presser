@@ -891,6 +891,7 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 - `minor` — `tests/test_docs.py::test_roadmap_018_ticked_and_019_open` was red before this spec's work (it matched the ROADMAP item by the text `spec 019`, which the item no longer contains); step 1 matches it by the SPEC link instead, ahead of step 14's rewrite.
 - `minor` — `build_window_candidates` reads claims with `sources_only=True` (the plan names it for the anchors); an anchor can therefore come from an account outside the list whose post a list member quotes, so `test_eval_set_v2.py` checks public handles and that most anchors are list accounts instead of "every author is on the list".
 - `minor` — `export_inputs` takes `cases=`, `candidates=` and the two source paths (not a `sources` list), and `import_verdicts` takes no `select`-time `min_contradicts`; the manifest `selection` records the default 12.
+- `minor` — `review` reworked after the owner's 2026-10-30 decision: the post first, the anchor shortened below, the one label-table row, keys 1–4/s/b/q read as a line plus Enter (not a single keypress, so it works without a TTY), pre-labels shown only when the pick differs. `test_review_cli.py` was rewritten for the new keys; `LABEL_TABLE` lives in `cases.py` and the README line was updated.
 
 ## Final review
 

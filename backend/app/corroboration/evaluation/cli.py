@@ -1,4 +1,5 @@
 import json
+import shutil
 import threading
 from collections import Counter
 from collections.abc import Callable
@@ -23,17 +24,21 @@ from app.corroboration.evaluation.building import (
 )
 from app.corroboration.evaluation.cases import (
     DEFAULT_CASES_PATH,
+    DEFAULT_WIDTH,
     LABELS,
     PRELABEL_MODEL,
     V1_CASES_PATH,
     V2_SET_DIR,
     JudgeCase,
     composition_problems,
+    differs_from_prelabels,
     load_candidates,
     load_cases,
     prelabel_agreement,
+    prelabel_lines,
     render_case,
     review_order,
+    session_label,
     write_cases,
 )
 from app.corroboration.evaluation.judging import (
@@ -401,11 +406,16 @@ def import_judge(
         typer.echo(f"problem: {problem}")
 
 
-REVIEW_ACTIONS = "[a]ccept  [c]hange  [s]kip  [q]uit"
-LABEL_PROMPT = "label (supports, contradicts, related or unrelated)"
+REVIEW_ACTIONS = "[1] supports  [2] contradicts  [3] related  [4] unrelated  [s]kip  [b]ack  [q]uit"
+KEY_LABELS = {
+    str(n): label for n, label in enumerate(("supports", "contradicts", "related", "unrelated"), 1)
+}
+CONFIRM_ACTIONS = "[y] confirm your pick  or pick again with 1-4"
 
 
-@app.command(help="Review the pre-labelled cases one by one: accept or change the label.")
+@app.command(
+    help="Label the cases one by one with keys 1-4; pre-labels are shown only on a difference."
+)
 def review(
     cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
     split: str | None = typer.Option(None, "--split"),
@@ -446,46 +456,50 @@ def review(
         raise typer.Exit(130)
 
 
-def _ask_label() -> str:
-    while True:
-        label = typer.prompt(LABEL_PROMPT).strip().lower()
-        if label in LABELS:
-            return label
-        typer.echo(f"unknown label {label!r}")
-
-
 def _review_cases(
     cases: list[JudgeCase], positions: list[int], cases_path: Path, counts: dict[str, int]
 ) -> None:
-    for done, i in enumerate(positions):
-        show = True
-        while True:
-            if show:
-                reviewed = sum(1 for case in cases if case.reviewed)
-                progress = (
-                    f"{reviewed}/{len(cases)} reviewed, {len(positions) - done} left in this run"
-                )
-                typer.echo(render_case(cases[i], progress))
-            show = False
-            action = typer.prompt(REVIEW_ACTIONS).strip().lower()
-            if action == "a":
-                cases[i] = cases[i].model_copy(update={"reviewed": True})
-                write_cases(cases_path, cases)
-                counts["accepted"] += 1
+    width = min(shutil.get_terminal_size((DEFAULT_WIDTH, 24)).columns, 100)
+    done = 0
+    while done < len(positions):
+        i = positions[done]
+        reviewed = sum(1 for case in cases if case.reviewed)
+        progress = f"{reviewed}/{len(cases)} reviewed, {len(positions) - done} left in this run"
+        typer.echo(render_case(cases[i], progress, width))
+        typer.echo("")
+        pick = _ask(REVIEW_ACTIONS, {*KEY_LABELS, "s", "b", "q"})
+        if pick == "q":
+            return
+        if pick == "s":
+            counts["skipped"] += 1
+            done += 1
+            continue
+        if pick == "b":
+            done = max(done - 1, 0)
+            continue
+        label = KEY_LABELS[pick]
+        while differs_from_prelabels(cases[i], label):
+            typer.echo("")
+            typer.echo(f"you picked {label}, which differs from a pre-label:")
+            for line in prelabel_lines(cases[i]):
+                typer.echo(f"  {line}")
+            again = _ask(CONFIRM_ACTIONS, {*KEY_LABELS, "y"})
+            if again == "y":
                 break
-            if action == "c":
-                label = _ask_label()
-                cases[i] = cases[i].model_copy(update={"expected": label, "reviewed": True})
-                write_cases(cases_path, cases)
-                counts["changed"] += 1
-                typer.echo("saved")
-                break
-            if action == "s":
-                counts["skipped"] += 1
-                break
-            if action == "q":
-                return
-            typer.echo(f"unknown action {action!r}")
+            label = KEY_LABELS[again]
+        counts["accepted" if label == session_label(cases[i]) else "changed"] += 1
+        cases[i] = cases[i].model_copy(update={"expected": label, "reviewed": True})
+        write_cases(cases_path, cases)
+        typer.echo(f"saved: {label}")
+        done += 1
+
+
+def _ask(prompt: str, valid: set[str]) -> str:
+    while True:
+        answer = typer.prompt(prompt).strip().lower()
+        if answer in valid:
+            return answer
+        typer.echo(f"unknown key {answer!r}")
 
 
 @app.command(help="Count how often the owner's reviewed labels differ from each pre-labeller.")

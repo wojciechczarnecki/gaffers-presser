@@ -261,7 +261,7 @@ owner's review (`review` needs no database or key); none of these commands is ru
 uv run python -m app.corroboration Isak --at 2026-09-29T18:00       # a name or an FPL ID
 uv run python -m app.corroboration Isak --since 2026-09-25T00:00 --new-since 2026-09-29T12:00
 uv run python -m app.corroboration.evaluation build-cases           # set v1 from the stored posts
-uv run python -m app.corroboration.evaluation review --split test   # accept or change each label
+uv run python -m app.corroboration.evaluation review --split test   # label each post with keys 1-4 (s skip, b back, q quit)
 uv run python -m app.corroboration.evaluation evaluate --split test --model openai/gpt-6-luna
 ```
 
