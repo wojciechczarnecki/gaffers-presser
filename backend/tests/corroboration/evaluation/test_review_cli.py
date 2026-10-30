@@ -49,32 +49,38 @@ def test_a_key_saves_the_label_reviewed_on_disk_at_once(tmp_path):
     assert "accepted: 1" in result.stdout
 
 
-def test_a_pick_that_differs_asks_for_confirmation_and_shows_the_prelabels(tmp_path):
-    path = _files(tmp_path, [_v2(1, "supports", "supports", v1_prelabel="related")])
-    result = _review(path, input_text="2\ny\n")
+def test_a_pick_that_differs_from_the_prelabel_is_saved_as_changed(tmp_path):
+    path = _files(tmp_path, [_v2(1, "supports", "supports", v1_prelabel="supports")])
+    result = _review(path, input_text="2\n")
     assert result.exit_code == 0, result.output
     case = load_cases(path)[0]
     assert (case.expected, case.reviewed) == ("contradicts", True)
-    assert "session pre-label: supports" in result.stdout
-    assert "haiku pre-label: related" in result.stdout
     assert "changed: 1" in result.stdout
 
 
-def test_a_differing_pick_can_be_picked_again(tmp_path):
-    path = _files(tmp_path, [_v2(1, "supports", "supports")])
-    result = _review(path, input_text="4\n1\n")
+def test_a_accepts_the_session_prelabel(tmp_path):
+    path = _files(tmp_path, [_v2(1, "supports", "related", v1_prelabel="related")])
+    result = _review(path, input_text="a\n")
     assert result.exit_code == 0, result.output
     case = load_cases(path)[0]
-    assert case.expected == "supports"
+    assert (case.expected, case.reviewed) == ("related", True)
     assert "accepted: 1" in result.stdout
 
 
-def test_a_pick_equal_to_any_prelabel_needs_no_confirmation(tmp_path):
-    path = _files(tmp_path, [_v2(1, "supports", "supports", v1_prelabel="related")])
-    result = _review(path, input_text="3\n")
+def test_an_empty_enter_accepts_the_session_prelabel(tmp_path):
+    path = _files(tmp_path, [_v2(1, "supports", "unrelated")])
+    result = _review(path, input_text="\n")
     assert result.exit_code == 0, result.output
-    assert load_cases(path)[0].expected == "related"
-    assert "differs from a pre-label" not in result.stdout
+    assert load_cases(path)[0].expected == "unrelated"
+
+
+def test_accept_is_refused_when_the_prelabels_disagree(tmp_path):
+    path = _files(tmp_path, [_v2(1, "supports", "supports", v1_prelabel="related")])
+    result = _review(path, input_text="a\n\n3\n")
+    assert result.exit_code == 0, result.output
+    assert result.stdout.count("accept is refused") == 2
+    case = load_cases(path)[0]
+    assert (case.expected, case.reviewed) == ("related", True)
 
 
 def test_an_unknown_key_is_reported_and_asked_again(tmp_path):
@@ -85,7 +91,7 @@ def test_an_unknown_key_is_reported_and_asked_again(tmp_path):
 
 def test_back_returns_to_the_previous_case_to_redo_it(tmp_path):
     path = _files(tmp_path, [_v2(1, "supports", "supports"), _v2(2, "related", "related")])
-    result = _review(path, input_text="1\nb\n1\ny\n3\n")
+    result = _review(path, input_text="1\nb\n1\n3\n")
     assert result.exit_code == 0, result.output
     assert result.stdout.count("id: jc-001") == 2
     assert {c.id: c.expected for c in load_cases(path)} == {
@@ -123,7 +129,7 @@ def test_split_and_id_select(tmp_path):
     assert {c.id for c in load_cases(path) if c.reviewed} == {"jc-002", "jc-003", "jc-004"}
 
     path = _files(tmp_path, _cases())
-    result = _review(path, "--id", "jc-004", input_text="1\ny\n")
+    result = _review(path, "--id", "jc-004", input_text="1\n")
     assert result.exit_code == 0, result.output
     assert {c.id: c for c in load_cases(path)}["jc-004"].expected == "supports"
 
@@ -157,11 +163,16 @@ def test_the_post_comes_first_then_the_anchor_then_the_label_row(tmp_path):
     assert "left in this run" in out
 
 
-def test_prelabels_are_hidden_while_the_owner_decides(tmp_path):
+def test_prelabels_are_shown_below_the_label_row_and_marked_on_disagreement(tmp_path):
     path = _files(tmp_path, [_v2(3, "supports", "supports", v1_prelabel="unrelated")])
     out = _review(path, input_text="q\n").stdout
-    assert "pre-label" not in out
-    assert "claude-haiku" not in out
+    assert "session pre-label: supports" in out
+    assert "haiku pre-label: unrelated" in out
+    assert "DISAGREE" in out
+    assert out.index("HOW TO LABEL") < out.index("session pre-label")
+
+    path = _files(tmp_path, [_v2(3, "supports", "supports", v1_prelabel="supports")])
+    assert "DISAGREE" not in _review(path, input_text="q\n").stdout
 
 
 def test_the_label_row_follows_the_anchor_event_type():
@@ -188,7 +199,7 @@ def test_review_shows_disagreements_first(tmp_path):
         _v2(4, "related", "related", v1_prelabel="supports", reviewed=True),
     ]
     path = _files(tmp_path, cases)
-    result = _review(path, input_text="1\n3\n1\ny\n")
+    result = _review(path, input_text="1\n3\n1\n")
     assert result.exit_code == 0, result.output
     positions = [result.stdout.index(f"id: jc-00{n}") for n in (3, 2, 1)]
     assert positions == sorted(positions)

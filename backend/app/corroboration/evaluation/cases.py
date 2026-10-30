@@ -222,9 +222,7 @@ def label_table_row(event_type: str, width: int = DEFAULT_WIDTH) -> str:
     )
 
 
-def render_case(
-    case: JudgeCase, progress: str, width: int = DEFAULT_WIDTH, show_prelabels: bool = False
-) -> str:
+def render_case(case: JudgeCase, progress: str, width: int = DEFAULT_WIDTH) -> str:
     anchor, post, player = case.anchor, case.post, case.player
     rule = "─" * width
     team = f" ({player.team})" if player.team else ""
@@ -261,9 +259,9 @@ def render_case(
             textwrap.fill(f"- {rule_text}", width, subsequent_indent="  ")
             for rule_text in LABEL_RULES
         ),
+        "",
+        *prelabel_lines(case),
     ]
-    if show_prelabels:
-        lines += ["", *prelabel_lines(case)]
     return "\n".join(lines)
 
 
@@ -271,18 +269,17 @@ def session_label(case: JudgeCase) -> Label:
     return case.prelabel or case.expected
 
 
+def prelabels_disagree(case: JudgeCase) -> bool:
+    return case.v1_prelabel is not None and case.v1_prelabel != session_label(case)
+
+
 def prelabel_lines(case: JudgeCase) -> list[str]:
     lines = [f"session pre-label: {session_label(case)}  (by {case.labelled_by})"]
     if case.v1_prelabel is not None:
         lines.append(f"haiku pre-label: {case.v1_prelabel}  (by {PRELABEL_MODEL})")
+    if prelabels_disagree(case):
+        lines.append("DISAGREE: the two pre-labels differ, pick with 1-4")
     return lines
-
-
-def differs_from_prelabels(case: JudgeCase, label: str) -> bool:
-    labels = {session_label(case)}
-    if case.v1_prelabel is not None:
-        labels.add(case.v1_prelabel)
-    return label not in labels
 
 
 def review_order(cases: Sequence[JudgeCase], positions: Sequence[int]) -> list[int]:

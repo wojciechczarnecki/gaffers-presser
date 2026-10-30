@@ -31,11 +31,10 @@ from app.corroboration.evaluation.cases import (
     V2_SET_DIR,
     JudgeCase,
     composition_problems,
-    differs_from_prelabels,
     load_candidates,
     load_cases,
     prelabel_agreement,
-    prelabel_lines,
+    prelabels_disagree,
     render_case,
     review_order,
     session_label,
@@ -406,16 +405,16 @@ def import_judge(
         typer.echo(f"problem: {problem}")
 
 
-REVIEW_ACTIONS = "[1] supports  [2] contradicts  [3] related  [4] unrelated  [s]kip  [b]ack  [q]uit"
+REVIEW_ACTIONS = (
+    "[1] supports  [2] contradicts  [3] related  [4] unrelated"
+    "  [a]ccept session pre-label (or Enter)  [s]kip  [b]ack  [q]uit"
+)
 KEY_LABELS = {
     str(n): label for n, label in enumerate(("supports", "contradicts", "related", "unrelated"), 1)
 }
-CONFIRM_ACTIONS = "[y] confirm your pick  or pick again with 1-4"
 
 
-@app.command(
-    help="Label the cases one by one with keys 1-4; pre-labels are shown only on a difference."
-)
+@app.command(help="Label cases with keys 1-4; a or Enter accepts the session pre-label.")
 def review(
     cases_path: Annotated[Path, typer.Option("--cases")] = DEFAULT_CASES_PATH,
     split: str | None = typer.Option(None, "--split"),
@@ -467,7 +466,7 @@ def _review_cases(
         progress = f"{reviewed}/{len(cases)} reviewed, {len(positions) - done} left in this run"
         typer.echo(render_case(cases[i], progress, width))
         typer.echo("")
-        pick = _ask(REVIEW_ACTIONS, {*KEY_LABELS, "s", "b", "q"})
+        pick = _ask(REVIEW_ACTIONS, {*KEY_LABELS, "a", "", "s", "b", "q"})
         if pick == "q":
             return
         if pick == "s":
@@ -477,16 +476,13 @@ def _review_cases(
         if pick == "b":
             done = max(done - 1, 0)
             continue
-        label = KEY_LABELS[pick]
-        while differs_from_prelabels(cases[i], label):
-            typer.echo("")
-            typer.echo(f"you picked {label}, which differs from a pre-label:")
-            for line in prelabel_lines(cases[i]):
-                typer.echo(f"  {line}")
-            again = _ask(CONFIRM_ACTIONS, {*KEY_LABELS, "y"})
-            if again == "y":
-                break
-            label = KEY_LABELS[again]
+        if pick in ("a", ""):
+            if prelabels_disagree(cases[i]):
+                typer.echo("the pre-labels disagree: accept is refused, pick with 1-4")
+                continue
+            label = session_label(cases[i])
+        else:
+            label = KEY_LABELS[pick]
         counts["accepted" if label == session_label(cases[i]) else "changed"] += 1
         cases[i] = cases[i].model_copy(update={"expected": label, "reviewed": True})
         write_cases(cases_path, cases)
@@ -496,7 +492,7 @@ def _review_cases(
 
 def _ask(prompt: str, valid: set[str]) -> str:
     while True:
-        answer = typer.prompt(prompt).strip().lower()
+        answer = typer.prompt(prompt, default="", show_default=False).strip().lower()
         if answer in valid:
             return answer
         typer.echo(f"unknown key {answer!r}")
