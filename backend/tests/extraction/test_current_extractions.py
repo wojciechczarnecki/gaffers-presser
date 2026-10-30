@@ -348,13 +348,37 @@ def test_fresh_lineups_only_drops_a_lineup_the_check_answered_false(db_session):
         [
             _event("benched", certainty="rumour", for_next_pl_match=False),
             _event("confirmed_starter", certainty="confirmed", for_next_pl_match=False),
-            _event("out", certainty="confirmed", for_next_pl_match=False),
+            _event("available", certainty="confirmed", for_next_pl_match=False),
         ],
     )
 
     [row] = current_extractions(db_session, fresh_lineups_only=True)
 
-    assert [(e.event_type, e.for_next_pl_match) for e in row.events] == [("out", False)]
+    assert [(e.event_type, e.for_next_pl_match) for e in row.events] == [("available", False)]
+
+
+def test_fresh_lineups_only_drops_an_absence_the_check_answered_false(db_session):
+    _seed_next_match(db_session)
+    save_extraction(
+        db_session,
+        _record(1),
+        [
+            _event("out", certainty="confirmed", for_next_pl_match=False),
+            _event("doubt", certainty="likely", for_next_pl_match=None),
+            _event("out", certainty="likely", for_next_pl_match=True),
+            _event("available", certainty="likely", for_next_pl_match=False),
+        ],
+    )
+
+    [row] = current_extractions(db_session, fresh_lineups_only=True)
+    [everything] = current_extractions(db_session)
+
+    assert [(e.event_type, e.for_next_pl_match) for e in row.events] == [
+        ("doubt", None),
+        ("out", True),
+        ("available", False),
+    ]
+    assert len(everything.events) == 4
 
 
 def test_null_and_true_answers_meet_the_lead_filter(db_session):

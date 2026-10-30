@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from app.llm.structured import Usage
 
-EventType = Literal["out", "doubt", "benched", "confirmed_starter"]
+EventType = Literal["out", "doubt", "benched", "confirmed_starter", "available"]
 Certainty = Literal["confirmed", "likely", "rumour"]
 
 

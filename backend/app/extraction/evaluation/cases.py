@@ -68,11 +68,16 @@ DEV_SHARE_RANGE = (0.25, 0.35)
 MIN_PER_TYPE_IN_TEST = 5
 MIN_PER_CATEGORY = 3
 EVENT_TYPES: tuple[str, ...] = get_args(EventType)
+LEGACY_EVENT_TYPES: tuple[str, ...] = ("out", "doubt", "benched", "confirmed_starter")
 CERTAINTIES: tuple[str, ...] = get_args(Certainty)
 NO_EVENT_TAGS = ("national_lineup", "womens_lineup", "cup_european_lineup")
 
 
-def composition_problems(cases: Sequence[EvalCase], snapshot: Sequence[PlayerRecord]) -> list[str]:
+def composition_problems(
+    cases: Sequence[EvalCase],
+    snapshot: Sequence[PlayerRecord],
+    event_types: Sequence[str] = LEGACY_EVENT_TYPES,
+) -> list[str]:
     problems: list[str] = []
 
     ids = [case.id for case in cases]
@@ -95,7 +100,7 @@ def composition_problems(cases: Sequence[EvalCase], snapshot: Sequence[PlayerRec
             problems.append(f"dev share: {dev_share:.2f}, need {low_share:.2f}-{high_share:.2f}")
 
     test_events = [e for case in cases if case.split == "test" for e in case.expected_events]
-    for event_type in EVENT_TYPES:
+    for event_type in event_types:
         count = sum(1 for e in test_events if e.event_type == event_type)
         if count < MIN_PER_TYPE_IN_TEST:
             problems.append(

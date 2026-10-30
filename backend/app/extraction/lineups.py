@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 # about 54 hours before kickoff, the stray line-ups from 67 hours (GW6-GW8 data, BACKLOG #54).
 LINEUP_MAX_LEAD = timedelta(hours=60)
 LINEUP_EVENTS = ("confirmed_starter", "benched")
+MATCH_CHECKED_EVENTS = ("out", "doubt", "benched", "confirmed_starter")
 
 
 def is_stale_lineup(
@@ -25,7 +26,7 @@ def kept_at_read(
     next_kickoff: datetime | None,
     for_next_pl_match: bool | None,
 ) -> bool:
-    if event_type not in LINEUP_EVENTS:
+    if event_type not in MATCH_CHECKED_EVENTS:
         return True
     if for_next_pl_match is False:
         return False

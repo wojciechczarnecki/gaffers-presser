@@ -250,7 +250,7 @@ Commands run from `backend/` unless shown otherwise. Each step writes its tests 
 sees them fail, then makes the change. `$S` = a `020/` directory in the implementer's
 session scratchpad (never in the repository).
 
-- [ ] 1. **The `available` type and the read-time rule (AC3 schema and templates, AC4, AC7,
+- [x] 1. **The `available` type and the read-time rule (AC3 schema and templates, AC4, AC7, `iterations: 1`
       AC8).** Files:
       - `app/extraction/schemas.py` (`EventType` + `"available"`);
       - `app/extraction/lineups.py` (`MATCH_CHECKED_EVENTS`, `kept_at_read`);
@@ -840,7 +840,8 @@ SPEC gap remains, and it adds neither a dependency nor a migration.
 
 ## Deviations
 
-_(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+- `minor` — Step 1: the `test_an_out_event_answered_false_is_not_predicted` runner test moved to step 2, because the evaluation runner only gets a match-check answer for `out` once step 2 changes `match_check_node`; in step 1 it could not be seen red-then-green.
+- `minor` — Step 1: the existing `test_fresh_lineups_only_drops_a_lineup_the_check_answered_false` expected a false-answered `out` kept; it now expects an `available` event kept instead (the plan's rule change for `kept_at_read`). `tests/corroboration/helpers.py` gained a `for_next_pl_match` argument.
 
 ## Final review
 

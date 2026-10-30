@@ -321,6 +321,15 @@ def test_quoted_off_list_leak_breaks_and_is_cited(db):
     assert rows[(SAKA, 2)] == "new"
 
 
+def test_an_absence_for_another_match_never_breaks(db):
+    runtime, channel, clock = world(db)
+    add_late(db, 2, event="out", certainty="confirmed", for_next_pl_match=False)
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 0
+    assert channel.keys == []
+
+
 def test_a_confirmed_lineup_days_before_the_next_kickoff_never_breaks(db):
     runtime, channel, clock = world(db)
     add_fixture(db, 1, 6, NOW + timedelta(days=4))
