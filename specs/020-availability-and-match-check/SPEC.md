@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-30"
   - "spec-ready — 2026-10-30"
   - "plan-draft — 2026-10-30"
   - "plan-approved — 2026-10-30"
   - "implemented — 2026-10-31"
+  - "done — 2026-10-31"
 metrics:
   started_at: 2026-10-30T22:06
   plan_steps: 19
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 5
   findings_accepted: 15
   findings_rejected: 0
+  cost_plan_cents: 357
+  cost_plan_review_cents: 162
+  cost_implement_cents: 852
+  cost_final_review_cents: 1011
+  finished_at: 2026-10-31T09:21
 ---
 
 # SPEC 020 — Positive availability and the match check for absences
