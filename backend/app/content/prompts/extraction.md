@@ -70,6 +70,16 @@ certainty `likely`, not `confirmed` and not `rumour`.
   comes from the source as usual.
 - A player returning from injury who is ready for some minutes, back in full training, or who
   trained all week is `available`. A player the manager says is weeks away is `out`.
+- `available` is for statements about fitness, never about the team sheet: a player named in a
+  starting eleven, on the bench, as replaced or as "not picked to start" gets the line-up event
+  (`confirmed_starter`, `benched`) even when the post says he "returns" or is "back"; a player
+  who is hurt in the match ("limped out", "forced off") is `doubt`, never `available`. A post
+  that lists a line-up gives no `available` events for the players in it.
+- `available` needs a statement that the player can play in the next Premier League match
+  ("an option", "ready", "trained all week", "back in training with the group" for a short
+  absence). It is not given for a player who only played or was rested in a cup tie, who is back
+  on the training pitch after a long injury, who is called a doubt, or who "should be back"
+  later: those are `doubt` or `out` as the post says, or no event.
 - A player said not to be suspended, or whose ban is already served ("X is NOT suspended",
   "he won't be banned for GW9"), is `available`.
 - A squad rest, a rotation or a suspension served in a cup or European tie is extracted as the
