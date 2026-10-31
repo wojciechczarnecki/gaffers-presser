@@ -100,7 +100,9 @@ class AnchorChoice:
   things holds:
   - (a) `reversed_claim` finds a claim; or
   - (b) `flag_at(flags, candidate.post.created_at)` has a status other than `a`. The choice
-    then carries that flag, and the flag is kept only when (a) found nothing (AC4).
+    then carries that flag, and the flag is kept only when (a) found nothing (AC4). No flag
+    row at or before the post (`flag_at` returns `None`) does not qualify: (b) needs a
+    recorded non-`a` status.
 - Otherwise the anchor is the newest claim that is not `available`, with its
   `reversed_claim`. With no such claim the result is `None`: no card.
 
@@ -255,7 +257,7 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
 
 - [ ] 2. The grade's top level needs two accounts (AC10). Files: `app/corroboration/rules.py`,
       `tests/corroboration/test_rules.py`.
-      - Tests first. Rewrite `test_grade_confirmed_is_high` as
+      - Tests first (run them and see them fail before the product change). Rewrite `test_grade_confirmed_is_high` as
         `test_grade_confirmed_alone_is_medium`, the Evanilson shape. Add
         `test_grade_confirmed_with_one_supporting_account_is_high`. Keep the "two supporting
         → high", "likely → medium", "one supporting → medium", "rumour, none → low" and the
@@ -272,7 +274,7 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
       `tests/corroboration/helpers.py` (a new `add_flag(engine, player_fpl_id, status, news,
       observed_at)` that inserts a `PlayerFlagChange` row), `tests/corroboration/test_rules.py`,
       `tests/corroboration/test_sources.py`.
-      - Tests first, in `test_rules.py`. Replace `test_reverses`,
+      - Tests first (run them and see them fail before the product change), in `test_rules.py`. Replace `test_reverses`,
         `test_a_line_up_claim_after_the_bad_news_leaves_nothing_to_reverse`,
         `test_reversal_*` and
         `test_accounts_the_anchor_accounts_own_reversal_sets_no_flag_and_no_lowering` with:
@@ -286,6 +288,7 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
         - `test_choose_anchor_available_by_a_non_a_flag` (the flag is kept only without (a));
         - `test_choose_anchor_available_with_an_a_flag_falls_back_to_another_type`;
         - `test_choose_anchor_only_available_and_no_qualifying_flag_is_none`;
+        - `test_choose_anchor_available_with_no_flag_row_does_not_qualify`;
         - `test_choose_anchor_a_flag_turned_a_before_the_post_is_none`;
         - `test_choose_anchor_available_after_available_needs_the_flag`;
         - `test_choose_anchor_given_non_newest_available_falls_back`;
@@ -307,7 +310,7 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
       `tests/alerts/helpers.py` (`corroboration(...)` takes `reversed_post: Citation | None` and
       `reversed_flag: FlagState | None` instead of `reversal: bool`; `full_report` passes a
       reversed post).
-      - Tests first, in `test_service.py`:
+      - Tests first (run them and see them fail before the product change), in `test_service.py`:
         - Rewrite `test_available_anchor_when_a_judged_older_post_contradicts` →
           `test_reversal_judged_older_contradiction_alone_is_none`. With no flag the
           `available` gets no card and the judge is never called. With an `out` anchor and an
@@ -359,7 +362,7 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
       `app/content/alert_email.toml`, `app/alerts/render.py`, `tests/alerts/test_render.py`,
       `tests/content/test_alert_email.py`, `tests/alerts/test_end_to_end.py`,
       `tests/alerts/test_breaking.py`.
-      - Tests first:
+      - Tests first (run them and see them fail before the product change):
         - `test_one_category_name_in_header_counter_and_card` asserts, for one card of each
           type and for the plain text, the HTML and the WhatsApp text:
           - the group heading is `category[event]`;
@@ -382,7 +385,7 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
 - [ ] 7. The "⚠️ Wcześniej:" line (AC4, AC6). Files: `app/content/alert_email.toml`,
       `app/alerts/render.py`, `tests/alerts/test_render.py`,
       `tests/content/test_alert_email.py`, `tests/alerts/test_end_to_end.py`.
-      - Tests first:
+      - Tests first (run them and see them fail before the product change):
         - `test_reversal_line_names_the_post_and_it_is_not_listed_again`: the post is also in
           `contradicting`. The text and WhatsApp hold
           `"⚠️ Wcześniej: @doubter, <POST_TIME>: <url>"`, built from the template keys. The
@@ -404,7 +407,7 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
       `app/alerts/service.py` (`Newness`; `build_slot_alert`, `corroborate_player`; and
       `shown_x_ids` gains `reversed_post`), `tests/extraction/test_store.py`,
       `tests/alerts/test_slots.py`.
-      - Tests first:
+      - Tests first (run them and see them fail before the product change):
         - `tests/extraction/test_store.py::test_first_extractions_take_the_earliest_success_and_skip_failures`
           and `…_empty_ids`.
         - In `test_slots.py`, `test_a_reextracted_old_post_is_not_new`. A post first
@@ -418,11 +421,11 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
         - `test_a_judged_support_is_not_an_included_post`: a scripted judge says `supports`,
           and its post is in no `alert_post` row.
       - Then implement Design §6.
-      Automatic verification: `cd backend && uv run pytest -q tests/extraction/test_store.py tests/alerts/test_slots.py tests/alerts/test_end_to_end.py tests/alerts/test_loop.py`
+      Automatic verification: `cd backend && uv run pytest -q -n auto tests/extraction/test_store.py tests/alerts`
 
 - [ ] 9. Breaking alerts: the first-extraction rule and one shared anchor decision (AC12,
       AC14). Files: `app/alerts/breaking.py`, `tests/alerts/test_breaking.py`.
-      - Tests first:
+      - Tests first (run them and see them fail before the product change):
         - `test_a_reextraction_in_the_breaking_window_sends_nothing`: a post about a listed
           player was first extracted before `since_extracted` with no event for him and
           re-extracted after it as `out`. `run_breaking` returns 0 and records nothing.
@@ -439,7 +442,7 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
 
 - [ ] 10. Documents (AC15). Files: `docs/DECISIONS.md`, `docs/PROJECT.md`, `docs/ROADMAP.md`,
       `docs/BACKLOG.md`, `tests/test_docs.py`.
-      - Tests first, in `tests/test_docs.py`:
+      - Tests first (run them and see them fail before the product change), in `tests/test_docs.py`:
         - `test_roadmap_021_ticked`: a ticked Stage 2 item that links
           `021-alert-categories-and-corroboration-rules/SPEC.md`.
         - `test_decisions_cover_alert_categories_and_rules`: `2026-11-01` rows that name
@@ -471,6 +474,13 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
   `available` post, (a) holds and the card stays until SPEC 022 fixes the extraction. The
   implementer must not bend the rule to reach AC16. The owner's manual check names this
   case.
+- **A chain of `available` posts after bad news (open, see the Review log blocker).** With
+  the literal "newest older claim" rule, `out` (A) → `available` (B) → `available` (C) gives
+  C no reversal, because B supports it. When the FPL flag turned `a` before C, C does not
+  qualify, and AC3's fallback makes the older `out` the anchor: the card reads "🔴 Nie zagra"
+  with B and C under "Zaprzecza", although the two newest posts say the player is back.
+  DECISIONS 2026-10-30 avoided this by skipping older `available` claims. The step 3 and 4
+  tests depend on the owner's choice; implementation waits for it.
 - **The judge's guideline table in `app/corroboration/evaluation/cases.py`** and the judge
   prompt still say "out / benched → related". The SPEC keeps the prompt (#58). The SQL table
   now says `contradicts`. Leave both as they are. Changing them would change the judge
@@ -540,7 +550,57 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+Review of 2026-11-01 (plan-review, fresh context).
+
+Findings:
+
+- `blocker` — Design §1 and steps 3–4 read AC5's "newest older claim" literally, so an
+  `available` anchor whose newest older claim is another `available` reverses nothing; with
+  an FPL flag already `a` at its time, AC3 then falls back to the newest other type, which
+  can be the older `out` the `available` posts contradict. A return confirmed by a second
+  post after the flag cleared becomes a "🔴 Nie zagra" card with the return posts under
+  "Zaprzecza" — a wrong card, against FR-2.2's "never outvote the newest leak". Today's rule
+  (DECISIONS 2026-10-30, `reverses`) skips older `available` claims for exactly this case
+  (`test_a_line_up_claim_after_the_bad_news_leaves_nothing_to_reverse`, `[out, available]`
+  → True). The SPEC does not settle it: AC5 and AC3's fallback together produce it, and
+  AC16's Manzambi expectation depends on it. It cannot be fixed in the plan without
+  changing an AC, so it is escalated; a risk entry was added under "Risks and traps".
+- `minor` — Design §1 did not say what (b) does when the player has no flag row at or
+  before the post; added: `None` does not qualify, and a test
+  `test_choose_anchor_available_with_no_flag_row_does_not_qualify` in step 3.
+- `minor` — steps 2–4 and 6–10 said "Tests first" without running them red before the
+  product change; each now says to run them and see them fail.
+- `minor` — step 8 changes `shown_x_ids`, which `breaking.py` uses, but its verification
+  left out `tests/alerts/test_breaking.py`; it now runs `tests/extraction/test_store.py`
+  and the whole `tests/alerts` package.
+
+Checked and found correct:
+
+- Coverage: every AC1–AC15 has steps and a named proving test, and the matrix matches the
+  steps; AC16 is the owner's manual check, as the SPEC says.
+- `extraction` rows are insert-only (`save_extraction`, `_latest_per_post` picks the newest),
+  so `min(finished_at)` of `status = 'extracted'` rows is the first successful extraction,
+  and the index `ix_extraction_tweet_status_finished` serves it; no migration.
+- `player_flag_change` holds `status`, `news` and `observed_at` per (season, player); module
+  boundaries allow corroboration → `fpl` and alerts → `extraction`.
+- `label_claim` for `{benched, out}` falls through to `related` today; the plan's change and
+  the 25-pair table test cover AC8; `evaluation/building.py` is run in step 1.
+- Grade levels in Design §3 match AC10, including the lone `confirmed` anchor → `medium`.
+- The only consumers of `reverses`, `reversal`, `REVERSED_TYPES` and `available_only` are
+  `service.py`, `breaking.py` and `tests/corroboration/test_rules.py`; `reversal=` is passed
+  only in `service.py` and `tests/alerts/helpers.py`; the step 3+4 single commit is right.
+- `✅` appears in `alert_email.toml` only in `[group]` and `[summary]`, both replaced in step
+  6, so the "no ✅" render assertion can hold.
+- Breaking: with `available_only` removed, a non-`available` trigger given as `anchor_x_id`
+  stays the anchor, so the "trigger became the anchor" check changes nothing for it.
+- Slot alerts: `included_rows` and the news filter both go through the new `Newness`; the
+  preview CLI passes `previous` as `new_since`, so AC16's preview uses the same rule.
+- Step order: step 5 (the `add_claim` default) precedes step 8; steps 3 and 4 share a commit;
+  no forward dependency otherwise. No new dependency, no migration, matching SPEC → Owner
+  decisions and the Owner summary.
+- Language: the PLAN is in English.
+
+Decision: not approved — the blocker above needs an owner decision on the SPEC's AC3/AC5.
 
 ## Deviations
 

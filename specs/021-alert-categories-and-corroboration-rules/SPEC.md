@@ -7,9 +7,12 @@ stage_history:
 metrics:
   started_at: 2026-11-01T00:47
   plan_steps: 11
+  plan_changes: 4
   escalations: 0
   escalations_permission: 0
   escalations_tooling: 0
+  plan_review_blockers: 1
+  plan_review_majors: 0
 ---
 
 # SPEC 021 — Alert categories and simpler corroboration rules
