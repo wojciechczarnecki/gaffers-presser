@@ -36,6 +36,9 @@ class ExpectedEvent(BaseModel):
     certainty: Certainty
 
 
+ReviewSource = Literal["owner", "agent", "prelabel"]
+
+
 class EvalCase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -48,6 +51,7 @@ class EvalCase(BaseModel):
     split: Literal["dev", "test"]
     synthetic: bool
     reviewed: bool
+    review_source: ReviewSource | None = None
     tags: list[Tag]
     expected_events: list[ExpectedEvent]
 

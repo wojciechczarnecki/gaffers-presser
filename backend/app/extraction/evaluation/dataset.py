@@ -10,7 +10,7 @@ from app.extraction.fixtures import FixtureRecord, load_fixtures_snapshot
 from app.extraction.linking import PlayerRecord, TeamRecord, load_snapshot
 
 EVALS_DIR = Path(__file__).resolve().parents[3] / "evals" / "extraction"
-DEFAULT_SET_DIR = EVALS_DIR / "v2"
+DEFAULT_SET_DIR = EVALS_DIR / "v3"
 DEFAULT_RESULTS_DIR = EVALS_DIR / "results"
 CASES_FILE = "cases.jsonl"
 PLAYERS_FILE = "players.json"

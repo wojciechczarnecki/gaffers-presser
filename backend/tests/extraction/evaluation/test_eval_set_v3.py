@@ -55,3 +55,11 @@ def test_fixtures_snapshot_covers_every_case():
     known = {player.fpl_id for player in eval_set.players}
     used = {e.fpl_id for c in eval_set.cases for e in c.expected_events if e.fpl_id is not None}
     assert used <= known
+
+
+def test_every_case_records_its_review_source():
+    cases = load_set(V3).cases
+    assert all(case.review_source is not None for case in cases)
+    named = set(load_set(V3).manifest.backlog_cases["24"])
+    by_id = {case.id: case for case in cases}
+    assert all(by_id[case_id].review_source in ("owner", "agent") for case_id in named)

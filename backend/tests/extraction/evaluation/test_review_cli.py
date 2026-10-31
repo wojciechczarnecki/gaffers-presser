@@ -142,7 +142,7 @@ def test_quit_midway_keeps_earlier_accepts_and_the_rest_untouched(tmp_path):
     assert result.exit_code == 0, result.output
     loaded = files.loaded()
     assert [c.id for c in loaded] == ["1", "2", "3", "4"]
-    assert loaded[0] == cases[0].model_copy(update={"reviewed": True})
+    assert loaded[0] == cases[0].model_copy(update={"reviewed": True, "review_source": "owner"})
     assert loaded[1:] == cases[1:]
 
 

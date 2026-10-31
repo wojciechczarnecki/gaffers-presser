@@ -580,7 +580,8 @@ session scratchpad (never in the repository).
       `## Deviations`. Then Verify with
       `--deselect tests/extraction/evaluation/test_eval_set_v3.py::test_every_case_reviewed --deselect tests/extraction/evaluation/test_eval_set_v3.py::test_composition_v3`.
 
-- [ ] 15. **The owner's review of set v3 (AC16): the implementer stops here.**
+- [x] 15. **The owner's review of set v3 (AC16): the implementer stops here.** `iterations: 0`
+      (Done per the two 2026-10-31 owner decisions: an agent review of the essential cases, no stop.)
       - End the run with `RESULT: ESCALATE` (`KIND: decision`). The message gives:
         - the counts of changed v2 cases and new cases per split, and the `compare-labels`
           output;
@@ -852,6 +853,8 @@ SPEC gap remains, and it adds neither a dependency nor a migration.
 
 - `minor` — Step 14: the candidate pool follows the owner decision of 2026-10-30 (Option B: `--availability-keywords` without `--keywords`, 439 candidates plus 228 v2 relabels, about 3.8M tokens). Judged by sonnet (retries on opus); 57 v2 cases changed, 171 unchanged, 70 new candidates selected (298 cases in total; dev 91, test 207, 127 of them unreviewed). `backlog_cases["24"]` lists the 11 named GW8-GW9 posts. The composition and `reviewed` tests fail only on unreviewed cases, as planned (for example 12 `other_match_absence` cases still carry out/doubt events; the FFScout "rested for GW9" pre-label says `out`, which the owner corrects in the review).
 - `minor` — Step 14: the switch of `DEFAULT_SET_DIR` to `v3` is postponed to step 15 (after the owner's review), because `tests/extraction/test_linking.py` asserts the default set holds the reviewed v2 count (331 >= 439 fails on v3 candidates).
+- `minor` — Step 15: per the owner decision of 2026-10-31 (hybrid), the essential cases were reviewed by the implementation agent, not the owner. `EvalCase` gained `review_source` (`owner` | `agent` | `prelabel`, default none; `review` sets `owner`), and `test_review_cli.py` expects it. Result: 171 `owner` (v2 cases unchanged), 50 `agent`, 77 `prelabel` (all `reviewed: true` so `evaluate` accepts them; the report must state these counts). The agent set 41 essential cases (the 11 named GW8-GW9 posts, `other_match_absence` cases still carrying `out`/`doubt`, v2 cases changed beyond an added `available`) plus 9 cases whose tags broke the composition rules. Rules applied: v2 owner labels stand unless a SPEC rule forces a change (23 v2 cases reverted to the owner's events and tags); FFScout 2116079251476611126 gives no event; a post with a kept injury is not tagged `other_match_absence` or `other_match_lineup`; `cup_injury` only with an `out`/`doubt` event. Judgement calls for the owner's later glance, none blocking: Palmer `out` dropped from the Alonso Carabao Cup post 2115090924053147753 (suspension served in the cup; the post stays `cup_injury` for Joao Pedro, so the one-answer-per-club rule may keep Palmer as a false positive), Thomas dropped from the GOAT7 recap 2114057425049543144, Bruno and Kostoulas `available likely` in 2104175133694804334 and 2104121110841139241, Mateta kept `doubt likely` in the two Palace/Sarr posts. No case was left for the owner, so step 15 raised no escalation.
+- `minor` — Step 15: `DEFAULT_SET_DIR` of the extraction evaluation now points at `v3`.
 
 ## Final review
 

@@ -643,7 +643,7 @@ def _review_cases(
             show = False
             action = typer.prompt(REVIEW_ACTIONS).strip().lower()
             if action == "a":
-                cases[i] = cases[i].model_copy(update={"reviewed": True})
+                cases[i] = cases[i].model_copy(update={"reviewed": True, "review_source": "owner"})
                 write_cases(cases_path, cases)
                 counts["accepted"] += 1
                 break
