@@ -1,7 +1,8 @@
 ---
-status: spec-draft
+status: spec-ready
 stage_history:
   - "spec-draft — 2026-11-01"
+  - "spec-ready — 2026-11-01"
 ---
 
 # SPEC 021 — Alert categories and simpler corroboration rules
@@ -123,7 +124,7 @@ the match check's coupling to the event types) is SPEC 022.
 - [ ] AC2: In the HTML part each category has its own palette entry; "Gotowy do gry" has a
   green-ish accent (for example lime `#84cc16`), clearly distinct from the green of "Zagra" and
   not blue. A test checks that the two accents differ and that neither is the old blue
-  `#2e90fa`. (assumption)
+  `#2e90fa`.
 
 ### "Gotowy do gry"
 
@@ -150,7 +151,7 @@ the match check's coupling to the event types) is SPEC 022.
 - [ ] AC6: A reversal card shows one line "⚠️ Wcześniej: @account, <day time>: <link>" naming
   the reversed post (or the flag, AC4) instead of today's generic note "⚠️ Wcześniej pisano co
   innego — doniesienia się odwracają". The reversed post is not listed a second time under
-  "Zaprzecza". (assumption)
+  "Zaprzecza".
 - [ ] AC7: Account counting is otherwise unchanged: an account counts once by its newest labelled
   post, and the anchor's account is neither supporting nor contradicting (DECISIONS 2026-09-30);
   only the reversal of AC5 reads the anchor's own older posts.
