@@ -4,6 +4,7 @@ from app.extraction.evaluation.cases import ExpectedEvent
 from app.extraction.evaluation.metrics import (
     MAX_MONTHLY_COST_PLN,
     CaseResult,
+    absence_checks,
     compute_metrics,
     passes,
     threshold_flags,
@@ -334,3 +335,114 @@ def test_lineups_dropped_by_check():
         ]
     )
     assert metrics.lineups_dropped_by_check == 1
+
+
+def test_available_f1():
+    metrics = run(
+        [
+            CaseResult(
+                expected=[ev("Palmer", 3, event_type="available")],
+                predicted=[ev("Palmer", 3, event_type="available")],
+            ),
+            CaseResult(expected=[ev("Saka", 7, event_type="available")], predicted=[]),
+            CaseResult(expected=[ev("Isak", 9, event_type="available")], predicted=[]),
+            CaseResult(expected=[ev()], predicted=[ev()]),
+        ]
+    )
+    # one hit, two misses: precision 1, recall 1/3, so F1 is 0.5 and not the recall
+    assert metrics.available_f1 == pytest.approx(0.5)
+
+
+def test_other_match_absence_false_alarms():
+    metrics = run(
+        [
+            CaseResult(expected=[], predicted=[ev(event_type="doubt")], other_match_absence=True),
+            CaseResult(expected=[], predicted=[ev()], other_match_absence=True),
+            CaseResult(expected=[], predicted=[], other_match_absence=True),
+            CaseResult(
+                expected=[],
+                predicted=[ev(event_type="available")],
+                other_match_absence=True,
+            ),
+            CaseResult(expected=[], predicted=[ev()], other_match_absence=True, error_class="B"),
+            CaseResult(expected=[], predicted=[ev()]),
+        ]
+    )
+    assert metrics.other_match_absence_cases == 4
+    assert metrics.other_match_absence_false_alarms == 2
+
+
+def test_injuries_dropped_by_check():
+    metrics = run(
+        [
+            CaseResult(
+                expected=[ev(event_type="out"), ev("Saka", 7, event_type="doubt")],
+                predicted=[ev("Saka", 7, event_type="doubt")],
+                raw_predicted=[
+                    raw(event_type="out", answer=False, kept=False),
+                    raw("Saka", 7, event_type="doubt", answer=True),
+                ],
+            ),
+            CaseResult(
+                expected=[ev("Rice", 8, event_type="out")],
+                predicted=[ev("Rice", 8, event_type="out")],
+                raw_predicted=[raw("Rice", 8, event_type="out", answer=None)],
+            ),
+            CaseResult(
+                expected=[ev("Kane", 9, event_type="benched")],
+                predicted=[],
+                raw_predicted=[raw("Kane", 9, event_type="benched", answer=False, kept=False)],
+            ),
+        ]
+    )
+    assert metrics.injuries_dropped_by_check == 1
+
+
+def test_an_injury_dropped_under_the_other_absence_type_is_counted():
+    metrics = run(
+        [
+            CaseResult(
+                expected=[ev(event_type="out"), ev("Saka", 7, event_type="doubt")],
+                predicted=[],
+                raw_predicted=[
+                    raw(event_type="doubt", answer=False, kept=False),
+                    raw("Saka", 7, event_type="out", answer=False, kept=False),
+                ],
+            ),
+            CaseResult(
+                expected=[ev("Rice", 8, event_type="out")],
+                predicted=[],
+                raw_predicted=[raw("Kane", 9, event_type="out", answer=False, kept=False)],
+            ),
+        ]
+    )
+    assert metrics.injuries_dropped_by_check == 2
+
+
+def test_absence_checks_limits():
+    one = run(
+        [
+            CaseResult(
+                expected=[ev()],
+                predicted=[],
+                raw_predicted=[raw(event_type="out", answer=False, kept=False)],
+            ),
+            CaseResult(expected=[], predicted=[ev()], other_match_absence=True),
+        ]
+    )
+    assert absence_checks(one) == {"other_match_absence": True, "injuries_dropped": True}
+    two = run(
+        [
+            CaseResult(expected=[], predicted=[ev()], other_match_absence=True),
+            CaseResult(expected=[], predicted=[ev()], other_match_absence=True),
+            CaseResult(
+                expected=[ev(), ev("Saka", 7)],
+                predicted=[],
+                raw_predicted=[
+                    raw(event_type="out", answer=False, kept=False),
+                    raw("Saka", 7, event_type="out", answer=False, kept=False),
+                ],
+            ),
+        ]
+    )
+    assert absence_checks(two) == {"other_match_absence": False, "injuries_dropped": False}

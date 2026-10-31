@@ -10,7 +10,6 @@ from app.corroboration.evaluation.cases import (
     load_cases,
 )
 from app.corroboration.evaluation.selection import choose_judge
-from app.corroboration.judge import PROMPT_VERSION
 from app.llm.chat import DEFAULT_MODEL
 from tests.extraction.candidates import CANDIDATES
 
@@ -80,7 +79,7 @@ def test_v2_one_test_run_per_candidate():
 
 def test_v2_test_runs_share_one_prompt():
     versions = {json.loads(p.read_text())["prompt_version"] for p in _v2_files()}
-    assert versions == {PROMPT_VERSION}
+    assert versions == {"corroboration_judge@1"}
 
 
 def test_v2_spend_within_cap():
@@ -118,3 +117,38 @@ def test_report_v2_names_every_test_run():
     for model, data in final.items():
         assert f"`{model}`" in report, model
         assert f"{data['metrics']['accuracy']:.3f}" in report, model
+
+
+REGRESSION_DIR = DEFAULT_RESULTS_DIR / "regression"
+
+
+def _regression_runs(version: str) -> list[dict]:
+    files = sorted(REGRESSION_DIR.glob(f"test-judge-{version}-r*.json"))
+    return [json.loads(f.read_text()) for f in files]
+
+
+def _mean(values: list[float]) -> float:
+    return sum(values) / len(values)
+
+
+def test_judge_v2_regression_within_tolerance():
+    before, after = _regression_runs("v1"), _regression_runs("v2")
+    assert len(before) == 3 and len(after) == 3
+    for run in before:
+        assert run["prompt_version"] == "corroboration_judge@1"
+    for run in after:
+        assert run["prompt_version"] == "corroboration_judge@2"
+    for run in before + after:
+        assert run["model"] == DEFAULT_JUDGE_MODEL
+        assert run["split"] == "test"
+        assert run["metrics"]["cases"] == 75
+    accuracy = (
+        _mean([r["metrics"]["accuracy"] for r in before]),
+        _mean([r["metrics"]["accuracy"] for r in after]),
+    )
+    false_support = (
+        _mean([r["metrics"]["false_support"]["rate"] for r in before]),
+        _mean([r["metrics"]["false_support"]["rate"] for r in after]),
+    )
+    assert accuracy[1] >= accuracy[0] - 0.05
+    assert false_support[1] <= false_support[0] + 0.05

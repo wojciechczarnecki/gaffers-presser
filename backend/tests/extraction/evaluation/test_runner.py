@@ -112,6 +112,20 @@ def test_scores_the_events_kept_at_read():
     assert report.metrics.other_match_caught_by_lead_only == 0
 
 
+def test_an_out_event_answered_false_is_not_predicted():
+    out = ExtractionOutput(
+        events=[
+            ExtractedEvent(player="Haaland", team=None, event_type="out", certainty="confirmed")
+        ]
+    )
+    report = _run(_case(), _fixtures(timedelta(hours=10)), out, MatchCheck(for_next_pl_match=False))
+
+    [outcome] = report.outcomes
+    assert outcome.result.predicted == []
+    [raw] = outcome.result.raw_predicted
+    assert (raw.event_type, raw.for_next_pl_match, raw.kept) == ("out", False, False)
+
+
 def test_lead_only_filter_reported():
     report = _run(
         _case(tags=["other_match_lineup"]),
@@ -150,3 +164,25 @@ def test_a_kept_lineup_is_scored_and_a_dropped_expected_one_is_counted():
 
 def test_runner_and_store_share_the_predicate():
     assert runner.kept_at_read is store.kept_at_read is lineups.kept_at_read
+
+
+def test_other_match_absence_tag_reaches_the_result():
+    out = ExtractionOutput(
+        events=[
+            ExtractedEvent(player="Haaland", team=None, event_type="out", certainty="confirmed")
+        ]
+    )
+    report = _run(
+        _case(tags=["other_match_absence"]),
+        _fixtures(timedelta(hours=10)),
+        out,
+        MatchCheck(for_next_pl_match=True),
+    )
+
+    [outcome] = report.outcomes
+    assert outcome.result.other_match_absence is True
+    assert report.metrics.other_match_absence_cases == 1
+    assert report.metrics.other_match_absence_false_alarms == 1
+
+    errored = _run(_case(tags=["other_match_absence"]), _fixtures(timedelta(hours=10)), "boom")
+    assert errored.outcomes[0].result.other_match_absence is True

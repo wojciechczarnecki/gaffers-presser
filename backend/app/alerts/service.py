@@ -132,6 +132,9 @@ def corroborate_player(
 def included_rows(reports: list[PlayerReport]) -> list[IncludedPost]:
     rows = []
     for report in reports:
+        if report.corroboration.anchor is None:
+            # a player with no card shows no post, so none of its posts is used up
+            continue
         player = report.listed.player
         shown = {
             c.x_id for c in report.corroboration.supporting + report.corroboration.contradicting
@@ -202,6 +205,8 @@ def build_slot_alert(
     if runtime.stop_event.is_set():
         # judge calls stopped mid-player leave posts unjudged: such an alert is never sent
         raise Shutdown
+    if kind == "news" and all(report.corroboration.anchor is None for report in reports):
+        return SlotDraft(kind, as_of, None, reports, [])
     message = render_alert(kind, deadline, as_of, reports)
     return SlotDraft(kind, as_of, message, reports, included_rows(reports))
 

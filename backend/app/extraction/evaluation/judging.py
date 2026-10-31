@@ -32,18 +32,32 @@ CHARS_PER_TOKEN = 4
 PROMPT_FILE = "judge-prompt.md"
 MAPPING_FILE = "mapping.json"
 MARKER = "other_match_lineup"
+FLAG_TAGS = (MARKER, "other_match_absence", "cup_injury")
 LINEUP_TYPES = ("benched", "confirmed_starter")
 LINEUP_KEYWORDS = re.compile(
     r"\bXI\b|line-?ups?\b|\bstarting\b|\bstarts?\b|\bbench(?:ed)?\b|\bsubs\b|team news",
     re.IGNORECASE,
 )
-DEFAULT_QUOTAS = {"other": 25, "lineup": 35, "event": 10, "none": 10}
+AVAILABILITY_KEYWORDS = re.compile(
+    r"\b(?:fit|fitness|trained|training|available|suspen\w*|ban(?:ned)?|rest(?:ed)?|rotat\w*"
+    r"|squad|injur\w*|knock|miss(?:es)?)\b",
+    re.IGNORECASE,
+)
+DEFAULT_QUOTAS = {
+    "other": 25,
+    "absence": 15,
+    "available": 15,
+    "lineup": 35,
+    "event": 10,
+    "none": 10,
+}
 # The same sentence scripts/session_judge.sh appends to the system prompt for the extraction schema.
 REPLY_FORMAT = (
     "Reply with JSON only, no prose and no code fence: "
     '{"events": [{"player": "...", "team": "..." | null, "event_type": "out" | "doubt" | '
-    '"benched" | "confirmed_starter", "certainty": "confirmed" | "likely" | "rumour"}], '
-    '"other_match_lineup": true | false}'
+    '"benched" | "confirmed_starter" | "available", "certainty": "confirmed" | "likely" | '
+    '"rumour"}], "other_match_lineup": true | false, "other_match_absence": true | false, '
+    '"cup_injury": true | false}'
 )
 
 
@@ -74,6 +88,12 @@ class PrelabelVerdict(BaseModel):
 
     events: list[StrictEvent]
     other_match_lineup: bool
+    other_match_absence: bool = False
+    cup_injury: bool = False
+
+    def flag_tags(self) -> list[str]:
+        flags = (self.other_match_lineup, self.other_match_absence, self.cup_injury)
+        return [tag for tag, on in zip(FLAG_TAGS, flags, strict=True) if on]
 
 
 @dataclass(frozen=True)
@@ -122,6 +142,7 @@ def sources_from_corpus(
     x_ids: Collection[int],
     exclude: Collection[str],
     authors: Collection[str] | None = None,
+    availability_keywords: bool = False,
 ) -> list[JudgeSource]:
     wanted = set(x_ids)
     watched = {a.casefold() for a in authors} if authors is not None else None
@@ -139,8 +160,14 @@ def sources_from_corpus(
             )
         )
     ]
-    if keywords:
-        matching = [row for row in pool if row.x_id in wanted or LINEUP_KEYWORDS.search(row.text)]
+    if keywords or availability_keywords:
+        matching = [
+            row
+            for row in pool
+            if row.x_id in wanted
+            or (keywords and LINEUP_KEYWORDS.search(row.text))
+            or (availability_keywords and AVAILABILITY_KEYWORDS.search(row.text))
+        ]
         rest = [row for row in pool if row not in matching]
         sampled = random.Random(f"rest:{seed}").sample(rest, min(rest_sample, len(rest)))
         pool = [row for row in pool if row in matching or row in sampled]
@@ -290,7 +317,11 @@ class _Judged:
     input_id: str
     item: dict[str, Any]
     events: list[ExpectedEvent]
-    flag: bool
+    tags: tuple[str, ...]
+
+    @property
+    def flag(self) -> bool:
+        return MARKER in self.tags
 
 
 def parse_quotas(text: str) -> dict[str, int]:
@@ -298,7 +329,9 @@ def parse_quotas(text: str) -> dict[str, int]:
     for part in filter(None, (piece.strip() for piece in text.split(","))):
         name, _, value = part.partition("=")
         if name not in quotas or not value.isdigit():
-            raise JudgingError(f"bad quota {part!r}; use other=, lineup=, event=, none=")
+            raise JudgingError(
+                f"bad quota {part!r}; use other=, absence=, available=, lineup=, event=, none="
+            )
         quotas[name] = int(value)
     return quotas
 
@@ -333,9 +366,13 @@ def _carry_v1_links(judged: list[ExpectedEvent], v1: Sequence[ExpectedEvent]) ->
                 break
 
 
-def _tier(events: Sequence[ExpectedEvent], flag: bool) -> str:
+def _tier(events: Sequence[ExpectedEvent], flag: bool, absence: bool = False) -> str:
     if flag:
         return "other"
+    if absence:
+        return "absence"
+    if any(e.event_type == "available" for e in events):
+        return "available"
     if any(e.event_type in LINEUP_TYPES for e in events):
         return "lineup"
     return "event" if events else "none"
@@ -349,9 +386,10 @@ def select_candidates(
     chosen = [c for c in candidates if c.item.get("required")]
     rest = [c for c in candidates if not c.item.get("required")]
     rng = random.Random(f"select:{seed}")
-    tiers = {name: [] for name in ("other", "lineup", "event", "none")}
+    tiers: dict[str, list[_Judged]] = {name: [] for name in DEFAULT_QUOTAS}
     for candidate in rest:
-        tiers[_tier(candidate.events, candidate.flag)].append(candidate)
+        absence = "other_match_absence" in candidate.tags or "cup_injury" in candidate.tags
+        tiers[_tier(candidate.events, candidate.flag, absence)].append(candidate)
     for tier in tiers.values():
         rng.shuffle(tier)
     capacity = max(count - len(chosen), 0)
@@ -398,7 +436,7 @@ def import_verdicts(
             invalid.append(f"{input_id}: {type(exc).__name__}")
             continue
         judged.append(
-            _Judged(input_id, item, _link(verdict.events, index), verdict.other_match_lineup)
+            _Judged(input_id, item, _link(verdict.events, index), tuple(verdict.flag_tags()))
         )
     if invalid:
         raise JudgingError("invalid verdicts, nothing imported: " + "; ".join(invalid))
@@ -426,14 +464,21 @@ def import_verdicts(
             events = list(entry.events)
             _carry_v1_links(events, v1.expected_events)
             added, removed, relabelled = compare_events(case_id, events, v1.expected_events)
-            tags_same = (MARKER in v1.tags) == entry.flag
+            tags_same = [t for t in FLAG_TAGS if t in v1.tags] == list(entry.tags)
             if not (added or removed or any(c.fields for c in relabelled)) and tags_same:
                 case_results.append(v1)
                 report.copied += 1
                 continue
-            tags = [t for t in v1.tags if t != MARKER] + ([MARKER] if entry.flag else [])
+            tags = [t for t in v1.tags if t not in FLAG_TAGS] + list(entry.tags)
             case_results.append(
-                v1.model_copy(update={"expected_events": events, "tags": tags, "reviewed": False})
+                v1.model_copy(
+                    update={
+                        "expected_events": events,
+                        "tags": tags,
+                        "reviewed": False,
+                        "review_source": None,
+                    }
+                )
             )
             report.changed += 1
         else:
@@ -460,7 +505,7 @@ def import_verdicts(
                 split="dev" if post["x_id"] % 10 < 3 else "test",
                 synthetic=False,
                 reviewed=False,
-                tags=[MARKER] if entry.flag else [],
+                tags=list(entry.tags),
                 expected_events=entry.events,
             )
         )

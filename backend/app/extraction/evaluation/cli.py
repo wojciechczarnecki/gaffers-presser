@@ -60,6 +60,7 @@ from app.extraction.evaluation.metrics import (
     MAX_MONTHLY_COST_PLN,
     MIN_F1,
     MIN_LINKING_ACCURACY,
+    absence_checks,
 )
 from app.extraction.evaluation.review import (
     PlayerDirectory,
@@ -327,6 +328,17 @@ def evaluate(
         f"({m.other_match_false_alarm_rate:.3f})"
     )
     typer.echo(f"line-ups dropped by the check: {m.lineups_dropped_by_check}")
+    typer.echo(f"available F1: {m.available_f1:.3f}")
+    typer.echo(
+        f"other match absence false alarms: {m.other_match_absence_false_alarms} of "
+        f"{m.other_match_absence_cases}"
+    )
+    typer.echo(f"injuries dropped by the check: {m.injuries_dropped_by_check}")
+    checks = absence_checks(m)
+    typer.echo(
+        f"other match absence check passed: {'yes' if checks['other_match_absence'] else 'no'}"
+    )
+    typer.echo(f"injuries dropped check passed: {'yes' if checks['injuries_dropped'] else 'no'}")
     typer.echo(f"latency p50/p95: {_fmt(m.latency_p50_seconds)} / {_fmt(m.latency_p95_seconds)} s")
     typer.echo(f"mean tokens in/out: {_fmt(m.mean_input_tokens)} / {_fmt(m.mean_output_tokens)}")
     typer.echo(f"mean reasoning tokens: {_fmt(m.mean_reasoning_tokens)}")
@@ -456,6 +468,10 @@ def export_judge_inputs(
     since: Annotated[str | None, typer.Option("--since")] = None,
     until: Annotated[str | None, typer.Option("--until")] = None,
     keywords: Annotated[bool, typer.Option("--keywords", help="Line-up keyword posts.")] = False,
+    availability_keywords: Annotated[
+        bool,
+        typer.Option("--availability-keywords", help="Also keep availability keyword posts."),
+    ] = False,
     rest_sample: Annotated[int, typer.Option("--rest-sample")] = 0,
     seed: Annotated[int, typer.Option("--seed")] = 18,
     x_ids: Annotated[list[int] | None, typer.Option("--x-id", help="Always included.")] = None,
@@ -484,6 +500,7 @@ def export_judge_inputs(
             since=_parse_iso(since) if since else None,
             until=_parse_iso(until) if until else None,
             keywords=keywords,
+            availability_keywords=availability_keywords,
             rest_sample=rest_sample,
             seed=seed,
             x_ids=x_ids or [],
@@ -523,7 +540,10 @@ def import_judge(
     select: Annotated[int | None, typer.Option("--select")] = None,
     seed: Annotated[int, typer.Option("--seed")] = 18,
     quota: Annotated[
-        str, typer.Option("--quota", help="other=,lineup=,event=,none= (tier caps).")
+        str,
+        typer.Option(
+            "--quota", help="other=,absence=,available=,lineup=,event=,none= (tier caps)."
+        ),
     ] = ",".join(f"{k}={v}" for k, v in DEFAULT_QUOTAS.items()),
     force: Annotated[
         bool, typer.Option("--force", help="Replace cases already in the set.")
@@ -623,7 +643,7 @@ def _review_cases(
             show = False
             action = typer.prompt(REVIEW_ACTIONS).strip().lower()
             if action == "a":
-                cases[i] = cases[i].model_copy(update={"reviewed": True})
+                cases[i] = cases[i].model_copy(update={"reviewed": True, "review_source": "owner"})
                 write_cases(cases_path, cases)
                 counts["accepted"] += 1
                 break

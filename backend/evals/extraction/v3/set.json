@@ -1,0 +1,58 @@
+{
+ "version": "v3",
+ "list_handles": [
+  "bendinnery",
+  "city_xtra",
+  "ffh_hq",
+  "ffscout",
+  "fpl__raptor",
+  "fpl_harry",
+  "fpl_heisenberg",
+  "fpl_rockstar",
+  "fpl_salah",
+  "fplfocal",
+  "fplgeneral",
+  "fplgoat7",
+  "fplmattw",
+  "gafferpresser",
+  "jumpthewave",
+  "leaked_fpl",
+  "letstalk_fpl",
+  "pras_fpl",
+  "teamnewsandtix"
+ ],
+ "prelabels": [
+  {
+   "judge": "claude-sonnet-5-5 (Claude Code session)",
+   "prompt_versions": "extraction@6+extraction_prelabel@2",
+   "git_commit": "c6b940d",
+   "inputs": 228,
+   "imported_at": "2026-10-30T22:59:51.619053Z"
+  },
+  {
+   "judge": "claude-sonnet-5-5 (Claude Code session)",
+   "prompt_versions": "extraction@6+extraction_prelabel@2",
+   "git_commit": "c6b940d",
+   "inputs": 439,
+   "imported_at": "2026-10-30T22:59:52.823348Z"
+  }
+ ],
+ "backlog_cases": {
+  "24": [
+   "2115513723146441168",
+   "2115514185723654583",
+   "2116079251476611126",
+   "2114056901528863119",
+   "2114056912610460055",
+   "2115090924053147753",
+   "2114425128088109407",
+   "2115048903402021224",
+   "2115812355351224672",
+   "2115813636962762862",
+   "2115827279431430357",
+   "2116189958142566833"
+  ]
+ },
+ "backlog_54_lineups": [],
+ "selection": null
+}

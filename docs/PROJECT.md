@@ -44,7 +44,8 @@ Grouped by roadmap stage (`docs/ROADMAP.md`).
 - FR-1.2 Extract from each post, as a typed result: player(s), linked to FPL player IDs;
   event type; source account; the author's stated certainty.
 - FR-1.3 Event types in scope: **out** (injury, illness, suspension), **doubt**,
-  **benched**, **confirmed starter**. Nothing else (no positions, set pieces, prices).
+  **benched**, **confirmed starter**, **available** (fit or available for the next match: no
+  claim about starting). Nothing else (no positions, set pieces, prices).
 - FR-1.4 Keep every post and extraction; they are the raw material for RAG and for scoring
   sources.
 

@@ -85,6 +85,7 @@ def add_claim(
     mention: str = "Saka",
     quoted_x_id: int | None = None,
     embedded: bool = False,
+    for_next_pl_match: bool | None = None,
 ) -> int:
     created_at = created_at or NOW - timedelta(hours=1)
     add_tweet(
@@ -98,7 +99,16 @@ def add_claim(
         quoted_x_id=quoted_x_id,
         embedded=embedded,
     )
-    return add_extraction(engine, x_id, player_fpl_id, event_type, certainty, finished, mention)
+    return add_extraction(
+        engine,
+        x_id,
+        player_fpl_id,
+        event_type,
+        certainty,
+        finished,
+        mention,
+        for_next_pl_match=for_next_pl_match,
+    )
 
 
 def add_extraction(
@@ -110,6 +120,7 @@ def add_extraction(
     finished: int = 0,
     mention: str = "Saka",
     status: str = "extracted",
+    for_next_pl_match: bool | None = None,
 ) -> int:
     events = []
     if player_fpl_id is not None:
@@ -121,6 +132,7 @@ def add_extraction(
                 player_fpl_id=player_fpl_id,
                 event_type=event_type,
                 certainty=certainty,
+                for_next_pl_match=for_next_pl_match,
             )
         )
     with Session(engine) as session:

@@ -970,6 +970,29 @@ def test_evaluate_reads_the_set_directory_without_a_database(tmp_path, monkeypat
     assert data["metrics"]["other_match_cases"] == 1
 
 
+def test_evaluate_prints_the_absence_metrics(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.extraction.evaluation.cli.DEFAULT_RESULTS_DIR", tmp_path / "results")
+    set_dir = tmp_path / "v3"
+    case = _eval_case("1", "test").model_copy(update={"tags": ["other_match_absence"]})
+    _write_v2_set(set_dir, [case.model_copy(update={"expected_events": []})])
+    from app.extraction.schemas import MatchCheck
+
+    build_spec, _ = _build_spec(_haaland_out(), MatchCheck(for_next_pl_match=False), model="m")
+
+    result = CliRunner().invoke(
+        app,
+        ["evaluate", "--split", "test", "--model", "m", "--set", str(set_dir), "--run-name", "r"],
+        obj=_no_db_deps(build_spec),
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "available F1: 0.000" in result.stdout
+    assert "other match absence false alarms: 0 of 1" in result.stdout
+    assert "injuries dropped by the check: 0" in result.stdout
+    assert "other match absence check passed: yes" in result.stdout
+    assert "injuries dropped check passed: yes" in result.stdout
+
+
 def test_evaluate_header_names_the_three_prompts(tmp_path):
     set_dir = tmp_path / "set"
     _write_v2_set(set_dir, [_benched_case("1")])
@@ -997,7 +1020,7 @@ def test_evaluate_header_names_the_three_prompts(tmp_path):
     assert result.exit_code == 0, result.output
     header = json.loads((results / "h.json").read_text())["header"]
     assert header["set_version"] == "v2"
-    for part in ("extraction@", "link_disambiguation@1", "match_check@1"):
+    for part in ("extraction@", "link_disambiguation@1", "match_check@2"):
         assert part in header["prompt_version"]
 
 
@@ -1073,6 +1096,45 @@ def test_estimate_prints_calls_and_tokens(tmp_path):
     assert missing.exit_code == 1
 
 
+def test_export_with_availability_keywords(tmp_path):
+    set_dir = tmp_path / "set"
+    _write_v2_set(set_dir, [_benched_case("1")])
+    corpus = tmp_path / "corpus.jsonl"
+    rows = [
+        {"x_id": 11, "text": "Palmer is NOT suspended"},
+        {"x_id": 12, "text": "the weather is nice"},
+    ]
+    corpus.write_text(
+        "\n".join(
+            json.dumps(
+                {
+                    "author_handle": "reporter",
+                    "created_at": NOW.isoformat(),
+                    "is_repost": False,
+                    "is_reply": False,
+                    "is_source": True,
+                    **row,
+                }
+            )
+            for row in rows
+        )
+    )
+
+    def export(*flags):
+        return CliRunner().invoke(
+            app,
+            ["export-judge-inputs", "--set", str(set_dir), "--corpus", str(corpus), *flags]
+            + ["--out", str(tmp_path / f"export{len(flags)}")],
+        )
+
+    plain = export("--keywords")
+    both = export("--keywords", "--availability-keywords")
+
+    assert plain.exit_code == 0 and "exported 0 inputs" in plain.stdout
+    assert both.exit_code == 0, both.output
+    assert "exported 1 inputs" in both.stdout
+
+
 def test_export_and_import_through_the_cli(tmp_path):
     set_dir = tmp_path / "set"
     _write_v2_set(set_dir, [_benched_case("1")])
@@ -1131,7 +1193,7 @@ def test_prelabel_leaves_out_a_lineup_the_check_answers_false(db, tmp_path):
     output_with_lineup = ExtractionOutput(
         events=[
             ExtractedEvent(player="Haaland", team=None, event_type="benched", certainty="likely"),
-            ExtractedEvent(player="Haaland", team=None, event_type="doubt", certainty="likely"),
+            ExtractedEvent(player="Haaland", team=None, event_type="available", certainty="likely"),
         ]
     )
     build_spec, _ = _build_spec(output_with_lineup, MatchCheck(for_next_pl_match=False))
@@ -1143,7 +1205,7 @@ def test_prelabel_leaves_out_a_lineup_the_check_answers_false(db, tmp_path):
 
     assert result.exit_code == 0, result.output
     [case] = load_cases(output)
-    assert [(e.fpl_id, e.event_type) for e in case.expected_events] == [(5, "doubt")]
+    assert [(e.fpl_id, e.event_type) for e in case.expected_events] == [(5, "available")]
 
 
 def test_prelabel_needs_a_set_or_an_output(tmp_path):

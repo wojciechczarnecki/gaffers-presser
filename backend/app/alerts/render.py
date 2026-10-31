@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "content" / "alert_email.toml"
 
 # Groups in the order they appear in the e-mail, one per anchor event type.
-GROUP_ORDER = ("out", "doubt", "benched", "confirmed_starter")
+GROUP_ORDER = ("out", "doubt", "benched", "available", "confirmed_starter")
 # Within a group, news newer than this comes first, its age marked as new.
 FRESH_WITHIN = timedelta(hours=24)
 POST_TIME = "%d.%m %H:%M"

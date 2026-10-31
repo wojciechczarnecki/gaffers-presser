@@ -398,3 +398,59 @@ def test_corroboration_report_v2_has_every_section():
         assert heading in report, heading
     for needle in ("claude-opus-5-5", "claude-haiku-4.5", "PLN", "vendor overlap", "SQL-context"):
         assert needle in report, needle
+
+
+def test_extraction_report_v3_has_every_section():
+    report = (ROOT / "docs" / "reports" / "extraction-eval-v3.md").read_text(encoding="utf-8")
+    for heading in (
+        "## Set composition",
+        "## Dev iterations",
+        "## Test results",
+        "## Corroboration regression",
+        "## Total spend",
+        "## Threats to validity",
+        "## Re-extraction",
+    ):
+        assert heading in report, heading
+    for needle in ("review_source", "BACKLOG #24", "Total spend"):
+        assert needle in report, needle
+
+
+def test_project_fr_1_3_lists_five_types():
+    text = (ROOT / "docs" / "PROJECT.md").read_text(encoding="utf-8")
+    fr = text.split("- FR-1.3", 1)[1].split("- FR-1.4", 1)[0]
+    for name in ("**out**", "**doubt**", "**benched**", "**confirmed starter**", "**available**"):
+        assert name in fr, name
+
+
+def test_decisions_cover_available_and_absence_check():
+    rows = [
+        line
+        for line in (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8").splitlines()
+        if line.startswith("| 2026-10-30")
+    ]
+    assert any("`available`" in r and "supersede" in r and "FR-1.3" in r for r in rows)
+    assert any("match check" in r and "`doubt`" in r for r in rows)
+    assert any("Extraction set v3" in r for r in rows)
+
+
+def test_evaluation_md_names_set_v3():
+    text = (ROOT / "docs" / "EVALUATION.md").read_text(encoding="utf-8")
+    procedure = text.split("## The extraction procedure", 1)[1].split("\n## ", 1)[0]
+    for needle in ("evals/extraction/v3", "--availability-keywords", "other_match_absence"):
+        assert needle in procedure, needle
+
+
+def test_backlog_24_removed_and_61_added():
+    rows = _rows()
+    assert not [row for row in rows if row.startswith("| 24 |")]
+    (new,) = [row for row in rows if row.startswith("| 61 |")]
+    assert " P3 " in new and "available" in new
+
+
+def test_roadmap_020_ticked():
+    roadmap = (ROOT / "docs" / "ROADMAP.md").read_text(encoding="utf-8")
+    items = ["- [" + block for block in re.split(r"(?m)^- \[", roadmap)[1:]]
+    (done,) = [line for line in items if "020-availability-and-match-check/SPEC.md" in line]
+    assert done.startswith("- [x]")
+    assert "extraction-eval-v3.md" in done and "#24" in done

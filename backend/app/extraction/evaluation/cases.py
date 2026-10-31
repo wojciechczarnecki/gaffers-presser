@@ -18,6 +18,8 @@ Tag = Literal[
     "womens_lineup",
     "cup_european_lineup",
     "other_match_lineup",
+    "other_match_absence",
+    "cup_injury",
     "multi_player",
     "ambiguous_name",
     "nickname",
@@ -34,6 +36,9 @@ class ExpectedEvent(BaseModel):
     certainty: Certainty
 
 
+ReviewSource = Literal["owner", "agent", "prelabel"]
+
+
 class EvalCase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -46,6 +51,7 @@ class EvalCase(BaseModel):
     split: Literal["dev", "test"]
     synthetic: bool
     reviewed: bool
+    review_source: ReviewSource | None = None
     tags: list[Tag]
     expected_events: list[ExpectedEvent]
 
@@ -68,11 +74,16 @@ DEV_SHARE_RANGE = (0.25, 0.35)
 MIN_PER_TYPE_IN_TEST = 5
 MIN_PER_CATEGORY = 3
 EVENT_TYPES: tuple[str, ...] = get_args(EventType)
+LEGACY_EVENT_TYPES: tuple[str, ...] = ("out", "doubt", "benched", "confirmed_starter")
 CERTAINTIES: tuple[str, ...] = get_args(Certainty)
 NO_EVENT_TAGS = ("national_lineup", "womens_lineup", "cup_european_lineup")
 
 
-def composition_problems(cases: Sequence[EvalCase], snapshot: Sequence[PlayerRecord]) -> list[str]:
+def composition_problems(
+    cases: Sequence[EvalCase],
+    snapshot: Sequence[PlayerRecord],
+    event_types: Sequence[str] = LEGACY_EVENT_TYPES,
+) -> list[str]:
     problems: list[str] = []
 
     ids = [case.id for case in cases]
@@ -95,7 +106,7 @@ def composition_problems(cases: Sequence[EvalCase], snapshot: Sequence[PlayerRec
             problems.append(f"dev share: {dev_share:.2f}, need {low_share:.2f}-{high_share:.2f}")
 
     test_events = [e for case in cases if case.split == "test" for e in case.expected_events]
-    for event_type in EVENT_TYPES:
+    for event_type in event_types:
         count = sum(1 for e in test_events if e.event_type == event_type)
         if count < MIN_PER_TYPE_IN_TEST:
             problems.append(
@@ -221,6 +232,74 @@ def composition_problems_v2(
 
     watched = {handle.casefold() for handle in manifest.list_handles}
     for case in new_real:
+        expected_split = "dev" if int(case.id) % 10 < 3 else "test"
+        if case.split != expected_split:
+            problems.append(f"case {case.id}: split {case.split}, the rule gives {expected_split}")
+        if case.author_handle.casefold() not in watched:
+            problems.append(f"case {case.id}: author is not on the watched list")
+
+    return problems
+
+
+MIN_OTHER_MATCH_ABSENCE = 8
+MIN_OTHER_MATCH_ABSENCE_IN_TEST = 5
+MIN_CUP_INJURY = 3
+BACKLOG_24 = "24"
+ABSENCE_TYPES = ("out", "doubt")
+
+
+def composition_problems_v3(
+    cases: Sequence[EvalCase],
+    snapshot: Sequence[PlayerRecord],
+    manifest: "SetManifest",
+    v2_ids: Collection[str],
+) -> list[str]:
+    problems = composition_problems(cases, snapshot, EVENT_TYPES)
+    by_id = {case.id: case for case in cases}
+
+    missing = sorted(set(v2_ids) - set(by_id))
+    if missing:
+        problems.append(f"v2 cases missing from v3: {', '.join(missing)}")
+
+    absence = [c for c in cases if "other_match_absence" in c.tags]
+    if len(absence) < MIN_OTHER_MATCH_ABSENCE:
+        problems.append(
+            f"other_match_absence cases: {len(absence)}, need {MIN_OTHER_MATCH_ABSENCE}"
+        )
+    absence_test = [c for c in absence if c.split == "test"]
+    if len(absence_test) < MIN_OTHER_MATCH_ABSENCE_IN_TEST:
+        problems.append(
+            f"other_match_absence cases in test: {len(absence_test)}, "
+            f"need {MIN_OTHER_MATCH_ABSENCE_IN_TEST}"
+        )
+    for case in absence:
+        if any(e.event_type in ABSENCE_TYPES for e in case.expected_events):
+            problems.append(f"other_match_absence case {case.id} must have no out or doubt event")
+
+    cup_injury = [c for c in cases if "cup_injury" in c.tags]
+    if len(cup_injury) < MIN_CUP_INJURY:
+        problems.append(f"cup_injury cases: {len(cup_injury)}, need {MIN_CUP_INJURY}")
+    for case in cup_injury:
+        if not any(e.event_type in ABSENCE_TYPES for e in case.expected_events):
+            problems.append(f"cup_injury case {case.id} needs an out or doubt event")
+
+    with_events = [c.id for c in cases if "other_match_lineup" in c.tags and c.expected_events]
+    if with_events:
+        problems.append(
+            f"other_match_lineup cases must have no expected events: {', '.join(with_events)}"
+        )
+
+    listed_24 = manifest.backlog_cases.get(BACKLOG_24, [])
+    if not listed_24:
+        problems.append(f"set.json backlog_cases {BACKLOG_24} is empty")
+    for case_id in listed_24:
+        if case_id not in by_id:
+            problems.append(f"BACKLOG #24 case {case_id} is missing")
+
+    watched = {handle.casefold() for handle in manifest.list_handles}
+    for case in cases:
+        if case.id in v2_ids or case.synthetic:
+            continue
         expected_split = "dev" if int(case.id) % 10 < 3 else "test"
         if case.split != expected_split:
             problems.append(f"case {case.id}: split {case.split}, the rule gives {expected_split}")

@@ -7,9 +7,14 @@ from sqlmodel import Session, select
 from app.alerts.config import AlertConfig
 from app.alerts.loop import AlertLoop
 from app.alerts.models import Alert, AlertPost
+from app.alerts.render import load_template
 from app.alerts.schedule import rehearsal_key
+from app.alerts.service import run_slot
 from app.alerts.store import included_origins
+from app.corroboration.rules import grade
+from app.corroboration.sources import window_start
 from tests.alerts.helpers import alerts_runtime, seed_league, set_ownership, set_raw
+from tests.alerts.test_slots import REAL, seed
 from tests.corroboration.helpers import ISAK, NOW, SAKA, add_claim, seed_reference
 from tests.delivery.fakes import FakeChannel, FixedClock
 
@@ -170,3 +175,36 @@ def test_one_simulated_deadline_and_one_rehearsal(db):
         assert included_origins(session, REHEARSAL_KEY) >= {10, 11, 12, 13}
     assert len(rows(db, "alert:" + REAL_KEY)) == 4
     assert len(set(channel.keys)) == len(channel.keys)
+
+
+def test_palmer_shaped_reversal_is_a_wraca_do_gry_card(db):
+    template = load_template()
+    seed(db)
+    add_claim(db, 1, SAKA, "out", "likely", created_at=NOW - minutes(300), author="a1")
+    add_claim(db, 2, SAKA, "out", "likely", created_at=NOW - minutes(240), author="a2")
+    add_claim(db, 3, SAKA, "available", "confirmed", created_at=NOW - minutes(60), author="a3")
+    clock = FixedClock(NOW)
+    channel = FakeChannel(["msg-1"])
+    runtime = alerts_runtime(db, channel, clock)
+
+    assert run_slot(db, runtime, REAL, 0, clock) == "sent"
+
+    text = channel.calls[0].text
+    assert template["group"]["available"] in text
+    assert template["group"]["out"] not in text
+    assert "Saka (Arsenal) — " + template["event"]["available"] in text
+    assert template["sources"]["contradicting"] in text
+    assert "https://x.com/a1/status/1" in text and "https://x.com/a2/status/2" in text
+    assert template["note"]["reversal"] in text
+    with Session(db) as session:
+        start = window_start(session, NOW, None)
+    expected = grade("confirmed", [], [_labelled(1, "a1"), _labelled(2, "a2")], False, start)
+    assert template["grade"][expected.level] in text
+    assert expected.level == "medium"
+
+
+def _labelled(x_id, author):
+    from app.corroboration.schemas import LabelledPost, PostRef
+
+    post = PostRef(x_id, author, None, False, NOW - minutes(300 - 60 * (x_id - 1)), "t")
+    return LabelledPost(post=post, label="contradicts", origin="sql")

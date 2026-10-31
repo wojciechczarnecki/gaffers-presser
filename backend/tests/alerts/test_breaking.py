@@ -5,7 +5,8 @@ from sqlmodel import Session, select
 from app.alerts.breaking import run_breaking
 from app.alerts.models import Alert, AlertPost
 from app.alerts.render import load_template
-from app.alerts.service import run_slot
+from app.alerts.service import build_slot_alert, run_slot
+from app.alerts.store import included_origins
 from app.extraction.schemas import LinkedEvent
 from app.extraction.store import ExtractionRecord, save_extraction
 from tests.alerts.helpers import (
@@ -319,6 +320,104 @@ def test_quoted_off_list_leak_breaks_and_is_cited(db):
     alert, rows = alert_rows(db, "alert:2026/27:gw6:breaking:2")
     assert alert.trigger_x_id == 2
     assert rows[(SAKA, 2)] == "new"
+
+
+def test_an_absence_for_another_match_never_breaks(db):
+    runtime, channel, clock = world(db)
+    add_late(db, 2, event="out", certainty="confirmed", for_next_pl_match=False)
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 0
+    assert channel.keys == []
+
+
+def test_reversing_available_post_breaks(db):
+    runtime, channel, clock = world(db)
+    add_late(db, 2, event="available", certainty="confirmed")
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 1
+
+    assert channel.keys == ["alert:2026/27:gw6:breaking:2"]
+    assert TEMPLATE["group"]["available"] in channel.calls[0].text
+
+
+def test_non_reversing_available_post_sends_nothing_and_stays_new(db):
+    runtime, channel, clock = world(db)
+    add_claim(
+        db,
+        5,
+        ISAK,
+        "confirmed_starter",
+        created_at=NOW - minutes(30),
+        author="a5",
+        mention="Isak",
+    )
+    add_late(db, 2, player=ISAK, event="available", certainty="confirmed", mention="Isak")
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 0
+
+    assert channel.keys == []
+    with Session(db) as session:
+        assert 2 not in included_origins(session, REAL.key)
+        assert session.exec(select(Alert).where(Alert.key.like("%breaking%"))).all() == []
+    draft = build_slot_alert(db, runtime, REAL, "digest", 30, clock.now(), set())
+    [isak] = [r for r in draft.reports if r.listed.player.fpl_id == ISAK]
+    assert isak.corroboration.anchor.post.x_id == 5
+    assert [c.x_id for c in isak.corroboration.related] == [2]
+
+
+def test_an_available_post_about_a_player_with_no_other_claim_sends_nothing(db):
+    runtime, channel, clock = world(db)
+    add_late(db, 2, player=ISAK, event="available", certainty="confirmed", mention="Isak")
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 0
+
+    assert channel.keys == []
+    with Session(db) as session:
+        assert 2 not in included_origins(session, REAL.key)
+        assert session.exec(select(Alert).where(Alert.key.like("%breaking%"))).all() == []
+
+
+def test_mixed_post_drops_only_the_non_reversing_player(db):
+    runtime, channel, clock = world(db)
+    add_claim(
+        db,
+        5,
+        ISAK,
+        "confirmed_starter",
+        created_at=NOW - minutes(30),
+        author="a5",
+        mention="Isak",
+    )
+    add_tweet(db, 9, "Saka out, Isak fit", created_at=NOW + minutes(95), author="late9")
+    with Session(db) as session:
+        save_extraction(
+            session,
+            ExtractionRecord(
+                tweet_x_id=9,
+                status="extracted",
+                provider="fake",
+                model="fake-model",
+                prompt_version="x",
+                started_at=NOW,
+                finished_at=NOW + minutes(97),
+                attempts=1,
+            ),
+            [
+                LinkedEvent("Saka", None, SEASON, SAKA, "out", "likely"),
+                LinkedEvent("Isak", None, SEASON, ISAK, "available", "confirmed"),
+            ],
+        )
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 1
+
+    message = channel.calls[0]
+    assert "Saka" in message.title and "Isak" not in message.title
+    assert "Isak" not in message.text
 
 
 def test_a_confirmed_lineup_days_before_the_next_kickoff_never_breaks(db):

@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from app.corroboration.schemas import (
+    Claim,
     Freshness,
     Grade,
     Label,
@@ -31,16 +32,40 @@ class AccountCounts:
 
 DEFAULT_RULES = GradeRules()
 _AVAILABILITY = {"out", "doubt", "benched"}
+_ABSENCES = ("out", "doubt")
+REVERSED_TYPES = _ABSENCES
 _LEVELS = ("low", "medium", "high")
 
 
 def label_claim(anchor_type: str, claim_type: str) -> Label:
     if anchor_type == claim_type:
         return "supports"
+    if "available" in (anchor_type, claim_type):
+        other = claim_type if anchor_type == "available" else anchor_type
+        return "contradicts" if other in _ABSENCES else "related"
     pair = {anchor_type, claim_type}
     if "confirmed_starter" in pair and pair - {"confirmed_starter"} <= _AVAILABILITY:
         return "contradicts"
     return "related"
+
+
+def reverses(candidate: Claim, claims: Sequence[Claim], judged: Sequence[LabelledPost]) -> bool:
+    mark = (candidate.post.created_at, candidate.post.x_id)
+
+    def older(post: PostRef) -> bool:
+        return (post.created_at, post.x_id) < mark
+
+    # the newest older news decides: a line-up claim after the bad news has already turned it
+    older_news = [
+        ((c.post.created_at, c.post.x_id), c.event_type in REVERSED_TYPES)
+        for c in claims
+        if c.event_type != "available" and older(c.post)
+    ] + [
+        ((item.post.created_at, item.post.x_id), True)
+        for item in judged
+        if item.label == "contradicts" and older(item.post)
+    ]
+    return bool(older_news) and max(older_news)[1]
 
 
 def account_of(post: PostRef) -> str:

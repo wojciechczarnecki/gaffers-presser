@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from app.content import load_prompt
 from app.extraction.fixtures import FixtureIndex, FixtureRecord, render_fixture
-from app.extraction.lineups import LINEUP_EVENTS
+from app.extraction.lineups import MATCH_CHECKED_EVENTS
 from app.extraction.linking import PlayerIndex, PlayerRecord, TeamRecord
 from app.extraction.schemas import (
     Disambiguation,
@@ -96,6 +96,7 @@ def _render_match_check(
     previous: FixtureRecord | None,
     following: FixtureRecord,
     index: PlayerIndex,
+    events: list[LinkedEvent],
 ) -> str:
     before = render_fixture(previous, team.fpl_id, index) if previous is not None else "none"
     return "\n".join(
@@ -105,6 +106,8 @@ def _render_match_check(
             f"Club: {team.name}",
             f"Previous PL fixture: {before}",
             f"Next PL fixture: {render_fixture(following, team.fpl_id, index)}",
+            "Events:",
+            *[f"- {event.mention}: {event.event_type}" for event in events],
         ]
     )
 
@@ -271,7 +274,7 @@ def build_flow(
 
         by_club: dict[int, list[int]] = {}
         for position, event in enumerate(events):
-            if event.event_type not in LINEUP_EVENTS or event.player_fpl_id is None:
+            if event.event_type not in MATCH_CHECKED_EVENTS or event.player_fpl_id is None:
                 continue
             player = index.player(event.player_fpl_id)
             if player is not None:
@@ -282,7 +285,9 @@ def build_flow(
             previous, following = fixtures.around(club, post.created_at)
             if team is None or following is None:
                 continue
-            human = _render_match_check(post, team, previous, following, index)
+            human = _render_match_check(
+                post, team, previous, following, index, [events[i] for i in positions]
+            )
             try:
                 reply = call(MatchCheck, MATCH_CHECK_PROMPT.text, human)
             except Exception as exc:

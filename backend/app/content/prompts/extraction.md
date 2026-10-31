@@ -1,4 +1,4 @@
-version: 5
+version: 6
 
 You read one post from a watched X (Twitter) List that follows Fantasy Premier League (FPL)
 news accounts. Extract every FPL-relevant event about a named player's fitness or line-up
@@ -17,6 +17,9 @@ For every relevant mention, classify the event as exactly one of:
   "assessed", "touch and go").
 - `benched` — fit but not in the starting line-up (a named substitute).
 - `confirmed_starter` — will start, or is confirmed in the starting line-up.
+- `available` — fit or available for the next Premier League match: "trained all week", "is
+  fine", "back in full training", "is not suspended", "the ban is served", "should be
+  available". It makes no claim about starting.
 
 ## Certainty
 
@@ -46,7 +49,7 @@ certainty `likely`, not `confirmed` and not `rumour`.
   the news comes from. A player who misses a national-team, cup or European match, or leaves
   the national-team camp injured, is `doubt` unless the post says he will miss the next
   Premier League match (then `out`). When the post itself says the knock is nothing serious
-  or that he should be available for the next Premier League match, there is no event.
+  or that he should be available for the next Premier League match, the event is `available`.
 - A post in which an FPL manager writes about his own team, his transfers or a hypothetical
   ("should I sell X?", "if X starts I will captain him") is not news about the player: it gives
   no event.
@@ -65,8 +68,22 @@ certainty `likely`, not `confirmed` and not `rumour`.
 - A player left out of the squad or the line-up for the next Premier League match with no reason
   given ("No Mykolenko", "misses out altogether", "not in the squad") is `out`; the certainty
   comes from the source as usual.
-- A player returning from injury who is ready for some minutes gives no event: there is no
-  positive availability type. A player the manager says is weeks away is `out`.
+- A player returning from injury who is ready for some minutes, back in full training, or who
+  trained all week is `available`. A player the manager says is weeks away is `out`.
+- `available` is for statements about fitness, never about the team sheet: a player named in a
+  starting eleven, on the bench, as replaced or as "not picked to start" gets the line-up event
+  (`confirmed_starter`, `benched`) even when the post says he "returns" or is "back"; a player
+  who is hurt in the match ("limped out", "forced off") is `doubt`, never `available`. A post
+  that lists a line-up gives no `available` events for the players in it.
+- `available` needs a statement that the player can play in the next Premier League match
+  ("an option", "ready", "trained all week", "back in training with the group" for a short
+  absence). It is not given for a player who only played or was rested in a cup tie, who is back
+  on the training pitch after a long injury, who is called a doubt, or who "should be back"
+  later: those are `doubt` or `out` as the post says, or no event.
+- A player said not to be suspended, or whose ban is already served ("X is NOT suspended",
+  "he won't be banned for GW9"), is `available`.
+- A squad rest, a rotation or a suspension served in a cup or European tie is extracted as the
+  post says it (`out` or `doubt`): the match check decides later which match it concerns.
 - A remark on a player's fatigue or workload gives no event, and neither does a post about a
   leak that turned out to be fake after the fact.
 - A post that gives a starting eleven or a bench for two clubs (for example "LINE-UPS | #CHEBOU")
@@ -86,7 +103,7 @@ For every player mentioned with a relevant event, return one event with:
 - `player` — the player's name exactly as written in the post (do not normalise or correct
   spelling).
 - `team` — the team as written in the post, only when the post states one; otherwise omit it.
-- `event_type` — one of the four types above.
+- `event_type` — one of the five types above.
 - `certainty` — one of the three levels above.
 
 A post naming several players (e.g. a leaked starting eleven with substitutes, or "X is out,

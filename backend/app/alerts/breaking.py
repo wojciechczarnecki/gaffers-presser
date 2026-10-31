@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import Engine, text
@@ -51,6 +52,13 @@ def newest_extraction(session: Session) -> datetime | None:
     ).scalar_one_or_none()
 
 
+@dataclass(frozen=True)
+class Candidate:
+    row: CurrentExtraction
+    named: list[ListedPlayer]
+    available_only: frozenset[int]
+
+
 def _candidates(
     session: Session,
     season: str,
@@ -58,7 +66,7 @@ def _candidates(
     now: datetime,
     since_extracted: datetime,
     listed: dict[int, ListedPlayer],
-) -> list[tuple[CurrentExtraction, list[ListedPlayer]]]:
+) -> list[Candidate]:
     found = []
     for row in current_extractions(
         session, created_from=start, created_until=now, sources_only=True, fresh_lineups_only=True
@@ -73,7 +81,21 @@ def _candidates(
             }
         )
         if named:
-            found.append((row, [listed[fpl_id] for fpl_id in named]))
+            found.append(
+                Candidate(
+                    row,
+                    [listed[fpl_id] for fpl_id in named],
+                    frozenset(
+                        fpl_id
+                        for fpl_id in named
+                        if all(
+                            event.event_type == "available"
+                            for event in row.events
+                            if event.player_season == season and event.player_fpl_id == fpl_id
+                        )
+                    ),
+                )
+            )
     return found
 
 
@@ -115,11 +137,12 @@ def run_breaking(
         candidates = _candidates(session, season, start, now, since_extracted, listed)
         included = included_origins(session, deadline.key)
         previous = last_alert_as_of(session, deadline.key)
-        origins = post_origin_sets(session, [row.tweet_x_id for row, _ in candidates])
+        origins = post_origin_sets(session, [c.row.tweet_x_id for c in candidates])
 
     sent = 0
     sql_only = sql_only_runtime(BREAKING_SKIPPED_REASON, runtime.corroboration.tracer)
-    for row, named in sorted(candidates, key=lambda c: (c[0].created_at, c[0].tweet_x_id)):
+    for candidate in sorted(candidates, key=lambda c: (c.row.created_at, c.row.tweet_x_id)):
+        row, named = candidate.row, candidate.named
         x_id = row.tweet_x_id
         post_origins = origins.get(x_id, {x_id})
         key = alert_key(deadline, "breaking", x_id)
@@ -143,7 +166,13 @@ def run_breaking(
                 anchor_x_id=x_id,
                 runtime=sql_only,
             )
+            if item.player.fpl_id in candidate.available_only and (
+                result.anchor is None or result.anchor.post.x_id != x_id
+            ):
+                continue
             reports.append(PlayerReport(item, result, frozenset({x_id}), False))
+        if not reports:
+            continue
         message = render_alert("breaking", deadline, as_of, reports)
         if clock.now() >= deadline.deadline_at:
             logger.info("breaking alert %s not sent: the deadline has passed", key)

@@ -321,14 +321,42 @@ def test_match_check_one_call_per_club():
     assert [e.for_next_pl_match for e in result.events] == [False, False, False]
 
 
-def test_no_match_check_without_lineup_events():
-    flow, chat = _checked_flow(_lineup("Haaland", "Jones", event_type="out"))
+def test_out_and_starter_of_one_club_make_one_check():
+    output = ExtractionOutput(
+        events=[_event("Haaland", "out"), _event("Jones", "confirmed_starter")]
+    )
+    flow, chat = _checked_flow(output, MatchCheck(for_next_pl_match=False))
+
+    result = flow.run(POST)
+
+    assert result.llm_calls == 2
+    assert len(chat.received_messages) == 2
+    assert [e.for_next_pl_match for e in result.events] == [False, False]
+
+
+def test_no_match_check_for_available_only():
+    flow, chat = _checked_flow(_lineup("Haaland", "Jones", event_type="available"))
 
     result = flow.run(POST)
 
     assert result.llm_calls == 1
     assert len(chat.received_messages) == 1
     assert [e.for_next_pl_match for e in result.events] == [None, None]
+
+    flow, chat = _checked_flow(
+        _lineup("Haaland", event_type="out"), MatchCheck(for_next_pl_match=True)
+    )
+    assert flow.run(POST).llm_calls == 2
+
+
+def test_available_event_passes_through_without_a_match_check():
+    flow, chat = _checked_flow(_lineup("Haaland", event_type="available"))
+
+    result = flow.run(POST)
+
+    assert [(e.event_type, e.for_next_pl_match) for e in result.events] == [("available", None)]
+    assert result.llm_calls == 1
+    assert len(chat.received_messages) == 1
 
 
 def test_match_check_two_clubs_two_calls():
@@ -366,14 +394,17 @@ def test_match_check_input_from_fixture_data():
     assert "Previous PL fixture: v Team Three (A), 2026-09-23T12:00Z" in sent
     assert "Next PL fixture: v Team Three (H), 2026-09-30T12:00Z" in sent
     assert "Real Madrid" not in sent
+    assert "Events:" in sent
+    assert "- Haaland: benched" in sent
 
 
-def test_match_check_answer_on_that_clubs_lineup_events_only():
+def test_match_check_answer_on_that_clubs_checked_events_only():
     output = ExtractionOutput(
         events=[
             _event("Haaland", "benched"),
             _event("Jones", "out"),
             _event("J.Smith", "confirmed_starter"),
+            _event("John Smith", "available"),
         ]
     )
     flow, _ = _checked_flow(
@@ -384,8 +415,9 @@ def test_match_check_answer_on_that_clubs_lineup_events_only():
 
     assert [(e.mention, e.for_next_pl_match) for e in result.events] == [
         ("Haaland", False),
-        ("Jones", None),
+        ("Jones", False),
         ("J.Smith", True),
+        ("John Smith", None),
     ]
 
 
