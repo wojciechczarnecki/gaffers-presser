@@ -619,7 +619,7 @@ session scratchpad (never in the repository).
       `uv run python -m app.extraction.evaluation spend --results-dir evals/extraction/results/v3`
       printing at most 3.00 USD. Then Verify.
 
-- [ ] 17. **The test run (AC17, AC18).** Tests first, in
+- [x] 17. **The test run (AC17, AC18).** `iterations: 0` Tests first, in
       `tests/extraction/evaluation/test_results_files.py`:
       - `test_v3_one_test_run`: `results/v3/*.json` holds `test-v3-openai-gpt-6-luna.json`,
         plus at most one `-r2`. The header has `set_version "v3"`, and the prompt version is
