@@ -19,6 +19,9 @@ metrics:
   implement_iterations: 6
   deviations_minor: 11
   deviations_major: 0
+  final_review_blockers: 1
+  final_review_worth_fixing: 9
+  final_review_nits: 5
 ---
 
 # SPEC 020 — Positive availability and the match check for absences

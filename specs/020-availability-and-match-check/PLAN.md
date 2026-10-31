@@ -860,4 +860,57 @@ SPEC gap remains, and it adds neither a dependency nor a migration.
 
 ## Final review
 
-_(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
+2026-10-31 — final review (report mode, three independent perspectives as parallel subagents:
+compliance, quality, tests; every finding below checked in the code by the reviewer).
+
+AC → evidence:
+
+| AC | Evidence | Status |
+|----|----------|--------|
+| AC1 | `test_service::test_an_available_event_is_stored_and_read_back`, `test_flow::test_available_event_passes_through_without_a_match_check`; test run `available_f1` 0.730 | ok |
+| AC2 | `test_prompts::test_extraction_prompt_v6_rules`, relevance keyword `available` | ok |
+| AC3 | `test_schemas` (valid / unknown type), `test_templates` (exact strings), corroboration `test_cases` words and table, alert TOML vocabulary, `test_reply_format_lists_five_types` | ok |
+| AC4 | `test_lineups::test_an_available_event_70_hours_before_kickoff_is_kept` | ok |
+| AC5 | `test_flow`: out + starter = one check, none for `available`, per-club answer | ok |
+| AC6 | `test_match_check_prompt_v2_rules`; test run 0 of 12 absence false alarms | ok |
+| AC7 | `test_current_extractions`, corroboration `test_service` (still claimed), `test_runner`, `test_breaking` | ok |
+| AC8 | `test_kept_at_read_by_type_and_answer` (5 types × null/true/false) | ok |
+| AC9 | `test_rules::test_label_table` (25 pairs) | ok, see F10 |
+| AC10 | five service tests, the forced-anchor test, `test_rules::test_reverses` | ok, see F2, F8 |
+| AC11 | `test_judge_prompt_v2_has_five_anchor_types` | ok |
+| AC12 | `test_judge_v2_regression_within_tolerance` (accuracy 0.720 → 0.724, false supports 0.121 → 0.097) | ok |
+| AC13 | render tests (order, "✅ wraca 1", palette) | ok |
+| AC14 | `test_end_to_end::test_palmer_shaped_reversal_is_a_wraca_do_gry_card` | ok |
+| AC15 | `test_breaking`: reversing, non-reversing (not included, later `related`), mixed | ok, see F1, F7 |
+| AC16 | `test_eval_set_v3`, `composition_v3` tests; 33 `available` events in test, 12 `other_match_absence` cases in test, 28 `cup_injury` | gap: F4, F9, F14 |
+| AC17 | metrics tests; `test_v3_test_run_passes` (F1 0.853, 0 of 12, 1 injury dropped) | ok (margin 0.003, disclosed) |
+| AC18 | `test_v3_spend_within_cap`; total 0.2882 USD | ok |
+| AC19 | `test_docs::test_extraction_report_v3_has_every_section`, `test_report_v3_names_the_test_run` | ok, content gaps F5, F6 |
+| AC20 | `test_docs`: FR-1.3, DECISIONS rows, EVALUATION v3, BACKLOG #24/#61, ROADMAP | ok |
+| AC21 | manual (the owner, after the merge) | — |
+
+Findings:
+
+- **F1** `blocker` — backend/app/alerts/service.py:164-207 (with backend/app/corroboration/service.py:193-207) — a news slot whose only new post is a non-reversing `available` post about a listed player with no other claim in the window: the player passes the news filter, `corroborate` returns `anchor=None`, and `render_alert` still builds a message, so an empty "Nowe wieści…" e-mail ("Brak wiadomości o zawodnikach z Twojej listy.") is sent and the post is recorded as `new` in `included`, which uses it up (confirmed by a probe of `build_slot_alert(kind="news")`; before this spec a listed player always had an anchor) — in the news path return `message=None` when no report has an anchor and leave anchorless players out of `included_rows`; add a test with an only-`available` player in a news slot.
+- **F2** `worth-fixing` — backend/app/corroboration/service.py:188 (`reverses` in rules.py) — claims `out` t1 → `confirmed_starter` t2 → `available` t3 (a generic "trained" post): the older `out` makes the `available` post the anchor, the card moves to "✅ Wraca do gry" and the newer starter leak drops to `related`, the outcome the SPEC's rationale for AC10 wants to avoid; AC10's wording allows it — count a reversal only when the newest non-`available` claim older than the candidate is `out`/`doubt`, or the owner accepts the case as is.
+- **F3** `worth-fixing` — backend/app/corroboration/service.py:190-203 — a player with only `available` claims whose first judge pass fails (retrieval or judge failure): the result is reported as `RetrievalReport("skipped", NO_REVERSAL_REASON)`, so the failure and the judge calls already made are lost and the player silently has no card instead of a failed search — keep the first pass's report (status and failure) on the no-anchor result.
+- **F4** `worth-fixing` — backend/evals/extraction/v3/cases.jsonl — at least 21 v2 cases (owner-reviewed in v2) had their tags changed by the pre-label alone and kept `review_source: prelabel`: 11 lost or gained `other_match_lineup` (for example 2105731391518568945, 2105659374278504894), 8 gained `cup_injury`, 2 gained `other_match_absence`; the owner decision of 2026-10-31 sends every v2 case changed beyond an added `available` to the agent review, and the report says that happened — agent-review them (or restore the v2 tags), mark them `agent`, and recompute the stored metrics or state the effect in the report.
+- **F5** `worth-fixing` — docs/reports/extraction-eval-v3.md ("Set composition" / "Total spend") — the owner decision of 2026-10-30 accepted about 3.8–3.9M judge tokens against the 3M limit; the report mentions neither the judge token volume nor the overrun — add a line with the estimate, the limit and the owner's acceptance.
+- **F6** `worth-fixing` — docs/reports/extraction-eval-v3.md ("Threats to validity"), backend/evals/extraction/v3/set.json `prelabels` — the pre-labels were made at commit c6b940d under "extraction@6", and the v6 text then gained two rules in dev i2/i3 with the version kept at 6, so the 77 pre-label-only cases follow an earlier v6 text than the frozen prompt, and the manifest cannot show it — add a threat line naming the pre-label commit.
+- **F7** `worth-fixing` — backend/tests/alerts/test_breaking.py — the `result.anchor is None` branch in backend/app/alerts/breaking.py:170 is untested: removing it leaves every test green, yet without it a new `available` post about a player with no other claim crashes `run_breaking` with AttributeError and stops all breaking alerts — add that test (returns 0, no Alert row).
+- **F8** `worth-fixing` — backend/tests/corroboration/test_service.py — the age comparison in `reverses` is covered only by `test_rules::test_reverses`; dropping it leaves every service and alert test green — add service tests for a judged "out" post newer than the `available` claim (no reversal) and a forced `anchor_x_id` on an older `available` post with a newer `out`.
+- **F9** `worth-fixing` — backend/tests/extraction/evaluation/test_cases.py — the `composition_problems_v3` rule "`other_match_lineup` cases have no expected events" has no v3 test; deleting it leaves all tests green (the only test of the rule calls the v2 function) — add `test_composition_v3_other_match_lineup_has_no_events`.
+- **F10** `worth-fixing` — backend/tests/corroboration/test_rules.py:50-61 — `test_label_table` derives its expectation with the same branching as `label_claim`, not the explicit 25-pair table PLAN step 4 names, so a wrong rule copied into both places passes — replace it with a literal dict of the 25 expected labels.
+- **F11** `nit` — backend/app/extraction/evaluation/metrics.py:257-262 — `injuries_dropped_by_check` pairs through `_match_pairs`, which requires the same event type: an expected `out` predicted as `doubt` and answered false is not counted, so the AC17 limit can undercount — pair absences across `out`/`doubt` by player for this metric.
+- **F12** `nit` — backend/app/extraction/evaluation/judging.py:474 — `import_verdicts` sets `reviewed=False` on a relabelled case but keeps its earlier `review_source` (for example `owner`) — also set `review_source` to `None`.
+- **F13** `nit` — backend/tests/extraction/evaluation/test_metrics.py:340 — `test_available_f1` uses 1 hit, 1 miss and 1 spurious, where F1, precision and recall are all 0.5, so replacing F1 with recall stays green — use an asymmetric fixture (1 hit, 2 misses → 0.667).
+- **F14** `nit` — backend/evals/extraction/v3/set.json `backlog_cases["24"]`, docs/reports/extraction-eval-v3.md:24 — the SPEC's Palmer anchor (the pre-Carabao-Cup press-conference post 2115090924053147753, Alonso) is in the set but not in the #24 list, and the report calls 2114056901528863119 (a LetsTalk_FPL post) "the Palmer press-conference" post — add the id and correct the line.
+- **F15** `nit` — docs/DECISIONS.md:124 — breaking alerts run SQL-only (2026-10-02), so an `available` post whose only reversal is a judged older post never breaks; the 2026-10-30 alerts row does not say so — add one clause.
+
+Rejected:
+
+- The mixed breaking post (Y `out`, X non-reversing `available`) marks the post `included` for X as well: PLAN "Risks and traps" accepts it as an edge case.
+- `cup_injury` also covering international injuries: the report already discloses it.
+- The uncommitted edits to `lineups.py` and `rules.py` seen during the review were the tests perspective's mutation probes, restored afterwards; the tree is clean.
+
+Left out: 16 nit findings
