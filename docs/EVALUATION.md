@@ -217,21 +217,22 @@ Extraction's labels come from the session judge too (spec 018; DECISIONS 2026-10
 pre-labels, the owner reviews every changed v1 case and every new case, and the models under test
 run through OpenRouter on the reviewed set. Commands run from `backend/` as
 `python -m app.extraction.evaluation <command>`; a set lives in a directory (`--set`, here
-`evals/extraction/v2`) with `cases.jsonl`, `set.json` (the version, the watched `list_handles` and
+`evals/extraction/v3`) with `cases.jsonl`, `set.json` (the version, the watched `list_handles` and
 one `prelabels` entry per import), `players.json` and `fixtures.json`. The same rules as above
 apply: the versioned prompt, a fresh context per call, blind inputs under neutral ids, a validated
 schema, the judge named. The unit of a call is **one post**.
 
 ```bash
 # 1. Snapshots: the players and the fixtures (read-only on the Compose database)
-uv run python -m app.extraction.evaluation snapshot-players --set evals/extraction/v2
-uv run python -m app.extraction.evaluation snapshot-fixtures --set evals/extraction/v2
+uv run python -m app.extraction.evaluation snapshot-players --set evals/extraction/v3
+uv run python -m app.extraction.evaluation snapshot-fixtures --set evals/extraction/v3
 
 # 2. Export: v1's cases to relabel, and candidates from the retrieval corpus
-uv run python -m app.extraction.evaluation export-judge-inputs --set evals/extraction/v2 \
-    --cases evals/extraction/v1/cases.jsonl --out $SCRATCH/judge-v1
-uv run python -m app.extraction.evaluation export-judge-inputs --set evals/extraction/v2 \
-    --corpus evals/retrieval/v2/corpus.jsonl --keywords --rest-sample 40 --out $SCRATCH/judge-new
+uv run python -m app.extraction.evaluation export-judge-inputs --set evals/extraction/v3 \
+    --cases evals/extraction/v2/cases.jsonl --out $SCRATCH/judge-v2
+uv run python -m app.extraction.evaluation export-judge-inputs --set evals/extraction/v3 \
+    --corpus evals/retrieval/v2/corpus.jsonl --keywords --availability-keywords --rest-sample 40 \
+    --exclude-cases evals/extraction/v2/cases.jsonl --x-id ID --out $SCRATCH/judge-new
 
 # 3. Estimate, then judge, one headless call per input
 uv run python -m app.extraction.evaluation estimate --export $SCRATCH/judge-new
@@ -240,15 +241,26 @@ uv run python -m app.extraction.evaluation estimate --export $SCRATCH/judge-new
 # 4. Import as unreviewed cases, then the owner's review of the changed and new cases
 uv run python -m app.extraction.evaluation import-judge --export $SCRATCH/judge-new \
     --judge-model "claude-sonnet-5-5 (Claude Code session)"
-uv run python -m app.extraction.evaluation compare-labels --set evals/extraction/v2 --revision REV
-uv run python -m app.extraction.evaluation review --set evals/extraction/v2
+uv run python -m app.extraction.evaluation compare-labels --set evals/extraction/v3 --baseline evals/extraction/v2/cases.jsonl
+uv run python -m app.extraction.evaluation review --set evals/extraction/v3
 
 # 5. Dev iterations, then one test run per model
-uv run python -m app.extraction.evaluation evaluate --set evals/extraction/v2 --split dev --model MODEL
-uv run python -m app.extraction.evaluation evaluate --set evals/extraction/v2 --split test \
-    --model MODEL --run-name test-v2-MODEL
-uv run python -m app.extraction.evaluation spend --results-dir evals/extraction/results/v2
+uv run python -m app.extraction.evaluation evaluate --set evals/extraction/v3 --split dev --model MODEL
+uv run python -m app.extraction.evaluation evaluate --set evals/extraction/v3 --split test \
+    --model MODEL --run-name test-v3-MODEL
+uv run python -m app.extraction.evaluation spend --results-dir evals/extraction/results/v3
 ```
+
+Set v3 (spec 020; DECISIONS 2026-10-30) adds the `available` type and four tags: `other_match_absence`
+(an absence that concerns only another match; expects no `out`/`doubt` event), `cup_injury` (an
+injury that must keep its `out`/`doubt` after the match check) and the existing line-up tags.
+`export-judge-inputs --availability-keywords` widens the candidates to availability wording, and
+`--exclude-cases` and `--x-id` skip known cases and force named posts. Every case records its
+`review_source` (`owner`, `agent`, `prelabel`); `review` sets `owner`. `evaluate` also prints the
+F1 of `available` events, the `other_match_absence` false alarms and the injuries dropped by the
+check, and `absence_checks` fails a run with more than 1 of either. The corroboration judge's
+regression on set v2 (three runs of each prompt, means within 0.05) is in
+`docs/reports/extraction-eval-v3.md`.
 
 - **Neutral ids and the mapping.** Each input is named by a neutral id, not the post's X id; the
   mapping from ids to posts is `mapping.json` in the export directory, outside every `inputs/`

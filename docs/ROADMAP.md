@@ -91,6 +91,11 @@ and each LLM step that produces data has an evaluation set with recorded results
       model setting ([report](reports/corroboration-eval-v2.md),
       [ADR 0011](adr/0011-corroboration-judge-model.md)) (BACKLOG #12 (the corroboration half),
       #47) (spec: [019](../specs/019-corroboration-evaluation-v2/SPEC.md))
+- [x] Positive availability and the match check for absences: a fifth event type `available`
+      (extraction prompt v6), `match_check` v2 for `out`/`doubt` and line-ups, the anchor rule
+      and label table for `available`, the group "✅ Wraca do gry", extraction set v3 and its
+      test run ([report](reports/extraction-eval-v3.md)) (BACKLOG #24)
+      (spec: [020](../specs/020-availability-and-match-check/SPEC.md))
 - [ ] README rewritten for the portfolio once the two evaluations above have results: what
       it does and why, an architecture diagram, a results table linking the reports, the
       engineering process (specs, ADRs, evaluation, tracing), a sample presser on made-up
