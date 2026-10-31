@@ -123,3 +123,58 @@ def test_report_v2_names_every_test_run():
     for name in names:
         assert name in report, name
     assert "total spend" in report.lower()
+
+
+V3_RESULTS_DIR = DEFAULT_RESULTS_DIR / "v3"
+V3_RUN = "test-v3-openai-gpt-6-luna"
+DEV_ITERATIONS = (
+    ADR_0006.parents[2] / "specs" / "020-availability-and-match-check" / "dev-iterations.md"
+)
+
+
+def _v3_test_runs() -> list[dict]:
+    return [json.loads(path.read_text()) for path in sorted(V3_RESULTS_DIR.glob("*.json"))]
+
+
+def test_v3_one_test_run():
+    runs = _v3_test_runs()
+    names = sorted(run["run_name"] for run in runs)
+    assert names in ([V3_RUN], [V3_RUN, f"{V3_RUN}-r2"])
+    for run in runs:
+        assert run["split"] == "test"
+        assert run["header"]["set_version"] == "v3"
+        assert run["header"]["prompt_version"] == "extraction@6+link_disambiguation@1+match_check@2"
+
+
+def test_v3_test_run_passes():
+    from app.extraction.evaluation.metrics import (
+        MAX_INJURIES_DROPPED,
+        MAX_OTHER_MATCH_ABSENCE_FALSE_ALARMS,
+        threshold_flags,
+    )
+
+    final = _v3_test_runs()[-1]
+    m = final["metrics"]
+    flags = threshold_flags(
+        m["f1"],
+        m["linking_accuracy"],
+        m["false_alarm_rate"],
+        m["projected_monthly_cost_pln"],
+        m["errored_cases"],
+    )
+    assert all(flags.values()), flags
+    assert m["other_match_absence_false_alarms"] <= MAX_OTHER_MATCH_ABSENCE_FALSE_ALARMS
+    assert m["injuries_dropped_by_check"] <= MAX_INJURIES_DROPPED
+
+
+def _log_spend(label: str) -> float:
+    found = re.findall(rf"^{label}: ([0-9.]+) USD", DEV_ITERATIONS.read_text(), re.MULTILINE)
+    return sum(float(value) for value in found)
+
+
+def test_v3_spend_within_cap():
+    total = sum(run["metrics"]["total_cost_usd"] for run in _v3_test_runs())
+    total += _log_spend("Extraction dev spend")
+    total += _log_spend("Corroboration regression spend")
+    total += _log_spend("Discarded test spend")
+    assert total <= 5

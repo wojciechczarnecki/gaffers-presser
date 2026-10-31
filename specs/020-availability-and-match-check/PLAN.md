@@ -597,8 +597,8 @@ session scratchpad (never in the repository).
       Automatic verification:
       `uv run pytest -q tests/extraction/evaluation/test_eval_set_v3.py`, then Verify.
 
-- [ ] 16. **Dev iterations of prompts v6 and `match_check` v2 with the default model (AC6,
-      AC17 dev, AC18).** Use the paid key from `backend/.env`.
+- [x] 16. **Dev iterations of prompts v6 and `match_check` v2 with the default model (AC6,
+      AC17 dev, AC18).** `iterations: 4` Use the paid key from `backend/.env`.
       - Iterate
         `env -u TWEET_SOURCE uv run python -m app.extraction.evaluation evaluate --set evals/extraction/v3 --split dev --model openai/gpt-6-luna --run-name dev-v3-luna-iN`.
       - Edit `extraction.md` and `match_check.md` on dev failures only. Do not patch single
