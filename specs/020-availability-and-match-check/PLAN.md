@@ -642,7 +642,7 @@ session scratchpad (never in the repository).
       Automatic verification:
       `uv run pytest -q tests/extraction/evaluation/test_results_files.py`, then Verify.
 
-- [ ] 18. **The report `docs/reports/extraction-eval-v3.md` (AC18, AC19).** It has these
+- [x] 18. **The report `docs/reports/extraction-eval-v3.md` (AC18, AC19).** `iterations: 0` It has these
       sections:
       - "Set composition": per split; the tags; `available` per split; the `compare-labels`
         output against v2; the #24 posts;

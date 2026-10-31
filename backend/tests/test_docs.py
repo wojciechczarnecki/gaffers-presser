@@ -398,3 +398,19 @@ def test_corroboration_report_v2_has_every_section():
         assert heading in report, heading
     for needle in ("claude-opus-5-5", "claude-haiku-4.5", "PLN", "vendor overlap", "SQL-context"):
         assert needle in report, needle
+
+
+def test_extraction_report_v3_has_every_section():
+    report = (ROOT / "docs" / "reports" / "extraction-eval-v3.md").read_text(encoding="utf-8")
+    for heading in (
+        "## Set composition",
+        "## Dev iterations",
+        "## Test results",
+        "## Corroboration regression",
+        "## Total spend",
+        "## Threats to validity",
+        "## Re-extraction",
+    ):
+        assert heading in report, heading
+    for needle in ("review_source", "BACKLOG #24", "Total spend"):
+        assert needle in report, needle

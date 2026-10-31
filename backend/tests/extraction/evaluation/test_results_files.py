@@ -178,3 +178,10 @@ def test_v3_spend_within_cap():
     total += _log_spend("Corroboration regression spend")
     total += _log_spend("Discarded test spend")
     assert total <= 5
+
+
+def test_report_v3_names_the_test_run():
+    report = (ADR_0006.parents[1] / "reports" / "extraction-eval-v3.md").read_text()
+    final = _v3_test_runs()[-1]
+    assert final["run_name"] in report
+    assert f"{final['metrics']['f1']:.3f}" in report
