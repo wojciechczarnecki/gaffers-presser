@@ -43,8 +43,7 @@ uv run python -m app.worker status    # latest run of each job and the next plan
 
 ## Tweet ingest
 
-Tweet ingest — a separate polling loop inside the same worker, watching one public X List
-for team-news leaks. Disabled unless `TWEET_SOURCE` is set in `backend/.env`; the worker
+A polling loop inside the worker watches one public X List for team-news leaks. Disabled unless `TWEET_SOURCE` is set in `backend/.env`; the worker
 otherwise runs the FPL jobs exactly as above. Configuration (`backend/.env.example` has all
 seven): `TWEET_SOURCE` (`twscrape` | `twitterapi_io` | `x_api`), `X_LIST_ID`, and the
 credentials of the chosen source — `TWSCRAPE_USERNAME` / `TWSCRAPE_COOKIES` /
@@ -68,14 +67,13 @@ measured, so Ctrl-C stops the run early and still prints the summary of what was
 
 ## Extraction
 
-Tweet extraction — a third loop inside the same worker turns every stored post into typed
-events (which player, out / doubt / benched / confirmed starter / available, how sure the
-author is),
-linked to FPL player IDs. OpenRouter is the only LLM provider: extraction is disabled unless
+A loop inside the worker turns every stored post into typed events (which player, out / doubt
+/ benched / confirmed starter / available, how sure the author is), linked to FPL player IDs. OpenRouter is the only LLM provider: extraction is disabled unless
 `OPENROUTER_API_KEY` is set, and the worker then runs the FPL jobs and the tweet ingest exactly as
 above. Configuration (`backend/.env.example` has all of it): `OPENROUTER_API_KEY`, the optional
 `LLM_MODEL` (an OpenRouter model ID) and `LLM_FALLBACK_MODEL` (empty means the defaults from
-[ADR 0006](adr/0006-default-extraction-model-openrouter.md): `openai/gpt-6-luna` with the
+[ADR 0006](adr/0006-default-extraction-model-openrouter.md), reconfirmed on set v2 in
+[ADR 0010](adr/0010-extraction-match-check-and-default-model.md): `openai/gpt-6-luna` with the
 fallback `google/gemini-3.1-flash-lite`; a model needs a row in `backend/app/llm/model_settings.toml` and `prices.toml`),
 the optional Langfuse Cloud keys `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST`
 (without them extraction runs untraced) and `USD_PLN_RATE` (only `evaluate` reads it).
@@ -143,7 +141,7 @@ directory, dev runs included.
 
 ## Retrieval
 
-Retrieval — a fourth loop inside the worker embeds every stored post (`EMBEDDING_MODEL`, default
+A loop inside the worker embeds every stored post (`EMBEDDING_MODEL`, default
 `openai/text-embedding-3-large` through OpenRouter; it needs `OPENROUTER_API_KEY`), and search
 fuses PostgreSQL full-text and pgvector rankings with reciprocal rank fusion. The evaluation sets
 live in `backend/evals/retrieval/`: v1 is a frozen corpus of public posts with about 40 queries
@@ -168,7 +166,7 @@ uv run python -m app.retrieval.evaluation compare RESULT_FILE...   # one table, 
 
 ## Corroboration
 
-Corroboration — for a player and a moment, `python -m app.corroboration <player>` takes the
+For a player and a moment, `python -m app.corroboration <player>` takes the
 newest extracted claim since the latest deadline as the anchor, labels every other post about
 the player as supporting, contradicting or related, counts the independent accounts (a repost
 counts as its original author), flags a reversal and grades the anchor `high`, `medium` or
@@ -205,9 +203,25 @@ model the judge runs on: `LLM_JUDGE_MODEL` when set, the default judge model
 v2; the owner chose the model closest to it over the rule's pick (`qwen/qwen3.8-flash`), and it
 is not a model proven good enough.
 
+## Delivery
+
+Alerts and the presser go out by e-mail through the delivery adapter
+([ADR 0004](adr/0004-email-as-mvp-channel.md)); without it they are not sent. Delivery is
+disabled unless `DELIVERY_PROVIDER` is set; the only channel is `resend`, which needs
+`RESEND_API_KEY` and `DELIVERY_EMAIL_TO` (one recipient), while `DELIVERY_EMAIL_FROM` is
+optional (default `onboarding@resend.dev`). Without a verified domain Resend sends only to the
+address of the Resend account's owner. Every send is recorded in `delivery_log` under an
+idempotency key; `uv run python -m app.worker status` ends with a `Delivery:` line. More in
+[DEPLOYMENT](DEPLOYMENT.md), step 11.
+
+```bash
+uv run python -m app.delivery send-test   # send the test message, print the outcome
+uv run python -m app.delivery status      # the channel and the last 10 sends
+```
+
 ## Alerts
 
-Alerts — before each deadline the worker e-mails team news for the players that matter to the
+Before each deadline the worker e-mails team news for the players that matter to the
 league (league-owned, widely owned or trending): a digest at 20:00 Warsaw time the day before, news at T-60 and a
 breaking e-mail per new post until the deadline, each with graded, linked sources; they run when delivery,
 tweet ingest and extraction are enabled. The alert text is a deterministic Polish template.
@@ -225,7 +239,7 @@ e-mails for testing; remove it after use (see [DEPLOYMENT](DEPLOYMENT.md), step 
 
 ## League presser
 
-League presser — after each gameweek the worker sends the owner one press conference per
+After each gameweek the worker sends the owner one press conference per
 league by e-mail, in Polish FPL slang: the manager and the flop of the gameweek, the captains,
 the bench, transfers and chips, and the table. The facts are computed in SQL, an LLM only writes
 the text, and the e-mail has a "send to WhatsApp" button. It runs when delivery is enabled and

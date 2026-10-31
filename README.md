@@ -85,8 +85,8 @@ the FPL deadline calendar (cron cannot poll every 20 seconds). The design choice
 | `llm`, `core`, `db` | OpenRouter client, model settings and prices, tracing, models and migrations |
 | `content` | Polish prompts, e-mail templates and the slang glossary, kept out of code |
 
-Stack: Python 3.12, SQLModel, Alembic, PostgreSQL 16 + pgvector, LangGraph, OpenRouter,
-Langfuse, uv, ruff, pytest with testcontainers, GitHub Actions. It runs locally on Docker
+Stack: Python 3.12, SQLModel, Alembic, PostgreSQL 16 + pgvector, LangGraph and LangChain
+(the OpenRouter client), OpenRouter, Langfuse, uv, ruff, pytest with testcontainers, GitHub Actions. It runs locally on Docker
 Compose; a Railway deployment is prepared and postponed.
 
 ## Results
@@ -100,8 +100,8 @@ points are within noise, and every report lists its limits.
 | Post detection latency | 20 controlled posts | p95 post → first fetch | ≤ 60 s | **25.9 s** | twscrape | [report](docs/reports/tweet-source-latency-2026-09.md), [ADR 0005](docs/adr/0005-default-tweet-source-twscrape.md) |
 | Extraction | v3, test, 207 cases | F1 · linking · false alarms | ≥ 0.85 · ≥ 0.95 · ≤ 5% | **0.853** · 1.000 · 1.9% (pass, 1.12 PLN a month) | `openai/gpt-6-luna` | [v3](docs/reports/extraction-eval-v3.md), [v2](docs/reports/extraction-eval-v2.md), [ADR 0010](docs/adr/0010-extraction-match-check-and-default-model.md) |
 | Retrieval | v2, 69 test queries, 2,557 posts | recall at the judge's cut | — | **0.933** (hybrid, depth 20; no reranker needed) | `text-embedding-3-large` | [report](docs/reports/retrieval-eval-v2.md), [ADR 0009](docs/adr/0009-default-embedding-model.md) |
-| Corroboration judge | v2, test, 75 cases | accuracy · false `supports` | ≥ 0.80 · ≤ 10% | 0.720 · 12.1% (**no model passes**) | `google/gemini-3.1-flash-lite` | [report](docs/reports/corroboration-eval-v2.md), [ADR 0011](docs/adr/0011-corroboration-judge-model.md) |
-| Presser writer | v6, test, 24 cases | faithfulness · style (1–5) | ≥ 0.95 · ≥ 3.5 | **0.996** · 3.50 ($0.034 a presser) | `openai/gpt-6-sol` | [report](docs/reports/presser-model-comparison.md), [ADR 0007](docs/adr/0007-default-presser-model.md) |
+| Corroboration judge | v2, test, 75 cases | accuracy · false `supports` | ≥ 0.80 · ≤ 10% | 0.724 · 9.7%, mean of 3 runs of prompt 2 (**accuracy fails**) | `google/gemini-3.1-flash-lite` | [report](docs/reports/corroboration-eval-v2.md), [rerun](docs/reports/extraction-eval-v3.md#corroboration-regression), [ADR 0011](docs/adr/0011-corroboration-judge-model.md) |
+| Presser writer | v6, test, 24 cases, writer prompt 12 | faithfulness · style (1–5) | ≥ 0.95 · ≥ 3.5 | **0.996** · 3.50 ($0.034 a presser) | `openai/gpt-6-sol` | [report](docs/reports/presser-model-comparison.md), [ADR 0007](docs/adr/0007-default-presser-model.md) |
 
 What the numbers say:
 
@@ -111,14 +111,16 @@ What the numbers say:
   so a repeat run could fall under the threshold; the report says so.
 - **Retrieval needs no reranker.** The winner's recall at the cut is 0.933 and only 0.065 higher
   within the top 50, under the rule set beforehand for adding one.
-- **The corroboration judge is the weak link.** None of six candidates passes; the default is
-  the one closest to the threshold, chosen by the owner. The failures sit on the `related`
-  label (posts about a teammate or the same club read as support), which is the next change
-  ([BACKLOG #58](docs/BACKLOG.md)). The judge labels only the posts that retrieval alone finds;
+- **The corroboration judge is the weak link.** None of six candidates passed on prompt 1
+  (best 0.720 · 12.1%); the default is the one closest to the threshold, chosen by the owner.
+  Prompt 2 brought false `supports` under the limit, and accuracy is still short. The failures
+  sit on the `related` label (posts about a teammate or the same club read as support), which
+  is the next change ([BACKLOG #58](docs/BACKLOG.md)). The judge labels only the posts that retrieval alone finds;
   the extracted claims are labelled by fixed rules.
 - **The presser is faithful.** 2 unsupported claims out of 710, judged blind; the owner
   preferred the default in 3 of 3 blind pairs against `gpt-6-luna` with high reasoning, the only
-  model level with it on faithfulness.
+  model level with it on faithfulness. Production runs writer prompt 13 (the set's version 7
+  adds team names), checked by reading 6 dev pressers before and after, not re-scored.
 
 How the labels were made: the Claude Code session acts as a blind judge through fresh
 subagents, and the owner reviews the disagreements and a stratified sample (for some sets every
@@ -158,14 +160,15 @@ approval at three gates:
    criteria; the owner approves it.
 2. **Plan, review, implementation.** An agent writes the PLAN, a second agent reviews it
    adversarially with a fresh context, and the implementation runs step by step with the full
-   verification (ruff and about 2,200 tests on throwaway PostgreSQL containers) after each step.
+   verification (ruff and over 2,500 tests on throwaway PostgreSQL containers) after each step.
 3. **Final review and PR.** Three independent review perspectives produce a findings report;
    the owner decides on each finding, the fixes go in, CI goes green, and the owner merges.
    Agents never touch `main` (a command guard and a `pre-push` hook enforce it).
 
 Alongside the code: binding decisions in [DECISIONS](docs/DECISIONS.md) and the reasoning for
 the contested ones in [ADRs](docs/adr/); deferred work with a priority and a trigger to return
-in the [BACKLOG](docs/BACKLOG.md); the [roadmap](docs/ROADMAP.md) ticked only after a merged PR;
+in the [BACKLOG](docs/BACKLOG.md); the [roadmap](docs/ROADMAP.md) ticked in the PR that delivers the work, after green
+verification;
 and a definition of done for any stage that calls an LLM: its calls are traced in Langfuse and
 each LLM step that produces data has an evaluation set with recorded results. A
 [code audit](docs/reports/code-audit-2026-10.md) of every module in October 2026 fed a series
