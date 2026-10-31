@@ -783,6 +783,7 @@ session scratchpad (never in the repository).
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
 - 2026-10-30 — implement — `decision` — Step 14: the planned set v3 candidate pool needs about 5.3M judge tokens against the 3M limit; how should candidates be drawn? — Option B: keep the whole GW8 and GW9 window (`--since 2026-10-17`) but drop `--keywords` and use only `--availability-keywords` (about 3.9M with the 228 set v2 relabels); the owner accepts exceeding the 3M limit for this run.
+- 2026-10-31 — implement — `decision` — Step 15: the owner review of set v3 has 127 unreviewed cases; must the owner review all of them (AC16)? — No: the owner reviews only the 30 essential cases (the 11 named GW9 posts plus the FFScout "rested for GW9" post 2116079251476611126, the `other_match_absence` cases that still carry `out`/`doubt`, and the v2 cases whose change is more than an added `available`); the other 97 keep the session pre-labels, are marked as pre-label-only (not owner-reviewed) in the set, and the report states that.
 
 ## Review log
 
