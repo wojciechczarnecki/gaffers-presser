@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-11-01"
   - "spec-ready — 2026-11-01"
+metrics:
+  started_at: 2026-11-01T00:47
 ---
 
 # SPEC 021 — Alert categories and simpler corroboration rules
