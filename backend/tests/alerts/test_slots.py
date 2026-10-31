@@ -157,6 +157,44 @@ def test_news_with_nothing_new_is_skipped(db):
     assert alert_posts(db, NEWS_KEY) == {}
 
 
+def test_news_with_only_a_non_reversing_available_post_is_skipped(db):
+    seed(db)
+    add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="a1")
+    runtime, channel, clock = setup(db)
+    run_slot(db, runtime, REAL, 0, clock)
+    add_claim(
+        db,
+        2,
+        ISAK,
+        "available",
+        created_at=NOW + timedelta(minutes=20),
+        author="a2",
+        mention="Isak",
+    )
+    clock.advance(timedelta(minutes=90))
+
+    assert run_slot(db, runtime, REAL, 1, clock) == "skipped"
+
+    assert len(channel.calls) == 1
+    news = alerts(db)[1]
+    assert (news.key, news.status, news.delivery_log_id) == (NEWS_KEY, "skipped", None)
+    assert alert_posts(db, NEWS_KEY) == {}
+
+
+def test_a_player_without_a_card_uses_up_no_post(db):
+    seed(db)
+    add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="a1")
+    add_claim(
+        db, 2, ISAK, "available", created_at=NOW - timedelta(hours=2), author="a2", mention="Isak"
+    )
+    runtime, channel, clock = setup(db)
+
+    assert run_slot(db, runtime, REAL, 0, clock) == "sent"
+
+    assert "Isak" not in channel.calls[0].text
+    assert alert_posts(db, DIGEST_KEY) == {(SAKA, 1): "new"}
+
+
 def test_repeated_run_sends_once(db):
     seed(db)
     add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="a1")

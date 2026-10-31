@@ -208,6 +208,25 @@ def _counts(values: Iterable[str | None]) -> dict[str, int]:
     return dict(Counter(value for value in values if value is not None))
 
 
+def _absence_pairs(
+    expected: Sequence[ExpectedEvent], predicted: Sequence[ExpectedEvent]
+) -> list[tuple[ExpectedEvent, ExpectedEvent]]:
+    # an absence counts as found whether it came out as `out` or `doubt`
+    absent = [e for e in expected if e.event_type in ABSENCE_EVENTS]
+    remaining = [p for p in predicted if p.event_type in ABSENCE_EVENTS]
+    pairs = _match_pairs(absent, remaining)
+    for _, pred in pairs:
+        remaining.remove(pred)
+    for exp in absent:
+        if any(e is exp for e, _ in pairs):
+            continue
+        found = next((p for p in remaining if _key(p) == _key(exp)), None)
+        if found is not None:
+            remaining.remove(found)
+            pairs.append((exp, found))
+    return pairs
+
+
 def compute_metrics(
     results: Sequence[CaseResult], posts_per_month: float, usd_pln_rate: float
 ) -> Metrics:
@@ -259,9 +278,10 @@ def compute_metrics(
                 lineups_dropped += (
                     exp.event_type in LINEUP_EVENTS and raw.for_next_pl_match is False
                 )
-                injuries_dropped += (
-                    exp.event_type in ABSENCE_EVENTS and raw.for_next_pl_match is False
-                )
+            injuries_dropped += sum(
+                raw.for_next_pl_match is False
+                for _, raw in _absence_pairs(result.expected, result.raw_predicted)
+            )
 
         if result.other_match_absence and result.error_class is None:
             absence_cases += 1

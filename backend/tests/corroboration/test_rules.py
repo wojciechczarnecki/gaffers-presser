@@ -47,18 +47,31 @@ def _lab(
 ANCHOR = _post(100, "anchor_account", minutes=0)
 
 
+S, C, R = "supports", "contradicts", "related"
+# anchor type -> claim type -> label, written out so the table is not derived like the code
+LABEL_TABLE = {
+    "out": {"out": S, "doubt": R, "benched": R, "confirmed_starter": C, "available": C},
+    "doubt": {"out": R, "doubt": S, "benched": R, "confirmed_starter": C, "available": C},
+    "benched": {"out": R, "doubt": R, "benched": S, "confirmed_starter": C, "available": R},
+    "confirmed_starter": {
+        "out": C,
+        "doubt": C,
+        "benched": C,
+        "confirmed_starter": S,
+        "available": R,
+    },
+    "available": {"out": C, "doubt": C, "benched": R, "confirmed_starter": R, "available": S},
+}
+
+
+def test_label_table_covers_every_pair_of_the_five_types():
+    assert set(LABEL_TABLE) == set(TYPES)
+    assert all(set(row) == set(TYPES) for row in LABEL_TABLE.values())
+
+
 @pytest.mark.parametrize(("anchor_type", "claim_type"), list(product(TYPES, TYPES)))
 def test_label_table(anchor_type, claim_type):
-    if anchor_type == claim_type:
-        expected = "supports"
-    elif "available" in (anchor_type, claim_type):
-        other = claim_type if anchor_type == "available" else anchor_type
-        expected = "contradicts" if other in ("out", "doubt") else "related"
-    elif "confirmed_starter" in (anchor_type, claim_type):
-        expected = "contradicts"
-    else:
-        expected = "related"
-    assert label_claim(anchor_type, claim_type) == expected
+    assert label_claim(anchor_type, claim_type) == LABEL_TABLE[anchor_type][claim_type]
 
 
 def test_accounts_a_repost_counts_as_its_original_author():
@@ -372,3 +385,14 @@ def test_reverses():
     assert reverses(CANDIDATE, [_claim(6, "available", -10)], []) is False
     assert reverses(CANDIDATE, [], [_lab(7, "supports", "j", -5, origin="judge")]) is False
     assert reverses(CANDIDATE, [], [_lab(8, "contradicts", "j", 5, origin="judge")]) is False
+
+
+def test_a_line_up_claim_after_the_bad_news_leaves_nothing_to_reverse():
+    out, starter = _claim(1, "out", -10), _claim(2, "confirmed_starter", -5)
+    assert reverses(CANDIDATE, [out, starter], []) is False
+    assert reverses(CANDIDATE, [_claim(3, "benched", -10), _claim(4, "doubt", -5)], []) is True
+    assert reverses(CANDIDATE, [out, _claim(5, "available", -3)], []) is True
+    judged_after = [_lab(6, "contradicts", "j", -3, origin="judge")]
+    assert reverses(CANDIDATE, [out, starter], judged_after) is True
+    judged_before = [_lab(7, "contradicts", "j", -8, origin="judge")]
+    assert reverses(CANDIDATE, [out, starter], judged_before) is False

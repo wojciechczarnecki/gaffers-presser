@@ -55,9 +55,17 @@ def reverses(candidate: Claim, claims: Sequence[Claim], judged: Sequence[Labelle
     def older(post: PostRef) -> bool:
         return (post.created_at, post.x_id) < mark
 
-    return any(c.event_type in REVERSED_TYPES and older(c.post) for c in claims) or any(
-        item.label == "contradicts" and older(item.post) for item in judged
-    )
+    # the newest older news decides: a line-up claim after the bad news has already turned it
+    older_news = [
+        ((c.post.created_at, c.post.x_id), c.event_type in REVERSED_TYPES)
+        for c in claims
+        if c.event_type != "available" and older(c.post)
+    ] + [
+        ((item.post.created_at, item.post.x_id), True)
+        for item in judged
+        if item.label == "contradicts" and older(item.post)
+    ]
+    return bool(older_news) and max(older_news)[1]
 
 
 def account_of(post: PostRef) -> str:

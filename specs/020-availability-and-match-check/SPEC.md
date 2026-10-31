@@ -22,6 +22,8 @@ metrics:
   final_review_blockers: 1
   final_review_worth_fixing: 9
   final_review_nits: 5
+  findings_accepted: 15
+  findings_rejected: 0
 ---
 
 # SPEC 020 — Positive availability and the match check for absences

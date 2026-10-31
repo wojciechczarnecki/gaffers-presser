@@ -191,6 +191,9 @@ def corroborate(
                     engine, runtime, player, candidate, start, as_of, claimed
                 )
             if judged is None or not reverses(candidate, claims, judged):
+                # a failed first pass is kept, so the failure shows even with no anchor
+                failed = report is not None and bool(report.failure or report.unjudged)
+                no_anchor = report if failed else RetrievalReport("skipped", NO_REVERSAL_REASON)
                 judged, report = None, None
                 others = [c for c in claims if c.event_type != "available"]
                 if not others:
@@ -200,7 +203,7 @@ def corroborate(
                         window_start=start,
                         new_since=new_since,
                         anchor=None,
-                        retrieval=RetrievalReport("skipped", NO_REVERSAL_REASON),
+                        retrieval=no_anchor,
                         trace_id=span.trace_id,
                     )
                     span.update(output={"anchor": None})

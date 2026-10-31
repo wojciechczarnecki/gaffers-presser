@@ -368,6 +368,19 @@ def test_non_reversing_available_post_sends_nothing_and_stays_new(db):
     assert [c.x_id for c in isak.corroboration.related] == [2]
 
 
+def test_an_available_post_about_a_player_with_no_other_claim_sends_nothing(db):
+    runtime, channel, clock = world(db)
+    add_late(db, 2, player=ISAK, event="available", certainty="confirmed", mention="Isak")
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 0
+
+    assert channel.keys == []
+    with Session(db) as session:
+        assert 2 not in included_origins(session, REAL.key)
+        assert session.exec(select(Alert).where(Alert.key.like("%breaking%"))).all() == []
+
+
 def test_mixed_post_drops_only_the_non_reversing_player(db):
     runtime, channel, clock = world(db)
     add_claim(

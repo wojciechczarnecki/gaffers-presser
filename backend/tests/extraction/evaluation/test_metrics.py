@@ -345,10 +345,11 @@ def test_available_f1():
                 predicted=[ev("Palmer", 3, event_type="available")],
             ),
             CaseResult(expected=[ev("Saka", 7, event_type="available")], predicted=[]),
-            CaseResult(expected=[], predicted=[ev("Isak", 9, event_type="available")]),
+            CaseResult(expected=[ev("Isak", 9, event_type="available")], predicted=[]),
             CaseResult(expected=[ev()], predicted=[ev()]),
         ]
     )
+    # one hit, two misses: precision 1, recall 1/3, so F1 is 0.5 and not the recall
     assert metrics.available_f1 == pytest.approx(0.5)
 
 
@@ -395,6 +396,27 @@ def test_injuries_dropped_by_check():
         ]
     )
     assert metrics.injuries_dropped_by_check == 1
+
+
+def test_an_injury_dropped_under_the_other_absence_type_is_counted():
+    metrics = run(
+        [
+            CaseResult(
+                expected=[ev(event_type="out"), ev("Saka", 7, event_type="doubt")],
+                predicted=[],
+                raw_predicted=[
+                    raw(event_type="doubt", answer=False, kept=False),
+                    raw("Saka", 7, event_type="out", answer=False, kept=False),
+                ],
+            ),
+            CaseResult(
+                expected=[ev("Rice", 8, event_type="out")],
+                predicted=[],
+                raw_predicted=[raw("Kane", 9, event_type="out", answer=False, kept=False)],
+            ),
+        ]
+    )
+    assert metrics.injuries_dropped_by_check == 2
 
 
 def test_absence_checks_limits():

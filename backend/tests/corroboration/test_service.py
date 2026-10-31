@@ -487,6 +487,7 @@ def test_only_available_claims_give_no_anchor(db):
     add_claim(
         db, 3, SAKA, "available", "confirmed", created_at=NOW - timedelta(hours=1), author="a3"
     )
+    _embed_one(db, 3)
     judge, fake = _judge("unrelated")
     result = _run(db, _runtime(judge))
     assert result.anchor is None
@@ -520,3 +521,72 @@ def test_given_available_anchor_that_does_not_reverse_is_replaced(db):
     )
     result = _run(db, _runtime(), anchor_x_id=3)
     assert result.anchor.post.x_id == 1
+
+
+def test_a_starter_leak_after_the_out_keeps_the_card_on_the_starter(db):
+    _available_world(db)
+    add_claim(db, 1, SAKA, "out", "likely", created_at=NOW - timedelta(hours=6), author="a1")
+    add_claim(db, 2, SAKA, "confirmed_starter", created_at=NOW - timedelta(hours=4), author="a2")
+    add_claim(
+        db, 3, SAKA, "available", "confirmed", created_at=NOW - timedelta(hours=1), author="a3"
+    )
+    result = _run(db, _runtime())
+    assert result.anchor.post.x_id == 2
+    assert result.anchor.event_type == "confirmed_starter"
+    assert [c.x_id for c in result.contradicting] == [1]
+    assert [c.x_id for c in result.related] == [3]
+
+
+def test_an_out_newer_than_the_available_claim_is_not_reversed(db):
+    _available_world(db)
+    add_claim(
+        db, 1, SAKA, "available", "confirmed", created_at=NOW - timedelta(hours=5), author="a1"
+    )
+    add_claim(db, 2, SAKA, "out", "likely", created_at=NOW - timedelta(hours=1), author="a2")
+    result = _run(db, _runtime())
+    assert result.anchor.post.x_id == 2
+    assert result.anchor.event_type == "out"
+    assert [c.x_id for c in result.contradicting] == [1]
+
+
+def test_a_judged_out_newer_than_the_available_claim_gives_no_anchor(db):
+    _available_world(db)
+    add_claim(
+        db, 3, SAKA, "available", "confirmed", created_at=NOW - timedelta(hours=3), author="a3"
+    )
+    add_tweet(db, 10, "Saka is ruled out", created_at=NOW - timedelta(hours=1), author="j1")
+    _embed_one(db, 10)
+    judge, fake = _judge("contradicts")
+    result = _run(db, _runtime(judge))
+    assert len(fake.received_messages) == 1
+    assert result.anchor is None
+    assert result.retrieval.status == "skipped"
+
+
+def test_a_given_older_available_anchor_with_a_newer_out_is_replaced(db):
+    _available_world(db)
+    add_claim(
+        db, 1, SAKA, "available", "confirmed", created_at=NOW - timedelta(hours=5), author="a1"
+    )
+    add_claim(db, 2, SAKA, "out", "likely", created_at=NOW - timedelta(hours=1), author="a2")
+    result = _run(db, _runtime(), anchor_x_id=1)
+    assert result.anchor.post.x_id == 2
+    assert result.anchor.event_type == "out"
+
+
+def test_a_failed_first_pass_with_only_available_claims_is_reported(db, monkeypatch):
+    _available_world(db)
+    add_claim(
+        db, 3, SAKA, "available", "confirmed", created_at=NOW - timedelta(hours=1), author="a3"
+    )
+
+    def failing(*args, **kwargs):
+        raise SearchError("search down")
+
+    monkeypatch.setattr("app.corroboration.service.retrieval_candidates", failing)
+    judge, fake = _judge("contradicts")
+    result = _run(db, _runtime(judge))
+    assert result.anchor is None
+    assert result.retrieval.status == "ran"
+    assert result.retrieval.failure == "retrieval failed: SearchError"
+    assert fake.received_messages == []

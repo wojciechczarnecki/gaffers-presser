@@ -915,3 +915,25 @@ Rejected:
 - The uncommitted edits to `lineups.py` and `rules.py` seen during the review were the tests perspective's mutation probes, restored afterwards; the tree is clean.
 
 Left out: 16 nit findings
+
+### Fixes (apply mode, 2026-10-31)
+
+The owner accepted F1–F15 (PLAN → Owner decisions). What changed, by finding:
+
+- **F1** — `build_slot_alert` skips a news alert when no player in it has an anchor, and `included_rows` leaves out a player without an anchor, so a non-reversing `available` post is never used up by an alert that shows it nowhere. Tests: `test_slots::test_news_with_only_a_non_reversing_available_post_is_skipped`, `test_a_player_without_a_card_uses_up_no_post` (both red without the fix).
+- **F2** — `reverses` counts a reversal only when the newest older non-`available` news (an SQL claim or a judged `contradicts` post) is bad news; a line-up claim after the `out` leaves nothing to reverse. Tests: `test_rules::test_a_line_up_claim_after_the_bad_news_leaves_nothing_to_reverse`, `test_service::test_a_starter_leak_after_the_out_keeps_the_card_on_the_starter`. DECISIONS 2026-10-30 (anchor row) records the rule.
+- **F3** — with only `available` claims, a first judge pass with a failure or unjudged posts is kept as the result's `retrieval` report instead of the "reverse nothing" skip. Test: `test_service::test_a_failed_first_pass_with_only_available_claims_is_reported`.
+- **F4** — the 21 v2 cases retagged by the pre-label alone were reviewed against the SPEC rules and marked `agent`: 10 got back the owner's `other_match_lineup`, 2112615944870633729 lost an added `other_match_lineup`, 2111086653565480960 (a club back injury) lost an added `cup_injury`, and 9 kept the new tags. Review sources are now owner 171, agent 71, pre-label 56. The stored test run was rescored offline from its predictions: only the other-match line-up count changes (1 of 31 → 1 of 36); every threshold metric is unchanged. The report states both.
+- **F5** — the report's "Total spend" names the about 3.8M judge tokens against the 3M limit and the owner's acceptance.
+- **F6** — a threat line names the pre-label commit c6b940d and the two later v6 rules.
+- **F7** — `test_breaking::test_an_available_post_about_a_player_with_no_other_claim_sends_nothing` (red when the `anchor is None` branch is removed).
+- **F8** — service tests for a judged `out` newer than the `available` claim and a forced older `available` anchor with a newer `out` (both red when the age comparison is dropped).
+- **F9** — `test_cases::test_composition_v3_other_match_lineup_has_no_events`.
+- **F10** — `test_label_table` compares with a literal 5 × 5 table.
+- **F11** — `injuries_dropped_by_check` pairs an expected absence with a raw `out` or `doubt` of the same player (`_absence_pairs`). Test: `test_metrics::test_an_injury_dropped_under_the_other_absence_type_is_counted`. The stored test run still counts 1.
+- **F12** — `import_verdicts` clears `review_source` on a relabelled case; `test_judging::test_changed_v1_case_unreviewed_with_the_tag` asserts it.
+- **F13** — `test_available_f1` uses one hit and two misses (precision 1, recall 1/3, F1 0.5).
+- **F14** — `backlog_cases["24"]` lists the Alonso press-conference post 2115090924053147753, and the report names 2114056901528863119 as the LetsTalk_FPL post.
+- **F15** — DECISIONS 2026-10-30 (alerts row) says a reversal found only by the judge never breaks, since breaking alerts are SQL-only, and that a news alert with no card is skipped.
+
+No BACKLOG item's trigger fired. Verification: the full `verify.command` is green (2564 passed).

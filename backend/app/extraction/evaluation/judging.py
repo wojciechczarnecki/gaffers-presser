@@ -471,7 +471,14 @@ def import_verdicts(
                 continue
             tags = [t for t in v1.tags if t not in FLAG_TAGS] + list(entry.tags)
             case_results.append(
-                v1.model_copy(update={"expected_events": events, "tags": tags, "reviewed": False})
+                v1.model_copy(
+                    update={
+                        "expected_events": events,
+                        "tags": tags,
+                        "reviewed": False,
+                        "review_source": None,
+                    }
+                )
             )
             report.changed += 1
         else:

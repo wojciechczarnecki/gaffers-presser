@@ -461,6 +461,19 @@ def test_composition_v3_cup_injury_needs_an_absence_event():
     assert any("cup_injury cases: 0" in p for p in _problems_v3(cases, manifest, v2_ids))
 
 
+def test_composition_v3_other_match_lineup_has_no_events():
+    cases, manifest, v2_ids = v3_set()
+    tagged = next(c for c in cases if not c.tags and not c.expected_events)
+    tagged.tags = ["other_match_lineup"]
+    assert _problems_v3(cases, manifest, v2_ids) == []
+    tagged.expected_events = [_event(1, "confirmed_starter", "likely")]
+    problems = _problems_v3(cases, manifest, v2_ids)
+    assert any(
+        "other_match_lineup cases must have no expected events" in p and tagged.id in p
+        for p in problems
+    )
+
+
 def test_composition_v3_backlog_24_cases_present():
     cases, manifest, v2_ids = v3_set()
     manifest.backlog_cases["24"].append("999")

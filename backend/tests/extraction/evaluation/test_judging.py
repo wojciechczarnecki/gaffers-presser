@@ -282,6 +282,7 @@ def test_unchanged_v1_case_copied_reviewed(tmp_path):
 
 def test_changed_v1_case_unreviewed_with_the_tag(tmp_path):
     v1 = _case("101", ("Haaland", 5, "benched", "confirmed"), tags=["cup_european_lineup"])
+    v1.review_source = "owner"
     same = _case("102")
     out = _export_cases(tmp_path, [v1, same])
     _write_verdicts(
@@ -296,6 +297,7 @@ def test_changed_v1_case_unreviewed_with_the_tag(tmp_path):
     assert (report.copied, report.changed) == (0, 2)
     by_id = {c.id: c for c in load_cases(set_dir / "cases.jsonl")}
     assert by_id["101"].reviewed is False
+    assert by_id["101"].review_source is None
     assert by_id["101"].expected_events == []
     assert by_id["101"].tags == ["cup_european_lineup", "other_match_lineup"]
     assert by_id["102"].reviewed is False
