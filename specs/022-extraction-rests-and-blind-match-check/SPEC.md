@@ -1,7 +1,8 @@
 ---
-status: spec-draft
+status: spec-ready
 stage_history:
   - "spec-draft — 2026-11-01"
+  - "spec-ready — 2026-11-01"
 ---
 
 # SPEC 022 — Rests give no event, and a match check blind to the event types
@@ -97,8 +98,7 @@ grade) are SPEC 021. The two specs are independent.
 
 - [ ] AC1: The extraction prompt is v7. A player rested, rotated or left out of a squad for a cup,
   European or national-team match with no injury or illness given gives no event, and so does a
-  suspension served in such a match. (assumption: the suspension served elsewhere also gives no
-  event; v6 extracted it for the check.) An injury or illness from any match keeps its `doubt` or
+  suspension served in such a match (v6 extracted it for the check). An injury or illness from any match keeps its `doubt` or
   `out`, and every other rule of v6 stays. A test checks the version and the rule's presence.
 - [ ] AC2: Tested with a stubbed model through the flow and the store as today; the behaviour is
   measured on set v4 (AC7).
@@ -120,10 +120,10 @@ grade) are SPEC 021. The two specs are independent.
   window, among them 2115825835525488887 (Kroupi.Jr, expected `benched`), 2116172084082602140
   and 2116226240323465435 (Manzambi and N.Jackson), and 2116448660980732008 (a tips post, no
   event). Case 2115797596119740910 loses the `other_match_absence` tag. 2116079251476611126 stays
-  in the test split. The composition rules of v3 still hold. (assumption: new cases split like v3,
-  about two thirds test)
+  in the test split. New cases are split like v3, about two thirds to test, and the composition
+  rules of v3 still hold.
 - [ ] AC6: The owner reviews every new and changed case with `review` before any test run
-  (`review_source: owner`); the session judge pre-labels them. (assumption)
+  (`review_source: owner`); the session judge pre-labels them.
 
 ### Measurement
 
@@ -132,8 +132,8 @@ grade) are SPEC 021. The two specs are independent.
   split. The mean of the three runs passes ADR 0010's five thresholds, and each run has at most 1
   `other_match_absence` false alarm and at most 1 injury dropped by the check.
 - [ ] AC8: The report also gives, per run and as a mean, the `other_match_absence` test cases with
-  an `out` or `doubt` event before the check (raw extraction), which must average at most 1
-  (assumption), and the outcome of 2116079251476611126 in each run (raw and after the check).
+  an `out` or `doubt` event before the check (raw extraction), which must average at most 1,
+  and the outcome of 2116079251476611126 in each run (raw and after the check).
 - [ ] AC9: Paid API spend for this spec's runs stays at or under 5 USD; the judge is the Claude Code
   session; the spend is printed by `spend` and recorded in the report.
 - [ ] AC10: `docs/reports/extraction-eval-v4.md` holds the set composition, the review counts, the
