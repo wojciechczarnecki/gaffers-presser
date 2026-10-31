@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 README = ROOT / "README.md"
 DEPLOYMENT = ROOT / "docs" / "DEPLOYMENT.md"
+DEVELOPMENT = ROOT / "docs" / "DEVELOPMENT.md"
 
 COMMANDS = [
     "reference-sync",
@@ -45,11 +46,8 @@ REMOVED_VARIABLES = ["LLM_PROVIDER", "GOOGLE_API_KEY", "OPENAI_API_KEY", "ANTHRO
 ENV_EXAMPLE = ROOT / "backend" / ".env.example"
 
 
-def _development_section() -> str:
-    text = README.read_text(encoding="utf-8")
-    match = re.search(r"## Development\n(.*?)(?=\n## |\Z)", text, re.DOTALL)
-    assert match, "README.md has no '## Development' section"
-    return match.group(1)
+def _development_guide() -> str:
+    return DEVELOPMENT.read_text(encoding="utf-8")
 
 
 def _deployment_section() -> str:
@@ -63,8 +61,12 @@ def test_readme_deployment_section_links_the_runbook():
     assert "docs/DEPLOYMENT.md" in _deployment_section()
 
 
+def test_readme_links_the_development_guide():
+    assert "docs/DEVELOPMENT.md" in README.read_text(encoding="utf-8")
+
+
 def test_development_section_lists_commands():
-    section = _development_section()
+    section = _development_guide()
     assert "docker compose up -d" in section
     assert "alembic upgrade head" in section
     for command in COMMANDS:
@@ -75,11 +77,11 @@ def test_development_section_lists_commands():
     assert "app.tweets summary" in section
     assert "app.tweets members" in section
     for variable in TWEET_VARIABLES:
-        assert variable in section, f"{variable!r} missing from the README Development section"
+        assert variable in section, f"{variable!r} missing from docs/DEVELOPMENT.md"
     for variable in EXTRACTION_VARIABLES:
-        assert variable in section, f"{variable!r} missing from the README Development section"
+        assert variable in section, f"{variable!r} missing from docs/DEVELOPMENT.md"
     for command in EXTRACTION_COMMANDS:
-        assert command in section, f"{command!r} missing from the README Development section"
+        assert command in section, f"{command!r} missing from docs/DEVELOPMENT.md"
     assert "app.extraction.evaluation snapshot-players" in section
 
 
@@ -112,7 +114,7 @@ def test_deployment_doc_is_a_runbook():
 
 
 def test_removed_llm_variables_absent_from_docs():
-    for path in (README, DEPLOYMENT, ENV_EXAMPLE):
+    for path in (README, DEVELOPMENT, DEPLOYMENT, ENV_EXAMPLE):
         text = path.read_text(encoding="utf-8")
         for removed in [*REMOVED_VARIABLES, "--provider"]:
             assert removed not in text, f"{removed!r} still in {path.name}"
@@ -132,7 +134,7 @@ def test_deployment_documents_embedding_model():
 
 
 def test_corroboration_commands_documented():
-    section = _development_section()
+    section = _development_guide()
     deployment = DEPLOYMENT.read_text(encoding="utf-8")
     for command in (
         "app.corroboration",
@@ -146,15 +148,15 @@ def test_corroboration_commands_documented():
         "app.corroboration.evaluation agreement",
         "app.corroboration.evaluation evaluate",
     ):
-        assert command in section, f"{command!r} missing from the README Development section"
+        assert command in section, f"{command!r} missing from docs/DEVELOPMENT.md"
         assert command.split(" ")[0] in deployment
     for term in ("build-cases", "review", "evaluate", "0006"):
         assert term in deployment, f"{term!r} missing from docs/DEPLOYMENT.md"
 
 
 def test_corroboration_section_links_the_report():
-    section = _development_section()
-    assert "docs/reports/corroboration-eval-v2.md" in section
+    section = _development_guide()
+    assert "reports/corroboration-eval-v2.md" in section
     assert "waiting for the" not in section
     assert "LLM_JUDGE_MODEL" in section
 
@@ -184,9 +186,9 @@ ALERT_VARIABLES = [
 
 
 def test_alert_commands_documented():
-    section = _development_section()
+    section = _development_guide()
     for command in ("app.alerts status", "app.alerts latency", "app.alerts preview"):
-        assert command in section, f"{command!r} missing from the README Development section"
+        assert command in section, f"{command!r} missing from docs/DEVELOPMENT.md"
 
 
 def test_deployment_documents_alerts():
@@ -242,7 +244,7 @@ PRESSER_COMMANDS = [
 
 def test_presser_documented():
     deployment = DEPLOYMENT.read_text(encoding="utf-8")
-    for text in (_development_section(), deployment):
+    for text in (_development_guide(), deployment):
         for variable in PRESSER_VARIABLES:
             assert variable in text, variable
         for command in PRESSER_COMMANDS:
@@ -264,5 +266,5 @@ def test_extraction_evaluation_commands_use_the_new_module():
         text = (ROOT / name).read_text(encoding="utf-8")
         assert not old.search(text), name
     evaluation = (ROOT / "docs" / "EVALUATION.md").read_text(encoding="utf-8")
-    for text in (README.read_text(encoding="utf-8"), evaluation):
+    for text in (_development_guide(), evaluation):
         assert "app.extraction.evaluation evaluate" in text

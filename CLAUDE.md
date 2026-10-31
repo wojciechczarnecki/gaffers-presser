@@ -22,6 +22,7 @@ Instructions for agents working in this repository.
 | `docs/DECISIONS.md` | binding design decisions — before designing something differently |
 | `docs/adr/` | the reasoning behind decisions that had real alternatives; linked from DECISIONS |
 | `docs/CONVENTIONS.md` | code style, tests, git — when writing code |
+| `docs/DEVELOPMENT.md` | every module's CLI, settings and evaluation commands — when running a module or changing its CLI |
 | `docs/EVALUATION.md` | running an LLM-judged evaluation with the session as the judge |
 | `docs/DEPLOYMENT.md` | the Railway deployment runbook — when changing the image, `railway.json` or environment variables |
 | `docs/reports/` | evaluation and measurement reports; `code-audit-2026-10.md` holds the accepted mini-plans of BACKLOG #38–#42 and the notes for specs 016 and 017 (#43–#48) — when picking up one of them |
@@ -79,7 +80,7 @@ hook enforce it (enabled once per clone: `git config core.hooksPath scripts/git-
 # full verification of the stack (the same command as `verify.command` in .claude/workflow.json)
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto
 
-# running the application locally (README, "Development", lists every module's CLI)
+# running the application locally (docs/DEVELOPMENT.md lists every module's CLI)
 docker compose up -d                         # PostgreSQL 16 with pgvector
 cd backend && uv run python -m app.worker run    # FPL jobs, ingest, extraction, indexing, alerts, presser
 uv run python -m app.worker status           # the state of every loop

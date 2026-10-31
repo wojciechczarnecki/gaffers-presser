@@ -96,10 +96,11 @@ and each LLM step that produces data has an evaluation set with recorded results
       and label table for `available`, the group "✅ Wraca do gry", extraction set v3 and its
       test run ([report](reports/extraction-eval-v3.md)) (BACKLOG #24)
       (spec: [020](../specs/020-availability-and-match-check/SPEC.md))
-- [ ] README rewritten for the portfolio once the two evaluations above have results: what
+- [x] README rewritten for the portfolio once the two evaluations above have results: what
       it does and why, an architecture diagram, a results table linking the reports, the
       engineering process (specs, ADRs, evaluation, tracing), a sample presser on made-up
-      data, the commands moved to a development guide (spec: TBD)
+      data, the commands moved to a development guide ([DEVELOPMENT](DEVELOPMENT.md))
+      (fast path, no spec)
 - [ ] LLM-written per-player alert summary with a faithfulness evaluation, deferred until
       the items above are done: it only summarises the facts already in the alert and neither
       chooses what or when to send nor changes grades (spec: TBD)

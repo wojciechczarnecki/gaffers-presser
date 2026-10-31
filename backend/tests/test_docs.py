@@ -246,9 +246,16 @@ def test_decisions_supersede_the_previous_deadline_window():
 
 def test_readme_results_free_slice_row_and_roadmap():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "## Retrieval results" in readme
-    results = readme.split("## Retrieval results", 1)[1].split("\n## ", 1)[0]
-    assert "docs/reports/retrieval-eval-v2.md" in results
+    assert "## Results" in readme
+    results = readme.split("## Results", 1)[1].split("\n## ", 1)[0]
+    for report in (
+        "tweet-source-latency-2026-09.md",
+        "extraction-eval-v3.md",
+        "retrieval-eval-v2.md",
+        "corroboration-eval-v2.md",
+        "presser-model-comparison.md",
+    ):
+        assert f"docs/reports/{report}" in results, report
     (free,) = [row for row in _rows() if row.startswith("| 56 |")]
     assert " P3 " in free and "`free` slice" in free
     assert (
