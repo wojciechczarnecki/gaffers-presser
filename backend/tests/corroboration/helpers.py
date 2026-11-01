@@ -5,7 +5,7 @@ from sqlmodel import Session
 
 from app.extraction.schemas import LinkedEvent
 from app.extraction.store import ExtractionRecord, save_extraction
-from app.fpl.models.reference import Fixture, Gameweek, Player, Season, Team
+from app.fpl.models.reference import Fixture, Gameweek, Player, PlayerFlagChange, Season, Team
 from tests.retrieval.helpers import add_tweet
 
 SEASON = "2026/27"
@@ -70,6 +70,21 @@ def seed_reference(engine: Engine, deadlines: dict[int, datetime] | None = None)
             )
 
 
+def add_flag(
+    engine: Engine, player_fpl_id: int, status: str, news: str, observed_at: datetime
+) -> None:
+    with Session(engine) as session, session.begin():
+        session.add(
+            PlayerFlagChange(
+                season=SEASON,
+                player_fpl_id=player_fpl_id,
+                status=status,
+                news=news,
+                observed_at=observed_at,
+            )
+        )
+
+
 def add_claim(
     engine: Engine,
     x_id: int,
@@ -81,7 +96,7 @@ def add_claim(
     text: str | None = None,
     is_repost: bool = False,
     reposted_author_handle: str | None = None,
-    finished: int = 0,
+    finished: int | None = None,
     mention: str = "Saka",
     quoted_x_id: int | None = None,
     embedded: bool = False,
@@ -105,9 +120,10 @@ def add_claim(
         player_fpl_id,
         event_type,
         certainty,
-        finished,
+        finished or 0,
         mention,
         for_next_pl_match=for_next_pl_match,
+        finished_at=max(NOW, created_at) if finished is None else None,
     )
 
 
@@ -121,6 +137,7 @@ def add_extraction(
     mention: str = "Saka",
     status: str = "extracted",
     for_next_pl_match: bool | None = None,
+    finished_at: datetime | None = None,
 ) -> int:
     events = []
     if player_fpl_id is not None:
@@ -145,7 +162,7 @@ def add_extraction(
                 model="fake-model",
                 prompt_version="extraction@1+link_disambiguation@1",
                 started_at=NOW,
-                finished_at=NOW + timedelta(seconds=finished),
+                finished_at=finished_at or NOW + timedelta(seconds=finished),
                 attempts=1,
             ),
             events,

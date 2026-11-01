@@ -209,6 +209,19 @@ def posts_for_reextract(
     return []
 
 
+def first_extractions(session: Session, x_ids: Sequence[int]) -> dict[int, datetime]:
+    if not x_ids:
+        return {}
+    rows = session.execute(
+        text(
+            "SELECT tweet_x_id, min(finished_at) FROM extraction"
+            " WHERE status = 'extracted' AND tweet_x_id = ANY(:ids) GROUP BY tweet_x_id"
+        ),
+        {"ids": list(x_ids)},
+    )
+    return {x_id: finished_at for x_id, finished_at in rows}
+
+
 def current_extractions(
     session: Session,
     *,

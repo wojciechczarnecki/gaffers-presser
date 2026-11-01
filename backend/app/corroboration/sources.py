@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy import Engine
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
-from app.corroboration.schemas import Claim, PlayerRef, PostRef
+from app.corroboration.schemas import Claim, FlagState, PlayerRef, PostRef
 from app.extraction.linking import (
     PlayerAlias,
     PlayerIndex,
@@ -15,6 +15,7 @@ from app.extraction.linking import (
 )
 from app.extraction.store import current_extractions
 from app.fpl.deadlines import deadline_at_or_before
+from app.fpl.models.reference import PlayerFlagChange
 from app.llm.pricing import Price
 from app.retrieval.embedder import Embedder
 from app.retrieval.search import Mode, SearchFilters, search
@@ -129,6 +130,19 @@ def sql_claims(
             )
         )
     return claims
+
+
+def flag_history(session: Session, player: PlayerRef, as_of: datetime) -> list[FlagState]:
+    rows = session.exec(
+        select(PlayerFlagChange)
+        .where(
+            PlayerFlagChange.season == player.season,
+            PlayerFlagChange.player_fpl_id == player.fpl_id,
+            PlayerFlagChange.observed_at <= as_of,
+        )
+        .order_by(col(PlayerFlagChange.observed_at), col(PlayerFlagChange.id))
+    ).all()
+    return [FlagState(row.status, row.news, row.observed_at) for row in rows]
 
 
 def claimed_post_ids(

@@ -25,7 +25,7 @@ from app.alerts.store import (
 from app.core.clock import Clock
 from app.corroboration.runtime import sql_only_runtime
 from app.corroboration.service import corroborate
-from app.extraction.store import CurrentExtraction, current_extractions
+from app.extraction.store import CurrentExtraction, current_extractions, first_extractions
 from app.fpl.calendar import current_season
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,6 @@ def newest_extraction(session: Session) -> datetime | None:
 class Candidate:
     row: CurrentExtraction
     named: list[ListedPlayer]
-    available_only: frozenset[int]
 
 
 def _candidates(
@@ -67,11 +66,14 @@ def _candidates(
     since_extracted: datetime,
     listed: dict[int, ListedPlayer],
 ) -> list[Candidate]:
-    found = []
-    for row in current_extractions(
+    rows = current_extractions(
         session, created_from=start, created_until=now, sources_only=True, fresh_lineups_only=True
-    ):
-        if row.finished_at < since_extracted:
+    )
+    first = first_extractions(session, [row.tweet_x_id for row in rows])
+    found = []
+    for row in rows:
+        # a re-extraction of an old post is no news: only the first successful extraction counts
+        if first.get(row.tweet_x_id, row.finished_at) < since_extracted:
             continue
         named = sorted(
             {
@@ -81,21 +83,7 @@ def _candidates(
             }
         )
         if named:
-            found.append(
-                Candidate(
-                    row,
-                    [listed[fpl_id] for fpl_id in named],
-                    frozenset(
-                        fpl_id
-                        for fpl_id in named
-                        if all(
-                            event.event_type == "available"
-                            for event in row.events
-                            if event.player_season == season and event.player_fpl_id == fpl_id
-                        )
-                    ),
-                )
-            )
+            found.append(Candidate(row, [listed[fpl_id] for fpl_id in named]))
     return found
 
 
@@ -166,9 +154,7 @@ def run_breaking(
                 anchor_x_id=x_id,
                 runtime=sql_only,
             )
-            if item.player.fpl_id in candidate.available_only and (
-                result.anchor is None or result.anchor.post.x_id != x_id
-            ):
+            if result.anchor is None or result.anchor.post.x_id != x_id:
                 continue
             reports.append(PlayerReport(item, result, frozenset({x_id}), False))
         if not reports:

@@ -14,7 +14,7 @@ from app.core.settings import load_settings
 from app.corroboration.config import CorroborationSettings
 from app.corroboration.runtime import build_runtime
 from app.corroboration.schemas import Citation, Corroboration, PlayerRef
-from app.corroboration.service import CorroborationRuntime, corroborate
+from app.corroboration.service import NO_REVERSAL_REASON, CorroborationRuntime, corroborate
 from app.corroboration.sources import Aliases, resolve_player
 from app.db.engine import make_engine
 
@@ -117,7 +117,10 @@ def _echo_result(result: Corroboration) -> None:
     )
     anchor = result.anchor
     if anchor is None or result.grade is None:
-        typer.echo("No claim about this player in the window.")
+        if result.retrieval.skipped_reason == NO_REVERSAL_REASON:
+            typer.echo(f"No anchor: {NO_REVERSAL_REASON}.")
+        else:
+            typer.echo("No claim about this player in the window.")
         return
     typer.echo(
         f"Anchor: {anchor.event_type} ({anchor.certainty}) by "
