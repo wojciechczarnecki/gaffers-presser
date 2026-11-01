@@ -548,6 +548,8 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
 
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
+- 2026-11-01 — plan-review — `decision` — B1: AC5 read literally plus AC3's fallback turns out → available → available (flag already `a` at the last post) into a "🔴 Nie zagra" card; how to settle it? — Option 1, narrower fallback: AC5 stays as written; a non-qualifying `available` claim falls back only to a claim it does not contradict (`benched` or `confirmed_starter`), never to `out` or `doubt`; otherwise the player gets no card. Record it in SPEC AC3/AC5 and adjust the step 3–4 tests.
+
 ## Review log
 
 Review of 2026-11-01 (plan-review, fresh context).
