@@ -3,6 +3,8 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-11-01"
   - "spec-ready — 2026-11-01"
+metrics:
+  started_at: 2026-11-01T04:49
 ---
 
 # SPEC 022 — Rests give no event, and a match check blind to the event types
