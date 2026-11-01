@@ -333,6 +333,10 @@ def evaluate(
         f"other match absence false alarms: {m.other_match_absence_false_alarms} of "
         f"{m.other_match_absence_cases}"
     )
+    typer.echo(
+        f"other match absence cases with a raw absence: {m.other_match_absence_raw_absences} of "
+        f"{m.other_match_absence_cases}"
+    )
     typer.echo(f"injuries dropped by the check: {m.injuries_dropped_by_check}")
     checks = absence_checks(m)
     typer.echo(

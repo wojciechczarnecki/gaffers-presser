@@ -243,7 +243,7 @@ and `test_results_files.py` (the v3 block), `composition_problems_v3`, the
       `cd backend && uv run pytest -q tests/content tests/extraction/test_flow.py tests/extraction/test_service.py`,
       then Verify.
 
-- [ ] 3. **The raw-absence metric and the mean of runs (AC7, AC8 code).** Files:
+- [x] 3. **The raw-absence metric and the mean of runs (AC7, AC8 code).** `iterations: 1` Files:
       `app/extraction/evaluation/metrics.py` (`other_match_absence_raw_absences`,
       `mean_of_runs`: design items 3 and 4), `app/extraction/evaluation/cli.py` (the
       `evaluate` line printed after `other match absence false alarms`).

@@ -81,6 +81,7 @@ class Metrics:
     other_match_absence_cases: int = 0
     other_match_absence_false_alarms: int = 0
     injuries_dropped_by_check: int = 0
+    other_match_absence_raw_absences: int = 0
 
 
 def threshold_flags(
@@ -116,6 +117,27 @@ def absence_checks(metrics: Metrics) -> dict[str, bool]:
         <= MAX_OTHER_MATCH_ABSENCE_FALSE_ALARMS,
         "injuries_dropped": metrics.injuries_dropped_by_check <= MAX_INJURIES_DROPPED,
     }
+
+
+MEAN_KEYS = (
+    "f1",
+    "linking_accuracy",
+    "false_alarm_rate",
+    "projected_monthly_cost_pln",
+    "errored_cases",
+    "other_match_absence_false_alarms",
+    "injuries_dropped_by_check",
+    "other_match_absence_raw_absences",
+)
+
+
+def mean_of_runs(metrics: Sequence[dict]) -> dict[str, float | None]:
+    """The mean of each headline metric over several runs; a missing cost makes the cost None."""
+    means: dict[str, float | None] = {}
+    for key in MEAN_KEYS:
+        values = [run[key] for run in metrics]
+        means[key] = None if any(v is None for v in values) else sum(values) / len(values)
+    return means
 
 
 def _key(event: ExpectedEvent) -> tuple[str, int | str]:
@@ -250,6 +272,7 @@ def compute_metrics(
     available_predicted = 0
     absence_cases = 0
     absence_false_alarms = 0
+    absence_raw = 0
     injuries_dropped = 0
 
     for result in results:
@@ -286,6 +309,7 @@ def compute_metrics(
         if result.other_match_absence and result.error_class is None:
             absence_cases += 1
             absence_false_alarms += any(e.event_type in ABSENCE_EVENTS for e in result.predicted)
+            absence_raw += any(e.event_type in ABSENCE_EVENTS for e in result.raw_predicted)
 
         if result.other_match and result.error_class is None:
             other_match_cases += 1
@@ -351,4 +375,5 @@ def compute_metrics(
         other_match_absence_cases=absence_cases,
         other_match_absence_false_alarms=absence_false_alarms,
         injuries_dropped_by_check=injuries_dropped,
+        other_match_absence_raw_absences=absence_raw,
     )

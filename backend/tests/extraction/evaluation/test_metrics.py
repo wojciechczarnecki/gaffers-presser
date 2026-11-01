@@ -6,6 +6,7 @@ from app.extraction.evaluation.metrics import (
     CaseResult,
     absence_checks,
     compute_metrics,
+    mean_of_runs,
     passes,
     threshold_flags,
 )
@@ -370,6 +371,83 @@ def test_other_match_absence_false_alarms():
     )
     assert metrics.other_match_absence_cases == 4
     assert metrics.other_match_absence_false_alarms == 2
+
+
+def test_other_match_absence_raw_absences():
+    metrics = run(
+        [
+            CaseResult(
+                expected=[],
+                predicted=[],
+                raw_predicted=[raw(event_type="doubt", answer=False, kept=False)],
+                other_match_absence=True,
+            ),
+            CaseResult(
+                expected=[],
+                predicted=[],
+                raw_predicted=[raw(event_type="benched", answer=False, kept=False)],
+                other_match_absence=True,
+            ),
+            CaseResult(
+                expected=[],
+                predicted=[],
+                raw_predicted=[raw(event_type="out", answer=None)],
+                other_match_absence=True,
+                error_class="B",
+            ),
+            CaseResult(
+                expected=[],
+                predicted=[ev()],
+                raw_predicted=[raw(event_type="out", answer=None)],
+            ),
+        ]
+    )
+    assert metrics.other_match_absence_raw_absences == 1
+    assert metrics.other_match_absence_false_alarms == 0
+
+
+def _run_dict(f1, cost, **extra):
+    base = {
+        "f1": f1,
+        "linking_accuracy": 0.97,
+        "false_alarm_rate": 0.02,
+        "projected_monthly_cost_pln": cost,
+        "errored_cases": 0,
+        "other_match_absence_false_alarms": 0,
+        "injuries_dropped_by_check": 0,
+        "other_match_absence_raw_absences": 1,
+    }
+    return base | extra
+
+
+def _flags(mean):
+    return threshold_flags(
+        mean["f1"],
+        mean["linking_accuracy"],
+        mean["false_alarm_rate"],
+        mean["projected_monthly_cost_pln"],
+        int(mean["errored_cases"]),
+    )
+
+
+def test_mean_of_runs():
+    runs = [
+        _run_dict(0.86, 2.0),
+        _run_dict(0.84, 3.0, other_match_absence_raw_absences=2),
+        _run_dict(0.88, 4.0, other_match_absence_raw_absences=0),
+    ]
+
+    mean = mean_of_runs(runs)
+
+    assert mean["f1"] == pytest.approx(0.86)
+    assert mean["projected_monthly_cost_pln"] == pytest.approx(3.0)
+    assert mean["other_match_absence_raw_absences"] == pytest.approx(1.0)
+    assert all(_flags(mean).values())
+
+    runs[1]["projected_monthly_cost_pln"] = None
+    mean = mean_of_runs(runs)
+    assert mean["projected_monthly_cost_pln"] is None
+    assert _flags(mean)["monthly_cost"] is False
 
 
 def test_injuries_dropped_by_check():
