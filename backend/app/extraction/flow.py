@@ -106,8 +106,8 @@ def _render_match_check(
             f"Club: {team.name}",
             f"Previous PL fixture: {before}",
             f"Next PL fixture: {render_fixture(following, team.fpl_id, index)}",
-            "Events:",
-            *[f"- {event.mention}: {event.event_type}" for event in events],
+            "Players:",
+            *[f"- {mention}" for mention in dict.fromkeys(event.mention for event in events)],
         ]
     )
 

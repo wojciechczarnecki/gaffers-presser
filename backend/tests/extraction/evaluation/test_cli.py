@@ -1020,7 +1020,7 @@ def test_evaluate_header_names_the_three_prompts(tmp_path):
     assert result.exit_code == 0, result.output
     header = json.loads((results / "h.json").read_text())["header"]
     assert header["set_version"] == "v2"
-    for part in ("extraction@", "link_disambiguation@1", "match_check@2"):
+    for part in ("extraction@", "link_disambiguation@1", "match_check@3"):
         assert part in header["prompt_version"]
 
 

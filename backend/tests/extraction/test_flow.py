@@ -394,8 +394,60 @@ def test_match_check_input_from_fixture_data():
     assert "Previous PL fixture: v Team Three (A), 2026-09-23T12:00Z" in sent
     assert "Next PL fixture: v Team Three (H), 2026-09-30T12:00Z" in sent
     assert "Real Madrid" not in sent
-    assert "Events:" in sent
-    assert "- Haaland: benched" in sent
+    assert "Players:" in sent
+    assert "- Haaland" in sent.splitlines()
+
+
+def test_match_check_input_holds_no_event_type():
+    from app.extraction.evaluation.cases import EVENT_TYPES
+
+    post = PostInput(
+        x_id=2,
+        author_handle="reporter",
+        text="Haaland and Jones news.",
+        created_at=POST.created_at,
+        is_repost=False,
+        is_reply=False,
+    )
+    output = ExtractionOutput(
+        events=[_event("Haaland", "out"), _event("Jones", "confirmed_starter")]
+    )
+    flow, chat = _checked_flow(output, MatchCheck(for_next_pl_match=True))
+
+    flow.run(post)
+
+    sent = chat.received_messages[1][1].content
+    assert "Events:" not in sent
+    assert ": out" not in sent
+    assert ": confirmed_starter" not in sent
+    lines = sent.splitlines()
+    block = lines[lines.index("Players:") + 1 :]
+    assert block == ["- Haaland", "- Jones"]
+    for line in block:
+        assert not any(event_type in line for event_type in EVENT_TYPES)
+
+
+def test_a_repeated_mention_is_listed_once():
+    output = ExtractionOutput(events=[_event("Haaland", "doubt"), _event("Haaland", "benched")])
+    flow, chat = _checked_flow(output, MatchCheck(for_next_pl_match=False))
+
+    result = flow.run(POST)
+
+    assert result.llm_calls == 2
+    sent = chat.received_messages[1][1].content
+    assert sent.splitlines().count("- Haaland") == 1
+    assert [e.for_next_pl_match for e in result.events] == [False, False]
+
+
+def test_doubt_and_benched_of_one_club_make_one_check():
+    output = ExtractionOutput(events=[_event("Haaland", "doubt"), _event("Jones", "benched")])
+    flow, chat = _checked_flow(output, MatchCheck(for_next_pl_match=False))
+
+    result = flow.run(POST)
+
+    assert result.llm_calls == 2
+    assert len(chat.received_messages) == 2
+    assert [e.for_next_pl_match for e in result.events] == [False, False]
 
 
 def test_match_check_answer_on_that_clubs_checked_events_only():

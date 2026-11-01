@@ -181,7 +181,7 @@ and `test_results_files.py` (the v3 block), `composition_problems_v3`, the
 
 ## Steps
 
-- [ ] 1. **The blind match check, `match_check` v3 (AC3, AC4).** Files:
+- [x] 1. **The blind match check, `match_check` v3 (AC3, AC4).** `iterations: 0` Files:
       `app/extraction/flow.py` (`_render_match_check`: design item 1),
       `app/content/prompts/match_check.md` (version 3, design item 1).
 
