@@ -364,8 +364,8 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
       - Commit steps 3 and 4 together.
       Automatic verification: `cd backend && uv run pytest -q tests/corroboration tests/alerts tests/content/test_alert_email.py`
 
-- [ ] 5. A test helper: an extraction finishes no earlier than its post. Files:
-      `tests/corroboration/helpers.py`.
+- [x] 5. A test helper: an extraction finishes no earlier than its post. Files:
+      `tests/corroboration/helpers.py`. `iterations: 0`
       - `add_claim(…, finished: int | None = None)`. With `None`, the extraction finishes at
         `max(NOW, created_at)`. An explicit `finished` keeps today's meaning (seconds after
         `NOW`).
