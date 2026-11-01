@@ -339,7 +339,7 @@ def test_reversing_available_post_breaks(db):
     assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 1
 
     assert channel.keys == ["alert:2026/27:gw6:breaking:2"]
-    assert TEMPLATE["group"]["available"] in channel.calls[0].text
+    assert TEMPLATE["category"]["available"] in channel.calls[0].text
 
 
 def test_non_reversing_available_post_sends_nothing_and_stays_new(db):

@@ -26,8 +26,9 @@ KINDS = {"digest", "news", "breaking"}
 
 def test_template_file_is_valid_toml_with_every_vocabulary():
     template = tomllib.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
-    for section in ("event", "group", "summary"):
-        assert set(template[section]) - {"separator"} == EVENT_TYPES
+    assert set(template["category"]) == EVENT_TYPES
+    assert set(template["summary"]) == {"separator"}
+    assert not {"event", "group"} & set(template)
     assert set(template["palette"]) == EVENT_TYPES | {"base"}
     assert GRADES <= set(template["grade"])
     assert set(template["title"]) == KINDS

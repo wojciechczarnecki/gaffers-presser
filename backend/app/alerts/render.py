@@ -186,7 +186,7 @@ def _moment(template: Mapping[str, Any], deadline: AlertDeadline, as_of: datetim
 def _summary_items(
     template: Mapping[str, Any], groups: Mapping[str, list[Card]]
 ) -> list[tuple[str, int]]:
-    return [(template["summary"][event], len(cards)) for event, cards in groups.items()]
+    return [(template["category"][event].lower(), len(cards)) for event, cards in groups.items()]
 
 
 def _source_groups(template: Mapping[str, Any], card: Card) -> list[tuple[str, tuple[Source, ...]]]:
@@ -217,7 +217,7 @@ def _render_text(
     else:
         lines.extend(["", template["digest"]["empty"]])
     for event, cards in groups.items():
-        lines.extend(["", texts["group"].format(heading=template["group"][event])])
+        lines.extend(["", texts["group"].format(heading=template["category"][event])])
         for card in cards:
             player = card.report.listed.player
             club = texts["club"].format(club=player.team_name) if player.team_name else ""
@@ -226,7 +226,7 @@ def _render_text(
                 texts["player"].format(
                     name=player.web_name,
                     club=club,
-                    event=template["event"][event],
+                    event=template["category"][event],
                 )
             )
             lines.append(card.details)
@@ -278,7 +278,7 @@ def _render_card(template: Mapping[str, Any], card: Card) -> str:
         detail_color=palette["heading"],
         name=escape(player.web_name),
         club=escape(player.team_name or ""),
-        event=escape(template["event"][card.event]),
+        event=escape(template["category"][card.event]),
         details=escape(card.details),
         notes="".join(html["note"].format(text=escape(note)) for note in card.notes),
         sources=sources,
@@ -315,7 +315,7 @@ def _render_html(
             body.append(
                 html["group"].format(
                     color=template["palette"][event]["heading"],
-                    heading=escape(template["group"][event]),
+                    heading=escape(template["category"][event]),
                 )
             )
             body.extend(_render_card(template, card) for card in cards)

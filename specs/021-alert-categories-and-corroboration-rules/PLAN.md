@@ -375,10 +375,10 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
         order.
       Automatic verification: `cd backend && uv run pytest -q -n auto tests/alerts tests/corroboration tests/worker`
 
-- [ ] 6. Five uniform categories and the lime accent (AC1, AC2). Files:
+- [x] 6. Five uniform categories and the lime accent (AC1, AC2). Files:
       `app/content/alert_email.toml`, `app/alerts/render.py`, `tests/alerts/test_render.py`,
       `tests/content/test_alert_email.py`, `tests/alerts/test_end_to_end.py`,
-      `tests/alerts/test_breaking.py`.
+      `tests/alerts/test_breaking.py`. `iterations: 2`
       - Tests first (run them and see them fail before the product change):
         - `test_one_category_name_in_header_counter_and_card` asserts, for one card of each
           type and for the plain text, the HTML and the WhatsApp text:

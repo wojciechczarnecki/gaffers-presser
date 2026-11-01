@@ -25,27 +25,16 @@ day_time = "{weekday} {date}, {time}"
 # Monday first, as Python's datetime.weekday().
 weekdays = ["pon", "wt", "śr", "czw", "pt", "sob", "nd"]
 
-[group]
+# One name per category: the group heading, the header counter (lower case) and the card label.
+[category]
 out = "🔴 Nie zagra"
-doubt = "🟠 Pod znakiem zapytania"
+doubt = "🟠 Wątpliwy"
 benched = "🟡 Na ławce"
-available = "✅ Wraca do gry"
+available = "🟢 Gotowy do gry"
 confirmed_starter = "🟢 Zagra"
 
 [summary]
-out = "🔴 nie zagra"
-doubt = "🟠 niepewni"
-benched = "🟡 ławka"
-available = "✅ wraca"
-confirmed_starter = "🟢 zagra"
 separator = " · "
-
-[event]
-out = "Wypada ze składu"
-doubt = "Wątpliwy"
-benched = "Zaczyna na ławce"
-available = "Gotowy do gry"
-confirmed_starter = "W pierwszym składzie"
 
 [grade]
 high = "●●● potwierdzone"
@@ -124,9 +113,9 @@ background = "#fefbe8"
 heading = "#a15c07"
 
 [palette.available]
-accent = "#2e90fa"
-background = "#eff8ff"
-heading = "#175cd3"
+accent = "#84cc16"
+background = "#f7fee7"
+heading = "#3f6212"
 
 [palette.confirmed_starter]
 accent = "#47cd89"

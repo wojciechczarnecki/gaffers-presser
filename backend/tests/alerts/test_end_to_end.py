@@ -190,9 +190,9 @@ def test_palmer_shaped_reversal_is_a_wraca_do_gry_card(db):
     assert run_slot(db, runtime, REAL, 0, clock) == "sent"
 
     text = channel.calls[0].text
-    assert template["group"]["available"] in text
-    assert template["group"]["out"] not in text
-    assert "Saka (Arsenal) — " + template["event"]["available"] in text
+    assert template["category"]["available"] in text
+    assert template["category"]["out"] not in text
+    assert "Saka (Arsenal) — " + template["category"]["available"] in text
     assert template["sources"]["contradicting"] in text
     assert "https://x.com/a1/status/1" in text and "https://x.com/a2/status/2" in text
     assert template["note"]["reversal"] in text
