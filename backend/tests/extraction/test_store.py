@@ -5,6 +5,7 @@ from app.extraction.store import (
     ExtractionRecord,
     current_extractions,
     extraction_status,
+    first_extractions,
     next_pending,
     posts_for_reextract,
     save_extraction,
@@ -383,3 +384,24 @@ def test_save_extraction_stores_the_match_check_answer(db_session):
         "B": False,
         "C": None,
     }
+
+
+def test_first_extractions_take_the_earliest_success_and_skip_failures(db_session):
+    _seed_player(db_session, fpl_id=10)
+    for x_id in (1, 2, 3):
+        db_session.add(_tweet(x_id, NOW))
+    db_session.commit()
+    first = NOW + timedelta(seconds=10)
+    save_extraction(db_session, _record(1, finished_at=first), [])
+    save_extraction(db_session, _record(1, finished_at=NOW + timedelta(minutes=5)), [])
+    save_extraction(db_session, _record(2, "failed", finished_at=NOW), [])
+    save_extraction(db_session, _record(2, finished_at=NOW + timedelta(hours=1)), [])
+    save_extraction(db_session, _record(3, "failed", finished_at=NOW), [])
+
+    found = first_extractions(db_session, [1, 2, 3, 4])
+
+    assert found == {1: first, 2: NOW + timedelta(hours=1)}
+
+
+def test_first_extractions_empty_ids(db_session):
+    assert first_extractions(db_session, []) == {}

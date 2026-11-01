@@ -15,6 +15,7 @@ from tests.alerts.helpers import (
     scripted_corroboration,
     set_raw,
 )
+from tests.alerts.test_render import reversed_line
 from tests.alerts.test_slots import DEADLINE_AT, REAL, seed
 from tests.corroboration.helpers import (
     ISAK,
@@ -24,6 +25,7 @@ from tests.corroboration.helpers import (
     add_claim,
     add_extraction,
     add_fixture,
+    add_flag,
 )
 from tests.delivery.fakes import FakeChannel, FixedClock
 from tests.retrieval.helpers import add_tweet
@@ -339,7 +341,53 @@ def test_reversing_available_post_breaks(db):
     assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 1
 
     assert channel.keys == ["alert:2026/27:gw6:breaking:2"]
-    assert TEMPLATE["group"]["available"] in channel.calls[0].text
+    text = channel.calls[0].text
+    assert TEMPLATE["category"]["available"] in text
+    assert reversed_line("a1", 1, NOW - minutes(60)) in text
+
+
+def test_an_own_account_reversal_records_the_reversed_post_as_context(db):
+    runtime, channel, clock = world(db)
+    # the reporter of the earlier `out` post reverses it: it is neither supporting nor contradicting
+    add_late(db, 2, event="available", certainty="confirmed", author="a1")
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 1
+
+    assert reversed_line("a1", 1, NOW - minutes(60)) in channel.calls[0].text
+    _, rows = alert_rows(db, "alert:2026/27:gw6:breaking:2")
+    assert rows == {(SAKA, 2): "new", (SAKA, 1): "context"}
+
+
+def test_a_reextraction_in_the_breaking_window_sends_nothing(db):
+    runtime, channel, clock = world(db)
+    # first extracted before the loop's mark with no event for Saka, then re-extracted after it
+    add_claim(db, 3, None, created_at=NOW - minutes(30), author="a3")
+    add_extraction(db, 3, SAKA, "out", finished_at=NOW + minutes(97))
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 0
+
+    assert channel.keys == []
+    with Session(db) as session:
+        assert session.exec(select(Alert).where(Alert.key.like("%breaking%"))).all() == []
+
+
+def test_flagged_available_post_breaks(db):
+    runtime, channel, clock = world(db)
+    add_flag(db, ISAK, "a", "", NOW - timedelta(days=20))
+    news = "Hamstring injury - 75% chance of playing"
+    add_flag(db, ISAK, "d", news, NOW - timedelta(days=2))
+    add_late(db, 2, player=ISAK, event="available", certainty="confirmed", mention="Isak")
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 1
+
+    assert channel.keys == ["alert:2026/27:gw6:breaking:2"]
+    text = channel.calls[0].text
+    line = TEMPLATE["note"]["reversed_flag"].format(earlier=TEMPLATE["note"]["earlier"], news=news)
+    assert line in text
+    assert TEMPLATE["category"]["available"] in text
 
 
 def test_non_reversing_available_post_sends_nothing_and_stays_new(db):

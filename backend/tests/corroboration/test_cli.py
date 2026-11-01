@@ -10,7 +10,7 @@ from app.core.local_time import parse_local
 from app.corroboration.cli import CorroborationCliDeps, app
 from app.corroboration.config import CorroborationSettings
 from app.corroboration.judge import JudgeOutput, build_judge
-from app.corroboration.service import CorroborationRuntime
+from app.corroboration.service import NO_REVERSAL_REASON, CorroborationRuntime
 from app.corroboration.tracing import LangfuseCorroborationTracer
 from app.llm.pricing import Price
 from app.llm.structured import StructuredCaller
@@ -110,19 +110,20 @@ def test_prints_anchor_grade_flags_then_the_groups_in_order(db):
     assert "https://x.com/a4/status/4" in related
     assert "@a2" in out
     assert "out (likely)" in out
-    assert "reversal: yes" in out
+    assert "reversal: no" in out
     assert "https://x.com/a1/status/1" in out
-    assert "https://x.com/judged1/status/10" in out
+    assert "https://x.com/judged1/status/10" not in out
 
 
 def test_supporting_posts_are_split_into_new_and_context(db):
     _seed_saka(db)
+    add_claim(db, 5, SAKA, "out", "likely", created_at=NOW - timedelta(hours=1), author="newer1")
     result = _run(_deps(db), "Saka", "--new-since", "2026-09-29T14:00")
     out = result.stdout
     supporting = out[out.index("Supporting") : out.index("Contradicting")]
-    assert supporting.index("new:") < supporting.index("https://x.com/judged1/status/10")
+    assert supporting.index("new:") < supporting.index("https://x.com/a2/status/2")
     assert supporting.index("context:") < supporting.index("https://x.com/a1/status/1")
-    assert supporting.index("https://x.com/judged1/status/10") < supporting.index("context:")
+    assert supporting.index("https://x.com/a2/status/2") < supporting.index("context:")
 
 
 def test_times_are_parsed_as_warsaw_and_passed_on_in_utc(db, monkeypatch):
@@ -217,6 +218,16 @@ def test_no_claim_message(db):
     result = _run(_deps(db, CorroborationRuntime(embedder=FakeEmbedder(), judge=judge)), "Saka")
     assert result.exit_code == 0, result.output
     assert "No claim" in result.stdout
+    assert "Anchor:" not in result.stdout
+
+
+def test_a_lone_available_claim_prints_why_there_is_no_anchor(db):
+    seed_reference(db, {6: DEADLINE})
+    add_claim(db, 1, SAKA, "available", "confirmed", author="a1")
+    result = _run(_deps(db), "Saka")
+    assert result.exit_code == 0, result.output
+    assert f"No anchor: {NO_REVERSAL_REASON}." in result.stdout
+    assert "No claim" not in result.stdout
     assert "Anchor:" not in result.stdout
 
 

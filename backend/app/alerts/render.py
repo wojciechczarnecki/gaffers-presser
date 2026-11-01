@@ -61,13 +61,16 @@ class Card:
     level: str
     sources: tuple[Source, ...]
     contradicting: tuple[Source, ...]
+    against: int
     details: str
+    reversed: Source | None
+    reversed_flag: str | None
     notes: tuple[str, ...]
     fresh: bool
 
     @property
     def accounts(self) -> int:
-        return len(self.sources) + len(self.contradicting)
+        return len(self.sources) + self.against
 
 
 def age_text(template: Mapping[str, Any], created_at: datetime, as_of: datetime) -> str:
@@ -100,19 +103,30 @@ def _card(
         Source(post.original_author, post.url, post.created_at, post.x_id in marked),
         *(_citation_source(c, marked) for c in result.supporting),
     )
-    contradicting = tuple(_citation_source(c, marked) for c in result.contradicting)
+    reversed_post = result.reversed_post
+    contradicting = tuple(
+        _citation_source(c, marked)
+        for c in result.contradicting
+        if reversed_post is None or c.x_id != reversed_post.x_id
+    )
+    against = len(result.contradicting)
     details = [
         template["grade"][result.grade.level],
         template["accounts"][plural_form(len(sources))].format(count=len(sources)),
     ]
-    if contradicting:
-        details.append(template["accounts"]["against"].format(count=len(contradicting)))
+    if against:
+        details.append(template["accounts"]["against"].format(count=against))
     fresh = as_of - post.created_at <= FRESH_WITHIN
     age = age_text(template, post.created_at, as_of)
     details.append(template["age"]["fresh"].format(age=age) if fresh else age)
+    reversed_source = _citation_source(reversed_post, marked) if reversed_post is not None else None
+    reversed_flag = None
+    if result.reversed_flag is not None:
+        flag_note = "reversed_flag" if result.reversed_flag.news else "reversed_flag_no_news"
+        reversed_flag = template["note"][flag_note].format(
+            earlier=template["note"]["earlier"], news=result.reversed_flag.news
+        )
     notes = []
-    if result.reversal:
-        notes.append(template["note"]["reversal"])
     if report.search_failed or result.retrieval.failure is not None:
         notes.append(template["note"]["search_failed"])
     return Card(
@@ -121,7 +135,10 @@ def _card(
         level=result.grade.level,
         sources=sources,
         contradicting=contradicting,
+        against=against,
         details=template["grade"]["separator"].join(details),
+        reversed=reversed_source,
+        reversed_flag=reversed_flag,
         notes=tuple(notes),
         fresh=fresh,
     )
@@ -186,7 +203,7 @@ def _moment(template: Mapping[str, Any], deadline: AlertDeadline, as_of: datetim
 def _summary_items(
     template: Mapping[str, Any], groups: Mapping[str, list[Card]]
 ) -> list[tuple[str, int]]:
-    return [(template["summary"][event], len(cards)) for event, cards in groups.items()]
+    return [(template["category"][event].lower(), len(cards)) for event, cards in groups.items()]
 
 
 def _source_groups(template: Mapping[str, Any], card: Card) -> list[tuple[str, tuple[Source, ...]]]:
@@ -195,6 +212,21 @@ def _source_groups(template: Mapping[str, Any], card: Card) -> list[tuple[str, t
     if card.contradicting:
         groups.append((template["sources"]["contradicting"], card.contradicting))
     return groups
+
+
+def _reversal_lines(template: Mapping[str, Any], card: Card) -> list[str]:
+    if card.reversed is not None:
+        source = card.reversed
+        return [
+            template["note"]["reversed_post"].format(
+                earlier=template["note"]["earlier"],
+                account=source.account,
+                time=_day_time(template, source.created_at),
+                url=source.url,
+                marker=template["sources"]["new_marker"] if source.new else "",
+            )
+        ]
+    return [card.reversed_flag] if card.reversed_flag is not None else []
 
 
 def _render_text(
@@ -217,7 +249,7 @@ def _render_text(
     else:
         lines.extend(["", template["digest"]["empty"]])
     for event, cards in groups.items():
-        lines.extend(["", texts["group"].format(heading=template["group"][event])])
+        lines.extend(["", texts["group"].format(heading=template["category"][event])])
         for card in cards:
             player = card.report.listed.player
             club = texts["club"].format(club=player.team_name) if player.team_name else ""
@@ -226,10 +258,11 @@ def _render_text(
                 texts["player"].format(
                     name=player.web_name,
                     club=club,
-                    event=template["event"][event],
+                    event=template["category"][event],
                 )
             )
             lines.append(card.details)
+            lines.extend(_reversal_lines(template, card))
             lines.extend(card.notes)
             for label, sources in _source_groups(template, card):
                 lines.append(texts["sources"].format(label=label))
@@ -262,6 +295,24 @@ def _links(template: Mapping[str, Any], sources: Sequence[Source]) -> str:
     return html["source_separator"].join(links)
 
 
+def _reversal_html(template: Mapping[str, Any], card: Card) -> str:
+    html = template["html"]
+    if card.reversed is not None:
+        source = card.reversed
+        return html["reversed_post"].format(
+            earlier=escape(template["note"]["earlier"]),
+            link=html["source_link"].format(
+                weight=html["new_weight"] if source.new else "",
+                url=escape(source.url),
+                account=escape(source.account),
+            ),
+            time=escape(_day_time(template, source.created_at)),
+        )
+    if card.reversed_flag is not None:
+        return html["note"].format(text=escape(card.reversed_flag))
+    return ""
+
+
 def _render_card(template: Mapping[str, Any], card: Card) -> str:
     html = template["html"]
     palette = template["palette"][card.event]
@@ -278,9 +329,10 @@ def _render_card(template: Mapping[str, Any], card: Card) -> str:
         detail_color=palette["heading"],
         name=escape(player.web_name),
         club=escape(player.team_name or ""),
-        event=escape(template["event"][card.event]),
+        event=escape(template["category"][card.event]),
         details=escape(card.details),
-        notes="".join(html["note"].format(text=escape(note)) for note in card.notes),
+        notes=_reversal_html(template, card)
+        + "".join(html["note"].format(text=escape(note)) for note in card.notes),
         sources=sources,
     )
 
@@ -315,7 +367,7 @@ def _render_html(
             body.append(
                 html["group"].format(
                     color=template["palette"][event]["heading"],
-                    heading=escape(template["group"][event]),
+                    heading=escape(template["category"][event]),
                 )
             )
             body.extend(_render_card(template, card) for card in cards)

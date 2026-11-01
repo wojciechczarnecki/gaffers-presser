@@ -8,7 +8,8 @@ from urllib.parse import parse_qs, urlsplit
 
 from app.alerts.render import age_text, load_template, plural_form, render_alert
 from app.alerts.schemas import ManagerRef
-from app.corroboration.schemas import Claim, Corroboration, RetrievalReport
+from app.core.local_time import WARSAW
+from app.corroboration.schemas import Claim, Corroboration, FlagState, RetrievalReport
 from tests.alerts.helpers import (
     AS_OF,
     POST_TIME,
@@ -31,6 +32,21 @@ HALL = player_ref(4, "Hall", "Newcastle")
 KANE = player_ref(5, "Kane", "Tottenham")
 
 
+def reversed_line(account, x_id, created_at=POST_TIME, new=False):
+    local = created_at.astimezone(WARSAW)
+    return TEMPLATE["note"]["reversed_post"].format(
+        earlier=TEMPLATE["note"]["earlier"],
+        account=account,
+        time=TEMPLATE["header"]["day_time"].format(
+            weekday=TEMPLATE["header"]["weekdays"][local.weekday()],
+            date=local.strftime("%d.%m"),
+            time=local.strftime("%H:%M"),
+        ),
+        url=f"https://x.com/{account}/status/{x_id}",
+        marker=MARKER if new else "",
+    )
+
+
 def player_report(player, event_type="doubt", supporters=0, percent="10", level="medium", **kw):
     supporting = [citation(500 + player.fpl_id * 10 + i, f"s{i}") for i in range(supporters)]
     return report(
@@ -50,7 +66,7 @@ def test_card_shows_the_news_grade_accounts_age_and_sources():
     message = render_alert("digest", deadline(), AS_OF, [full_report()])
     text = message.text
 
-    assert "Saka (Arsenal) — " + TEMPLATE["event"]["out"] in text
+    assert "Saka (Arsenal) — " + TEMPLATE["category"]["out"] in text
     assert TEMPLATE["grade"]["medium"] in text
     details = TEMPLATE["grade"]["separator"].join(
         (
@@ -63,7 +79,7 @@ def test_card_shows_the_news_grade_accounts_age_and_sources():
         )
     )
     assert details in text and details in message.html
-    assert TEMPLATE["note"]["reversal"] in text
+    assert reversed_line("earlier", 104) in text
     assert TEMPLATE["note"]["search_failed"] in text
     assert TEMPLATE["sources"]["contradicting"] in text
     for url in (
@@ -75,6 +91,94 @@ def test_card_shows_the_news_grade_accounts_age_and_sources():
         assert url in text and url in message.html
     # a repost names the original author, linked through the repost
     assert "@origin" in text and "@third" not in text
+
+
+def _reversal_report(contradicting, reversed_index=0, **kw):
+    cited = [citation(103 + i, name, label="contradicts") for i, name in enumerate(contradicting)]
+    return report(
+        listed(SAKA, claims=(100,)),
+        corroboration(
+            SAKA,
+            event_type="available",
+            contradicting=cited,
+            reversed_post=cited[reversed_index],
+            **kw,
+        ),
+    )
+
+
+def test_reversal_line_names_the_post_and_it_is_not_listed_again():
+    reports = [_reversal_report(["doubter", "other"])]
+    message = render_alert("digest", deadline(), AS_OF, reports)
+    line = reversed_line("doubter", 103)
+    whatsapp = share_text(message.html)
+    for part in (message.text, whatsapp):
+        assert line in part
+        assert part.index(line) < part.index(TEMPLATE["sources"]["one"] + ":")
+        listed_under = part[part.index(TEMPLATE["sources"]["contradicting"]) :]
+        assert "https://x.com/other/status/104" in listed_under
+        assert "https://x.com/doubter/status/103" not in listed_under
+    assert message.text.count("https://x.com/doubter/status/103") == 1
+    assert TEMPLATE["accounts"]["against"].format(count=2) in message.text
+    assert message.html.count("https://x.com/doubter/status/103") == 1
+    assert 'href="https://x.com/doubter/status/103"' in message.html
+    assert TEMPLATE["note"]["earlier"] in message.html
+
+
+def test_reversal_line_shows_the_day_and_time_of_the_reversed_post():
+    message = render_alert("digest", deadline(), AS_OF, [_reversal_report(["doubter"])])
+    # POST_TIME is Sunday 4 October, 14:30 in Warsaw
+    assert "@doubter, nd 04.10, 14:30: https://x.com/doubter/status/103" in message.text
+    assert "nd 04.10, 14:30" in message.html
+
+
+def test_a_new_reversed_post_is_marked_new_only_in_a_news_alert():
+    reports = [replace(_reversal_report(["doubter"]), new_x_ids=frozenset({103}))]
+    news = render_alert("news", deadline(), AS_OF, reports)
+    assert reversed_line("doubter", 103, new=True) in news.text
+    assert reversed_line("doubter", 103, new=True) in share_text(news.html)
+    new_link = (
+        'href="https://x.com/doubter/status/103" style="color:#37003c;'
+        + TEMPLATE["html"]["new_weight"]
+    )
+    assert new_link in news.html
+    digest = render_alert("digest", deadline(), AS_OF, reports)
+    assert reversed_line("doubter", 103) in digest.text
+    assert MARKER not in digest.text
+
+
+def test_a_card_whose_only_contradicting_post_is_the_reversed_one_has_no_zaprzecza():
+    message = render_alert("digest", deadline(), AS_OF, [_reversal_report(["doubter"])])
+    assert reversed_line("doubter", 103) in message.text
+    assert TEMPLATE["accounts"]["against"].format(count=1) in message.text
+    assert TEMPLATE["sources"]["contradicting"] not in message.text
+    assert TEMPLATE["sources"]["contradicting"] not in message.html
+
+
+def test_flag_reversal_line_shows_the_flag_news():
+    flagged = FlagState("d", "Hip injury - 75% chance of playing", AS_OF)
+    bare = FlagState("d", "", AS_OF)
+    for state, expected in (
+        (
+            flagged,
+            TEMPLATE["note"]["reversed_flag"].format(
+                earlier=TEMPLATE["note"]["earlier"], news=flagged.news
+            ),
+        ),
+        (
+            bare,
+            TEMPLATE["note"]["reversed_flag_no_news"].format(earlier=TEMPLATE["note"]["earlier"]),
+        ),
+    ):
+        one = report(
+            listed(SAKA, claims=(100,)),
+            corroboration(SAKA, event_type="available", reversed_flag=state),
+        )
+        message = render_alert("digest", deadline(), AS_OF, [one])
+        assert expected in message.text
+        assert expected in message.html
+        assert expected in share_text(message.html)
+        assert TEMPLATE["sources"]["contradicting"] not in message.text
 
 
 def test_no_ownership_managers_certainty_or_new_marker_in_a_digest():
@@ -91,7 +195,7 @@ def test_notes_only_when_flagged():
         corroboration(SAKA),
     )
     text = render_alert("news", deadline(), AS_OF, [plain]).text
-    assert TEMPLATE["note"]["reversal"] not in text
+    assert TEMPLATE["note"]["earlier"] not in text
     assert TEMPLATE["note"]["search_failed"] not in text
     failed = report(listed(SAKA), corroboration(SAKA), search_failed=True)
     assert (
@@ -124,14 +228,14 @@ def test_groups_follow_the_event_order_with_a_summary():
     text = message.text
 
     headings = [
-        TEMPLATE["group"][event] for event in ("out", "doubt", "available", "confirmed_starter")
+        TEMPLATE["category"][event] for event in ("out", "doubt", "available", "confirmed_starter")
     ]
     positions = [text.index(heading) for heading in headings]
     assert positions == sorted(positions)
-    assert TEMPLATE["group"]["benched"] not in text
+    assert TEMPLATE["category"]["benched"] not in text
     assert text.index("Palmer") < text.index("Isak") < text.index("Kane") < text.index("Saka")
-    assert f"{TEMPLATE['summary']['doubt']} 2" in text
-    assert TEMPLATE["summary"]["benched"] not in text
+    assert f"{TEMPLATE['category']['doubt'].lower()} 2" in text
+    assert TEMPLATE["category"]["benched"].lower() not in text
     for heading in headings:
         assert heading in message.html
 
@@ -147,22 +251,49 @@ def test_available_group_comes_before_zagra_with_its_counter():
     text = message.text
 
     headings = [
-        TEMPLATE["group"][event] for event in ("out", "benched", "available", "confirmed_starter")
+        TEMPLATE["category"][event]
+        for event in ("out", "benched", "available", "confirmed_starter")
     ]
-    assert TEMPLATE["group"]["available"] == "✅ Wraca do gry"
     positions = [text.index(heading) for heading in headings]
     assert positions == sorted(positions)
-    assert "✅ wraca 1" in text
-    assert "Isak (Newcastle) — Gotowy do gry" in text
+    assert f"{TEMPLATE['category']['available'].lower()} 1" in text
+    assert "Isak (Newcastle) — " + TEMPLATE["category"]["available"] in text
 
 
-def test_available_card_html_has_its_palette():
+AC1_CATEGORIES = {
+    "out": "🔴 Nie zagra",
+    "doubt": "🟠 Wątpliwy",
+    "benched": "🟡 Na ławce",
+    "available": "🟢 Gotowy do gry",
+    "confirmed_starter": "🟢 Zagra",
+}
+
+
+def test_one_category_name_in_header_counter_and_card():
+    assert dict(TEMPLATE["category"]) == AC1_CATEGORIES
+    for event, name in AC1_CATEGORIES.items():
+        reports = [player_report(SAKA, event)]
+        message = render_alert("digest", deadline(), AS_OF, reports)
+        whatsapp = share_text(message.html)
+        for part in (message.text, message.html, whatsapp):
+            assert part is not None
+            assert name in part
+            counter = f"{name.lower()} <b>1</b>" if part is message.html else f"{name.lower()} 1"
+            assert counter in part
+            assert "✅" not in part
+        assert "Saka (Arsenal) — " + name in message.text
+        assert "*Saka* (Arsenal) — " + name in whatsapp
+        assert name in message.html and message.html.count(name) >= 2
+
+
+def test_gotowy_and_zagra_accents_differ_and_are_not_blue():
+    available = TEMPLATE["palette"]["available"]["accent"]
+    zagra = TEMPLATE["palette"]["confirmed_starter"]["accent"]
+    assert available != zagra
+    assert "#2e90fa" not in (available, zagra)
     html = render_alert("digest", deadline(), AS_OF, [player_report(ISAK, "available")]).html
-    palette = TEMPLATE["palette"]["available"]
-    assert palette["accent"] == "#2e90fa"
-    assert palette["accent"] in html
-    assert palette["heading"] in html
-    assert "Wraca do gry" in html
+    assert available in html
+    assert TEMPLATE["palette"]["available"]["heading"] in html
 
 
 def test_within_a_group_most_accounts_first_then_overall_ownership():
@@ -296,10 +427,12 @@ def test_share_button_carries_the_alert_as_whatsapp_text():
     assert TEMPLATE["whatsapp"]["button"] in message.html
     whatsapp = TEMPLATE["whatsapp"]
     assert text.startswith(whatsapp["headline"].format(headline=message.title) + "\n")
-    assert whatsapp["group"].format(heading=TEMPLATE["group"]["out"]) in text
+    assert whatsapp["group"].format(heading=TEMPLATE["category"]["out"]) in text
     club = whatsapp["club"].format(club="Arsenal")
-    assert whatsapp["player"].format(name="Saka", club=club, event=TEMPLATE["event"]["out"]) in text
-    assert TEMPLATE["note"]["reversal"] in text
+    assert (
+        whatsapp["player"].format(name="Saka", club=club, event=TEMPLATE["category"]["out"]) in text
+    )
+    assert reversed_line("earlier", 104) in text
     for url in (
         "https://x.com/anchoracct/status/100",
         "https://x.com/doubter/status/103",
@@ -317,9 +450,9 @@ def test_share_text_survives_encoding_of_polish_letters_emoji_and_markup():
     assert text is not None
     whatsapp = TEMPLATE["whatsapp"]
     club = whatsapp["club"].format(club="A&B #1 ?x=1")
-    event = TEMPLATE["event"]["doubt"]
+    event = TEMPLATE["category"]["doubt"]
     assert whatsapp["player"].format(name="Świderski <b>", club=club, event=event) in text
-    assert TEMPLATE["group"]["doubt"].split()[0] in text  # the emoji of the group
+    assert TEMPLATE["category"]["doubt"].split()[0] in text  # the emoji of the group
     assert "<b>" not in message.html.replace("<b>1</b>", "")
 
 

@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.corroboration.schemas import (
     Claim,
+    FlagState,
     Freshness,
     Grade,
     Label,
@@ -20,6 +21,7 @@ def _full_credibility(account: str) -> float:
 class GradeRules:
     high_min_supporting: float = 2
     medium_min_supporting: float = 1
+    confirmed_high_min_supporting: float = 1
     credibility: Callable[[str], float] = field(default=_full_credibility)
 
 
@@ -33,7 +35,6 @@ class AccountCounts:
 DEFAULT_RULES = GradeRules()
 _AVAILABILITY = {"out", "doubt", "benched"}
 _ABSENCES = ("out", "doubt")
-REVERSED_TYPES = _ABSENCES
 _LEVELS = ("low", "medium", "high")
 
 
@@ -44,28 +45,62 @@ def label_claim(anchor_type: str, claim_type: str) -> Label:
         other = claim_type if anchor_type == "available" else anchor_type
         return "contradicts" if other in _ABSENCES else "related"
     pair = {anchor_type, claim_type}
+    if pair == {"benched", "out"}:
+        return "contradicts"
     if "confirmed_starter" in pair and pair - {"confirmed_starter"} <= _AVAILABILITY:
         return "contradicts"
     return "related"
 
 
-def reverses(candidate: Claim, claims: Sequence[Claim], judged: Sequence[LabelledPost]) -> bool:
-    mark = (candidate.post.created_at, candidate.post.x_id)
+def _claim_key(claim: Claim) -> tuple[datetime, int]:
+    return (claim.post.created_at, claim.post.x_id)
 
-    def older(post: PostRef) -> bool:
-        return (post.created_at, post.x_id) < mark
 
-    # the newest older news decides: a line-up claim after the bad news has already turned it
-    older_news = [
-        ((c.post.created_at, c.post.x_id), c.event_type in REVERSED_TYPES)
-        for c in claims
-        if c.event_type != "available" and older(c.post)
-    ] + [
-        ((item.post.created_at, item.post.x_id), True)
-        for item in judged
-        if item.label == "contradicts" and older(item.post)
-    ]
-    return bool(older_news) and max(older_news)[1]
+def flag_at(flags: Sequence[FlagState], moment: datetime) -> FlagState | None:
+    # `flags` come in (observed_at, id) order, so of tied rows the last one is the newest
+    seen = [flag for flag in flags if flag.observed_at <= moment]
+    return seen[-1] if seen else None
+
+
+def reversed_claim(anchor: Claim, claims: Sequence[Claim]) -> Claim | None:
+    older = [claim for claim in claims if _claim_key(claim) < _claim_key(anchor)]
+    if not older:
+        return None
+    newest = max(older, key=_claim_key)
+    if label_claim(anchor.event_type, newest.event_type) == "contradicts":
+        return newest
+    return None
+
+
+@dataclass(frozen=True)
+class AnchorChoice:
+    anchor: Claim
+    reversed_claim: Claim | None = None
+    reversed_flag: FlagState | None = None
+
+
+def choose_anchor(
+    claims: Sequence[Claim], flags: Sequence[FlagState], anchor_x_id: int | None = None
+) -> AnchorChoice | None:
+    if not claims:
+        return None
+    newest = max(claims, key=_claim_key)
+    candidate = next((c for c in claims if c.post.x_id == anchor_x_id), None) or newest
+    if candidate.event_type != "available":
+        return AnchorChoice(candidate, reversed_claim(candidate, claims))
+    if candidate is newest:
+        earlier = reversed_claim(candidate, claims)
+        flag = flag_at(flags, candidate.post.created_at)
+        flagged = flag if flag is not None and flag.status != "a" else None
+        if earlier is not None or flagged is not None:
+            return AnchorChoice(candidate, earlier, None if earlier is not None else flagged)
+    others = [claim for claim in claims if claim.event_type != "available"]
+    if not others:
+        return None
+    fallback = max(others, key=_claim_key)
+    if label_claim("available", fallback.event_type) == "contradicts":
+        return None
+    return AnchorChoice(fallback, reversed_claim(fallback, claims))
 
 
 def account_of(post: PostRef) -> str:
@@ -106,10 +141,6 @@ def freshness(created_at: datetime, new_since: datetime) -> Freshness:
     return "new" if created_at > new_since else "context"
 
 
-def reversal(contradicting: Sequence[LabelledPost], anchor: PostRef) -> bool:
-    return any(item.post.created_at < anchor.created_at for item in contradicting)
-
-
 def newer_contradiction(contradicting: Sequence[LabelledPost], anchor: PostRef) -> bool:
     return any(
         item.origin == "judge" and item.post.created_at > anchor.created_at
@@ -132,16 +163,22 @@ def grade(
     weight = sum(rules.credibility(counted_account(item.post, item.label)) for item in supporting)
     support = f"{_count(weight)} independent supporting account(s)"
     reasons: list[str] = []
-    if certainty == "confirmed" or weight >= rules.high_min_supporting:
+    confirmed = certainty == "confirmed"
+    high_by_weight = weight >= rules.high_min_supporting
+    high_by_confirmed = confirmed and weight >= rules.confirmed_high_min_supporting
+    if high_by_weight or high_by_confirmed:
         level = 2
-        if certainty == "confirmed":
-            reasons.append("the anchor's certainty is confirmed -> high")
-        if weight >= rules.high_min_supporting:
+        if high_by_confirmed:
+            reasons.append(
+                f"the anchor's certainty is confirmed and {support}, at least "
+                f"{_count(rules.confirmed_high_min_supporting)} -> high"
+            )
+        if high_by_weight:
             reasons.append(f"{support}, at least {_count(rules.high_min_supporting)} -> high")
-    elif certainty == "likely" or weight >= rules.medium_min_supporting:
+    elif confirmed or certainty == "likely" or weight >= rules.medium_min_supporting:
         level = 1
-        if certainty == "likely":
-            reasons.append("the anchor's certainty is likely -> medium")
+        if confirmed or certainty == "likely":
+            reasons.append(f"the anchor's certainty is {certainty} -> medium")
         if weight >= rules.medium_min_supporting:
             reasons.append(f"{support}, at least {_count(rules.medium_min_supporting)} -> medium")
     else:

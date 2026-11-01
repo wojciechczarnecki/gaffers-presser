@@ -9,14 +9,13 @@ from app.corroboration.judge import Judge, JudgeInput, render_input
 from app.corroboration.rules import (
     DEFAULT_RULES,
     GradeRules,
+    choose_anchor,
     count_accounts,
     counted_account,
     freshness,
     grade,
     label_claim,
     newer_contradiction,
-    reversal,
-    reverses,
 )
 from app.corroboration.schemas import (
     Citation,
@@ -29,6 +28,7 @@ from app.corroboration.schemas import (
 from app.corroboration.sources import (
     EMBED_TIMEOUT_SECONDS,
     claimed_post_ids,
+    flag_history,
     retrieval_candidates,
     sql_claims,
     window_start,
@@ -41,7 +41,7 @@ from app.retrieval.embedder import Embedder
 logger = logging.getLogger(__name__)
 
 SKIPPED_NOT_CONFIGURED = "retrieval and the judge are not configured"
-NO_REVERSAL_REASON = "the only claims say the player is available and reverse nothing"
+NO_REVERSAL_REASON = "no claim qualifies as the anchor: an available claim reverses nothing"
 
 
 @dataclass(frozen=True)
@@ -156,6 +156,7 @@ def corroborate(
         start = window_start(session, as_of, since)
         claims = sql_claims(session, player, start, as_of)
         claimed = claimed_post_ids(session, player, start, as_of)
+        flags = flag_history(session, player, as_of)
     new_since = new_since if new_since is not None else start
     tracer = runtime.tracer
     span_input = {
@@ -178,37 +179,20 @@ def corroborate(
             span.update(output={"anchor": None})
             return result
 
-        candidate = next((c for c in claims if c.post.x_id == anchor_x_id), None) or max(
-            claims, key=lambda c: (c.post.created_at, c.post.x_id)
-        )
-        judge_ready = runtime.embedder is not None and runtime.judge is not None
-        anchor = candidate
-        judged: list[LabelledPost] | None = None
-        report: RetrievalReport | None = None
-        if candidate.event_type == "available" and not reverses(candidate, claims, []):
-            if judge_ready:
-                judged, report = _judge_candidates(
-                    engine, runtime, player, candidate, start, as_of, claimed
-                )
-            if judged is None or not reverses(candidate, claims, judged):
-                # a failed first pass is kept, so the failure shows even with no anchor
-                failed = report is not None and bool(report.failure or report.unjudged)
-                no_anchor = report if failed else RetrievalReport("skipped", NO_REVERSAL_REASON)
-                judged, report = None, None
-                others = [c for c in claims if c.event_type != "available"]
-                if not others:
-                    result = Corroboration(
-                        player=player,
-                        as_of=as_of,
-                        window_start=start,
-                        new_since=new_since,
-                        anchor=None,
-                        retrieval=no_anchor,
-                        trace_id=span.trace_id,
-                    )
-                    span.update(output={"anchor": None})
-                    return result
-                anchor = max(others, key=lambda c: (c.post.created_at, c.post.x_id))
+        choice = choose_anchor(claims, flags, anchor_x_id)
+        if choice is None:
+            result = Corroboration(
+                player=player,
+                as_of=as_of,
+                window_start=start,
+                new_since=new_since,
+                anchor=None,
+                retrieval=RetrievalReport("skipped", NO_REVERSAL_REASON),
+                trace_id=span.trace_id,
+            )
+            span.update(output={"anchor": None})
+            return result
+        anchor = choice.anchor
         labelled = [
             LabelledPost(
                 post=claim.post,
@@ -221,17 +205,29 @@ def corroborate(
             if claim.post.x_id != anchor.post.x_id
         ]
 
-        if not judge_ready:
+        if runtime.embedder is None or runtime.judge is None:
             report = RetrievalReport("skipped", runtime.skipped_reason or SKIPPED_NOT_CONFIGURED)
         else:
-            if judged is None or report is None:
-                judged, report = _judge_candidates(
-                    engine, runtime, player, anchor, start, as_of, claimed
-                )
-            labelled.extend(judged)
+            judged, report = _judge_candidates(
+                engine, runtime, player, anchor, start, as_of, claimed
+            )
+            labelled.extend(item for item in judged if item.label == "contradicts")
 
         counts = count_accounts(labelled, anchor.post)
-        is_reversal = reversal(counts.contradicting, anchor.post)
+        reversed_post = (
+            _citation(
+                LabelledPost(
+                    post=choice.reversed_claim.post,
+                    label="contradicts",
+                    origin="sql",
+                    certainty=choice.reversed_claim.certainty,
+                    event_type=choice.reversed_claim.event_type,
+                ),
+                new_since,
+            )
+            if choice.reversed_claim is not None
+            else None
+        )
         is_newer = newer_contradiction(counts.contradicting, anchor.post)
         assessed = grade(
             anchor.certainty,
@@ -250,7 +246,8 @@ def corroborate(
             supporting=[_citation(i, new_since) for i in _newest_first(counts.supporting)],
             contradicting=[_citation(i, new_since) for i in _newest_first(counts.contradicting)],
             related=[_citation(i, new_since) for i in _newest_first(counts.related)],
-            reversal=is_reversal,
+            reversed_post=reversed_post,
+            reversed_flag=choice.reversed_flag,
             newer_contradiction=is_newer,
             grade=assessed,
             retrieval=report,
@@ -267,7 +264,7 @@ def corroborate(
                 "supporting": len(counts.supporting),
                 "contradicting": len(counts.contradicting),
                 "related": len(counts.related),
-                "reversal": is_reversal,
+                "reversal": result.reversal,
                 "newer_contradiction": is_newer,
                 "grade": assessed.level,
                 "reasons": list(assessed.reasons),
