@@ -88,8 +88,9 @@ Design:
      national-team, friendly, women's or youth match, or for a Premier League match already
      played. It also covers a player rested, rotated or left out of such a squad with no injury
      given, and a suspension served in another competition. A post that names the next Premier
-     League gameweek only to say the player was rested for it is still about the other match's
-     absence: false;
+     League gameweek only to say the player was rested in the other match to be fresh for it
+     ("rested for GW9" after a cup tie) is still about the other match's absence: false. A
+     player said to be rested from or left out of the next Premier League match itself is true;
    - the opponent and timing rules of v2 stay, reworded without types.
 2. **Extraction prompt v7** (`app/content/prompts/extraction.md`). The v6 bullet "A squad rest,
    a rotation or a suspension served in a cup or European tie is extracted as the post says it
@@ -97,7 +98,13 @@ Design:
    "A player rested, rotated or left out of the squad for a cup, European or national-team match
    with no injury or illness given gives no event, and neither does a suspension served in such
    a match: the absence concerns only that match. An injury or illness from any match keeps its
-   `doubt` or `out`." Every other v6 rule stays word for word. That includes the rule that a
+   `doubt` or `out`." One v6 sentence needs a scope to stay consistent with the new rule: the
+   relevance-rule bullet "A player who misses a national-team, cup or European match, or leaves
+   the national-team camp injured, is `doubt` …" reads, without a reason, as "a cup rest is
+   `doubt`". It becomes "A player who misses a national-team, cup or European match through an
+   injury or illness, or leaves the national-team camp injured, is `doubt` …", the rest of the
+   bullet unchanged; this keeps that bullet's own meaning (its first sentence is about injuries
+   and illnesses). Every other v6 rule stays word for word. That includes the rule that a
    player who misses a European or cup squad *because of a knock* is `doubt`. The new rule
    names "no injury or illness given", so the two rules do not clash. `extraction_prelabel.md` v2
    already says "such an absence gives no `out` and no `doubt` event", so it is consistent with
@@ -123,7 +130,8 @@ Design:
    and `fixtures.json` are fresh read-only snapshots. New cases: a read-only `export-corpus` of
    the GW9 window (from 2026-10-28T00:00 Europe/Warsaw to the earliest gameweek 9 kickoff in the
    new `fixtures.json`). They go through `export-judge-inputs --availability-keywords
-   --exclude-cases <v3 cases> --x-id` for the five named posts, then the session judge, then
+   --exclude-cases <v3 cases> --x-id` for the four new named posts (2116079251476611126 is
+   already a v3 case and stays excluded), then the session judge, then
    `import-judge --select 40`. The named posts are `required`, so `select_candidates` always
    keeps them. `import_verdicts` gives new cases the v3 split rule (`x_id % 10 < 3` → dev), so
    about two thirds go to test, and 2116079251476611126 stays a test case from v3.
@@ -219,7 +227,8 @@ and `test_results_files.py` (the v3 block), `composition_problems_v3`, the
         types"). It also checks the new rule's phrases on the whitespace-normalised lowercase
         text: "rested, rotated or left out of the squad", "with no injury or illness given
         gives no event", "a suspension served in such a match" and "an injury or illness from
-        any match keeps its". It checks that "the match check decides later" and "is extracted
+        any match keeps its", plus the scoped bullet's "misses a national-team, cup or european
+        match through an injury or illness". It checks that "the match check decides later" and "is extracted
         as the post says it" are gone, and that "there is no positive availability type"
         stays absent;
       - `tests/extraction/test_flow.py::test_an_extraction_with_no_event_makes_no_match_check`:
@@ -391,7 +400,9 @@ and `test_results_files.py` (the v3 block), `composition_problems_v3`, the
         `-r2` originals), plus the `Extraction dev spend` and `Discarded test spend` lines of
         `dev-iterations.md`, is at most 5.00.
 
-      Run each, on a clean committed tree:
+      Commit these tests first (red until the runs exist:
+      `test: add the v4 test-run checks`), so the runs start from a clean tree and their headers
+      carry `git_dirty: false`. Then run each, on that clean committed tree:
       `env -u TWEET_SOURCE uv run python -m app.extraction.evaluation evaluate --set evals/extraction/v4 --split test --model openai/gpt-6-luna --run-name test-v4-openai-gpt-6-luna-<n>`
       for n = 1, 2, 3. An errored case → one repeat as `-<n>-r2`. Commit the result files
       (`data: add the three extraction test runs on set v4`).
@@ -556,7 +567,73 @@ _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YY
 
 ## Review log
 
-_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`; with no finding, the one item `- `none` — no findings`)_
+Review of 2026-11-01 (plan-review, fresh context).
+
+Findings:
+
+- `major` — Design item 2 claimed every other v6 rule could stay word for word, but the v6
+  relevance-rule bullet "A player who misses a national-team, cup or European match, or leaves
+  the national-team camp injured, is `doubt` …" (`extraction.md`, lines 48–51) reads without a
+  reason, so it tells the model that a cup rest is `doubt` and contradicts AC1's new rule (it may
+  be what produced the FFScout `out`). Changed: design item 2 scopes that bullet to "through an
+  injury or illness" (rest of the bullet unchanged), and step 2's test checks the scoped phrase.
+- `major` — Design item 1's match-check rule "a post that names the next Premier League
+  gameweek only to say the player was rested for it … false" is ambiguous: read literally it
+  answers false for a player rested from the next PL match itself, a real absence the check
+  would then drop. Changed: the rule now says "rested in the other match to be fresh for it
+  ('rested for GW9' after a cup tie)" is false, and a player rested from or left out of the next
+  PL match itself is true.
+- `minor` — Design item 5 said `--x-id` is given for "the five named posts"; step 5's command
+  (correctly) passes four, as 2116079251476611126 is a v3 case left out by `--exclude-cases`.
+  Changed the design text to four.
+- `minor` — Step 8 wrote its tests first but required the runs "on a clean committed tree"
+  without saying the tests are committed before the runs. Changed: the step commits the red
+  tests (`test: add the v4 test-run checks`) and then runs on that tree.
+
+Checked and found correct:
+
+- Coverage: AC1–AC11 each have steps and a proving test, and the matrix matches the steps; AC12
+  is the owner's manual item with a `Pass when:` line. AC2's flow test is close to the existing
+  `test_no_events_is_empty_result` but adds the fixtures path (`CHECK_INDEX`, `FIXTURES`), so it
+  is not a duplicate.
+- `_render_match_check` (`app/extraction/flow.py`) is the only place the type enters the check
+  input; `match_check_node`'s selection is unchanged, so the existing call-count tests in
+  `tests/extraction/test_flow.py` (lines 312–460) still prove AC4. Jones and Haaland are one
+  club in `CHECK_INDEX` (2 calls in `test_out_and_starter_of_one_club_make_one_check`).
+- Tests encoding the old versions are all named: `test_match_check_prompt_v2_rules`,
+  `test_extraction_prompt_v6_rules`, `test_match_check_input_from_fixture_data`,
+  `test_cli.py:1023` (`match_check@2`), `test_evaluation_md_names_set_v3`;
+  `test_results_files.py:146` reads committed v3 data and stays.
+- Metrics: `CaseResult.raw_predicted` holds every extracted event with `for_next_pl_match`
+  (`runner.py`), so the raw-absence count is computable; `threshold_flags` takes the five values
+  `mean_of_runs` gives; `default_output_dir` sends dev runs to the gitignored `results/v4/dev/`,
+  so the spend log line is the right source for the cap test, and 020's whole spend was about
+  0.18 USD (a v3 test run 0.058 USD), well under 5 USD.
+- Set v4 tooling: `export-judge-inputs` has `--availability-keywords`, `--exclude-cases`,
+  `--x-id` (required, bypassing the window), `--seed`; `import-judge` has `--select`, `--seed`,
+  `--judge-model` and records `extraction@<current>` in `prelabels`; `review` sets
+  `review_source: "owner"`. The v3 split rule (`x_id % 10 < 3` → dev) puts
+  2116079251476611126 in test; removing the tag from dev case 2115797596119740910 leaves 13
+  `other_match_absence` cases (minimum 8) and 12 in test (minimum 5). All five named posts were
+  posted 2026-10-29 15:19Z to 2026-10-31 08:34Z, before the earliest GW9 kickoff
+  (2026-10-31 12:30Z), so the corpus window holds them.
+- DECISIONS (own search: "match check", "relevance rule", "set v3", "fail-open"): the plan
+  breaks no row; the risk list covers the single-row unpacking in
+  `test_decisions_cover_match_check_and_set_v2`, and the new rows are dated after 2026-10-30,
+  so `test_decisions_cover_available_and_absence_check` is unaffected.
+- Conventions: prompts stay in `app/content/prompts/` with a version bump and a test each; LLM
+  steps tested against a fake model; paid runs outside pytest; CLIs run with
+  `env -u TWEET_SOURCE`; Compose only read (snapshots, `export-corpus`).
+- Feasibility and order: prompts (steps 1–2) precede the export (step 5, so `prelabels` names
+  `extraction@7`); composition code (step 4) precedes the set; `DEFAULT_SET_DIR` switches only
+  after the review (step 6); dev runs and the freeze precede the test runs.
+- The owner's review in step 6 is a human judgment AC6 requires (`review_source: owner`), not a
+  command the implementer could run, so it rightly stays an escalation point inside `## Steps`.
+- Owner summary: no new dependency, no migration, consistent with SPEC → "Owner decisions";
+  the manual scenario matches AC12. Language: the plan is in English (`language: en`).
+
+The plan is ready: every AC is covered by steps with executable verification, the four findings
+are fixed in place, and it adds no dependency or migration beyond what the owner accepted.
 
 ## Deviations
 
