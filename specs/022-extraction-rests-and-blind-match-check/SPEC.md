@@ -9,11 +9,15 @@ metrics:
   started_at: 2026-11-01T04:49
   plan_steps: 10
   plan_changes: 5
-  escalations: 0
+  escalations: 1
   escalations_permission: 0
   escalations_tooling: 0
   plan_review_blockers: 0
   plan_review_majors: 2
+  implement_steps: 5
+  implement_iterations: 2
+  deviations_minor: 5
+  deviations_major: 0
 ---
 
 # SPEC 022 — Rests give no event, and a match check blind to the event types
@@ -128,9 +132,11 @@ grade) are SPEC 021. The two specs are independent.
 ### Evaluation set v4
 
 - [ ] AC5: Set v4 (`backend/evals/extraction/v4/`) is set v3 plus new real cases from the GW9
-  window, among them 2115825835525488887 (Kroupi.Jr, expected `benched`), 2116172084082602140
-  and 2116226240323465435 (Manzambi and N.Jackson), and 2116448660980732008 (a tips post, no
-  event). Case 2115797596119740910 loses the `other_match_absence` tag. 2116079251476611126 stays
+  window, among them 2115825835525488887 (Kroupi.Jr, expected `benched`), 2116174660693836212 (FPL__Raptor),
+  2116188146660409531 (FPL_Salah) and 2116265028458315935 (FPLMattW), the watched accounts' posts
+  that quote the Manzambi and N.Jackson news (they replace 2116172084082602140 and
+  2116226240323465435, whose authors are not on the watched list; owner decision 2026-11-01), and
+  2116448660980732008 (a tips post, no event). Case 2115797596119740910 loses the `other_match_absence` tag. 2116079251476611126 stays
   in the test split. New cases are split like v3, about two thirds to test, and the composition
   rules of v3 still hold.
 - [ ] AC6: The owner reviews every new and changed case with `review` before any test run

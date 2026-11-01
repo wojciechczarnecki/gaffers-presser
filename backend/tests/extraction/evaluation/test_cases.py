@@ -507,8 +507,9 @@ def test_legacy_composition_keeps_four_types():
 
 
 KROUPI = "2115825835525488887"
-MANZAMBI_DEV = "2116172084082602140"
-MANZAMBI_TEST = "2116226240323465435"
+MANZAMBI_DEV = "2116174660693836212"
+MANZAMBI_TEST = "2116265028458315935"
+MANZAMBI_DEV_2 = "2116188146660409531"
 TIPS = "2116448660980732008"
 REST_POST = "2116079251476611126"
 WRONG_TAG = "2115797596119740910"
@@ -545,6 +546,7 @@ def v4_set():
             ],
         ),
         _case(MANZAMBI_DEV, author_handle="watched", split="dev"),
+        _case(MANZAMBI_DEV_2, author_handle="watched", split="dev"),
         _case(MANZAMBI_TEST, author_handle="watched", split="test"),
         _case(TIPS, author_handle="watched", split="test"),
     ]
@@ -571,7 +573,9 @@ def test_composition_v4_needs_every_v3_case():
     assert any("v3 cases missing" in p for p in _problems_v4(cases, manifest, v2_ids, v3_ids))
 
 
-@pytest.mark.parametrize("case_id", [KROUPI, MANZAMBI_DEV, MANZAMBI_TEST, TIPS, REST_POST])
+@pytest.mark.parametrize(
+    "case_id", [KROUPI, MANZAMBI_DEV, MANZAMBI_DEV_2, MANZAMBI_TEST, TIPS, REST_POST]
+)
 def test_composition_v4_named_cases_present(case_id):
     cases, manifest, v2_ids, v3_ids = v4_set()
     cases = [c for c in cases if c.id != case_id]

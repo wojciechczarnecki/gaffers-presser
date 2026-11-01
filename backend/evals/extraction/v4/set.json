@@ -42,6 +42,13 @@
    "git_commit": "859148e",
    "inputs": 98,
    "imported_at": "2026-11-01T04:16:57.222817Z"
+  },
+  {
+   "judge": "claude-sonnet-5-5 (Claude Code session)",
+   "prompt_versions": "extraction@7+extraction_prelabel@2",
+   "git_commit": "e8f9a45",
+   "inputs": 3,
+   "imported_at": "2026-11-01T07:15:40.215043Z"
   }
  ],
  "backlog_cases": {
