@@ -50,6 +50,13 @@ class Claim:
 
 
 @dataclass(frozen=True)
+class FlagState:
+    status: str
+    news: str
+    observed_at: datetime
+
+
+@dataclass(frozen=True)
 class LabelledPost:
     post: PostRef
     label: Label
@@ -104,8 +111,13 @@ class Corroboration:
     supporting: list[Citation] = field(default_factory=list)
     contradicting: list[Citation] = field(default_factory=list)
     related: list[Citation] = field(default_factory=list)
-    reversal: bool = False
+    reversed_post: Citation | None = None
+    reversed_flag: FlagState | None = None
     newer_contradiction: bool = False
     grade: Grade | None = None
     retrieval: RetrievalReport = field(default_factory=lambda: RetrievalReport("skipped"))
     trace_id: str | None = None
+
+    @property
+    def reversal(self) -> bool:
+        return self.reversed_post is not None or self.reversed_flag is not None

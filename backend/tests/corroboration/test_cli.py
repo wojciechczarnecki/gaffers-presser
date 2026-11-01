@@ -110,19 +110,20 @@ def test_prints_anchor_grade_flags_then_the_groups_in_order(db):
     assert "https://x.com/a4/status/4" in related
     assert "@a2" in out
     assert "out (likely)" in out
-    assert "reversal: yes" in out
+    assert "reversal: no" in out
     assert "https://x.com/a1/status/1" in out
-    assert "https://x.com/judged1/status/10" in out
+    assert "https://x.com/judged1/status/10" not in out
 
 
 def test_supporting_posts_are_split_into_new_and_context(db):
     _seed_saka(db)
+    add_claim(db, 5, SAKA, "out", "likely", created_at=NOW - timedelta(hours=1), author="newer1")
     result = _run(_deps(db), "Saka", "--new-since", "2026-09-29T14:00")
     out = result.stdout
     supporting = out[out.index("Supporting") : out.index("Contradicting")]
-    assert supporting.index("new:") < supporting.index("https://x.com/judged1/status/10")
+    assert supporting.index("new:") < supporting.index("https://x.com/a2/status/2")
     assert supporting.index("context:") < supporting.index("https://x.com/a1/status/1")
-    assert supporting.index("https://x.com/judged1/status/10") < supporting.index("context:")
+    assert supporting.index("https://x.com/a2/status/2") < supporting.index("context:")
 
 
 def test_times_are_parsed_as_warsaw_and_passed_on_in_utc(db, monkeypatch):

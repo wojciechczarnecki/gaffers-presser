@@ -6,6 +6,7 @@ from app.corroboration.schemas import (
     Citation,
     Claim,
     Corroboration,
+    FlagState,
     Grade,
     PlayerRef,
     PostRef,
@@ -60,7 +61,8 @@ def corroboration(
     anchor_x_id: int = 100,
     supporting: list[Citation] | None = None,
     contradicting: list[Citation] | None = None,
-    reversal: bool = False,
+    reversed_post: Citation | None = None,
+    reversed_flag: FlagState | None = None,
     event_type: str = "out",
     certainty: str = "likely",
     level: str = "medium",
@@ -74,7 +76,8 @@ def corroboration(
         anchor=Claim(post_ref(anchor_x_id, "anchoracct"), event_type, certainty),
         supporting=supporting or [],
         contradicting=contradicting or [],
-        reversal=reversal,
+        reversed_post=reversed_post,
+        reversed_flag=reversed_flag,
         grade=Grade(level, ("reason",)),
         retrieval=RetrievalReport("ran", failure=failure),
     )
@@ -121,7 +124,7 @@ def full_report():
         anchor_x_id=100,
         supporting=[citation(101, "second"), citation(102, "third", reposted_author="origin")],
         contradicting=[citation(103, "doubter", label="contradicts")],
-        reversal=True,
+        reversed_post=citation(104, "earlier", label="contradicts"),
         failure="retrieval failed: TimeoutError",
     )
     return report(

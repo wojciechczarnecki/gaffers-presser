@@ -5,7 +5,7 @@ from sqlmodel import Session
 
 from app.extraction.schemas import LinkedEvent
 from app.extraction.store import ExtractionRecord, save_extraction
-from app.fpl.models.reference import Fixture, Gameweek, Player, Season, Team
+from app.fpl.models.reference import Fixture, Gameweek, Player, PlayerFlagChange, Season, Team
 from tests.retrieval.helpers import add_tweet
 
 SEASON = "2026/27"
@@ -68,6 +68,21 @@ def seed_reference(engine: Engine, deadlines: dict[int, datetime] | None = None)
                     data_checked=True,
                 )
             )
+
+
+def add_flag(
+    engine: Engine, player_fpl_id: int, status: str, news: str, observed_at: datetime
+) -> None:
+    with Session(engine) as session, session.begin():
+        session.add(
+            PlayerFlagChange(
+                season=SEASON,
+                player_fpl_id=player_fpl_id,
+                status=status,
+                news=news,
+                observed_at=observed_at,
+            )
+        )
 
 
 def add_claim(

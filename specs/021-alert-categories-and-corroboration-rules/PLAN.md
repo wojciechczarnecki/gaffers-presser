@@ -275,13 +275,13 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
       - Then change `GradeRules` and `grade` as in Design §3.
       Automatic verification: `cd backend && uv run pytest -q tests/corroboration/test_rules.py`
 
-- [ ] 3. The pure anchor and reversal rules, and the flag history (AC3, AC5). Files:
+- [x] 3. The pure anchor and reversal rules, and the flag history (AC3, AC5). Files:
       `app/corroboration/schemas.py` (`FlagState`), `app/corroboration/rules.py` (`flag_at`,
       `reversed_claim`, `AnchorChoice`, `choose_anchor`; remove `reverses`, `reversal` and
       `REVERSED_TYPES`), `app/corroboration/sources.py` (`flag_history`),
       `tests/corroboration/helpers.py` (a new `add_flag(engine, player_fpl_id, status, news,
       observed_at)` that inserts a `PlayerFlagChange` row), `tests/corroboration/test_rules.py`,
-      `tests/corroboration/test_sources.py`.
+      `tests/corroboration/test_sources.py`. `iterations: 0`
       - Tests first (run them and see them fail before the product change), in `test_rules.py`. Replace `test_reverses`,
         `test_a_line_up_claim_after_the_bad_news_leaves_nothing_to_reverse`,
         `test_reversal_*` and
@@ -318,13 +318,13 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
         step 4 is green.
       Automatic verification: `cd backend && uv run pytest -q tests/corroboration/test_rules.py tests/corroboration/test_sources.py`
 
-- [ ] 4. `corroborate` chooses the anchor first and runs the judge once, and the judge counts
+- [x] 4. `corroborate` chooses the anchor first and runs the judge once, and the judge counts
       only as a contradiction (AC3, AC4, AC5, AC7, AC9, AC13). Files:
       `app/corroboration/service.py`, `app/corroboration/schemas.py` (`Corroboration`:
       `reversed_post`, `reversed_flag` and the `reversal` property), `tests/corroboration/test_service.py`,
       `tests/alerts/helpers.py` (`corroboration(...)` takes `reversed_post: Citation | None` and
       `reversed_flag: FlagState | None` instead of `reversal: bool`; `full_report` passes a
-      reversed post).
+      reversed post). `iterations: 2`
       - Tests first (run them and see them fail before the product change), in `test_service.py`:
         - Rewrite `test_available_anchor_when_a_judged_older_post_contradicts` →
           `test_reversal_judged_older_contradiction_alone_is_none`. With no flag the

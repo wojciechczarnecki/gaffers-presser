@@ -80,7 +80,7 @@ def test_digest_covers_previous_deadline_to_slot_with_full_corroboration(db):
     add_claim(db, 3, SAKA, "out", created_at=NOW - timedelta(hours=2), author="a3")
     add_claim(db, 4, SAKA, "out", created_at=NOW + timedelta(minutes=5), author="after")
     add_tweet(db, 10, "Saka is out for weeks", created_at=NOW - timedelta(hours=1), author="j1")
-    corroboration, fake = scripted_corroboration("supports")
+    corroboration, fake = scripted_corroboration("contradicts")
     runtime, channel, clock = setup(db, corroboration)
 
     assert run_slot(db, runtime, REAL, 0, clock) == "sent"

@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.corroboration.schemas import (
     Claim,
+    FlagState,
     Freshness,
     Grade,
     Label,
@@ -34,7 +35,6 @@ class AccountCounts:
 DEFAULT_RULES = GradeRules()
 _AVAILABILITY = {"out", "doubt", "benched"}
 _ABSENCES = ("out", "doubt")
-REVERSED_TYPES = _ABSENCES
 _LEVELS = ("low", "medium", "high")
 
 
@@ -52,23 +52,54 @@ def label_claim(anchor_type: str, claim_type: str) -> Label:
     return "related"
 
 
-def reverses(candidate: Claim, claims: Sequence[Claim], judged: Sequence[LabelledPost]) -> bool:
-    mark = (candidate.post.created_at, candidate.post.x_id)
+def _claim_key(claim: Claim) -> tuple[datetime, int]:
+    return (claim.post.created_at, claim.post.x_id)
 
-    def older(post: PostRef) -> bool:
-        return (post.created_at, post.x_id) < mark
 
-    # the newest older news decides: a line-up claim after the bad news has already turned it
-    older_news = [
-        ((c.post.created_at, c.post.x_id), c.event_type in REVERSED_TYPES)
-        for c in claims
-        if c.event_type != "available" and older(c.post)
-    ] + [
-        ((item.post.created_at, item.post.x_id), True)
-        for item in judged
-        if item.label == "contradicts" and older(item.post)
-    ]
-    return bool(older_news) and max(older_news)[1]
+def flag_at(flags: Sequence[FlagState], moment: datetime) -> FlagState | None:
+    seen = [flag for flag in flags if flag.observed_at <= moment]
+    return max(seen, key=lambda flag: flag.observed_at, default=None)
+
+
+def reversed_claim(anchor: Claim, claims: Sequence[Claim]) -> Claim | None:
+    older = [claim for claim in claims if _claim_key(claim) < _claim_key(anchor)]
+    if not older:
+        return None
+    newest = max(older, key=_claim_key)
+    if label_claim(anchor.event_type, newest.event_type) == "contradicts":
+        return newest
+    return None
+
+
+@dataclass(frozen=True)
+class AnchorChoice:
+    anchor: Claim
+    reversed_claim: Claim | None = None
+    reversed_flag: FlagState | None = None
+
+
+def choose_anchor(
+    claims: Sequence[Claim], flags: Sequence[FlagState], anchor_x_id: int | None = None
+) -> AnchorChoice | None:
+    if not claims:
+        return None
+    newest = max(claims, key=_claim_key)
+    candidate = next((c for c in claims if c.post.x_id == anchor_x_id), None) or newest
+    if candidate.event_type != "available":
+        return AnchorChoice(candidate, reversed_claim(candidate, claims))
+    if candidate is newest:
+        earlier = reversed_claim(candidate, claims)
+        flag = flag_at(flags, candidate.post.created_at)
+        flagged = flag if flag is not None and flag.status != "a" else None
+        if earlier is not None or flagged is not None:
+            return AnchorChoice(candidate, earlier, None if earlier is not None else flagged)
+    others = [claim for claim in claims if claim.event_type != "available"]
+    if not others:
+        return None
+    fallback = max(others, key=_claim_key)
+    if label_claim("available", fallback.event_type) == "contradicts":
+        return None
+    return AnchorChoice(fallback, reversed_claim(fallback, claims))
 
 
 def account_of(post: PostRef) -> str:
@@ -107,10 +138,6 @@ def count_accounts(labelled: Sequence[LabelledPost], anchor: PostRef) -> Account
 
 def freshness(created_at: datetime, new_since: datetime) -> Freshness:
     return "new" if created_at > new_since else "context"
-
-
-def reversal(contradicting: Sequence[LabelledPost], anchor: PostRef) -> bool:
-    return any(item.post.created_at < anchor.created_at for item in contradicting)
 
 
 def newer_contradiction(contradicting: Sequence[LabelledPost], anchor: PostRef) -> bool:

@@ -6,16 +6,17 @@ import pytest
 from app.corroboration.rules import (
     GradeRules,
     account_of,
+    choose_anchor,
     count_accounts,
     counted_account,
+    flag_at,
     freshness,
     grade,
     label_claim,
     newer_contradiction,
-    reversal,
-    reverses,
+    reversed_claim,
 )
-from app.corroboration.schemas import Claim, LabelledPost, PostRef
+from app.corroboration.schemas import Claim, FlagState, LabelledPost, PostRef
 
 T0 = datetime(2026, 9, 28, 12, 0, tzinfo=UTC)
 TYPES = ("out", "doubt", "benched", "confirmed_starter", "available")
@@ -140,10 +141,9 @@ def test_accounts_the_anchor_account_never_contradicts():
     assert [c.post.x_id for c in counts.contradicting] == [3]
 
 
-def test_accounts_the_anchor_accounts_own_reversal_sets_no_flag_and_no_lowering():
+def test_accounts_the_anchor_accounts_own_older_post_counts_on_neither_side():
     counts = count_accounts([_lab(1, "contradicts", "anchor_account", -30)], ANCHOR)
     assert counts.contradicting == []
-    assert reversal(counts.contradicting, ANCHOR) is False
     assert newer_contradiction(counts.contradicting, ANCHOR) is False
     result = grade(
         "confirmed", _supporters(1), counts.contradicting, False, T0 - timedelta(hours=1)
@@ -162,15 +162,6 @@ def test_freshness_strictly_after_new_since_is_new_and_equal_is_context():
     assert freshness(T0 + timedelta(seconds=1), T0) == "new"
     assert freshness(T0, T0) == "context"
     assert freshness(T0 - timedelta(seconds=1), T0) == "context"
-
-
-def test_reversal_an_older_contradicting_account_sets_it():
-    assert reversal([_lab(1, "contradicts", "x", -1)], ANCHOR) is True
-
-
-def test_reversal_a_newer_contradiction_alone_does_not():
-    assert reversal([_lab(1, "contradicts", "x", 5, origin="judge")], ANCHOR) is False
-    assert reversal([], ANCHOR) is False
 
 
 def test_newer_contradiction_only_judged_posts_newer_than_the_anchor():
@@ -387,23 +378,122 @@ def _claim(x_id, event_type, minutes, author="a") -> Claim:
 CANDIDATE = _claim(50, "available", 0, "fit_account")
 
 
-def test_reverses():
-    assert reverses(CANDIDATE, [_claim(1, "out", -10)], []) is True
-    assert reverses(CANDIDATE, [_claim(2, "doubt", -5, "fit_account")], []) is True
-    assert reverses(CANDIDATE, [], [_lab(3, "contradicts", "j", -5, origin="judge")]) is True
-    assert reverses(CANDIDATE, [_claim(4, "out", 10)], []) is False
-    assert reverses(CANDIDATE, [_claim(5, "confirmed_starter", -10)], []) is False
-    assert reverses(CANDIDATE, [_claim(6, "available", -10)], []) is False
-    assert reverses(CANDIDATE, [], [_lab(7, "supports", "j", -5, origin="judge")]) is False
-    assert reverses(CANDIDATE, [], [_lab(8, "contradicts", "j", 5, origin="judge")]) is False
+def _flag(status, minutes, news="") -> FlagState:
+    return FlagState(status, news, T0 + timedelta(minutes=minutes))
 
 
-def test_a_line_up_claim_after_the_bad_news_leaves_nothing_to_reverse():
-    out, starter = _claim(1, "out", -10), _claim(2, "confirmed_starter", -5)
-    assert reverses(CANDIDATE, [out, starter], []) is False
-    assert reverses(CANDIDATE, [_claim(3, "benched", -10), _claim(4, "doubt", -5)], []) is True
-    assert reverses(CANDIDATE, [out, _claim(5, "available", -3)], []) is True
-    judged_after = [_lab(6, "contradicts", "j", -3, origin="judge")]
-    assert reverses(CANDIDATE, [out, starter], judged_after) is True
-    judged_before = [_lab(7, "contradicts", "j", -8, origin="judge")]
-    assert reverses(CANDIDATE, [out, starter], judged_before) is False
+def test_reversed_claim_own_account_counts():
+    out = _claim(1, "out", -10, "fit_account")
+    assert reversed_claim(CANDIDATE, [out, CANDIDATE]) is out
+
+
+def test_reversed_claim_another_accounts_older_contradiction():
+    doubt = _claim(2, "doubt", -5, "other")
+    assert reversed_claim(CANDIDATE, [doubt, CANDIDATE]) is doubt
+
+
+def test_reversed_claim_a_newer_supporting_claim_ends_it():
+    out, available = _claim(1, "out", -10), _claim(2, "available", -5)
+    assert reversed_claim(CANDIDATE, [out, available, CANDIDATE]) is None
+    out_then_starter = [out, _claim(3, "confirmed_starter", -5)]
+    anchor = _claim(4, "out", 0)
+    assert reversed_claim(anchor, [*out_then_starter, anchor]) is out_then_starter[1]
+
+
+def test_reversed_claim_a_newer_contradiction_is_not_a_reversal():
+    assert reversed_claim(CANDIDATE, [CANDIDATE, _claim(4, "out", 10)]) is None
+    assert reversed_claim(CANDIDATE, [CANDIDATE]) is None
+
+
+def test_reversed_claim_benched_before_out():
+    benched = _claim(1, "benched", -10)
+    anchor = _claim(2, "out", 0)
+    assert reversed_claim(anchor, [benched, anchor]) is benched
+    assert reversed_claim(anchor, [_claim(3, "doubt", -10), anchor]) is None
+
+
+def test_flag_at_takes_the_latest_row_at_or_before_the_moment():
+    flags = [_flag("a", -100), _flag("d", -20, "knock"), _flag("a", 20)]
+    assert flag_at(flags, T0) == flags[1]
+    assert flag_at(flags, T0 + timedelta(minutes=20)) == flags[2]
+    assert flag_at(flags, T0 - timedelta(minutes=200)) is None
+    assert flag_at([], T0) is None
+
+
+def test_choose_anchor_available_by_reversed_news():
+    out = _claim(1, "out", -10)
+    choice = choose_anchor([out, CANDIDATE], [_flag("a", -100)])
+    assert choice.anchor is CANDIDATE
+    assert choice.reversed_claim is out
+    assert choice.reversed_flag is None
+
+
+def test_choose_anchor_available_by_a_non_a_flag():
+    flag = _flag("d", -30, "Hip injury")
+    choice = choose_anchor([CANDIDATE], [_flag("a", -100), flag])
+    assert choice.anchor is CANDIDATE
+    assert choice.reversed_claim is None
+    assert choice.reversed_flag is flag
+    # the flag is kept only without reversed news
+    with_news = choose_anchor([_claim(1, "out", -10), CANDIDATE], [flag])
+    assert with_news.reversed_claim is not None and with_news.reversed_flag is None
+
+
+@pytest.mark.parametrize("older_type", ["confirmed_starter", "benched"])
+def test_choose_anchor_available_with_an_a_flag_falls_back_to_a_starter_or_benched(older_type):
+    older = _claim(1, older_type, -10)
+    choice = choose_anchor([older, CANDIDATE], [_flag("a", -100)])
+    assert choice.anchor is older
+    assert choice.reversed_claim is None
+
+
+@pytest.mark.parametrize(
+    "types",
+    [
+        ["out", "available", "available"],
+        ["doubt", "available", "available"],
+        ["confirmed_starter", "out", "available", "available"],
+    ],
+)
+def test_choose_anchor_non_qualifying_available_never_falls_back_to_out_or_doubt(types):
+    claims = [_claim(i + 1, t, -10 * (len(types) - i - 1)) for i, t in enumerate(types)]
+    assert choose_anchor(claims, [_flag("a", -100)]) is None
+
+
+def test_choose_anchor_only_available_and_no_qualifying_flag_is_none():
+    assert choose_anchor([CANDIDATE], [_flag("a", -100)]) is None
+
+
+def test_choose_anchor_available_with_no_flag_row_does_not_qualify():
+    assert choose_anchor([CANDIDATE], []) is None
+
+
+def test_choose_anchor_a_flag_turned_a_before_the_post_is_none():
+    assert choose_anchor([CANDIDATE], [_flag("d", -60), _flag("a", -5)]) is None
+
+
+def test_choose_anchor_available_after_available_needs_the_flag():
+    first, second = _claim(1, "available", -10), _claim(2, "available", 0)
+    assert choose_anchor([first, second], [_flag("a", -100)]) is None
+    flagged = choose_anchor([first, second], [_flag("d", -100)])
+    assert flagged.anchor is second and flagged.reversed_flag is not None
+
+
+def test_choose_anchor_given_non_newest_available_falls_back():
+    starter = _claim(1, "confirmed_starter", -20)
+    available = _claim(2, "available", -10)
+    newest = _claim(3, "benched", 0)
+    choice = choose_anchor([starter, available, newest], [_flag("d", -100)], anchor_x_id=2)
+    assert choice.anchor is newest
+    with_out = [_claim(1, "out", -20), available, _claim(3, "out", 0)]
+    assert choose_anchor(with_out, [_flag("d", -100)], anchor_x_id=2) is None
+
+
+def test_choose_anchor_given_non_available_stays():
+    out, doubt = _claim(1, "out", -20), _claim(2, "doubt", -10)
+    newest = _claim(3, "out", 0)
+    choice = choose_anchor([out, doubt, newest], [], anchor_x_id=1)
+    assert choice.anchor is out
+    assert choice.reversed_claim is None
+    assert choose_anchor([out, doubt, newest], []).anchor is newest
+    assert choose_anchor([], []) is None

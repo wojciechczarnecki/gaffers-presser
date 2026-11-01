@@ -7,6 +7,7 @@ from app.corroboration.sources import (
     EMBED_TIMEOUT_SECONDS,
     MAX_JUDGED,
     claimed_post_ids,
+    flag_history,
     resolve_player,
     retrieval_candidates,
     sql_claims,
@@ -24,6 +25,7 @@ from tests.corroboration.helpers import (
     add_claim,
     add_extraction,
     add_fixture,
+    add_flag,
     seed_reference,
 )
 from tests.retrieval.fakes import FakeEmbedder, RecordingTracer, SlowEmbedder
@@ -442,3 +444,16 @@ def test_claimed_post_ids_keep_a_stale_lineup(db):
     add_claim(db, 2, ISAK, "out", created_at=NOW - timedelta(hours=1), mention="Isak")
     with Session(db) as session:
         assert claimed_post_ids(session, SAKA_REF, NOW - timedelta(days=1), NOW) == {1}
+
+
+def test_flag_history_reads_rows_up_to_as_of_including_the_baseline(db):
+    seed_reference(db, {6: DEADLINE})
+    baseline = NOW - timedelta(days=30)
+    add_flag(db, SAKA, "a", "", baseline)
+    add_flag(db, SAKA, "d", "Hip injury", NOW - timedelta(hours=2))
+    add_flag(db, SAKA, "a", "", NOW + timedelta(hours=1))
+    add_flag(db, ISAK, "i", "Out", NOW - timedelta(hours=1))
+    with Session(db) as session:
+        history = flag_history(session, SAKA_REF, NOW)
+    assert [(f.status, f.news) for f in history] == [("a", ""), ("d", "Hip injury")]
+    assert history[0].observed_at == baseline
