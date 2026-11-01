@@ -440,8 +440,8 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
       - Then implement Design §6.
       Automatic verification: `cd backend && uv run pytest -q -n auto tests/extraction/test_store.py tests/alerts`
 
-- [ ] 9. Breaking alerts: the first-extraction rule and one shared anchor decision (AC12,
-      AC14). Files: `app/alerts/breaking.py`, `tests/alerts/test_breaking.py`.
+- [x] 9. Breaking alerts: the first-extraction rule and one shared anchor decision (AC12,
+      AC14). Files: `app/alerts/breaking.py`, `tests/alerts/test_breaking.py`. `iterations: 0`
       - Tests first (run them and see them fail before the product change):
         - `test_a_reextraction_in_the_breaking_window_sends_nothing`: a post about a listed
           player was first extracted before `since_extracted` with no event for him and
