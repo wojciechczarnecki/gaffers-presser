@@ -1,10 +1,15 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-11-01"
   - "spec-ready — 2026-11-01"
+  - "plan-draft — 2026-11-01"
 metrics:
   started_at: 2026-11-01T04:49
+  plan_steps: 10
+  escalations: 0
+  escalations_permission: 0
+  escalations_tooling: 0
 ---
 
 # SPEC 022 — Rests give no event, and a match check blind to the event types
