@@ -265,7 +265,7 @@ and `test_results_files.py` (the v3 block), `composition_problems_v3`, the
       Automatic verification: `cd backend && uv run pytest -q tests/extraction/evaluation -n auto`,
       then Verify.
 
-- [ ] 4. **Set v4 composition rules (AC5 code).** Files: `app/extraction/evaluation/cases.py`
+- [x] 4. **Set v4 composition rules (AC5 code).** `iterations: 0` Files: `app/extraction/evaluation/cases.py`
       (`composition_problems_v4(cases, snapshot, manifest, v2_ids, v3_ids)` and the constants
       of design item 5). `DEFAULT_SET_DIR` stays `v3` until step 6 (020 deviation:
       `tests/extraction/test_linking.py` reads the default set).

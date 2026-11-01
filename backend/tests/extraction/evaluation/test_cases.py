@@ -10,6 +10,7 @@ from app.extraction.evaluation.cases import (
     composition_problems,
     composition_problems_v2,
     composition_problems_v3,
+    composition_problems_v4,
     load_cases,
     write_cases,
 )
@@ -503,3 +504,123 @@ def test_legacy_composition_keeps_four_types():
     assert composition_problems(cases, SNAPSHOT) == []
     problems = composition_problems(cases, SNAPSHOT, ["out", "available"])
     assert any("0 available events" in p for p in problems)
+
+
+KROUPI = "2115825835525488887"
+MANZAMBI_DEV = "2116172084082602140"
+MANZAMBI_TEST = "2116226240323465435"
+TIPS = "2116448660980732008"
+REST_POST = "2116079251476611126"
+WRONG_TAG = "2115797596119740910"
+
+
+def v4_set():
+    cases, manifest, v2_ids = v3_set()
+    old = [
+        _case(
+            REST_POST,
+            author_handle="watched",
+            split="test",
+            tags=["other_match_absence"],
+            expected_events=[],
+        ),
+        _case(
+            WRONG_TAG,
+            author_handle="watched",
+            split="dev",
+            tags=[],
+            expected_events=[_event(1, "available", "likely")],
+        ),
+    ]
+    v3_ids = {c.id for c in cases} | {c.id for c in old}
+    new = [
+        _case(
+            KROUPI,
+            author_handle="watched",
+            split="test",
+            expected_events=[
+                ExpectedEvent(
+                    mention="Kroupi.Jr", fpl_id=1, event_type="benched", certainty="likely"
+                )
+            ],
+        ),
+        _case(MANZAMBI_DEV, author_handle="watched", split="dev"),
+        _case(MANZAMBI_TEST, author_handle="watched", split="test"),
+        _case(TIPS, author_handle="watched", split="test"),
+    ]
+    manifest.version = "v4"
+    return [*cases, *old, *new], manifest, v2_ids, v3_ids
+
+
+def _problems_v4(cases, manifest, v2_ids, v3_ids):
+    return composition_problems_v4(cases, SNAPSHOT, manifest, v2_ids, v3_ids)
+
+
+def _by_id(cases, case_id):
+    return next(c for c in cases if c.id == case_id)
+
+
+def test_composition_v4_accepts_a_valid_set():
+    assert _problems_v4(*v4_set()) == []
+
+
+def test_composition_v4_needs_every_v3_case():
+    cases, manifest, v2_ids, v3_ids = v4_set()
+    cases = [c for c in cases if c.id != "2300000000000000005"]
+    v3_ids = v3_ids | {"2300000000000000005"}
+    assert any("v3 cases missing" in p for p in _problems_v4(cases, manifest, v2_ids, v3_ids))
+
+
+@pytest.mark.parametrize("case_id", [KROUPI, MANZAMBI_DEV, MANZAMBI_TEST, TIPS, REST_POST])
+def test_composition_v4_named_cases_present(case_id):
+    cases, manifest, v2_ids, v3_ids = v4_set()
+    cases = [c for c in cases if c.id != case_id]
+    problems = _problems_v4(cases, manifest, v2_ids, v3_ids - {case_id})
+    assert any(case_id in p and "missing" in p for p in problems)
+
+
+def test_composition_v4_kroupi_is_benched():
+    cases, manifest, v2_ids, v3_ids = v4_set()
+    kroupi = _by_id(cases, KROUPI)
+    kroupi.expected_events = [
+        ExpectedEvent(mention="Kroupi.Jr", fpl_id=1, event_type="out", certainty="likely")
+    ]
+    problems = _problems_v4(cases, manifest, v2_ids, v3_ids)
+    assert any(KROUPI in p for p in problems)
+    kroupi.expected_events = []
+    assert any(KROUPI in p for p in _problems_v4(cases, manifest, v2_ids, v3_ids))
+
+
+def test_composition_v4_tips_post_has_no_event():
+    cases, manifest, v2_ids, v3_ids = v4_set()
+    _by_id(cases, TIPS).expected_events = [_event(1, "doubt", "likely")]
+    assert any(TIPS in p for p in _problems_v4(cases, manifest, v2_ids, v3_ids))
+
+
+def test_composition_v4_rest_post_in_test_without_absence():
+    cases, manifest, v2_ids, v3_ids = v4_set()
+    rest = _by_id(cases, REST_POST)
+    rest.split = "dev"
+    assert any(
+        REST_POST in p and "test" in p for p in _problems_v4(cases, manifest, v2_ids, v3_ids)
+    )
+    rest.split = "test"
+    rest.tags = []
+    rest.expected_events = [_event(1, "out", "likely")]
+    assert any(REST_POST in p for p in _problems_v4(cases, manifest, v2_ids, v3_ids))
+
+
+def test_composition_v4_wrong_tag_removed():
+    cases, manifest, v2_ids, v3_ids = v4_set()
+    _by_id(cases, WRONG_TAG).tags = ["other_match_absence"]
+    assert any(WRONG_TAG in p and "tag" in p for p in _problems_v4(cases, manifest, v2_ids, v3_ids))
+
+
+def test_composition_v4_keeps_the_v3_rules():
+    cases, manifest, v2_ids, v3_ids = v4_set()
+    tagged = next(c for c in cases if "other_match_absence" in c.tags)
+    tagged.expected_events = [_event(1, "out", "likely")]
+    assert any(
+        tagged.id in p and "no out or doubt" in p
+        for p in _problems_v4(cases, manifest, v2_ids, v3_ids)
+    )

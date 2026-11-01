@@ -307,3 +307,60 @@ def composition_problems_v3(
             problems.append(f"case {case.id}: author is not on the watched list")
 
     return problems
+
+
+KROUPI_CASE = "2115825835525488887"
+TIPS_CASE = "2116448660980732008"
+REST_POST_CASE = "2116079251476611126"
+WRONG_TAG_CASE = "2115797596119740910"
+SPEC_022_CASES = (
+    KROUPI_CASE,
+    "2116172084082602140",
+    "2116226240323465435",
+    TIPS_CASE,
+    REST_POST_CASE,
+)
+
+
+def composition_problems_v4(
+    cases: Sequence[EvalCase],
+    snapshot: Sequence[PlayerRecord],
+    manifest: "SetManifest",
+    v2_ids: Collection[str],
+    v3_ids: Collection[str],
+) -> list[str]:
+    problems = composition_problems_v3(cases, snapshot, manifest, v2_ids)
+    by_id = {case.id: case for case in cases}
+
+    missing = sorted(set(v3_ids) - set(by_id))
+    if missing:
+        problems.append(f"v3 cases missing from v4: {', '.join(missing)}")
+
+    for case_id in SPEC_022_CASES:
+        if case_id not in by_id:
+            problems.append(f"spec 022 case {case_id} is missing")
+
+    kroupi = by_id.get(KROUPI_CASE)
+    if kroupi is not None:
+        events = [e for e in kroupi.expected_events if "kroupi" in e.mention.casefold()]
+        if not any(e.event_type == "benched" for e in events):
+            problems.append(f"case {KROUPI_CASE} needs a benched event for Kroupi")
+        if any(e.event_type in ABSENCE_TYPES for e in events):
+            problems.append(f"case {KROUPI_CASE} must have no out or doubt event for Kroupi")
+
+    tips = by_id.get(TIPS_CASE)
+    if tips is not None and tips.expected_events:
+        problems.append(f"case {TIPS_CASE} must have no expected events")
+
+    rest = by_id.get(REST_POST_CASE)
+    if rest is not None:
+        if rest.split != "test":
+            problems.append(f"case {REST_POST_CASE} must stay in the test split")
+        if any(e.event_type in ABSENCE_TYPES for e in rest.expected_events):
+            problems.append(f"case {REST_POST_CASE} must have no out or doubt event")
+
+    wrong = by_id.get(WRONG_TAG_CASE)
+    if wrong is not None and "other_match_absence" in wrong.tags:
+        problems.append(f"case {WRONG_TAG_CASE} must not carry the other_match_absence tag")
+
+    return problems
