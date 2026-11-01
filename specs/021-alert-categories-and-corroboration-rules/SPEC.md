@@ -19,6 +19,9 @@ metrics:
   implement_iterations: 4
   deviations_minor: 5
   deviations_major: 0
+  final_review_blockers: 0
+  final_review_worth_fixing: 2
+  final_review_nits: 5
 ---
 
 # SPEC 021 — Alert categories and simpler corroboration rules

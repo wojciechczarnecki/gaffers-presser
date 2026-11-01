@@ -680,3 +680,47 @@ _(filled in by /pipeline:implement — one entry per deviation, with its rationa
 ## Final review
 
 _(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_
+
+Final review of 2026-11-01 (report mode, three perspectives as separate subagents). The
+compliance and quality perspectives reported in full. The tests perspective had not reported
+when the stage had to hand back, so its mutation results are missing. The test gaps below were
+found by the other two perspectives and checked by the reviewer in the code.
+
+AC → evidence matrix:
+
+| AC | Evidence | Status |
+|---|---|---|
+| AC1 | `alert_email.toml` `[category]`; `render.py` `_summary_items`, `_render_text`, `_render_card`, `_render_html`; `test_render.py::test_one_category_name_in_header_counter_and_card`, `test_alert_email.py::test_template_file_is_valid_toml_with_every_vocabulary` | full |
+| AC2 | `[palette.available]` `#84cc16`; `test_gotowy_and_zagra_accents_differ_and_are_not_blue` | full |
+| AC3 | `rules.py` `choose_anchor`, `flag_at`; `sources.py` `flag_history`; `test_rules.py::test_choose_anchor_*`, `test_service.py::test_available_anchor_by_*`, `test_available_with_an_a_flag_and_no_news_has_no_card`, `test_a_flag_turned_a_before_the_post_gives_no_card`, `test_an_available_chain_after_out_with_an_a_flag_has_no_card` | full |
+| AC4 | `AnchorChoice.reversed_flag`; `render.py` `_card`; `test_flag_reversal_line_shows_the_flag_news`, `test_breaking.py::test_flagged_available_post_breaks` | full |
+| AC5 | `rules.py` `reversed_claim`; `test_service.py::test_reversal_*`, `test_rules.py::test_reversed_claim_*` | full |
+| AC6 | `render.py` `_card`, `_reversal_lines`, `_reversal_html`; `test_reversal_line_names_the_post_and_it_is_not_listed_again`, `test_end_to_end.py::test_palmer_shaped_reversal_is_a_gotowy_do_gry_card` | full (F1, F5) |
+| AC7 | `count_accounts` unchanged; `test_accounts_the_anchor_account_never_contradicts`, `test_reversal_own_account_changes_story` | full |
+| AC8 | `label_claim`; `test_rules.py::test_label_table` (25 pairs) | full |
+| AC9 | `service.py` keeps only judged `contradicts`; `test_a_judged_support_adds_no_account`, `test_a_judged_contradiction_still_lowers_the_grade`, `test_slots.py::test_a_judged_support_is_not_an_included_post` | full |
+| AC10 | `GradeRules.confirmed_high_min_supporting`, `grade`; `test_rules.py::test_grade_*` | full |
+| AC11 | `extraction/store.py` `first_extractions`; `alerts/service.py` `Newness`; `test_slots.py::test_a_reextracted_old_post_is_not_new`, `test_a_late_ingested_post_first_extracted_after_the_digest_is_new`, `test_a_failed_then_retried_extraction_after_the_digest_is_new`; `test_store.py::test_first_extractions_*` | full |
+| AC12 | `breaking.py` `_candidates`; `test_a_reextraction_in_the_breaking_window_sends_nothing` | full |
+| AC13 | `choose_anchor` before retrieval, one `_judge_candidates` call; `test_one_judge_pass_for_a_non_reversing_available`, `test_no_anchor_runs_no_retrieval` | full |
+| AC14 | `available_only` removed, the trigger-is-anchor check; `test_reversing_available_post_breaks`, `test_flagged_available_post_breaks`, `test_an_available_post_about_a_player_with_no_other_claim_sends_nothing` | full (F3) |
+| AC15 | DECISIONS: six 2026-11-01 rows and eight prefixed rows; PROJECT FR-2.2, ROADMAP, BACKLOG #58/#59; `tests/test_docs.py` | full |
+| AC16 | manual, the owner's preview after the merge | manual |
+
+The steps, the five deviations and the owner decisions (B1 included) check out. Nothing
+outside the scope got into the branch.
+
+Findings:
+
+- **F1** `worth-fixing` — `backend/app/alerts/render.py:120` — the reversed post's `Source` is built with `frozenset()` as `marked`, so it is never shown as new: in a news alert where both the `out` post and the reversing `available` post arrived since the last alert, `included_rows` records the reversed post as `new`, but its "⚠️ Wcześniej:" line has no new mark, unlike every other new source — pass the report's new ids as `marked` and render the new mark in `note.reversed_post` and `html.reversed_post`.
+- **F2** `worth-fixing` — `backend/app/alerts/service.py:86` (`shown_x_ids`, used by `included_rows` and breaking's rows) — no test proves that the reversed post is recorded as an included post; for an own-account reversal it is in neither `supporting` nor `contradicting`, so a regression would bring the old `out` post back as new in the next news alert unnoticed — add a slot test and a breaking test asserting the reversed post's `x_id` is in the recorded `alert_post` rows with the right freshness.
+- **F3** `nit` — `backend/tests/alerts/test_breaking.py:335` (`test_reversing_available_post_breaks`) — it asserts only the category name, not the "⚠️ Wcześniej: @account…" line of the breaking e-mail; a breaking render that drops the line stays green — assert the formatted `note.reversed_post` line.
+- **F4** `nit` — `backend/app/corroboration/rules.py:59` (`flag_at`) — `max` by `observed_at` returns the first of tied rows; `flag_history` orders by `(observed_at, id)`, so a baseline and a change row with the same `observed_at` give the older status — take the last row of the sorted, filtered list.
+- **F5** `nit` — `backend/app/content/alert_email.toml` `[note] reversed_post` with `POST_TIME` — AC6 asks for "@account, <day time>: <link>"; the line renders "31.10 11:00" with no weekday, though a `day_time` format exists — use `day_time`, or keep the source-line form and align the DECISIONS wording.
+- **F6** `nit` — `backend/app/corroboration/cli.py:120` — when `choose_anchor` gives no anchor through the B1 fallback, the corroboration CLI prints "No claim about this player in the window." although claims exist, and `NO_REVERSAL_REASON` is never shown — print `result.retrieval.skipped_reason` when the anchor is `None`.
+- **F7** `nit` — `specs/021-alert-categories-and-corroboration-rules/PLAN.md:548` — the manual check says Kroupi.Jr shows the `benched` accounts under "Zaprzecza" **or** a "⚠️ Wcześniej:" line, while AC16 says **and** — change "or" to "and".
+
+Rejected: none. Noted for the owner, not a finding: under AC11 a judged post first extracted
+before the previous alert is "context" even if no alert showed it, as the AC states.
+
+Left out: 6 nit findings
