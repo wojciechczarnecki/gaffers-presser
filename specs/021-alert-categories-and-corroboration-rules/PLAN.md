@@ -481,8 +481,8 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
         - BACKLOG: amend #58 and #59.
       Automatic verification: `cd backend && uv run pytest -q tests/test_docs.py`
 
-- [ ] 11. Full verification and the end-to-end check below. Tick the Definition of Done.
-      No files beyond this PLAN.
+- [x] 11. Full verification and the end-to-end check below. Tick the Definition of Done.
+      No files beyond this PLAN. `iterations: 0`
       Automatic verification: `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto`
 
 ## Risks and traps
@@ -555,12 +555,14 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/PROJECT.md` and `docs/BACKLOG.md`
+- [x] all steps ticked
+- [x] `cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto` fully green (2607 passed)
+- [x] end-to-end verification (automatic) performed, result recorded here: the full suite is green,
+      and `tests/alerts/test_end_to_end.py`, `test_slots.py`, `test_breaking.py` cover a digest, a
+      news alert, breaking, a reversal card, a re-extracted post and a flagged `available` post
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/PROJECT.md` and `docs/BACKLOG.md`
       updated (step 10)
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -668,6 +670,12 @@ Design §1, steps 3, 4 and 10, and every AC has a step and a proving test that r
 ## Deviations
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+
+- `minor` — Existing tests that encoded the old rules were adjusted beyond the files the plan names, as the rules changed under them: `test_the_grade_follows_the_anchor_certainty` (a lone `confirmed` anchor is now medium) in `tests/corroboration/test_service.py`; `tests/corroboration/test_cli.py` (reversal is the newest older claim; a judged `supports` is no longer shown); `test_digest_covers_previous_deadline_to_slot_with_full_corroboration` in `tests/alerts/test_slots.py` (the scripted judge says `contradicts`, the only label that now shows).
+- `minor` — Steps 3 and 4: the product code was written before the new tests, so those tests were not seen red first; they were checked against the finished code and each asserts the AC behaviour of its name. Steps 1, 2, 6, 7, 8 (reextracted-post test) and 9 (reextraction test) were seen red first.
+- `minor` — `NO_REVERSAL_REASON` was reworded ("no claim qualifies as the anchor: an available claim reverses nothing"), because the skipped reason now also covers the narrower fallback.
+- `minor` — `included_rows` in `app/alerts/service.py` now uses `shown_x_ids`, so the reversed post named on a card is recorded as context (plan step 8 asked for it in `shown_x_ids`; the slot-alert rows needed the same set).
+- `minor` — A given `available` anchor that is not the newest claim, with a newer `out`, now gives no anchor (the shared narrower fallback of owner decision B1); the old test `test_a_given_older_available_anchor_with_a_newer_out_is_replaced` became `..._gives_no_anchor`.
 
 ## Final review
 

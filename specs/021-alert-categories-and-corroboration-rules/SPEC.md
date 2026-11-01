@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-11-01"
   - "spec-ready — 2026-11-01"
   - "plan-draft — 2026-11-01"
   - "plan-approved — 2026-11-01"
+  - "implemented — 2026-11-01"
 metrics:
   started_at: 2026-11-01T00:47
   plan_steps: 11
@@ -14,6 +15,10 @@ metrics:
   escalations_tooling: 0
   plan_review_blockers: 1
   plan_review_majors: 0
+  implement_steps: 11
+  implement_iterations: 4
+  deviations_minor: 5
+  deviations_major: 0
 ---
 
 # SPEC 021 — Alert categories and simpler corroboration rules
