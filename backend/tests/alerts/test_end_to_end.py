@@ -200,7 +200,7 @@ def test_palmer_shaped_reversal_is_a_wraca_do_gry_card(db):
         start = window_start(session, NOW, None)
     expected = grade("confirmed", [], [_labelled(1, "a1"), _labelled(2, "a2")], False, start)
     assert template["grade"][expected.level] in text
-    assert expected.level == "medium"
+    assert expected.level == "low"
 
 
 def _labelled(x_id, author):

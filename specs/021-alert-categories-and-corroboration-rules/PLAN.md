@@ -253,8 +253,8 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
 
 ## Steps
 
-- [ ] 1. The label `benched` against `out` (AC8). Files: `app/corroboration/rules.py`,
-      `tests/corroboration/test_rules.py`.
+- [x] 1. The label `benched` against `out` (AC8). Files: `app/corroboration/rules.py`,
+      `tests/corroboration/test_rules.py`. `iterations: 0`
       - Test first. In `LABEL_TABLE`, set `out → benched` and `benched → out` to `C`, and
         leave `doubt`/`benched` as `R`. Run it and see it fail.
       - In `label_claim`, return `contradicts` for the pair `{"benched", "out"}` before the
@@ -263,8 +263,8 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
         contradiction candidates.
       Automatic verification: `cd backend && uv run pytest -q tests/corroboration/test_rules.py tests/corroboration/evaluation`
 
-- [ ] 2. The grade's top level needs two accounts (AC10). Files: `app/corroboration/rules.py`,
-      `tests/corroboration/test_rules.py`.
+- [x] 2. The grade's top level needs two accounts (AC10). Files: `app/corroboration/rules.py`,
+      `tests/corroboration/test_rules.py`. `iterations: 0`
       - Tests first (run them and see them fail before the product change). Rewrite `test_grade_confirmed_is_high` as
         `test_grade_confirmed_alone_is_medium`, the Evanilson shape. Add
         `test_grade_confirmed_with_one_supporting_account_is_high`. Keep the "two supporting

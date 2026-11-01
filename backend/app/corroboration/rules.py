@@ -20,6 +20,7 @@ def _full_credibility(account: str) -> float:
 class GradeRules:
     high_min_supporting: float = 2
     medium_min_supporting: float = 1
+    confirmed_high_min_supporting: float = 1
     credibility: Callable[[str], float] = field(default=_full_credibility)
 
 
@@ -44,6 +45,8 @@ def label_claim(anchor_type: str, claim_type: str) -> Label:
         other = claim_type if anchor_type == "available" else anchor_type
         return "contradicts" if other in _ABSENCES else "related"
     pair = {anchor_type, claim_type}
+    if pair == {"benched", "out"}:
+        return "contradicts"
     if "confirmed_starter" in pair and pair - {"confirmed_starter"} <= _AVAILABILITY:
         return "contradicts"
     return "related"
@@ -132,16 +135,22 @@ def grade(
     weight = sum(rules.credibility(counted_account(item.post, item.label)) for item in supporting)
     support = f"{_count(weight)} independent supporting account(s)"
     reasons: list[str] = []
-    if certainty == "confirmed" or weight >= rules.high_min_supporting:
+    confirmed = certainty == "confirmed"
+    high_by_weight = weight >= rules.high_min_supporting
+    high_by_confirmed = confirmed and weight >= rules.confirmed_high_min_supporting
+    if high_by_weight or high_by_confirmed:
         level = 2
-        if certainty == "confirmed":
-            reasons.append("the anchor's certainty is confirmed -> high")
-        if weight >= rules.high_min_supporting:
+        if high_by_confirmed:
+            reasons.append(
+                f"the anchor's certainty is confirmed and {support}, at least "
+                f"{_count(rules.confirmed_high_min_supporting)} -> high"
+            )
+        if high_by_weight:
             reasons.append(f"{support}, at least {_count(rules.high_min_supporting)} -> high")
-    elif certainty == "likely" or weight >= rules.medium_min_supporting:
+    elif confirmed or certainty == "likely" or weight >= rules.medium_min_supporting:
         level = 1
-        if certainty == "likely":
-            reasons.append("the anchor's certainty is likely -> medium")
+        if confirmed or certainty == "likely":
+            reasons.append(f"the anchor's certainty is {certainty} -> medium")
         if weight >= rules.medium_min_supporting:
             reasons.append(f"{support}, at least {_count(rules.medium_min_supporting)} -> medium")
     else:

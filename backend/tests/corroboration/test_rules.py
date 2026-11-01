@@ -50,9 +50,9 @@ ANCHOR = _post(100, "anchor_account", minutes=0)
 S, C, R = "supports", "contradicts", "related"
 # anchor type -> claim type -> label, written out so the table is not derived like the code
 LABEL_TABLE = {
-    "out": {"out": S, "doubt": R, "benched": R, "confirmed_starter": C, "available": C},
+    "out": {"out": S, "doubt": R, "benched": C, "confirmed_starter": C, "available": C},
     "doubt": {"out": R, "doubt": S, "benched": R, "confirmed_starter": C, "available": C},
-    "benched": {"out": R, "doubt": R, "benched": S, "confirmed_starter": C, "available": R},
+    "benched": {"out": C, "doubt": R, "benched": S, "confirmed_starter": C, "available": R},
     "confirmed_starter": {
         "out": C,
         "doubt": C,
@@ -145,9 +145,10 @@ def test_accounts_the_anchor_accounts_own_reversal_sets_no_flag_and_no_lowering(
     assert counts.contradicting == []
     assert reversal(counts.contradicting, ANCHOR) is False
     assert newer_contradiction(counts.contradicting, ANCHOR) is False
-    assert grade("confirmed", [], counts.contradicting, False, T0 - timedelta(hours=1)).level == (
-        "high"
+    result = grade(
+        "confirmed", _supporters(1), counts.contradicting, False, T0 - timedelta(hours=1)
     )
+    assert result.level == "high"
 
 
 def test_accounts_unrelated_posts_do_not_count_or_hide_earlier_ones():
@@ -190,8 +191,14 @@ def _grade(certainty, supporting=(), contradicting=(), newer=False, **kwargs):
     return grade(certainty, supporting, contradicting, newer, NEW_SINCE, **kwargs)
 
 
-def test_grade_confirmed_is_high():
+def test_grade_confirmed_alone_is_medium():
     result = _grade("confirmed")
+    assert result.level == "medium"
+    assert any("confirmed" in reason for reason in result.reasons)
+
+
+def test_grade_confirmed_with_one_supporting_account_is_high():
+    result = _grade("confirmed", _supporters(1))
     assert result.level == "high"
     assert any("confirmed" in reason for reason in result.reasons)
 
@@ -222,14 +229,14 @@ def test_grade_otherwise_is_low():
 
 def test_grade_a_new_contradicting_account_lowers_high_to_medium():
     contradicting = [_lab(20, "contradicts", "c", minutes=-10)]
-    result = grade("confirmed", [], contradicting, False, T0 - timedelta(minutes=30))
+    result = grade("confirmed", _supporters(1), contradicting, False, T0 - timedelta(minutes=30))
     assert result.level == "medium"
     assert any("contradicting account is new" in reason for reason in result.reasons)
 
 
 def test_grade_an_old_contradicting_account_does_not_lower():
     contradicting = [_lab(20, "contradicts", "c", minutes=-50)]
-    result = grade("confirmed", [], contradicting, False, T0 - timedelta(minutes=30))
+    result = grade("confirmed", _supporters(1), contradicting, False, T0 - timedelta(minutes=30))
     assert result.level == "high"
 
 
@@ -241,7 +248,7 @@ def test_grade_a_newer_contradiction_lowers_medium_to_low():
 
 def test_grade_both_lowering_conditions_lower_one_step_only():
     contradicting = [_lab(20, "contradicts", "c", minutes=-10)]
-    result = grade("confirmed", [], contradicting, True, T0 - timedelta(minutes=30))
+    result = grade("confirmed", _supporters(1), contradicting, True, T0 - timedelta(minutes=30))
     assert result.level == "medium"
     joined = " ".join(result.reasons)
     assert "contradicting account is new" in joined
@@ -262,9 +269,13 @@ def test_grade_a_custom_credibility_changes_the_supporting_sum():
 
 
 def test_grade_thresholds_are_named_parameters():
-    rules = GradeRules(high_min_supporting=3, medium_min_supporting=2)
+    rules = GradeRules(
+        high_min_supporting=3, medium_min_supporting=2, confirmed_high_min_supporting=2
+    )
     assert _grade("rumour", _supporters(2), rules=rules).level == "medium"
     assert _grade("rumour", _supporters(1), rules=rules).level == "low"
+    assert _grade("confirmed", _supporters(1), rules=rules).level == "medium"
+    assert _grade("confirmed", _supporters(2), rules=rules).level == "high"
 
 
 def test_supporting_quote_counts_as_quoted_author():

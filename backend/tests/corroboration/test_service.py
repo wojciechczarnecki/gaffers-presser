@@ -309,7 +309,8 @@ def test_the_grade_follows_the_anchor_certainty(db, certainty):
     add_claim(db, 1, SAKA, "out", certainty, created_at=NOW - timedelta(hours=1))
     result = _run(db, _runtime())
     assert (
-        result.grade.level == {"confirmed": "high", "likely": "medium", "rumour": "low"}[certainty]
+        result.grade.level
+        == {"confirmed": "medium", "likely": "medium", "rumour": "low"}[certainty]
     )
 
 
