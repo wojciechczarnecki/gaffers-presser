@@ -177,7 +177,7 @@ def test_one_simulated_deadline_and_one_rehearsal(db):
     assert len(set(channel.keys)) == len(channel.keys)
 
 
-def test_palmer_shaped_reversal_is_a_wraca_do_gry_card(db):
+def test_palmer_shaped_reversal_is_a_gotowy_do_gry_card(db):
     template = load_template()
     seed(db)
     add_claim(db, 1, SAKA, "out", "likely", created_at=NOW - minutes(300), author="a1")
@@ -194,8 +194,11 @@ def test_palmer_shaped_reversal_is_a_wraca_do_gry_card(db):
     assert template["category"]["out"] not in text
     assert "Saka (Arsenal) — " + template["category"]["available"] in text
     assert template["sources"]["contradicting"] in text
-    assert "https://x.com/a1/status/1" in text and "https://x.com/a2/status/2" in text
-    assert template["note"]["reversal"] in text
+    assert template["note"]["earlier"] + " @a2" in text
+    listed_under = text[text.index(template["sources"]["contradicting"]) :]
+    assert "https://x.com/a1/status/1" in listed_under
+    assert "https://x.com/a2/status/2" not in listed_under
+    assert text.count("https://x.com/a2/status/2") == 1
     with Session(db) as session:
         start = window_start(session, NOW, None)
     expected = grade("confirmed", [], [_labelled(1, "a1"), _labelled(2, "a2")], False, start)

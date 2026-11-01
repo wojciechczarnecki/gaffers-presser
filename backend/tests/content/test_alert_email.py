@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import timedelta
 
 from app.alerts.render import TEMPLATE_PATH, load_template, render_alert
+from app.corroboration.schemas import FlagState
 from tests.alerts.helpers import (
     AS_OF,
     citation,
@@ -92,6 +93,16 @@ def test_template_has_every_key_and_renders():
         listed(ISAK, claims=(200,)),
         replace(corroboration(ISAK, 200), anchor=None, grade=None),
     )
+    flag_news = report(
+        listed(ISAK, claims=(200,)),
+        corroboration(
+            ISAK, 200, event_type="available", reversed_flag=FlagState("d", "Knock", AS_OF)
+        ),
+    )
+    flag_bare = report(
+        listed(ISAK, claims=(200,)),
+        corroboration(ISAK, 200, event_type="available", reversed_flag=FlagState("d", "", AS_OF)),
+    )
     many = report(
         listed(ISAK, claims=(200,)),
         corroboration(ISAK, 200, supporting=[citation(201 + i, f"s{i}") for i in range(4)]),
@@ -101,7 +112,9 @@ def test_template_has_every_key_and_renders():
         render_alert("digest", deadline(rehearsal=True), AS_OF, [], recorder),
         render_alert("news", deadline(), AS_OF, [full_report()], recorder),
         render_alert("breaking", deadline(), AS_OF, [full_report()], recorder),
-        render_alert("news", deadline(), AS_OF, [*vocabulary, anchorless], recorder),
+        render_alert(
+            "news", deadline(), AS_OF, [*vocabulary, anchorless, flag_news, flag_bare], recorder
+        ),
         # ages: minutes, hours (marked new), yesterday, days
         render_alert(
             "digest", deadline(), AS_OF - timedelta(hours=1, minutes=10), [many], recorder

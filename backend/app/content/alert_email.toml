@@ -61,7 +61,10 @@ days = "{count} dni temu"
 fresh = "🆕 {age}"
 
 [note]
-reversal = "⚠️ Wcześniej pisano co innego — doniesienia się odwracają"
+earlier = "⚠️ Wcześniej:"
+reversed_post = "{earlier} @{account}, {time}: {url}"
+reversed_flag = "{earlier} flaga FPL — {news}"
+reversed_flag_no_news = "{earlier} flaga FPL"
 search_failed = "⚠️ Wyszukiwanie dodatkowych źródeł nie powiodło się, ocena opiera się tylko na znanych postach"
 
 [sources]
@@ -154,6 +157,7 @@ card = """<tr><td style="background:#ffffff;padding:4px 20px;">
 </td></tr></table>
 </td></tr>"""
 note = """<div style="font-size:13px;margin-top:4px;color:#b42318;">{text}</div>"""
+reversed_post = """<div style="font-size:13px;margin-top:4px;color:#b42318;">{earlier} {link}, {time}</div>"""
 sources = "{label}: {links}"
 source_link = """<a href="{url}" style="color:#37003c;{weight}">@{account}</a>"""
 new_weight = "font-weight:700;"

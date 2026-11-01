@@ -399,9 +399,9 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
         `_render_card`, `_render_html`).
       Automatic verification: `cd backend && uv run pytest -q tests/alerts tests/content/test_alert_email.py`
 
-- [ ] 7. The "⚠️ Wcześniej:" line (AC4, AC6). Files: `app/content/alert_email.toml`,
+- [x] 7. The "⚠️ Wcześniej:" line (AC4, AC6). Files: `app/content/alert_email.toml`,
       `app/alerts/render.py`, `tests/alerts/test_render.py`,
-      `tests/content/test_alert_email.py`, `tests/alerts/test_end_to_end.py`.
+      `tests/content/test_alert_email.py`, `tests/alerts/test_end_to_end.py`. `iterations: 0`
       - Tests first (run them and see them fail before the product change):
         - `test_reversal_line_names_the_post_and_it_is_not_listed_again`: the post is also in
           `contradicting`. The text and WhatsApp hold

@@ -8,7 +8,8 @@ from urllib.parse import parse_qs, urlsplit
 
 from app.alerts.render import age_text, load_template, plural_form, render_alert
 from app.alerts.schemas import ManagerRef
-from app.corroboration.schemas import Claim, Corroboration, RetrievalReport
+from app.core.local_time import WARSAW
+from app.corroboration.schemas import Claim, Corroboration, FlagState, RetrievalReport
 from tests.alerts.helpers import (
     AS_OF,
     POST_TIME,
@@ -29,6 +30,15 @@ ISAK = player_ref(2, "Isak", "Newcastle")
 PALMER = player_ref(3, "Palmer", "Chelsea")
 HALL = player_ref(4, "Hall", "Newcastle")
 KANE = player_ref(5, "Kane", "Tottenham")
+
+
+def reversed_line(account, x_id, created_at=POST_TIME):
+    return TEMPLATE["note"]["reversed_post"].format(
+        earlier=TEMPLATE["note"]["earlier"],
+        account=account,
+        time=created_at.astimezone(WARSAW).strftime("%d.%m %H:%M"),
+        url=f"https://x.com/{account}/status/{x_id}",
+    )
 
 
 def player_report(player, event_type="doubt", supporters=0, percent="10", level="medium", **kw):
@@ -63,7 +73,7 @@ def test_card_shows_the_news_grade_accounts_age_and_sources():
         )
     )
     assert details in text and details in message.html
-    assert TEMPLATE["note"]["reversal"] in text
+    assert reversed_line("earlier", 104) in text
     assert TEMPLATE["note"]["search_failed"] in text
     assert TEMPLATE["sources"]["contradicting"] in text
     for url in (
@@ -75,6 +85,72 @@ def test_card_shows_the_news_grade_accounts_age_and_sources():
         assert url in text and url in message.html
     # a repost names the original author, linked through the repost
     assert "@origin" in text and "@third" not in text
+
+
+def _reversal_report(contradicting, reversed_index=0, **kw):
+    cited = [citation(103 + i, name, label="contradicts") for i, name in enumerate(contradicting)]
+    return report(
+        listed(SAKA, claims=(100,)),
+        corroboration(
+            SAKA,
+            event_type="available",
+            contradicting=cited,
+            reversed_post=cited[reversed_index],
+            **kw,
+        ),
+    )
+
+
+def test_reversal_line_names_the_post_and_it_is_not_listed_again():
+    reports = [_reversal_report(["doubter", "other"])]
+    message = render_alert("digest", deadline(), AS_OF, reports)
+    line = reversed_line("doubter", 103)
+    whatsapp = share_text(message.html)
+    for part in (message.text, whatsapp):
+        assert line in part
+        assert part.index(line) < part.index(TEMPLATE["sources"]["one"] + ":")
+        listed_under = part[part.index(TEMPLATE["sources"]["contradicting"]) :]
+        assert "https://x.com/other/status/104" in listed_under
+        assert "https://x.com/doubter/status/103" not in listed_under
+    assert message.text.count("https://x.com/doubter/status/103") == 1
+    assert TEMPLATE["accounts"]["against"].format(count=2) in message.text
+    assert message.html.count("https://x.com/doubter/status/103") == 1
+    assert 'href="https://x.com/doubter/status/103"' in message.html
+    assert TEMPLATE["note"]["earlier"] in message.html
+
+
+def test_a_card_whose_only_contradicting_post_is_the_reversed_one_has_no_zaprzecza():
+    message = render_alert("digest", deadline(), AS_OF, [_reversal_report(["doubter"])])
+    assert reversed_line("doubter", 103) in message.text
+    assert TEMPLATE["accounts"]["against"].format(count=1) in message.text
+    assert TEMPLATE["sources"]["contradicting"] not in message.text
+    assert TEMPLATE["sources"]["contradicting"] not in message.html
+
+
+def test_flag_reversal_line_shows_the_flag_news():
+    flagged = FlagState("d", "Hip injury - 75% chance of playing", AS_OF)
+    bare = FlagState("d", "", AS_OF)
+    for state, expected in (
+        (
+            flagged,
+            TEMPLATE["note"]["reversed_flag"].format(
+                earlier=TEMPLATE["note"]["earlier"], news=flagged.news
+            ),
+        ),
+        (
+            bare,
+            TEMPLATE["note"]["reversed_flag_no_news"].format(earlier=TEMPLATE["note"]["earlier"]),
+        ),
+    ):
+        one = report(
+            listed(SAKA, claims=(100,)),
+            corroboration(SAKA, event_type="available", reversed_flag=state),
+        )
+        message = render_alert("digest", deadline(), AS_OF, [one])
+        assert expected in message.text
+        assert expected in message.html
+        assert expected in share_text(message.html)
+        assert TEMPLATE["sources"]["contradicting"] not in message.text
 
 
 def test_no_ownership_managers_certainty_or_new_marker_in_a_digest():
@@ -91,7 +167,7 @@ def test_notes_only_when_flagged():
         corroboration(SAKA),
     )
     text = render_alert("news", deadline(), AS_OF, [plain]).text
-    assert TEMPLATE["note"]["reversal"] not in text
+    assert TEMPLATE["note"]["earlier"] not in text
     assert TEMPLATE["note"]["search_failed"] not in text
     failed = report(listed(SAKA), corroboration(SAKA), search_failed=True)
     assert (
@@ -328,7 +404,7 @@ def test_share_button_carries_the_alert_as_whatsapp_text():
     assert (
         whatsapp["player"].format(name="Saka", club=club, event=TEMPLATE["category"]["out"]) in text
     )
-    assert TEMPLATE["note"]["reversal"] in text
+    assert reversed_line("earlier", 104) in text
     for url in (
         "https://x.com/anchoracct/status/100",
         "https://x.com/doubter/status/103",
