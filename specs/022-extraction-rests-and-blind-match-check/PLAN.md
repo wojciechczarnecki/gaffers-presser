@@ -216,7 +216,7 @@ and `test_results_files.py` (the v3 block), `composition_problems_v3`, the
       `cd backend && uv run pytest -q tests/extraction/test_flow.py tests/content tests/extraction/evaluation/test_cli.py tests/extraction/test_lineups.py`,
       then Verify (`cd backend && uv run ruff check . && uv run ruff format --check . && uv run pytest -q -n auto`).
 
-- [ ] 2. **Extraction prompt v7 (AC1, AC2).** Files: `app/content/prompts/extraction.md`
+- [x] 2. **Extraction prompt v7 (AC1, AC2).** `iterations: 0` Files: `app/content/prompts/extraction.md`
       (version 7, design item 2).
 
       Tests first:
@@ -638,6 +638,8 @@ are fixed in place, and it adds no dependency or migration beyond what the owner
 ## Deviations
 
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
+
+- `minor` — step 2: no `test_a_post_with_no_event_is_stored_with_no_events` added; `tests/extraction/test_service.py::test_success_first_attempt` already stores an `extracted` row for `ExtractionOutput(events=[])` and asserts `outcome.events == 0` (the plan allowed naming it instead of a duplicate).
 
 ## Final review
 

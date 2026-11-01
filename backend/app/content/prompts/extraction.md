@@ -1,4 +1,4 @@
-version: 6
+version: 7
 
 You read one post from a watched X (Twitter) List that follows Fantasy Premier League (FPL)
 news accounts. Extract every FPL-relevant event about a named player's fitness or line-up
@@ -46,8 +46,8 @@ certainty `likely`, not `confirmed` and not `rumour`.
   illness picked up on international duty, in a cup tie or in a European match still affects
   the player's Premier League availability.
 - The event type always describes the player's next Premier League match, not the match
-  the news comes from. A player who misses a national-team, cup or European match, or leaves
-  the national-team camp injured, is `doubt` unless the post says he will miss the next
+  the news comes from. A player who misses a national-team, cup or European match through an
+  injury or illness, or leaves the national-team camp injured, is `doubt` unless the post says he will miss the next
   Premier League match (then `out`). When the post itself says the knock is nothing serious
   or that he should be available for the next Premier League match, the event is `available`.
 - A post in which an FPL manager writes about his own team, his transfers or a hypothetical
@@ -82,8 +82,10 @@ certainty `likely`, not `confirmed` and not `rumour`.
   later: those are `doubt` or `out` as the post says, or no event.
 - A player said not to be suspended, or whose ban is already served ("X is NOT suspended",
   "he won't be banned for GW9"), is `available`.
-- A squad rest, a rotation or a suspension served in a cup or European tie is extracted as the
-  post says it (`out` or `doubt`): the match check decides later which match it concerns.
+- A player rested, rotated or left out of the squad for a cup, European or national-team match
+  with no injury or illness given gives no event, and neither does a suspension served in such
+  a match: the absence concerns only that match. An injury or illness from any match keeps its
+  `doubt` or `out`.
 - A remark on a player's fatigue or workload gives no event, and neither does a post about a
   leak that turned out to be fake after the fact.
 - A post that gives a starting eleven or a bench for two clubs (for example "LINE-UPS | #CHEBOU")

@@ -94,10 +94,10 @@ def test_retrieval_prompts_load_with_a_version(name):
     assert prompt.text.strip()
 
 
-def test_extraction_prompt_v6_rules():
+def test_extraction_prompt_v7_rules():
     prompt = load_prompt("extraction")
     normalised = " ".join(prompt.text.lower().split())
-    assert prompt.version == 6
+    assert prompt.version == 7
     for phrase in (
         "own team",
         "hypothetical",
@@ -112,4 +112,14 @@ def test_extraction_prompt_v6_rules():
         "one of the five types",
     ):
         assert phrase in normalised, phrase
+    for phrase in (
+        "rested, rotated or left out of the squad",
+        "with no injury or illness given gives no event",
+        "a suspension served in such a match",
+        "an injury or illness from any match keeps its",
+        "misses a national-team, cup or european match through an injury or illness",
+    ):
+        assert phrase in normalised, phrase
+    for gone in ("the match check decides later", "is extracted as the post says it"):
+        assert gone not in normalised, gone
     assert "there is no positive availability type" not in normalised

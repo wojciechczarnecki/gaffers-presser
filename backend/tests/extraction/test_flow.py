@@ -359,6 +359,16 @@ def test_available_event_passes_through_without_a_match_check():
     assert len(chat.received_messages) == 1
 
 
+def test_an_extraction_with_no_event_makes_no_match_check():
+    flow, chat = _checked_flow(ExtractionOutput(events=[]))
+
+    result = flow.run(POST)
+
+    assert result.events == []
+    assert result.llm_calls == 1
+    assert len(chat.received_messages) == 1
+
+
 def test_match_check_two_clubs_two_calls():
     flow, chat = _checked_flow(
         _lineup("Haaland", "J.Smith", "Jones"),
