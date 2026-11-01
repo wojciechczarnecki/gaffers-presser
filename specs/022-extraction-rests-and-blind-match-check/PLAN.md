@@ -565,6 +565,8 @@ and `test_results_files.py` (the v3 block), `composition_problems_v3`, the
 
 _(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
+- 2026-11-01 — implement — `decision` — AC5 names 2116172084082602140 (johntownley11) and 2116226240323465435 (fplsebv), whose authors are not on the watched list and which sit in the corpus only as quoted sources; add them as hand-built cases, replace them, or drop them? Also: the owner `review` of set v4 (AC6, 41 unreviewed cases) at step 6, and the missing `backend/.env` (OpenRouter key) for step 7 — Replace them with the watched quoting posts (FPL__Raptor 2116174660693836212, FPL_Salah 2116188146660409531, FPLMattW 2116265028458315935) and update AC5's named cases accordingly. The owner cannot review set v4 now: do everything that does not depend on the review (the step 6 parts and any later work that can run on unreviewed labels without spending the paid test runs), then stop with ESCALATE for the review before the paid runs whose results depend on the reviewed labels. The owner copies `backend/.env` into the worktree themselves.
+
 ## Review log
 
 Review of 2026-11-01 (plan-review, fresh context).
