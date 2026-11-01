@@ -419,11 +419,11 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
         in Design §5.
       Automatic verification: `cd backend && uv run pytest -q tests/alerts tests/content/test_alert_email.py`
 
-- [ ] 8. "New" follows the first successful extraction in slot alerts (AC9's included rows,
+- [x] 8. "New" follows the first successful extraction in slot alerts (AC9's included rows,
       AC11). Files: `app/extraction/store.py` (`first_extractions`),
       `app/alerts/service.py` (`Newness`; `build_slot_alert`, `corroborate_player`; and
       `shown_x_ids` gains `reversed_post`), `tests/extraction/test_store.py`,
-      `tests/alerts/test_slots.py`.
+      `tests/alerts/test_slots.py`. `iterations: 0`
       - Tests first (run them and see them fail before the product change):
         - `tests/extraction/test_store.py::test_first_extractions_take_the_earliest_success_and_skip_failures`
           and `…_empty_ids`.

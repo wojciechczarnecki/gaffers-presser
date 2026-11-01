@@ -142,6 +142,64 @@ def test_news_reports_only_players_with_unincluded_posts_and_marks_new(db):
     assert alert_posts(db, NEWS_KEY) == {(SAKA, 1): "context", (SAKA, 3): "new"}
 
 
+def test_a_reextracted_old_post_is_not_new(db):
+    seed(db)
+    add_claim(db, 1, None, created_at=NOW - timedelta(hours=3), author="a1")
+    runtime, channel, clock = setup(db)
+    run_slot(db, runtime, REAL, 0, clock)
+    # the owner re-extracts the window later: the old post now names Saka
+    add_extraction(db, 1, SAKA, "out", finished_at=NOW + timedelta(minutes=20))
+    clock.advance(timedelta(minutes=90))
+
+    assert run_slot(db, runtime, REAL, 1, clock) == "skipped"
+
+    assert len(channel.calls) == 1
+    assert alert_posts(db, NEWS_KEY) == {}
+
+
+def test_a_late_ingested_post_first_extracted_after_the_digest_is_new(db):
+    seed(db)
+    runtime, channel, clock = setup(db)
+    run_slot(db, runtime, REAL, 0, clock)
+    add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="a1", finished=1200)
+    clock.advance(timedelta(minutes=90))
+
+    assert run_slot(db, runtime, REAL, 1, clock) == "sent"
+
+    news = channel.calls[1].text
+    marked = [line for line in news.splitlines() if MARKER in line]
+    assert len(marked) == 1 and "status/1" in marked[0]
+    assert alert_posts(db, NEWS_KEY) == {(SAKA, 1): "new"}
+
+
+def test_a_failed_then_retried_extraction_after_the_digest_is_new(db):
+    seed(db)
+    add_tweet(db, 1, "Saka is out", created_at=NOW - timedelta(hours=3), author="a1")
+    add_extraction(db, 1, None, status="failed", finished_at=NOW - timedelta(hours=1))
+    runtime, channel, clock = setup(db)
+    run_slot(db, runtime, REAL, 0, clock)
+    add_extraction(db, 1, SAKA, "out", finished_at=NOW + timedelta(minutes=20))
+    clock.advance(timedelta(minutes=90))
+
+    assert run_slot(db, runtime, REAL, 1, clock) == "sent"
+
+    assert alert_posts(db, NEWS_KEY) == {(SAKA, 1): "new"}
+
+
+def test_a_judged_support_is_not_an_included_post(db):
+    seed(db)
+    add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="a1")
+    add_tweet(db, 10, "Saka tips: too early to say", created_at=NOW - timedelta(hours=1))
+    corroboration, fake = scripted_corroboration("supports")
+    runtime, channel, clock = setup(db, corroboration)
+
+    assert run_slot(db, runtime, REAL, 0, clock) == "sent"
+
+    assert len(fake.received_messages) == 1
+    assert alert_posts(db, DIGEST_KEY) == {(SAKA, 1): "new"}
+    assert "status/10" not in channel.calls[0].text
+
+
 def test_news_with_nothing_new_is_skipped(db):
     seed(db)
     add_claim(db, 1, SAKA, "out", created_at=NOW - timedelta(hours=3), author="a1")

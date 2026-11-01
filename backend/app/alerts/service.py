@@ -30,6 +30,7 @@ from app.corroboration.service import CorroborationRuntime, corroborate
 from app.delivery.channels.base import Message
 from app.delivery.service import DeliveryService
 from app.extraction.linking import load_aliases
+from app.extraction.store import first_extractions
 from app.fpl.calendar import current_season
 from app.fpl.deadlines import previous_gameweek_end, window_floor
 
@@ -85,11 +86,35 @@ def shown_x_ids(result: Corroboration) -> set[int]:
     shown = {c.x_id for c in result.supporting + result.contradicting}
     if result.anchor is not None:
         shown.add(result.anchor.post.x_id)
+    if result.reversed_post is not None:
+        shown.add(result.reversed_post.x_id)
     return shown
 
 
-def _is_new(origins: set[int], included: set[int]) -> bool:
-    return not origins & included
+@dataclass(frozen=True)
+class Newness:
+    included: set[int]
+    since: datetime | None
+    origins: dict[int, set[int]]
+    first_extracted: dict[int, datetime]
+
+    def is_new(self, x_id: int) -> bool:
+        if self.origins.get(x_id, {x_id}) & self.included:
+            return False
+        first = self.first_extracted.get(x_id)
+        # a post with no successful extraction is a judged one: it was never a re-extraction
+        return self.since is None or first is None or first > self.since
+
+    def with_posts(self, session: Session, x_ids: set[int]) -> "Newness":
+        origins_missing = [x for x in x_ids if x not in self.origins]
+        first_missing = [x for x in x_ids if x not in self.first_extracted]
+        if not origins_missing and not first_missing:
+            return self
+        return replace(
+            self,
+            origins={**self.origins, **post_origin_sets(session, origins_missing)},
+            first_extracted={**self.first_extracted, **first_extractions(session, first_missing)},
+        )
 
 
 def corroborate_player(
@@ -99,8 +124,7 @@ def corroborate_player(
     as_of: datetime,
     since: datetime,
     new_since: datetime | None,
-    included: set[int],
-    origins: dict[int, set[int]],
+    newness: Newness,
 ) -> PlayerReport:
     search_failed = False
     try:
@@ -117,15 +141,9 @@ def corroborate_player(
             runtime=sql_only_runtime(SEARCH_FAILED_REASON, runtime.tracer),
         )
     shown = shown_x_ids(result)
-    missing = [x_id for x_id in shown if x_id not in origins]
-    if missing:
-        with Session(engine) as session:
-            origins = {**origins, **post_origin_sets(session, missing)}
-    new_x_ids = frozenset(
-        x_id
-        for x_id in {*listed.claim_x_ids, *shown}
-        if _is_new(origins.get(x_id, {x_id}), included)
-    )
+    with Session(engine) as session:
+        newness = newness.with_posts(session, shown)
+    new_x_ids = frozenset(x_id for x_id in {*listed.claim_x_ids, *shown} if newness.is_new(x_id))
     return PlayerReport(listed, result, new_x_ids, search_failed)
 
 
@@ -136,9 +154,7 @@ def included_rows(reports: list[PlayerReport]) -> list[IncludedPost]:
             # a player with no card shows no post, so none of its posts is used up
             continue
         player = report.listed.player
-        shown = {
-            c.x_id for c in report.corroboration.supporting + report.corroboration.contradicting
-        }
+        shown = shown_x_ids(report.corroboration)
         for x_id in sorted({*report.listed.claim_x_ids, *shown}):
             freshness = "new" if x_id in report.new_x_ids else "context"
             rows.append(IncludedPost(player.season, player.fpl_id, x_id, freshness))
@@ -162,14 +178,15 @@ def build_slot_alert(
         start = alert_window_start(session, as_of, deadline, runtime.config)
         listed = listed_players(session, season, runtime.league_ids, start, as_of, runtime.config)
         all_claims = sorted({x for item in listed for x in item.claim_x_ids})
-        origins = post_origin_sets(session, all_claims)
+        newness = Newness(
+            included,
+            new_since,
+            post_origin_sets(session, all_claims),
+            first_extractions(session, all_claims),
+        )
 
     if kind == "news":
-        listed = [
-            item
-            for item in listed
-            if any(_is_new(origins.get(x, {x}), included) for x in item.claim_x_ids)
-        ]
+        listed = [item for item in listed if any(newness.is_new(x) for x in item.claim_x_ids)]
         if not listed:
             return SlotDraft(kind, as_of, None, [], [])
 
@@ -183,8 +200,7 @@ def build_slot_alert(
         as_of=as_of,
         since=start,
         new_since=new_since,
-        included=included,
-        origins=origins,
+        newness=newness,
     )
 
     def corroborate_unless_stopped(item: ListedPlayer) -> PlayerReport:
