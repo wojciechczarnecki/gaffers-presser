@@ -6,7 +6,9 @@
   chooses the anchor first, from SQL claims and FPL flags only, with one shared function. It
   then runs retrieval and the judge once, against the final anchor. One function finds the
   reversal: the newest older SQL claim, from any account, if it contradicts the anchor; for an
-  `available` anchor, a non-`a` FPL flag at the post's time also counts. The judge counts only
+  `available` anchor, a non-`a` FPL flag at the post's time also counts. An `available` that
+  qualifies by neither falls back only to an older `benched` or starter claim, never to
+  `out`/`doubt`; otherwise the player gets no card (owner decision B1). The judge counts only
   when it says `contradicts`. ●●● needs two accounts. The label table gets `benched`/`out`.
   Alerts get one name per category, a lime accent for "🟢 Gotowy do gry" and a
   "⚠️ Wcześniej:" line. "New" now also needs the post's first successful extraction to finish
@@ -103,11 +105,17 @@ class AnchorChoice:
     then carries that flag, and the flag is kept only when (a) found nothing (AC4). No flag
     row at or before the post (`flag_at` returns `None`) does not qualify: (b) needs a
     recorded non-`a` status.
-- Otherwise the anchor is the newest claim that is not `available`, with its
-  `reversed_claim`. With no such claim the result is `None`: no card.
+- Otherwise (the narrower fallback, owner decision B1 of 2026-11-01) take the newest claim
+  that is not `available`. It is the anchor, with its `reversed_claim`, only when the
+  `available` candidate does not contradict it, i.e.
+  `label_claim("available", it.event_type) != "contradicts"` (`benched` or
+  `confirmed_starter`). When it is `out` or `doubt`, or there is no such claim, the result is
+  `None`: no card. The fallback never skips past a newer `out`/`doubt` to an older claim.
 
 "The newest older claim" is literal (AC5). An `available` that follows another `available`
-reverses nothing: the older one supports it. It then qualifies only through the flag.
+reverses nothing: the older one supports it. It then qualifies only through the flag. So
+`out` → `available` → `available` with the flag already `a` gives no card, never a
+"🔴 Nie zagra" card that the two newest posts contradict.
 
 `FlagState(status, news, observed_at)` goes into `app/corroboration/schemas.py`. The new
 `flag_history(session, player, as_of)` in `app/corroboration/sources.py` reads the player's
@@ -228,7 +236,7 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
 |----|-------|--------------|
 | AC1 | 6 | `tests/alerts/test_render.py::test_one_category_name_in_header_counter_and_card` (plain text, HTML, WhatsApp); `tests/content/test_alert_email.py::test_template_file_is_valid_toml_with_every_vocabulary` |
 | AC2 | 6 | `tests/alerts/test_render.py::test_gotowy_and_zagra_accents_differ_and_are_not_blue` |
-| AC3 | 3, 4 | `tests/corroboration/test_rules.py::test_choose_anchor_*`; `tests/corroboration/test_service.py::test_available_anchor_by_reversed_news`, `…_by_a_non_a_flag_without_news`, `test_available_with_an_a_flag_and_no_news_has_no_card`, `test_a_flag_turned_a_before_the_post_gives_no_card` |
+| AC3 | 3, 4 | `tests/corroboration/test_rules.py::test_choose_anchor_*`; `tests/corroboration/test_service.py::test_available_anchor_by_reversed_news`, `…_by_a_non_a_flag_without_news`, `test_available_with_an_a_flag_and_no_news_has_no_card`, `test_a_flag_turned_a_before_the_post_gives_no_card`, `test_an_available_chain_after_out_with_an_a_flag_has_no_card` |
 | AC4 | 4, 7 | `tests/corroboration/test_service.py::test_available_anchor_by_a_non_a_flag_without_news` (`reversed_flag`); `tests/alerts/test_render.py::test_flag_reversal_line_shows_the_flag_news` |
 | AC5 | 3, 4 | `tests/corroboration/test_rules.py::test_reversed_claim_*`; `tests/corroboration/test_service.py::test_reversal_own_account_changes_story`, `…_another_accounts_older_contradiction`, `…_newer_supporting_claim_ends_it`, `…_judged_older_contradiction_alone_is_none` |
 | AC6 | 7 | `tests/alerts/test_render.py::test_reversal_line_names_the_post_and_it_is_not_listed_again`; `tests/alerts/test_end_to_end.py::test_palmer_shaped_reversal_is_a_gotowy_do_gry_card` |
@@ -286,12 +294,19 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
         - `test_flag_at_takes_the_latest_row_at_or_before_the_moment`;
         - `test_choose_anchor_available_by_reversed_news`;
         - `test_choose_anchor_available_by_a_non_a_flag` (the flag is kept only without (a));
-        - `test_choose_anchor_available_with_an_a_flag_falls_back_to_another_type`;
+        - `test_choose_anchor_available_with_an_a_flag_falls_back_to_a_starter_or_benched`
+          (`[confirmed_starter, available]` and `[benched, available]`, flag `a` → the older
+          claim is the anchor);
+        - `test_choose_anchor_non_qualifying_available_never_falls_back_to_out_or_doubt`
+          (`[out, available, available]` and `[doubt, available, available]`, flag `a` at the
+          newest post → `None`; `[confirmed_starter, out, available, available]` → `None`,
+          not the starter);
         - `test_choose_anchor_only_available_and_no_qualifying_flag_is_none`;
         - `test_choose_anchor_available_with_no_flag_row_does_not_qualify`;
         - `test_choose_anchor_a_flag_turned_a_before_the_post_is_none`;
         - `test_choose_anchor_available_after_available_needs_the_flag`;
-        - `test_choose_anchor_given_non_newest_available_falls_back`;
+        - `test_choose_anchor_given_non_newest_available_falls_back` (by the same narrower
+          fallback);
         - `test_choose_anchor_given_non_available_stays`.
       - Keep the account-counting test of the old own-account case: it shows `count_accounts`
         is unchanged (AC7).
@@ -332,6 +347,8 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
           `test_available_anchor_by_a_non_a_flag_without_news` (Kadıoğlu: `reversed_flag.news`
           set, `reversed_post` None), `test_available_with_an_a_flag_and_no_news_has_no_card`
           (Manzambi without the slip), `test_a_flag_turned_a_before_the_post_gives_no_card`,
+          `test_an_available_chain_after_out_with_an_a_flag_has_no_card` (B1: `out` →
+          `available` → `available`, flag `a`; no anchor, no judge call),
           `test_reversal_another_accounts_older_contradiction` and
           `test_reversal_newer_supporting_claim_ends_it`.
         - Add `test_a_judged_support_adds_no_account`, the SalomonYaniv shape: the judge says
@@ -454,7 +471,9 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
           option, and #59 names the SalomonYaniv case.
       - Then edit the docs:
         - DECISIONS: append 2026-11-01 rows, one per decision in AC15. Each names the rows it
-          extends or supersedes. The 2026-09-30 own-account row (line 61) is superseded in
+          extends or supersedes. The "Gotowy do gry" row also states the narrower fallback
+          (owner decision B1): a non-qualifying `available` falls back only to a `benched` or
+          `confirmed_starter` claim, never to `out`/`doubt`, otherwise no card. The 2026-09-30 own-account row (line 61) is superseded in
           part, for the reversal only. Give the eight earlier rows their prefix, as spec 020
           did.
         - PROJECT FR-2.2: name the reversal definition.
@@ -474,13 +493,12 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
   `available` post, (a) holds and the card stays until SPEC 022 fixes the extraction. The
   implementer must not bend the rule to reach AC16. The owner's manual check names this
   case.
-- **A chain of `available` posts after bad news (open, see the Review log blocker).** With
-  the literal "newest older claim" rule, `out` (A) → `available` (B) → `available` (C) gives
-  C no reversal, because B supports it. When the FPL flag turned `a` before C, C does not
-  qualify, and AC3's fallback makes the older `out` the anchor: the card reads "🔴 Nie zagra"
-  with B and C under "Zaprzecza", although the two newest posts say the player is back.
-  DECISIONS 2026-10-30 avoided this by skipping older `available` claims. The step 3 and 4
-  tests depend on the owner's choice; implementation waits for it.
+- **A chain of `available` posts after bad news (settled, owner decision B1).** With the
+  literal "newest older claim" rule, `out` (A) → `available` (B) → `available` (C) gives C no
+  reversal, because B supports it. When the FPL flag turned `a` before C, C does not qualify.
+  The narrower fallback (Design §1) then gives no card instead of a "🔴 Nie zagra" card with
+  B and C under "Zaprzecza". Do not reintroduce the old skip over older `available` claims
+  (DECISIONS 2026-10-30) to reach a different result: the step 3 and 4 tests pin this case.
 - **The judge's guideline table in `app/corroboration/evaluation/cases.py`** and the judge
   prompt still say "out / benched → related". The SPEC keeps the prompt (#58). The SQL table
   now says `contradicts`. Leave both as they are. Changing them would change the judge
@@ -603,6 +621,49 @@ Checked and found correct:
 - Language: the PLAN is in English.
 
 Decision: not approved — the blocker above needs an owner decision on the SPEC's AC3/AC5.
+
+Review of 2026-11-01, second pass (plan-review, fresh context, after the owner decision B1).
+
+Findings:
+
+- `none` — no new findings; the first pass's blocker is resolved by owner decision B1,
+  applied as below.
+
+Changes made for B1:
+
+- Design §1: the fallback for a non-qualifying `available` takes the newest non-`available`
+  claim only when `label_claim("available", …)` is not `contradicts` (`benched`,
+  `confirmed_starter`); `out`/`doubt` or nothing → no card; it never skips past a newer
+  `out`/`doubt`.
+- Step 3: the fallback test now names the starter/benched cases, and a new
+  `test_choose_anchor_non_qualifying_available_never_falls_back_to_out_or_doubt` pins the
+  chain case; the given-non-newest test uses the same fallback.
+- Step 4 and the AC3 row of the matrix: `test_an_available_chain_after_out_with_an_a_flag_has_no_card`.
+- Step 10: the DECISIONS "Gotowy do gry" row states the narrower fallback.
+- Risks and Owner summary: the open blocker entry is now the settled rule.
+- SPEC AC3 records the decision (the owner's decision asked for it) with a matching line in
+  the SPEC's `## Owner decisions`; no other SPEC change.
+
+Checked and found correct in this pass:
+
+- Anti-anchoring: my own approach from the SPEC alone (one pure anchor decision from SQL claims
+  and flags before retrieval; `min(finished_at)` of successful extractions for "new"; one
+  category table; the grade change in `GradeRules`; breaking reusing `corroborate` with
+  `anchor_x_id`) matches the plan's design.
+- `label_claim` today gives `available` vs `benched`/`confirmed_starter` = `related` and vs
+  `out`/`doubt` = `contradicts`, so the fallback condition is expressible with the existing
+  table and is unaffected by AC8's `benched`/`out` change.
+- B1 keeps AC16's Manzambi expectation: a separating `available` post now gives no card
+  (before B1 it would have given a "🔴 Nie zagra" card); the slip directly before the newest
+  `available` still keeps the card, as the manual check says.
+- Breaking (`app/alerts/breaking.py`): with `available_only` removed, the "trigger became the
+  anchor" check is the only filter; a non-`available` trigger stays the anchor; the
+  `if not reports: continue` path already leaves a non-qualifying post unrecorded (AC14).
+- The first pass's checks (coverage, migrations, module boundaries, step order, language)
+  still hold; nothing in B1 adds a dependency, a migration or a forward step dependency.
+
+Decision: approved — the only blocker is settled by the owner's decision B1 and applied in
+Design §1, steps 3, 4 and 10, and every AC has a step and a proving test that runs red first.
 
 ## Deviations
 

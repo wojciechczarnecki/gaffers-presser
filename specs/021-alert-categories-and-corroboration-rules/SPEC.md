@@ -1,14 +1,15 @@
 ---
-status: plan-draft
+status: plan-approved
 stage_history:
   - "spec-draft — 2026-11-01"
   - "spec-ready — 2026-11-01"
   - "plan-draft — 2026-11-01"
+  - "plan-approved — 2026-11-01"
 metrics:
   started_at: 2026-11-01T00:47
   plan_steps: 11
-  plan_changes: 4
-  escalations: 0
+  plan_changes: 12
+  escalations: 1
   escalations_permission: 0
   escalations_tooling: 0
   plan_review_blockers: 1
@@ -141,8 +142,10 @@ the match check's coupling to the event types) is SPEC 022.
 - [ ] AC3: An `available` claim is the anchor when it is the player's newest claim and either
   (a) it reverses by the rule of AC5, or (b) the player's FPL flag at the post's time (the latest
   `player_flag_change` row observed at or before the post's `created_at`) has a status other than
-  `a`. Otherwise the anchor is the newest claim of another type, and a player with only
-  `available` claims that meet neither (a) nor (b) has no card and uses up no post. Tested for:
+  `a`. Otherwise the anchor is the newest claim of another type only when the `available`
+  claim does not contradict it (`benched` or `confirmed_starter`); when that claim is `out` or
+  `doubt`, or there is none, the player has no card and uses up no post (owner decision B1,
+  2026-11-01). Tested for:
   reversed X news; a flag `d` with no X news (the Kadıoğlu shape); a flag `a` with no X news (no
   card; the Manzambi shape without the slip); a flag that turned `a` before the post (no card).
 - [ ] AC4: An `available` card that qualifies only through the flag shows the flag's news text
@@ -248,6 +251,9 @@ the match check's coupling to the event types) is SPEC 022.
 - One reversal rule with the anchor's own account, shown as a "⚠️ Wcześniej:" line.
 - One name per category in the header, the counter and the card.
 - No new dependency and no migration (`player_flag_change` and `extraction` already hold the data).
+- 2026-11-01 (plan review, B1): a non-qualifying `available` claim falls back only to a claim it
+  does not contradict (`benched` or `confirmed_starter`), never to `out` or `doubt`; otherwise
+  no card. AC5 stays as written.
 
 ## Open questions (non-blocking)
 
