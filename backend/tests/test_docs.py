@@ -461,3 +461,47 @@ def test_roadmap_020_ticked():
     (done,) = [line for line in items if "020-availability-and-match-check/SPEC.md" in line]
     assert done.startswith("- [x]")
     assert "extraction-eval-v3.md" in done and "#24" in done
+
+
+def test_roadmap_021_ticked():
+    roadmap = (ROOT / "docs" / "ROADMAP.md").read_text(encoding="utf-8")
+    items = ["- [" + block for block in re.split(r"(?m)^- \[", roadmap)[1:]]
+    (done,) = [
+        line for line in items if "021-alert-categories-and-corroboration-rules/SPEC.md" in line
+    ]
+    assert done.startswith("- [x]")
+
+
+def test_decisions_cover_alert_categories_and_rules():
+    lines = (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8").splitlines()
+    new = [line for line in lines if line.startswith("| 2026-11-01")]
+    for needle in (
+        "Gotowy do gry",
+        "player_flag_change",
+        "Wcześniej",
+        "`benched`",
+        "first successful extraction",
+        "●●●",
+    ):
+        assert any(needle in row for row in new), needle
+    marked = [line for line in lines if "2026-11-01, spec 021)" in line[:160]]
+    for date in ("2026-09-26", "2026-09-30", "2026-10-02", "2026-10-06", "2026-10-30"):
+        assert any(row.startswith(f"| {date}") for row in marked), date
+    assert len([row for row in marked if row.startswith("| 2026-09-30")]) == 2
+    assert len([row for row in marked if row.startswith("| 2026-10-02")]) == 2
+    assert len([row for row in marked if row.startswith("| 2026-10-30")]) == 2
+    assert len(marked) == 8
+
+
+def test_backlog_58_and_59_carry_the_021_notes():
+    rows = _rows()
+    (fifty_eight,) = [row for row in rows if row.startswith("| 58 |")]
+    (fifty_nine,) = [row for row in rows if row.startswith("| 59 |")]
+    assert "contradicts" in fifty_eight and "only" in fifty_eight and "spec 021" in fifty_eight
+    assert "SalomonYaniv" in fifty_nine
+
+
+def test_project_fr_2_2_names_the_reversal_definition():
+    text = (ROOT / "docs" / "PROJECT.md").read_text(encoding="utf-8")
+    fr = text.split("FR-2.2", 1)[1].split("FR-2.3", 1)[0]
+    assert "newest older" in fr and "FPL flag" in fr

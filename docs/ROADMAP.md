@@ -96,6 +96,12 @@ and each LLM step that produces data has an evaluation set with recorded results
       and label table for `available`, the group "✅ Wraca do gry", extraction set v3 and its
       test run ([report](reports/extraction-eval-v3.md)) (BACKLOG #24)
       (spec: [020](../specs/020-availability-and-match-check/SPEC.md))
+- [x] Alert categories and simpler corroboration rules: five uniform categories with one name
+      each, "Gotowy do gry" by reversed news or an FPL flag, one reversal rule with a
+      "⚠️ Wcześniej:" line, `benched` against `out`, the judge counting only as a contradiction,
+      ●●● from two accounts, "new" by the first successful extraction, one anchor decision for
+      slot and breaking alerts (BACKLOG #58 and #59 amended)
+      (spec: [021](../specs/021-alert-categories-and-corroboration-rules/SPEC.md))
 - [x] README rewritten for the portfolio once the two evaluations above have results: what
       it does and why, an architecture diagram, a results table linking the reports, the
       engineering process (specs, ADRs, evaluation, tracing), a sample presser on made-up

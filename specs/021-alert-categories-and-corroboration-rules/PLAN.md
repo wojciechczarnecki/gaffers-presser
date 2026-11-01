@@ -457,8 +457,8 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
       - Then implement Design §7.
       Automatic verification: `cd backend && uv run pytest -q tests/alerts/test_breaking.py tests/alerts/test_loop.py`
 
-- [ ] 10. Documents (AC15). Files: `docs/DECISIONS.md`, `docs/PROJECT.md`, `docs/ROADMAP.md`,
-      `docs/BACKLOG.md`, `tests/test_docs.py`.
+- [x] 10. Documents (AC15). Files: `docs/DECISIONS.md`, `docs/PROJECT.md`, `docs/ROADMAP.md`,
+      `docs/BACKLOG.md`, `tests/test_docs.py`. `iterations: 0`
       - Tests first (run them and see them fail before the product change), in `tests/test_docs.py`:
         - `test_roadmap_021_ticked`: a ticked Stage 2 item that links
           `021-alert-categories-and-corroboration-rules/SPEC.md`.

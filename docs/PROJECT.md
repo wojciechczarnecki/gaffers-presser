@@ -53,7 +53,10 @@ Grouped by roadmap stage (`docs/ROADMAP.md`).
 - FR-2.1 Index posts for hybrid retrieval (full-text + vectors).
 - FR-2.2 Corroborate the newest leak about a player against the other posts about him since
   the last deadline: state how many independent accounts support or contradict it, flag a
-  reversal of earlier news, and grade its strength; earlier posts are context and never
+  reversal of earlier news (the newest older claim, from any account including the anchor's
+  own, contradicts the anchor; for an "available" anchor also an FPL flag other than "a" at the
+  post's time; the newest older claim decides, so judged posts never make a reversal), and grade
+  its strength; earlier posts are context and never
   outvote the newest leak.
 - FR-2.3 Before each deadline, e-mail alerts about players owned in the configured leagues
   and widely owned players; each alert cites its sources with links.
