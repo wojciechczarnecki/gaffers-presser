@@ -15,6 +15,7 @@ from tests.alerts.helpers import (
     scripted_corroboration,
     set_raw,
 )
+from tests.alerts.test_render import reversed_line
 from tests.alerts.test_slots import DEADLINE_AT, REAL, seed
 from tests.corroboration.helpers import (
     ISAK,
@@ -340,7 +341,22 @@ def test_reversing_available_post_breaks(db):
     assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 1
 
     assert channel.keys == ["alert:2026/27:gw6:breaking:2"]
-    assert TEMPLATE["category"]["available"] in channel.calls[0].text
+    text = channel.calls[0].text
+    assert TEMPLATE["category"]["available"] in text
+    assert reversed_line("a1", 1, NOW - minutes(60)) in text
+
+
+def test_an_own_account_reversal_records_the_reversed_post_as_context(db):
+    runtime, channel, clock = world(db)
+    # the reporter of the earlier `out` post reverses it: it is neither supporting nor contradicting
+    add_late(db, 2, event="available", certainty="confirmed", author="a1")
+    clock.advance(minutes(8))
+
+    assert run_breaking(db, runtime, REAL, NEWS_AT, clock) == 1
+
+    assert reversed_line("a1", 1, NOW - minutes(60)) in channel.calls[0].text
+    _, rows = alert_rows(db, "alert:2026/27:gw6:breaking:2")
+    assert rows == {(SAKA, 2): "new", (SAKA, 1): "context"}
 
 
 def test_a_reextraction_in_the_breaking_window_sends_nothing(db):

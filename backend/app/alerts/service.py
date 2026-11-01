@@ -102,7 +102,9 @@ class Newness:
         if self.origins.get(x_id, {x_id}) & self.included:
             return False
         first = self.first_extracted.get(x_id)
-        # a post with no successful extraction is a judged one: it was never a re-extraction
+        # a post with no successful extraction can only be a judged one, never a
+        # re-extraction, so it is new; a judged post that was extracted (with no event for
+        # the player) is dated by its first extraction, like a claim
         return self.since is None or first is None or first > self.since
 
     def with_posts(self, session: Session, x_ids: set[int]) -> "Newness":

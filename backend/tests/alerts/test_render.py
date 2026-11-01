@@ -32,12 +32,18 @@ HALL = player_ref(4, "Hall", "Newcastle")
 KANE = player_ref(5, "Kane", "Tottenham")
 
 
-def reversed_line(account, x_id, created_at=POST_TIME):
+def reversed_line(account, x_id, created_at=POST_TIME, new=False):
+    local = created_at.astimezone(WARSAW)
     return TEMPLATE["note"]["reversed_post"].format(
         earlier=TEMPLATE["note"]["earlier"],
         account=account,
-        time=created_at.astimezone(WARSAW).strftime("%d.%m %H:%M"),
+        time=TEMPLATE["header"]["day_time"].format(
+            weekday=TEMPLATE["header"]["weekdays"][local.weekday()],
+            date=local.strftime("%d.%m"),
+            time=local.strftime("%H:%M"),
+        ),
         url=f"https://x.com/{account}/status/{x_id}",
+        marker=MARKER if new else "",
     )
 
 
@@ -117,6 +123,28 @@ def test_reversal_line_names_the_post_and_it_is_not_listed_again():
     assert message.html.count("https://x.com/doubter/status/103") == 1
     assert 'href="https://x.com/doubter/status/103"' in message.html
     assert TEMPLATE["note"]["earlier"] in message.html
+
+
+def test_reversal_line_shows_the_day_and_time_of_the_reversed_post():
+    message = render_alert("digest", deadline(), AS_OF, [_reversal_report(["doubter"])])
+    # POST_TIME is Sunday 4 October, 14:30 in Warsaw
+    assert "@doubter, nd 04.10, 14:30: https://x.com/doubter/status/103" in message.text
+    assert "nd 04.10, 14:30" in message.html
+
+
+def test_a_new_reversed_post_is_marked_new_only_in_a_news_alert():
+    reports = [replace(_reversal_report(["doubter"]), new_x_ids=frozenset({103}))]
+    news = render_alert("news", deadline(), AS_OF, reports)
+    assert reversed_line("doubter", 103, new=True) in news.text
+    assert reversed_line("doubter", 103, new=True) in share_text(news.html)
+    new_link = (
+        'href="https://x.com/doubter/status/103" style="color:#37003c;'
+        + TEMPLATE["html"]["new_weight"]
+    )
+    assert new_link in news.html
+    digest = render_alert("digest", deadline(), AS_OF, reports)
+    assert reversed_line("doubter", 103) in digest.text
+    assert MARKER not in digest.text
 
 
 def test_a_card_whose_only_contradicting_post_is_the_reversed_one_has_no_zaprzecza():

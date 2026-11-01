@@ -545,7 +545,7 @@ missing, the same way it fills in origins today. `run_slot` already passes `prev
     before his newest `available` post, and SPEC 022 handles it.
   - F.Kadıoğlu is under "🟢 Gotowy do gry" with a "⚠️ Wcześniej:" line.
   - Evanilson is not ●●●.
-  - Kroupi.Jr shows the `benched` accounts under "Zaprzecza" or in his "⚠️ Wcześniej:" line,
+  - Kroupi.Jr shows the `benched` accounts under "Zaprzecza" and his "⚠️ Wcześniej:" line,
     and the SalomonYaniv post is not among his sources.
   - The news alert lists Kroupi.Jr and F.Kadıoğlu only for posts first extracted after the
     previous alert.
@@ -726,3 +726,32 @@ Rejected: none. Noted for the owner, not a finding: under AC11 a judged post fir
 before the previous alert is "context" even if no alert showed it, as the AC states.
 
 Left out: 6 nit findings
+
+Fixes (apply mode, 2026-11-01; owner decisions: the `gate` entry, F1–F7, and the `decision`
+entry, T1 and T2 of the tests perspective):
+
+- **F1** — `render.py` `_card` builds the reversed `Source` with the report's `marked` ids; the
+  plain-text line gets the `{marker}` suffix (`[note] reversed_post`) and the HTML link the bold
+  weight; `test_render.py::test_a_new_reversed_post_is_marked_new_only_in_a_news_alert`.
+- **F2** — `test_breaking.py::test_an_own_account_reversal_records_the_reversed_post_as_context`
+  (fails when `shown_x_ids` drops the reversed post) and
+  `test_slots.py::test_an_own_account_reversal_records_the_reversed_post` (asserts the rows;
+  in slot alerts the reversed post is also a listed claim, so this one guards the outcome, not
+  `shown_x_ids` alone).
+- **F3** — `test_reversing_available_post_breaks` asserts the "⚠️ Wcześniej: @a1, …" line.
+- **F4** — `flag_at` takes the last row of the ordered list;
+  `test_rules.py::test_flag_at_takes_the_later_of_rows_observed_at_the_same_moment`.
+- **F5** — the reversed post's time uses the header's `day_time` ("nd 04.10, 14:30") in text and
+  HTML; DECISIONS 2026-11-01 "One reversal rule" says `<day time>`;
+  `test_reversal_line_shows_the_day_and_time_of_the_reversed_post`.
+- **F6** — the corroboration CLI prints "No anchor: <NO_REVERSAL_REASON>." when claims exist
+  but none qualifies; `test_cli.py::test_a_lone_available_claim_prints_why_there_is_no_anchor`.
+- **F7** — the manual check for Kroupi.Jr says "and", as AC16.
+- **T1** — `test_slots.py::test_a_judged_post_first_extracted_before_the_digest_is_context`
+  (fails when `Newness.with_posts` drops the `first_extractions` fill); the comment in
+  `Newness.is_new` now says a judged post with an extraction row is dated by it.
+- **T2** — `test_slots.py::test_a_judged_post_with_no_extraction_created_after_the_digest_is_new`
+  (fails when the `first is None` branch is removed).
+
+Each new test was seen failing on the code with its fix reverted. Full verification: 2615 passed.
+BACKLOG: no new items, none delivered, no trigger fired.

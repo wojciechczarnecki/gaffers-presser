@@ -10,7 +10,7 @@ metrics:
   started_at: 2026-11-01T00:47
   plan_steps: 11
   plan_changes: 12
-  escalations: 1
+  escalations: 2
   escalations_permission: 0
   escalations_tooling: 0
   plan_review_blockers: 1
@@ -22,6 +22,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 2
   final_review_nits: 5
+  findings_accepted: 7
+  findings_rejected: 0
 ---
 
 # SPEC 021 — Alert categories and simpler corroboration rules

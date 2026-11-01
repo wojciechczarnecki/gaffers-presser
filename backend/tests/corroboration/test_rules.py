@@ -420,6 +420,11 @@ def test_flag_at_takes_the_latest_row_at_or_before_the_moment():
     assert flag_at([], T0) is None
 
 
+def test_flag_at_takes_the_later_of_rows_observed_at_the_same_moment():
+    baseline, change = _flag("a", -20), _flag("d", -20, "knock")
+    assert flag_at([baseline, change], T0) is change
+
+
 def test_choose_anchor_available_by_reversed_news():
     out = _claim(1, "out", -10)
     choice = choose_anchor([out, CANDIDATE], [_flag("a", -100)])

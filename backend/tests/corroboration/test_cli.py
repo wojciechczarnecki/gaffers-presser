@@ -10,7 +10,7 @@ from app.core.local_time import parse_local
 from app.corroboration.cli import CorroborationCliDeps, app
 from app.corroboration.config import CorroborationSettings
 from app.corroboration.judge import JudgeOutput, build_judge
-from app.corroboration.service import CorroborationRuntime
+from app.corroboration.service import NO_REVERSAL_REASON, CorroborationRuntime
 from app.corroboration.tracing import LangfuseCorroborationTracer
 from app.llm.pricing import Price
 from app.llm.structured import StructuredCaller
@@ -218,6 +218,16 @@ def test_no_claim_message(db):
     result = _run(_deps(db, CorroborationRuntime(embedder=FakeEmbedder(), judge=judge)), "Saka")
     assert result.exit_code == 0, result.output
     assert "No claim" in result.stdout
+    assert "Anchor:" not in result.stdout
+
+
+def test_a_lone_available_claim_prints_why_there_is_no_anchor(db):
+    seed_reference(db, {6: DEADLINE})
+    add_claim(db, 1, SAKA, "available", "confirmed", author="a1")
+    result = _run(_deps(db), "Saka")
+    assert result.exit_code == 0, result.output
+    assert f"No anchor: {NO_REVERSAL_REASON}." in result.stdout
+    assert "No claim" not in result.stdout
     assert "Anchor:" not in result.stdout
 
 

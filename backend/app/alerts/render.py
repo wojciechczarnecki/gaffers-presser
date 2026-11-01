@@ -119,9 +119,7 @@ def _card(
     fresh = as_of - post.created_at <= FRESH_WITHIN
     age = age_text(template, post.created_at, as_of)
     details.append(template["age"]["fresh"].format(age=age) if fresh else age)
-    reversed_source = (
-        _citation_source(reversed_post, frozenset()) if reversed_post is not None else None
-    )
+    reversed_source = _citation_source(reversed_post, marked) if reversed_post is not None else None
     reversed_flag = None
     if result.reversed_flag is not None:
         flag_note = "reversed_flag" if result.reversed_flag.news else "reversed_flag_no_news"
@@ -223,8 +221,9 @@ def _reversal_lines(template: Mapping[str, Any], card: Card) -> list[str]:
             template["note"]["reversed_post"].format(
                 earlier=template["note"]["earlier"],
                 account=source.account,
-                time=_local(source.created_at, POST_TIME),
+                time=_day_time(template, source.created_at),
                 url=source.url,
+                marker=template["sources"]["new_marker"] if source.new else "",
             )
         ]
     return [card.reversed_flag] if card.reversed_flag is not None else []
@@ -303,9 +302,11 @@ def _reversal_html(template: Mapping[str, Any], card: Card) -> str:
         return html["reversed_post"].format(
             earlier=escape(template["note"]["earlier"]),
             link=html["source_link"].format(
-                weight="", url=escape(source.url), account=escape(source.account)
+                weight=html["new_weight"] if source.new else "",
+                url=escape(source.url),
+                account=escape(source.account),
             ),
-            time=escape(_local(source.created_at, POST_TIME)),
+            time=escape(_day_time(template, source.created_at)),
         )
     if card.reversed_flag is not None:
         return html["note"].format(text=escape(card.reversed_flag))

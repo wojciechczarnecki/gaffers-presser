@@ -62,7 +62,8 @@ fresh = "🆕 {age}"
 
 [note]
 earlier = "⚠️ Wcześniej:"
-reversed_post = "{earlier} @{account}, {time}: {url}"
+# The reversed post with its day and time; {marker} is the new-source suffix of [sources].
+reversed_post = "{earlier} @{account}, {time}: {url}{marker}"
 reversed_flag = "{earlier} flaga FPL — {news}"
 reversed_flag_no_news = "{earlier} flaga FPL"
 search_failed = "⚠️ Wyszukiwanie dodatkowych źródeł nie powiodło się, ocena opiera się tylko na znanych postach"

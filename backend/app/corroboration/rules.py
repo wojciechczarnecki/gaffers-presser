@@ -57,8 +57,9 @@ def _claim_key(claim: Claim) -> tuple[datetime, int]:
 
 
 def flag_at(flags: Sequence[FlagState], moment: datetime) -> FlagState | None:
+    # `flags` come in (observed_at, id) order, so of tied rows the last one is the newest
     seen = [flag for flag in flags if flag.observed_at <= moment]
-    return max(seen, key=lambda flag: flag.observed_at, default=None)
+    return seen[-1] if seen else None
 
 
 def reversed_claim(anchor: Claim, claims: Sequence[Claim]) -> Claim | None:
