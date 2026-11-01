@@ -15,6 +15,7 @@ from app.extraction.evaluation.judging import (
     export_inputs,
     import_verdicts,
     parse_quotas,
+    read_corpus,
     sources_from_cases,
     sources_from_corpus,
 )
@@ -583,3 +584,18 @@ def test_absence_and_available_tiers(tmp_path):
     with pytest.raises(JudgingError):
         parse_quotas("bogus=1")
     assert parse_quotas("other=1")["absence"] == 15
+
+
+def test_read_corpus_keeps_a_paragraph_separator_inside_a_text(tmp_path):
+    row = CorpusRow(
+        x_id=1,
+        author_handle="a",
+        text="first\u2029second",
+        created_at=AT,
+        is_repost=False,
+        is_reply=False,
+    )
+    path = tmp_path / "corpus.jsonl"
+    path.write_text(row.model_dump_json() + "\n", encoding="utf-8")
+
+    assert [r.text for r in read_corpus(path)] == ["first\u2029second"]

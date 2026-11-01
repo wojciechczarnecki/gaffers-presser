@@ -107,7 +107,7 @@ class JudgeSource:
 def read_corpus(path: Path) -> list[CorpusRow]:
     rows = [
         CorpusRow.model_validate_json(line)
-        for line in Path(path).read_text(encoding="utf-8").splitlines()
+        for line in Path(path).read_text(encoding="utf-8").split("\n")
         if line.strip()
     ]
     return rows

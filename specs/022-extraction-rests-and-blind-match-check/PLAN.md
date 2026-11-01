@@ -286,7 +286,7 @@ and `test_results_files.py` (the v3 block), `composition_problems_v3`, the
       Automatic verification:
       `cd backend && uv run pytest -q tests/extraction/evaluation/test_cases.py`, then Verify.
 
-- [ ] 5. **Build set v4 with session pre-labels (AC5, AC6 data).** The owner-approved SPEC
+- [x] 5. **Build set v4 with session pre-labels (AC5, AC6 data).** `iterations: 1` The owner-approved SPEC
       (AC5: new real cases from the GW9 window) is the request for these Compose reads, and they
       are the only Compose reads of this plan: `snapshot-players`, `snapshot-fixtures` and
       `export-corpus`, all read-only. No command here writes to Compose. Prefix every CLI
@@ -640,6 +640,9 @@ are fixed in place, and it adds no dependency or migration beyond what the owner
 _(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
 
 - `minor` — step 2: no `test_a_post_with_no_event_is_stored_with_no_events` added; `tests/extraction/test_service.py::test_success_first_attempt` already stores an `extracted` row for `ExtractionOutput(events=[])` and asserts `outcome.events == 0` (the plan allowed naming it instead of a duplicate).
+- `minor` — step 5: `read_corpus` in `app/extraction/evaluation/judging.py` split the corpus file with `splitlines()`, which also splits on U+2029 inside a post text, so `export-judge-inputs` crashed on the GW9 corpus. It now splits on `"\n"` (test `test_read_corpus_keeps_a_paragraph_separator_inside_a_text`). A product defect fixed within the step.
+- `minor` — step 5: no Compose `.env` copy was possible in the worktree (the auto-mode classifier refused copying credentials), so the read-only Compose commands ran with `DATABASE_URL` from the public `backend/.env.example` (local Compose credentials). The paid key for step 7 is still missing in the worktree (see the step 6 escalation).
+- `minor` — step 5: the judge exported 98 inputs (about 598k tokens estimate, 548k used), none failed; 40 were imported (25 test, 15 dev). Unreviewed after the import, as the plan expects: `test_every_case_reviewed`, `test_new_and_changed_cases_reviewed_by_the_owner` and `test_composition_v4` (the judge pre-labels give `out`/`doubt` to four `other_match_absence` cases, a `cup_injury` case with no absence event, and Kroupi `available`; the owner settles these in `review`). `test_named_gw9_cases` also fails: 2116172084082602140 (johntownley11) and 2116226240323465435 (fplsebv) are in the corpus only as quoted sources by authors outside the watched list, so `export-judge-inputs` skipped them and the v3 composition rule (author on the watched list) would reject them. Escalated at step 6.
 
 ## Final review
 
