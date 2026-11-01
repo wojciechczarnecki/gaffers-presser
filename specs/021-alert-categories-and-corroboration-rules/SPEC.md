@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-11-01"
   - "spec-ready — 2026-11-01"
   - "plan-draft — 2026-11-01"
   - "plan-approved — 2026-11-01"
   - "implemented — 2026-11-01"
+  - "done — 2026-11-01"
 metrics:
   started_at: 2026-11-01T00:47
   plan_steps: 11
@@ -24,6 +25,11 @@ metrics:
   final_review_nits: 5
   findings_accepted: 7
   findings_rejected: 0
+  cost_plan_cents: 261
+  cost_plan_review_cents: 201
+  cost_implement_cents: 331
+  cost_final_review_cents: 721
+  finished_at: 2026-11-01T08:25
 ---
 
 # SPEC 021 — Alert categories and simpler corroboration rules
