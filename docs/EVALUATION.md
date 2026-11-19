@@ -256,7 +256,7 @@ Set v3 (spec 020; DECISIONS 2026-10-30) adds the `available` type and four tags:
 injury that must keep its `out`/`doubt` after the match check) and the existing line-up tags.
 `export-judge-inputs --availability-keywords` widens the candidates to availability wording, and
 `--exclude-cases` and `--x-id` skip known cases and force named posts. Every case records its
-`review_source` (`owner`, `agent`, `prelabel`); `review` sets `owner`. `evaluate` also prints the
+`review_source` (`owner`, `agent`, `session`, `prelabel`); `review` sets `owner`. `evaluate` also prints the
 F1 of `available` events, the `other_match_absence` false alarms and the injuries dropped by the
 check, and `absence_checks` fails a run with more than 1 of either. The corroboration judge's
 regression on set v2 (three runs of each prompt, means within 0.05) is in

@@ -9,14 +9,14 @@ metrics:
   started_at: 2026-11-01T04:49
   plan_steps: 10
   plan_changes: 5
-  escalations: 1
+  escalations: 2
   escalations_permission: 0
   escalations_tooling: 0
   plan_review_blockers: 0
   plan_review_majors: 2
   implement_steps: 5
   implement_iterations: 2
-  deviations_minor: 5
+  deviations_minor: 6
   deviations_major: 0
 ---
 
@@ -139,8 +139,13 @@ grade) are SPEC 021. The two specs are independent.
   2116448660980732008 (a tips post, no event). Case 2115797596119740910 loses the `other_match_absence` tag. 2116079251476611126 stays
   in the test split. New cases are split like v3, about two thirds to test, and the composition
   rules of v3 still hold.
-- [ ] AC6: The owner reviews every new and changed case with `review` before any test run
-  (`review_source: owner`); the session judge pre-labels them.
+- [ ] AC6: The session re-labels every new and changed case against the v7 rule, reading each
+  post, before any test run (`review_source: session`). The cases whose label depends on a
+  judgement the post leaves open (about 10, listed with the post text and the reason in
+  `specs/022-extraction-rests-and-blind-match-check/CONTESTED.md`) are reviewed by the owner
+  with `review` (`review_source: owner`) before the paid test runs. The report states that most
+  of set v4 was labelled by the session and only the contested cases were owner-reviewed (owner
+  decision 2026-11-19).
 
 ### Measurement
 
@@ -185,6 +190,7 @@ grade) are SPEC 021. The two specs are independent.
   the session as judge.
 - A manual re-extraction of the current window by the owner after the merge.
 - No new dependency and no migration.
+- 2026-11-19: AC6 changed: the session labels set v4 against the v7 rule, the owner reviews only the contested cases.
 
 ## Open questions (non-blocking)
 

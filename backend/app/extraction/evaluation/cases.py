@@ -36,7 +36,7 @@ class ExpectedEvent(BaseModel):
     certainty: Certainty
 
 
-ReviewSource = Literal["owner", "agent", "prelabel"]
+ReviewSource = Literal["owner", "agent", "session", "prelabel"]
 
 
 class EvalCase(BaseModel):

@@ -69,15 +69,42 @@ def test_every_case_reviewed():
     assert unreviewed == []
 
 
-def test_new_and_changed_cases_reviewed_by_the_owner():
+# The cases whose label depends on a judgement the post leaves open (owner decision
+# 2026-11-19); the rest of the new and changed cases were labelled by the session.
+CONTESTED_CASES = (
+    "2115825835525488887",
+    "2115481335171108991",
+    "2116153319949226164",
+    "2116173460590244138",
+    "2116110028713164836",
+    "2116166387291070901",
+    "2116494032461238736",
+    "2116162085532938410",
+    "2116150477431672942",
+    "2115460001162510684",
+)
+
+
+def test_new_and_changed_cases_have_a_review_source():
     v3 = _v3_cases()
     for case in load_set(V4).cases:
         old = v3.get(case.id)
         changed = (
             old is None or case.tags != old.tags or case.expected_events != old.expected_events
         )
-        if changed:
-            assert case.reviewed and case.review_source == "owner", case.id
+        if changed and case.reviewed:
+            assert case.review_source in ("session", "owner"), case.id
+
+
+def test_contested_cases_reviewed_by_the_owner():
+    by_id = {case.id: case for case in load_set(V4).cases}
+    for case_id in CONTESTED_CASES:
+        assert by_id[case_id].reviewed and by_id[case_id].review_source == "owner", case_id
+
+
+def test_only_contested_cases_wait_for_the_owner():
+    unreviewed = {case.id for case in load_set(V4).cases if not case.reviewed}
+    assert unreviewed <= set(CONTESTED_CASES)
 
 
 def test_composition_v4():
