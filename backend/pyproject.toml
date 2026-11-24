@@ -10,7 +10,7 @@ dependencies = [
     "httpx==0.28.1",
     "pydantic-settings==2.15.0",
     "typer==0.27.2",
-    "twscrape==0.20.1",
+    "twscrape==0.21.1",
     "langgraph==1.2.14",
     "langchain-core==1.6.5",
     "langfuse==4.15.6",

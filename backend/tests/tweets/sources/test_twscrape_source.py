@@ -5,7 +5,16 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
-from twscrape import API, NoAccountError
+import twscrape
+from twscrape import (
+    API,
+    AbortReqError,
+    ApiError,
+    NetworkError,
+    NoAccountError,
+    ParseError,
+    XClIdParseError,
+)
 
 from app.core.errors import AppError
 from app.tweets.sources.base import (
@@ -273,8 +282,10 @@ def test_normalised_posts_carry_no_cookie():
         (httpx.Response(200, text="not json"), FakePool()),
         (NoAccountError("locked"), FakePool(next_available="now")),
         (NoAccountError("locked"), FakePool(next_available=None)),
+        (XClIdParseError(f"failed; {SENTINEL_COOKIES}"), FakePool()),
+        (ApiError(f"API error; {SENTINEL_COOKIES}"), FakePool()),
     ],
-    ids=["malformed", "rate-limited", "no-account"],
+    ids=["malformed", "rate-limited", "no-account", "xclid", "api-error"],
 )
 def test_error_paths_never_carry_the_cookies(caplog, capfd, script, pool):
     source = _source(FakeApi([script], pool=pool))
@@ -569,3 +580,106 @@ def test_repost_of_a_quote_is_not_a_quote():
     assert by_id[REPOST].is_repost is True
     assert by_id[REPOST].quoted_x_id is None
     assert by_id[QUOTE_OF_OLD_POST].quoted_x_id == OLD_QUOTED
+
+
+_FAILED_REQUESTS = [
+    (XClIdParseError("Signing script not found"), SourceUnavailableError),
+    (AbortReqError("Failed to get XClIdGen"), SourceUnavailableError),
+    (ApiError("API error", ["(88) Rate limit"]), SourceUnavailableError),
+    (NetworkError("reset"), SourceUnavailableError),
+    (ParseError("bad user"), SourcePayloadError),
+]
+
+
+@pytest.mark.parametrize("error,expected", _FAILED_REQUESTS)
+def test_failed_timeline_request_is_an_error_not_an_empty_page(error, expected):
+    source = _source(FakeApi([error]))
+    try:
+        with pytest.raises(expected) as exc:
+            next(source.pages(1))
+    finally:
+        source.close()
+    assert type(error).__name__ in str(exc.value)
+
+
+@pytest.mark.parametrize("error,expected", _FAILED_REQUESTS)
+def test_failed_members_request_is_an_error_not_an_empty_list(error, expected):
+    source = _source(FakeApi([], member_pages=[error]))
+    try:
+        with pytest.raises(expected):
+            source.members(7)
+    finally:
+        source.close()
+
+
+def test_quoted_post_nested_only_in_its_quote_is_still_fetched():
+    payload = load("twscrape-page-conversation")
+    nested = list(twscrape.parse_tweets(payload))
+    assert OLD_QUOTED not in {tweet.id for tweet in nested}
+
+    (page,) = _pages("twscrape-page-conversation")
+    quoted = {p.x_id: p for p in page}[OLD_QUOTED]
+    assert (quoted.embedded, quoted.entry_head) == (True, False)
+
+
+def _find_result(node, x_id: int):
+    if isinstance(node, dict):
+        if node.get("__typename") == "Tweet" and node.get("rest_id") == str(x_id):
+            return node
+        children = node.values()
+    elif isinstance(node, list):
+        children = node
+    else:
+        return None
+    for child in children:
+        found = _find_result(child, x_id)
+        if found is not None:
+            return found
+    return None
+
+
+def test_quoted_post_of_a_quoted_post_is_still_fetched():
+    payload = load("twscrape-page-conversation")
+    quoted = _find_result(payload, OLD_QUOTED)
+    deeper_id = OLD_QUOTED - 1
+    deeper = json.loads(json.dumps(quoted))
+    deeper["rest_id"] = str(deeper_id)
+    deeper["legacy"]["id_str"] = str(deeper_id)
+    quoted["quoted_status_result"] = {"result": deeper}
+    quoted["legacy"]["is_quote_status"] = True
+    quoted["legacy"]["quoted_status_id_str"] = str(deeper_id)
+
+    source = _source(FakeApi([httpx.Response(200, json=payload)]))
+    try:
+        (page,) = list(source.pages(1))
+    finally:
+        source.close()
+    by_id = {p.x_id: p for p in page}
+    assert by_id[OLD_QUOTED].quoted_x_id == deeper_id
+    assert (by_id[deeper_id].embedded, by_id[deeper_id].entry_head) == (True, False)
+
+
+def test_post_without_an_author_handle_is_skipped(caplog):
+    payload = load("twscrape-page-conversation")
+    result = _find_result(payload, LATER_PLAIN)
+    result["core"]["user_results"] = {}
+    result["legacy"]["user_id_str"] = "9999000000000000999"  # an author with no profile anywhere
+
+    source = _source(FakeApi([httpx.Response(200, json=payload)]))
+    try:
+        with caplog.at_level("WARNING"):
+            (page,) = list(source.pages(1))
+    finally:
+        source.close()
+    assert LATER_PLAIN not in {p.x_id for p in page}
+    assert all(p.author_handle for p in page)
+    assert "without an author handle" in caplog.text
+
+
+def test_non_json_response_raises_source_payload_error():
+    source = _source(FakeApi([ValueError("Expecting value")]))
+    try:
+        with pytest.raises(SourcePayloadError):
+            next(source.pages(1))
+    finally:
+        source.close()
