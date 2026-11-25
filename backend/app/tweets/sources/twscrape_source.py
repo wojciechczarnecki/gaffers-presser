@@ -9,7 +9,14 @@ from typing import NoReturn
 os.environ.setdefault("TWS_TELEMETRY", "0")
 
 import twscrape  # noqa: E402
-from twscrape import API, NoAccountError  # noqa: E402
+from twscrape import (  # noqa: E402
+    API,
+    AbortReqError,
+    HttpError,
+    NoAccountError,
+    ParseError,
+)
+from twscrape.xclid import XClIdError  # noqa: E402
 
 from app.tweets.sources.base import (
     FetchedPost,
@@ -122,6 +129,32 @@ def _member_handles(page_dict) -> list[str]:
     return handles
 
 
+def _with_quoted(tweets: list) -> list:
+    # twscrape >= 0.21 no longer yields a quoted post on its own (only nested in the quote),
+    # but quoted posts are stored as their own posts (DECISIONS 2026-10-07), at any depth.
+    seen = {tweet.id for tweet in tweets}
+    result = list(tweets)
+    pending = list(tweets)
+    while pending:
+        tweet = pending.pop()
+        for parent in (tweet, tweet.retweetedTweet):
+            quoted = parent.quotedTweet if parent is not None else None
+            if quoted is not None and quoted.id not in seen:
+                seen.add(quoted.id)
+                result.append(quoted)
+                pending.append(quoted)
+    return result
+
+
+def _has_authors(tweet) -> bool:
+    # twscrape >= 0.21 keeps a post whose author X sent without a profile, under a
+    # placeholder user with an empty handle; 0.20 dropped it, and so does the adapter.
+    for author in (tweet.user, tweet.retweetedTweet.user if tweet.retweetedTweet else None):
+        if author is not None and not author.username:
+            return False
+    return True
+
+
 def _to_post(tweet, in_entry: set[int] | None, heads: set[int]) -> FetchedPost:
     return FetchedPost(
         x_id=tweet.id,
@@ -178,17 +211,32 @@ class TwscrapeSource:
             "twscrape: rate limited", _retry_after_from_next_available(next_available)
         ) from None
 
+    def _next(self, gen, queue: str):
+        # twscrape >= 0.21 raises on a failed request instead of ending the iteration, so a
+        # failure is reported as one, never as an empty page; the message drops twscrape's
+        # own text, which may name the account.
+        try:
+            return self._runner.run(anext(gen))
+        except NoAccountError:
+            self._raise_no_account(queue)
+        except (AbortReqError, XClIdError, HttpError) as exc:
+            raise SourceUnavailableError(
+                f"twscrape: request failed ({type(exc).__name__})"
+            ) from None
+        except (ParseError, ValueError) as exc:
+            raise SourcePayloadError(
+                f"twscrape: unparsable response ({type(exc).__name__})"
+            ) from None
+
     def members(self, list_id: int) -> list[str]:
         gen = self._api.list_members_raw(list_id)
         handles: list[str] = []
         try:
             while True:
                 try:
-                    response = self._runner.run(anext(gen))
+                    response = self._next(gen, _MEMBERS_QUEUE)
                 except StopAsyncIteration:
                     break
-                except NoAccountError:
-                    self._raise_no_account(_MEMBERS_QUEUE)
                 try:
                     handles.extend(_member_handles(response.json()))
                 except Exception as exc:
@@ -204,15 +252,13 @@ class TwscrapeSource:
         try:
             while True:
                 try:
-                    response = self._runner.run(anext(gen))
+                    response = self._next(gen, _QUEUE)
                 except StopAsyncIteration:
                     return
-                except NoAccountError:
-                    self._raise_no_account(_QUEUE)
 
                 try:
                     page_dict = response.json()
-                    tweets = list(twscrape.parse_tweets(page_dict))
+                    tweets = _with_quoted(list(twscrape.parse_tweets(page_dict)))
                     groups = _entry_groups(page_dict)
                 except Exception as exc:
                     raise SourcePayloadError("twscrape: malformed page") from exc
@@ -222,6 +268,12 @@ class TwscrapeSource:
                 if tweets and not any(tweet.id in heads for tweet in tweets):
                     logger.warning("twscrape: no timeline entries recognised on a page")
                     in_entry, heads = None, set()
-                yield [_to_post(tweet, in_entry, heads) for tweet in tweets]
+                complete = [tweet for tweet in tweets if _has_authors(tweet)]
+                if len(complete) < len(tweets):
+                    logger.warning(
+                        "twscrape: skipped %s posts without an author handle",
+                        len(tweets) - len(complete),
+                    )
+                yield [_to_post(tweet, in_entry, heads) for tweet in complete]
         finally:
             self._runner.run(gen.aclose())
